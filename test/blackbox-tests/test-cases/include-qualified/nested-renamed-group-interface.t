@@ -155,8 +155,7 @@ Currently, its source basename is retained in the logical module path.
   Leaving directory 'selected'
   [1]
 
-The dirs field should only be accepted with qualified mode. Currently it is
-silently ignored with both no and unqualified modes.
+The dirs field should only be accepted with qualified mode.
 
   $ for mode in no unqualified; do
   >   mkdir -p "$mode/internal"
@@ -173,6 +172,19 @@ silently ignored with both no and unqualified modes.
   >   touch "$mode/ignored.ml" "$mode/internal/leaf.ml"
   >   dune build --root="$mode" ignored.cma
   > done
+  Entering directory 'no'
+  File "dune", line 3, characters 1-28:
+  3 |  (dirs (internal as public)))
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: The dirs field is only allowed with (mode qualified).
+  Leaving directory 'no'
+  Entering directory 'unqualified'
+  File "dune", line 3, characters 1-28:
+  3 |  (dirs (internal as public)))
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: The dirs field is only allowed with (mode qualified).
+  Leaving directory 'unqualified'
+  [1]
 
 A nested rename may refer to a parent directory visited later. This currently
 mistakes the implicit parent group for a conflicting directory.

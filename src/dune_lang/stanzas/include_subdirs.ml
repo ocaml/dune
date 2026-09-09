@@ -42,13 +42,19 @@ let decode ~qualified =
          field_o
            "dirs"
            (let* () = Syntax.since Stanza.syntax (3, 25) in
-            repeat File_binding.Unexpanded.decode)
+            let+ loc = loc
+            and+ dirs = repeat File_binding.Unexpanded.decode in
+            loc, dirs)
        in
-       match mode with
-       | No | Include Unqualified -> loc, mode
-       | Include (Qualified _) ->
-         let dirs = Option.value dirs ~default:[] in
-         loc, Include (Qualified { dirs }))
+       match dirs with
+       | None -> loc, mode
+       | Some (dirs_loc, dirs) ->
+         (match mode with
+          | No | Include Unqualified ->
+            User_error.raise
+              ~loc:dirs_loc
+              [ Pp.text "The dirs field is only allowed with (mode qualified)." ]
+          | Include (Qualified _) -> loc, Include (Qualified { dirs })))
   in
   legacy <|> decode
 ;;

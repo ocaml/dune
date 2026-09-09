@@ -79,3 +79,119 @@ Melange-only libraries still require melc at the package boundary.
   Hint: opam install melange
   Leaving directory 'package-melange-only'
   [1]
+
+Check mode-specific package dependencies using package `a`, whose library has
+separate OCaml and Melange requirements. The OCaml dependency must remain
+present when melc is unavailable.
+
+  $ mkdir -p package-closure/a package-closure/ocaml-support \
+  > package-closure/js-support
+  $ cat >package-closure/dune-project <<'EOF'
+  > (lang dune 3.24)
+  > (using melange 1.0)
+  > (package (name a))
+  > (package (name ocaml-support))
+  > (package (name js-support))
+  > EOF
+  $ cat >package-closure/a/dune <<'EOF'
+  > (library
+  >  (public_name a)
+  >  (modes byte melange)
+  >  (libraries ocaml-support)
+  >  (melange.libraries js-support))
+  > EOF
+  $ echo 'let value = 1' >package-closure/a/a.ml
+  $ cat >package-closure/ocaml-support/dune <<'EOF'
+  > (library (name ocaml_support) (public_name ocaml-support) (modes byte))
+  > EOF
+  $ echo 'let value = 2' >package-closure/ocaml-support/ocaml_support.ml
+  $ cat >package-closure/js-support/dune <<'EOF'
+  > (library (name js_support) (public_name js-support) (modes melange))
+  > EOF
+  $ echo 'let value = 3' >package-closure/js-support/js_support.ml
+  $ cat >package-closure/dune <<'EOF'
+  > (rule
+  >  (target result)
+  >  (deps (package a))
+  >  (action (write-file %{target} built)))
+  > EOF
+
+Ordinary installation of `a` succeeds without melc.
+
+  $ PATH=$PWD/_path dune build --root package-closure a.install
+
+The package dependency follows the active OCaml mode, not the inactive
+Melange mode.
+
+  $ PATH=$PWD/_path dune build --root package-closure result
+  $ PATH=$PWD/_path dune rules --root package-closure --format=json result |
+  > jq_dune 'rulesMatchingTarget("result") | {
+  >   ocaml_dependency: ruleHasDepFile("lib/ocaml-support/dune-package"),
+  >   melange_dependency: ruleHasDepFile("lib/js-support/dune-package")
+  > }'
+  {
+    "ocaml_dependency": true,
+    "melange_dependency": false
+  }
+
+With melc available, both dependency packages should belong to the closure.
+
+CR-soon Alizter: Package expansion currently follows only OCaml dependencies.
+This case and the next two incorrectly omit `js-support`.
+
+  $ dune build --root package-closure result
+  $ dune rules --root package-closure --format=json result |
+  > jq_dune 'rulesMatchingTarget("result") | {
+  >   ocaml_dependency: ruleHasDepFile("lib/ocaml-support/dune-package"),
+  >   melange_dependency: ruleHasDepFile("lib/js-support/dune-package")
+  > }'
+  {
+    "ocaml_dependency": true,
+    "melange_dependency": false
+  }
+
+Install both modes, then hide melc from a separate consumer. Its dependency
+closure should follow the modes recorded in the installed metadata, not
+compiler availability. The current output still omits `js-support`.
+
+  $ dune build --root package-closure @install
+  $ dune install --root package-closure --prefix "$PWD/closure-prefix"
+  $ mkdir installed-closure
+  $ echo '(lang dune 3.24)' >installed-closure/dune-project
+  $ cp package-closure/dune installed-closure/dune
+  $ PATH=$PWD/_path OCAMLPATH=$PWD/closure-prefix/lib dune build \
+  > --root installed-closure result
+  $ PATH=$PWD/_path OCAMLPATH=$PWD/closure-prefix/lib dune rules \
+  > --root installed-closure --format=json result |
+  > jq_dune 'rulesMatchingTarget("result") | {
+  >   ocaml_dependency: ruleHasDepFile("lib/ocaml-support/dune-package"),
+  >   melange_dependency: ruleHasDepFile("lib/js-support/dune-package")
+  > }'
+  {
+    "ocaml_dependency": true,
+    "melange_dependency": false
+  }
+
+Provide melc through directory-local binaries for `a` and `js-support`, while
+keeping it off PATH for the root rule. These libraries can install their
+Melange artifacts, but package expansion still omits `js-support`.
+
+  $ cat >package-closure/melc-wrapper <<EOF
+  > #!$(command -v sh)
+  > exec "$(command -v melc)" "\$@"
+  > EOF
+  $ chmod +x package-closure/melc-wrapper
+  $ for dir in a js-support; do
+  >   echo '(env (_ (binaries (../melc-wrapper as melc))))' \
+  >   >>package-closure/$dir/dune
+  > done
+  $ PATH=$PWD/_path dune build --root package-closure result
+  $ PATH=$PWD/_path dune rules --root package-closure --format=json result |
+  > jq_dune 'rulesMatchingTarget("result") | {
+  >   ocaml_dependency: ruleHasDepFile("lib/ocaml-support/dune-package"),
+  >   melange_dependency: ruleHasDepFile("lib/js-support/dune-package")
+  > }'
+  {
+    "ocaml_dependency": true,
+    "melange_dependency": false
+  }

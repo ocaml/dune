@@ -221,6 +221,46 @@ let package loc pkg_name (context : Build_context.t) ~dune_version =
       }
 ;;
 
+(* Expands a package set by taking all the libraries in those packages and
+   collecting the libraries in their transitive closures and then adding the
+   packages that own those libraries. *)
+let expand_package_set context package_names =
+  let open Memo.O in
+  Memo.map_reduce_seq
+    (Package.Name.Set.to_seq package_names)
+    ~empty:package_names
+    ~combine:Package.Name.Set.union
+    ~f:(fun package_name ->
+      (* Find all the libraries present in a given package. *)
+      let* libs =
+        let* db = Package_db.create context in
+        Package_db.find_package db package_name
+        >>= function
+        | None -> Memo.return []
+        | Some (Installed { entries; _ }) ->
+          let* lib_db = Scope.DB.public_libs context in
+          Lib_name.Map.keys entries |> Memo.List.filter_map ~f:(Lib.DB.find lib_db)
+        | Some (Local pkg) ->
+          let* { Scope.DB.Lib_entry.Set.libraries; deprecated_library_names } =
+            Scope.DB.lib_entries_of_package context (Package.name pkg)
+          in
+          let+ redirected =
+            let* lib_db = Scope.DB.public_libs context in
+            Memo.List.filter_map deprecated_library_names ~f:(fun redirect ->
+              Lib.DB.find lib_db (Deprecated_library_name.old_public_name redirect))
+          in
+          List.map libraries ~f:Lib.Local.to_lib @ redirected
+        | Some (Build _) ->
+          (* We cannot know the libraries of a given dune pkg package so
+             easily, however the dependency on that package already expands
+             correctly to include the closure we are after. *)
+          Memo.return []
+      in
+      Lib.descriptive_closure libs ~with_pps:false ~for_:Compilation_mode.Ocaml
+      >>| List.filter_map ~f:Lib.package
+      >>| Package.Name.Set.of_list)
+;;
+
 let rec dep expander : Dep_conf.t -> _ = function
   | Include s ->
     (* TODO this is wrong. we shouldn't allow bindings here if we are in an
@@ -322,12 +362,35 @@ and combined_package_deps_builder expander pkgs =
        Expander.host_context expander >>| Context.name)
   in
   let context = Build_context.create ~name:host_name in
-  let* package_db = Action_builder.of_memo (Package_db.create context.name) in
-  let* classified =
+  let* requested =
     Action_builder.List.map pkgs ~f:(fun (swv, loc) ->
-      let* pkg = expand_package_name expander swv in
-      let+ found = Action_builder.of_memo (Package_db.find_package package_db pkg) in
-      loc, pkg, found)
+      let+ pkg = expand_package_name expander swv in
+      loc, pkg)
+  in
+  let* classified =
+    Action_builder.of_memo
+    @@
+    let open Memo.O in
+    let* package_db = Package_db.create context.name in
+    Package.Name.Set.of_list_map requested ~f:snd
+    |> expand_package_set context.name
+    >>| Package.Name.Set.to_list
+    >>= Memo.List.map ~f:(fun package ->
+      let loc =
+        (* CR-someday Alizter: The location here doesn't make sense for
+           packages from the lib-transitive closure and so defaults to none.
+           Consider pushing a stack frame in the action builder around this
+           whole affair in order to get some information on which package
+           required which transitively, when there is trouble materialising the
+           dependency. See
+           test/blackbox-tests/test-cases/package-materialization/install-dirs.t
+           for an example of a poor error message as a result of this. *)
+        List.find_map requested ~f:(fun (loc, requested_package) ->
+          if Package.Name.equal package requested_package then Some loc else None)
+        |> Option.value ~default:Loc.none
+      in
+      let+ found = Package_db.find_package package_db package in
+      loc, package, found)
   in
   let local_package_names =
     List.filter_map classified ~f:(fun (_, _, found) ->

@@ -6,6 +6,9 @@ Lock package dependencies: provider -> b-provider, c; b-provider -> d.
 The provider names differ from the library namespaces. Package-granular
 closure should include the contents of b-provider, c, and d.
 
+The final case requests a workspace package and checks that its library
+closure identifies the differently named managed provider b-provider.
+
 Keep the package sources outside the workspace so they are built through the
 lock directory, not treated as workspace libraries. Use bytecode so changing
 b's implementation does not change a's compiled archive through inlining.
@@ -188,3 +191,76 @@ The consumer is relinked against b's updated archive.
 
   $ _build/default/main.exe
   11
+
+Remove the requested provider's META file, keeping its dune-package metadata
+and archives. The same package-level dependencies must remain. This action
+does not invoke ocamlfind, so the missing META cannot break the action itself.
+
+  $ dune_cmd delete 'META' "$sources/a/provider.install"
+  $ cat >dune <<'EOF'
+  > (rule
+  >  (target package-result)
+  >  (deps (package provider))
+  >  (action (with-stdout-to %{target} (echo built))))
+  > EOF
+  $ dune build package-result
+  $ test ! -e "$a_target/lib/a/META"
+  $ dune rules --format=json package-result | jq_dune \
+  > --arg a "$a_target" --arg b "$b_target" \
+  > --arg c "$c_target" --arg d "$d_target" '
+  >   rulesMatchingTarget("package-result") | {
+  >     requested_package: ruleHasDepFile($a),
+  >     requested_metadata: ruleHasDepFile($a + "/lib/a/dune-package"),
+  >     required_package: ruleHasDepFile($b),
+  >     package_only_dependency: ruleHasDepFile($c),
+  >     sibling_dependency: ruleHasDepFile($d)
+  >   }'
+  {
+    "requested_package": true,
+    "requested_metadata": false,
+    "required_package": true,
+    "package_only_dependency": true,
+    "sibling_dependency": true
+  }
+
+Request workspace package a explicitly. Its library depends on installed
+library b, whose owning lock package is b-provider, not b. The local package is
+materialised and b-provider's installation directory becomes a direct
+dependency, along with the installation directory of its dependency d.
+Package c is not in this closure.
+
+  $ echo '(package (name a))' >>dune-project
+  $ mkdir workspace-a
+  $ cat >workspace-a/dune <<'EOF'
+  > (library
+  >  (public_name a)
+  >  (modes byte)
+  >  (libraries b))
+  > EOF
+  $ echo 'let value = 100 + B.value' >workspace-a/a.ml
+  $ cat >dune <<'EOF'
+  > (rule
+  >  (target main.exe)
+  >  (deps main.ml (package a))
+  >  (action
+  >   (run ocamlfind ocamlc -package a -linkpkg -o %{target} main.ml)))
+  > EOF
+  $ dune build main.exe
+  $ _build/default/main.exe
+  110
+  $ dune rules --format=json main.exe | jq_dune \
+  > --arg b "$b_target" --arg c "$c_target" --arg d "$d_target" '
+  >   rulesMatchingTarget("main.exe") | {
+  >     required_package: ruleHasDepFile($b),
+  >     required_cookie: ruleHasDepFile($b + "/cookie"),
+  >     required_archive: ruleHasDepFile($b + "/lib/b/b.cma"),
+  >     transitive_package: ruleHasDepFile($d),
+  >     unrelated_package: ruleHasDepFile($c)
+  >   }'
+  {
+    "required_package": true,
+    "required_cookie": false,
+    "required_archive": false,
+    "transitive_package": true,
+    "unrelated_package": false
+  }

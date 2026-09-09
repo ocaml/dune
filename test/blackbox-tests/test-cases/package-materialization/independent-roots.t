@@ -1,6 +1,6 @@
-Each library installed by an explicitly requested package is an independent
-closure root. Combining the roots before resolving virtual implementations can
-suppress a default implementation needed by one root.
+Package `roots` contains libraries that require different implementations of
+the same virtual library. Depending on the package must expose both
+implementations without treating all its libraries as one program to link.
 
   $ make_dune_project 3.24
   $ cat >>dune-project <<'EOF'
@@ -36,8 +36,9 @@ suppress a default implementation needed by one root.
   > EOF
   $ echo 'let value = 2' >alternative-impl/virtual_support.ml
 
-The first root selects the alternative implementation while the second root
-uses the virtual library on its own and therefore needs the default.
+`roots.a` requires `roots.b` and the alternative implementation. `roots.b`
+requires only the virtual library and can compile without selecting an
+implementation.
 
   $ cat >roots-b/dune <<'EOF'
   > (library
@@ -54,6 +55,19 @@ uses the virtual library on its own and therefore needs the default.
   >  (libraries roots.b alternative-support))
   > EOF
   $ echo 'let value = Roots_b.value' >roots-a/roots_a.ml
+
+Add `roots.c`, which explicitly requires the default implementation. Both
+implementations are now named by library dependencies, but package expansion
+must not reject them as competing choices for a single executable.
+
+  $ mkdir roots-c
+  $ cat >roots-c/dune <<'EOF'
+  > (library
+  >  (name roots_c)
+  >  (public_name roots.c)
+  >  (libraries virtual-support.default))
+  > EOF
+  $ echo 'let value = Virtual_support.value' >roots-c/roots_c.ml
 
   $ cat >dune <<'EOF'
   > (rule
@@ -72,29 +86,10 @@ uses the virtual library on its own and therefore needs the default.
   >     alternative-support))))
   > EOF
 
-Both implementations and their archives must be present in the scoped layout.
-The default is currently absent because `roots.b` is not closed independently.
+Both implementations and their archives are present in the scoped layout.
 
   $ dune build result
-  File "dune", lines 1-7, characters 0-179:
-  1 | (rule
-  2 |  (target result)
-  3 |  (deps (package roots))
-  4 |  (action
-  5 |   (with-stdout-to %{target}
-  6 |    (run %{bin:ocamlfind} query -predicates byte -format "%d/%A"
-  7 |     virtual-support.default))))
-  ocamlfind: Package `virtual-support.default' not found
-  [1]
+  $ test -f "$(cat _build/default/result)"
 
   $ dune build alternative-result
-  File "dune", lines 8-14, characters 0-187:
-   8 | (rule
-   9 |  (target alternative-result)
-  10 |  (deps (package roots))
-  11 |  (action
-  12 |   (with-stdout-to %{target}
-  13 |    (run %{bin:ocamlfind} query -predicates byte -format "%d/%A"
-  14 |     alternative-support))))
-  ocamlfind: Package `alternative-support' not found
-  [1]
+  $ test -f "$(cat _build/default/alternative-result)"

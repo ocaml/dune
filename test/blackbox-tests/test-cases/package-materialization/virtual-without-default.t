@@ -1,6 +1,6 @@
-A virtual library without a default implementation is still a valid compile-time
-requirement. Computing a strict link closure must not prevent it from being
-materialized.
+A package dependency must make a virtual library available even when no
+implementation can be selected for linking. The action only queries the
+library; it does not link an executable.
 
   $ make_dune_project 3.24
   $ cat >>dune-project <<'EOF'
@@ -35,12 +35,3 @@ materialized.
   > EOF
 
   $ dune build result
-  File "dune", lines 1-6, characters 0-137:
-  1 | (rule
-  2 |  (target result)
-  3 |  (deps (package virtual-user))
-  4 |  (action
-  5 |   (with-stdout-to %{target}
-  6 |    (run %{bin:ocamlfind} query virtual-api))))
-  ocamlfind: Package `virtual-api' not found
-  [1]

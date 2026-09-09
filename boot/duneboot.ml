@@ -1245,7 +1245,7 @@ module File_kind = struct
     | Asm of asm
     | Ml of ml
 
-  let analyse module_path dn fn =
+  let analyse module_path dn fn ~group_interface_rename =
     let fname, ext =
       let i =
         try String.index fn '.' with
@@ -1255,11 +1255,22 @@ module File_kind = struct
       let ext = String.sub fn ~pos:i ~len:(String.length fn - i) in
       fname, ext
     in
-    let name = lazy (Module.Name.of_fname fname) in
+    let name =
+      lazy
+        (let fname =
+           match group_interface_rename with
+           | Some (source_name, public_name)
+             when String.equal
+                    (String.capitalize_ascii fname)
+                    (String.capitalize_ascii source_name) -> public_name
+           | None | Some _ -> fname
+         in
+         Module.Name.of_fname fname)
+    in
     let module_path =
       lazy
-        (let path = fname :: module_path in
-         List.map ~f:Module.Name.of_fname path |> Module.Path.of_list)
+        (Lazy.force name :: List.map ~f:Module.Name.of_fname module_path
+         |> Module.Path.of_list)
     in
     match ext with
     | ".S" | ".asm" ->
@@ -1488,41 +1499,65 @@ module Library = struct
 
   (* Collect source files *)
   let scan ~module_path ~dir ~include_subdirs =
-    let rec collect dir module_path =
-      let dirs, files =
-        let paths = Io.readdir dir in
-        List.partition_map paths ~f:(fun fn ->
-          let path = Filename.concat dir fn in
-          let is_dir = Sys.is_directory path in
-          let module_path =
-            match
-              match include_subdirs with
-              | No | Unqualified -> false
-              | Qualified -> is_dir
-            with
-            | true -> fn :: module_path
-            | false -> module_path
-          in
-          let arg = path, fn, module_path in
-          if is_dir then Left arg else Right arg)
-      in
-      let files =
-        List.filter_map files ~f:(fun (path, fn, module_path) ->
-          File_kind.analyse module_path dir fn
-          |> Option.map ~f:(fun kind -> fn, String.Trie.Node { Source.file = path; kind }))
-        |> String.Map.of_list
-      in
-      let dirs =
-        match include_subdirs with
-        | No -> String.Trie.empty
-        | Unqualified | Qualified ->
-          List.map dirs ~f:(fun (dir, fn, module_path) ->
-            fn, String.Trie.Tree (collect dir module_path))
-          |> String.Map.of_list
-      in
-      String.Map.union files dirs ~f:(fun _ _ _ -> assert false)
+    let rec drop_prefix path prefix =
+      match path, prefix with
+      | path, [] -> Some path
+      | p :: path, prefix :: prefixes when String.equal p prefix ->
+        drop_prefix path prefixes
+      | [], _ :: _ | _ :: _, _ :: _ -> None
     in
-    collect dir module_path
+    let translate path =
+      match include_subdirs with
+      | No | Unqualified -> path
+      | Qualified dirs ->
+        List.fold_left dirs ~init:None ~f:(fun best (src, dst) ->
+          match drop_prefix path src with
+          | None -> best
+          | Some rest ->
+            let length = List.length src in
+            (match best with
+             | None -> Some (length, dst, rest)
+             | Some (best_length, _, _) when length > best_length ->
+               Some (length, dst, rest)
+             | Some _ -> best))
+        |> (function
+         | None -> path
+         | Some (_, dst, rest) -> dst @ rest)
+    in
+    let rec collect dir path sources =
+      let logical_path = translate path in
+      let file_module_path, group_interface_rename =
+        match include_subdirs, List.rev logical_path with
+        | Qualified _, (public_name :: _ as names) ->
+          names @ module_path, Some (Filename.basename dir, public_name)
+        | (No | Unqualified | Qualified _), [] | (No | Unqualified), _ :: _ ->
+          module_path, None
+      in
+      List.fold_left (Io.readdir dir) ~init:sources ~f:(fun sources fn ->
+        let file = Filename.concat dir fn in
+        if Sys.is_directory file
+        then (
+          match include_subdirs with
+          | No -> sources
+          | Unqualified | Qualified _ -> collect file (path @ [ fn ]) sources)
+        else (
+          match File_kind.analyse file_module_path dir fn ~group_interface_rename with
+          | None -> sources
+          | Some kind ->
+            let key =
+              match kind with
+              | File_kind.Ml m ->
+                let pos = String.index fn '.' in
+                let name = String.sub fn ~pos:0 ~len:pos |> String.capitalize_ascii in
+                let renamed = Module.Name.to_string m.name in
+                if String.equal name renamed
+                then fn
+                else renamed ^ String.sub fn ~pos ~len:(String.length fn - pos)
+              | Asm _ | Header | C _ -> fn
+            in
+            String.Trie.add_exn sources (logical_path @ [ key ]) { Source.file; kind }))
+    in
+    collect dir [] String.Trie.empty
   ;;
 
   let copy_only_vendor_c_file file = Filename.basename file <> "ev.c"
@@ -1571,7 +1606,7 @@ module Library = struct
         |> cons_opt root_module
       in
       match include_subdirs with
-      | Qualified -> Conv.conv sources ~node:(fun x -> Some x) ~key:Module.Name.of_fname
+      | Qualified _ -> Conv.conv sources ~node:(fun x -> Some x) ~key:Module.Name.of_fname
       | No | Unqualified ->
         String.Trie.to_list sources
         |> List.rev_map ~f:(fun (m : File_kind.ml) -> m.name, Module.Name.Trie.Node m)

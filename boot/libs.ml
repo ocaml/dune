@@ -27,7 +27,7 @@ let local_libraries =
     }
   ; { path = "otherlibs/stdune/src"
     ; main_module_name = Some "Stdune"
-    ; include_subdirs = Qualified
+    ; include_subdirs = Qualified []
     ; special_builtin_support = None
     ; root_module =
         Some
@@ -406,7 +406,7 @@ let local_libraries =
 let main =
   { path = "bin"
   ; main_module_name = None
-  ; include_subdirs = Qualified
+  ; include_subdirs = Qualified []
   ; special_builtin_support = None
   ; root_module =
       Some

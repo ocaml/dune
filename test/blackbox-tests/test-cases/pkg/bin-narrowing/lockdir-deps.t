@@ -232,3 +232,30 @@ All the packages' bin layouts are added to $PATH:
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
   $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
+
+  $ cat >>dune <<'EOF'
+  > (rule
+  >  (alias test-run-literal)
+  >  (enabled_if %{bin-available:check-env})
+  >  (deps (package provider))
+  >  (action
+  >   (with-stdout-to literal-output (run mybin))))
+  > (rule
+  >  (alias test-run-pform)
+  >  (enabled_if %{bin-available:check-env})
+  >  (deps (package provider))
+  >  (action
+  >   (with-stdout-to pform-output (run %{bin:mybin}))))
+  > EOF
+
+  $ dune clean
+
+  $ dune build @test-run-literal
+
+  $ cat _build/default/literal-output
+  from provider
+
+  $ dune build @test-run-pform
+
+  $ cat _build/default/pform-output
+  from provider

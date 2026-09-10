@@ -55,7 +55,6 @@ let deps_of_lib (lib : Lib.t) ~groups =
   |> Dep.Set.of_list
 ;;
 
-let deps_with_exts = Dep.Set.union_map ~f:(fun (lib, groups) -> deps_of_lib lib ~groups)
 let deps libs ~groups = Dep.Set.union_map libs ~f:(deps_of_lib ~groups)
 
 let groups_for_cm_kind ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) lib =
@@ -86,6 +85,11 @@ let deps_of_entry_modules ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) lib modules =
     | Ocaml Cmx -> not (opaque && Lib.is_local lib)
     | _ -> false
   in
+  let want_cmj =
+    match cm_kind with
+    | Melange Cmj -> true
+    | _ -> false
+  in
   List.fold_left modules ~init:Dep.Set.empty ~f:(fun acc m ->
     let acc =
       match Obj_dir.Module.cm_public_file obj_dir m ~kind:cmi_kind with
@@ -98,16 +102,30 @@ let deps_of_entry_modules ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) lib modules =
            in tight_modules"
           [ "module", Module.to_dyn m; "lib", Lib.to_dyn lib ]
     in
-    if want_cmx && Module.has m ~ml_kind:Impl
+    let acc =
+      if want_cmx && Module.has m ~ml_kind:Impl
+      then (
+        match Obj_dir.Module.cm_public_file obj_dir m ~kind:(Ocaml Cmx) with
+        | Some path -> Dep.Set.add acc (Dep.file path)
+        | None ->
+          (* Unreachable. [cm_public_file ~kind:(Ocaml Cmx)] returns [None] only
+             when [not has_impl]. The enclosing [if] guarantees
+             [Module.has m ~ml_kind:Impl] (= [has_impl]). *)
+          Code_error.raise
+            "deps_of_entry_modules: [cm_public_file] returned [None] for cmx despite \
+             [Module.has m ~ml_kind:Impl] holding"
+            [ "module", Module.to_dyn m ])
+      else acc
+    in
+    if want_cmj && Module.has m ~ml_kind:Impl
     then (
-      match Obj_dir.Module.cm_public_file obj_dir m ~kind:(Ocaml Cmx) with
+      match Obj_dir.Module.cm_public_file obj_dir m ~kind:(Melange Cmj) with
       | Some path -> Dep.Set.add acc (Dep.file path)
       | None ->
-        (* Unreachable. [cm_public_file ~kind:(Ocaml Cmx)] returns [None] only
-           when [not has_impl]. The enclosing [if] guarantees
-           [Module.has m ~ml_kind:Impl] (= [has_impl]). *)
+        (* Unreachable. Symmetric with the [Ocaml Cmx] arm above: [cm_public_file
+           ~kind:(Melange Cmj)] returns [None] only when [not has_impl]. *)
         Code_error.raise
-          "deps_of_entry_modules: [cm_public_file] returned [None] for cmx despite \
+          "deps_of_entry_modules: [cm_public_file] returned [None] for cmj despite \
            [Module.has m ~ml_kind:Impl] holding"
           [ "module", Module.to_dyn m ])
     else acc)
@@ -118,8 +136,9 @@ module Lib_index = struct
     { by_module_name : (Lib.t * Module.t option) list Module_name.Map.t
     ; tight_eligible : Lib.Set.t
     ; no_ocamldep : Lib.Set.t
-      (* Local libs short-circuited by [Dep_rules.skip_ocamldep] — no [.d] rules
-         exist; the cross-library walk must skip them. *)
+      (* Local libs that are walker-terminal: running ocamldep on their entry
+         module via the cross-library walk can't propagate anywhere (no
+         resolved requires to chase), so the walker skips them. *)
     }
 
   (* Tight-eligibility is encoded in the entry shape: [(_, lib, Some _)] means

@@ -123,6 +123,8 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
     redirect_out t ~ectx ~eenv outputs ~perm fn
   | Redirect_in (inputs, fn, t) -> redirect_in t ~ectx ~eenv inputs fn
   | Ignore (outputs, t) -> redirect_out t ~ectx ~eenv ~perm:Normal outputs Dev_null.path
+  | If_file_exists (path, t) ->
+    if Fpath.exists (Path.to_string path) then exec t ~ectx ~eenv else Fiber.return Done
   | Progn ts -> exec_list ts ~ectx ~eenv
   | Concurrent ts ->
     Fiber.parallel_iter ts ~f:(fun t ->

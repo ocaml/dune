@@ -71,6 +71,8 @@ let rec encode_action : Action.For_shell.t -> Dune_lang.t =
       ]
   | Ignore (outputs, r) ->
     List [ atom (sprintf "ignore-%s" (Outputs.to_string outputs)); encode_action r ]
+  | If_file_exists (path, action) ->
+    List [ atom "if-file-exists"; Encoder.string path; encode_action action ]
   | Progn l -> List (atom "progn" :: List.map l ~f:encode_action)
   | Concurrent l -> List (atom "concurrent" :: List.map l ~f:encode_action)
   | Echo xs -> List (atom "echo" :: List.map xs ~f:string)

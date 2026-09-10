@@ -47,6 +47,7 @@ module type Ast = sig
     | Redirect_out of Outputs.t * target * File_perm.t * t
     | Redirect_in of Inputs.t * path * t
     | Ignore of Outputs.t * t
+    | If_file_exists of path * t
     | Progn of t list
     | Concurrent of t list
     | Echo of string list
@@ -82,6 +83,7 @@ module type Helpers = sig
   val ignore_stdout : t -> t
   val ignore_stderr : t -> t
   val ignore_outputs : t -> t
+  val if_file_exists : path -> t -> t
   val progn : t list -> t
   val concurrent : t list -> t
   val echo : string list -> t

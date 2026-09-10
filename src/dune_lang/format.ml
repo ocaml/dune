@@ -78,5 +78,17 @@ let format_to_channel ~version ~src oc =
 ;;
 
 let format_action ~version ~src ~dst =
-  Path.build dst |> Io.with_file_out ~f:(format_to_channel ~version ~src)
+  let dst = Path.build dst in
+  if Path.equal src dst
+  then
+    Temp.with_temp_file
+      ~dir:(Path.parent_exn dst)
+      ~prefix:"dune-format"
+      ~suffix:"output"
+      ~f:(function
+      | Error exn -> raise exn
+      | Ok temporary ->
+        Io.with_file_out temporary ~f:(format_to_channel ~version ~src);
+        Fpath.rename_exn (Path.to_string temporary) (Path.to_string dst))
+  else Io.with_file_out dst ~f:(format_to_channel ~version ~src)
 ;;

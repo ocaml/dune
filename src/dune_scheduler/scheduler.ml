@@ -402,6 +402,7 @@ let kill_and_wait_for_all_processes t =
   then (
     Pid.kill_exn (Pid.me ()) `Pid Thread0.signal_watcher_interrupt;
     Thread.join t.signal_watcher);
+  Process_watcher.shutdown t.process_watcher;
   !saw_shutdown
 ;;
 

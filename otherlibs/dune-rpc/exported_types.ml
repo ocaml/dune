@@ -1,5 +1,16 @@
 open Import
 
+let event_sexp diagnostic =
+  let open Conv in
+  let add_case = constr "Add" diagnostic (fun t -> `Add t) in
+  let remove_case = constr "Remove" diagnostic (fun t -> `Remove t) in
+  sum
+    [ econstr add_case; econstr remove_case ]
+    (function
+      | `Add t -> case t add_case
+      | `Remove t -> case t remove_case)
+;;
+
 module Loc = struct
   type t = Stdune.Lexbuf.Loc.t =
     { start : Lexing.position
@@ -565,15 +576,14 @@ module Diagnostic = struct
       | Remove of t
 
     let sexp =
-      let diagnostic = sexp in
-      let open Conv in
-      let add = constr "Add" diagnostic (fun a -> Add a) in
-      let remove = constr "Remove" diagnostic (fun a -> Remove a) in
-      sum
-        [ econstr add; econstr remove ]
+      Conv.iso
+        (event_sexp sexp)
         (function
-          | Add t -> case t add
-          | Remove t -> case t remove)
+          | `Add t -> Add t
+          | `Remove t -> Remove t)
+        (function
+          | Add t -> `Add t
+          | Remove t -> `Remove t)
     ;;
 
     let to_dyn t = Sexp.to_dyn (Conv.to_sexp sexp t)

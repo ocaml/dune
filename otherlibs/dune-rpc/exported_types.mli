@@ -21,6 +21,8 @@ end
     [(Tag pp)] but now we serialise them as [Tag (pair tag pp)]. *)
 val sexp_pp_unit : unit Pp.t Conv.value
 
+val event_sexp : 'a Conv.value -> [ `Add of 'a | `Remove of 'a ] Conv.value
+
 module Target : sig
   type t =
     | Path of string

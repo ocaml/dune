@@ -61,14 +61,6 @@ prevent the build.
   > EOF
 
   $ dune build
-  File "theories/dune", lines 1-3, characters 0-44:
-  1 | (rocq.theory
-  2 |  (name repro)
-  3 |  (theories Good))
-  Error: File unavailable:
-  $TESTCASE_ROOT/fake-prefix/lib/coq/user-contrib/Unrelated/Broken.vo
-  Broken symbolic link
-  [1]
 
   $ unlink fake-prefix/lib/coq/user-contrib/Unrelated/Broken.vo
   $ dune build

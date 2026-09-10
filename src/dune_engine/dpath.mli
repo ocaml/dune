@@ -12,6 +12,7 @@ module Target_dir : sig
     | Regular of context_related
     | Invalid of Path.Build.t
 
+  val context : Path.Build.t -> Context_name.t option
   val of_target : Path.Build.t -> t
 end
 

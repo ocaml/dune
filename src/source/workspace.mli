@@ -25,11 +25,21 @@ module Lock_dir : sig
 end
 
 module Tool_group : sig
+  (** A group that inherits from a context is solved on top of that context's
+      lock directory and is only usable from that context. [share] restricts
+      which of the context's packages (with their dependencies) are reused;
+      [None] means all of them. *)
+  type inherit_ =
+    { context : Loc.t * Context_name.t
+    ; share : (Loc.t * Package.Name.t) list option
+    }
+
   type t =
     { loc : Loc.t
     ; name : (Loc.t * string) option
     ; tools : (Loc.t * Dune_lang.Package_dependency.t) list
     ; lock_dir : Lock_dir.t
+    ; inherit_ : inherit_ option
     }
 
   val equal : t -> t -> bool

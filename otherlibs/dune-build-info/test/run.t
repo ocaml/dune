@@ -14,6 +14,8 @@ Test embedding of build information
   >    git init -q;
   >    git config user.name "Test Name"
   >    git config user.email "test@example.com"
+  >    git config commit.gpgsign false;
+  >    git config tag.gpgsign false;
   >    git add .;
   >    git commit -q -m _;
   >    git tag -a 1.0+$i -m _)

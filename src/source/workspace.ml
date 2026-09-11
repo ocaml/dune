@@ -208,12 +208,30 @@ module Lock_dir = struct
 end
 
 module Tool_group = struct
+  type inherit_ =
+    { context : Loc.t * Context_name.t
+    ; share : (Loc.t * Package.Name.t) list option
+    }
+
   type t =
     { loc : Loc.t
     ; name : (Loc.t * string) option
     ; tools : (Loc.t * Dune_lang.Package_dependency.t) list
     ; lock_dir : Lock_dir.t
+    ; inherit_ : inherit_ option
     }
+
+  let inherit_repr =
+    Repr.record
+      "inherit"
+      [ Repr.field "context" (Repr.abstract Context_name.to_dyn) ~get:(fun t ->
+          snd t.context)
+      ; Repr.field
+          "share"
+          (Repr.option (Repr.list (Repr.abstract Package.Name.to_dyn)))
+          ~get:(fun t -> Option.map t.share ~f:(List.map ~f:snd))
+      ]
+  ;;
 
   let repr =
     Repr.record
@@ -226,13 +244,25 @@ module Tool_group = struct
           (Repr.list (Repr.abstract Dune_lang.Package_dependency.to_dyn))
           ~get:(fun t -> List.map t.tools ~f:snd)
       ; Repr.field "lock_dir" Lock_dir.repr ~get:(fun t -> t.lock_dir)
+      ; Repr.field "inherit" (Repr.option inherit_repr) ~get:(fun t -> t.inherit_)
       ]
   ;;
 
   let to_dyn = Repr.to_dyn repr
-  let hash { loc; name; tools; lock_dir } = Poly.hash (loc, name, tools, lock_dir)
 
-  let equal { loc; name; tools; lock_dir } t =
+  let hash { loc; name; tools; lock_dir; inherit_ } =
+    Poly.hash (loc, name, tools, lock_dir, inherit_)
+  ;;
+
+  let equal_inherit { context; share } t =
+    Tuple.T2.equal Loc.equal Context_name.equal context t.context
+    && Option.equal
+         (List.equal (Tuple.T2.equal Loc.equal Package.Name.equal))
+         share
+         t.share
+  ;;
+
+  let equal { loc; name; tools; lock_dir; inherit_ } t =
     Loc.equal loc t.loc
     && Option.equal (Tuple.T2.equal Loc.equal String.equal) name t.name
     && List.equal
@@ -240,6 +270,36 @@ module Tool_group = struct
          tools
          t.tools
     && Lock_dir.equal lock_dir t.lock_dir
+    && Option.equal equal_inherit inherit_ t.inherit_
+  ;;
+
+  (* The lock_dir block is either [(inherit ctx)] with an optional
+     [(share ...)], or ordinary lock_dir fields. The two cannot be mixed yet,
+     so the ordinary fields are collected as leftovers and handed to
+     [Lock_dir.decode] whole. *)
+  let lock_dir_block ~dir =
+    fields
+      (let+ loc = loc
+       and+ ctx = get_all
+       and+ inherit_ = field_o "inherit" (located Context_name.decode)
+       and+ share = field_o "share" (located (repeat (located Package.Name.decode)))
+       and+ rest = leftover_fields in
+       let inherit_ =
+         match inherit_, share with
+         | None, None -> None
+         | None, Some (loc, _) ->
+           User_error.raise ~loc [ Pp.text "\"share\" requires \"inherit\"." ]
+         | Some context, share ->
+           (match rest with
+            | [] -> ()
+            | field :: _ ->
+              User_error.raise
+                ~loc:(Dune_lang.Ast.loc field)
+                [ Pp.text "This field cannot be combined with \"inherit\" yet." ]);
+           Some { context; share = Option.map share ~f:snd }
+       in
+       let lock_dir = parse (enter (Lock_dir.decode ~dir)) ctx (List (loc, rest)) in
+       lock_dir, inherit_)
   ;;
 
   let decode ~dir =
@@ -256,8 +316,8 @@ module Tool_group = struct
              ~loc
              [ Pp.text "A tool group must declare at least one tool." ];
          tools
-       and+ lock_dir = field "lock_dir" (Lock_dir.decode ~dir) in
-       { loc; name; tools; lock_dir })
+       and+ lock_dir, inherit_ = field "lock_dir" (lock_dir_block ~dir) in
+       { loc; name; tools; lock_dir; inherit_ })
   ;;
 end
 
@@ -1146,18 +1206,57 @@ let check_tool_groups_no_dupes (tool_groups : Tool_group.t list) =
        [ Pp.textf "Tool group %S is defined multiple times:" name
        ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
        ]);
-  match
-    List.concat_map tool_groups ~f:(fun (group : Tool_group.t) -> group.tools)
-    |> Package.Name.Map.of_list_map
-         ~f:(fun (loc, { Dune_lang.Package_dependency.name; _ }) -> name, loc)
-  with
-  | Ok _ -> ()
-  | Error (name, (loc1, _), (loc2, _)) ->
-    User_error.raise
-      ~loc:loc2
-      [ Pp.textf "Tool %S is defined multiple times:" (Package.Name.to_string name)
-      ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
-      ]
+  (* A tool may be declared once per inherited context. A group without
+     [inherit] counts as its own context. *)
+  List.concat_map tool_groups ~f:(fun (group : Tool_group.t) ->
+    let context = Option.map group.inherit_ ~f:(fun i -> snd i.context) in
+    List.map group.tools ~f:(fun (loc, { Dune_lang.Package_dependency.name; _ }) ->
+      name, (context, loc)))
+  |> List.fold_left ~init:Package.Name.Map.empty ~f:(fun seen (name, (context, loc2)) ->
+    let previous = Package.Name.Map.find seen name |> Option.value ~default:[] in
+    (match
+       List.find previous ~f:(fun (context', _) ->
+         Option.equal Context_name.equal context context')
+     with
+     | None -> ()
+     | Some (_, loc1) ->
+       let where =
+         match context with
+         | None -> ""
+         | Some context -> sprintf " for context %S" (Context_name.to_string context)
+       in
+       User_error.raise
+         ~loc:loc2
+         [ Pp.textf
+             "Tool %S is defined multiple times%s:"
+             (Package.Name.to_string name)
+             where
+         ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
+         ]);
+    Package.Name.Map.add_multi seen name (context, loc2))
+  |> ignore
+;;
+
+let check_tool_groups_contexts contexts (tool_groups : Tool_group.t list) =
+  List.iter tool_groups ~f:(fun (group : Tool_group.t) ->
+    match group.inherit_ with
+    | None -> ()
+    | Some { context = loc, name; _ } ->
+      (match
+         List.find contexts ~f:(fun ctx -> Context_name.equal (Context.name ctx) name)
+       with
+       | Some (Context.Default _) -> ()
+       | Some (Context.Opam _) ->
+         User_error.raise
+           ~loc
+           [ Pp.textf
+               "Context %S is an opam context and has no lock directory to inherit."
+               (Context_name.to_string name)
+           ]
+       | None ->
+         User_error.raise
+           ~loc
+           [ Pp.textf "Context %S is not defined." (Context_name.to_string name) ]))
 ;;
 
 let step1 ~(lang : Lang.Instance.t) clflags =
@@ -1295,6 +1394,7 @@ let step1 ~(lang : Lang.Instance.t) clflags =
        in
        check_lock_dirs_no_dupes lock_dirs;
        check_tool_groups_no_dupes tool_groups;
+       check_tool_groups_contexts contexts tool_groups;
        { merlin_context
        ; contexts = top_sort (List.rev contexts)
        ; env

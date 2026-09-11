@@ -9,7 +9,7 @@ let () = init ()
 let next_fills event_queue =
   match Event.Queue.next event_queue with
   | Fiber_fill_ivar fill -> [ fill ]
-  | Shutdown _ | Job_complete_ready -> assert false
+  | Shutdown _ | Job_complete_ready | Status_line_refresh -> assert false
 ;;
 
 let create_channel () =

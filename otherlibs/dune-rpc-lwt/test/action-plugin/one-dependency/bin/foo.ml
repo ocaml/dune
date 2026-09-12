@@ -106,6 +106,12 @@ let held_action _dap ~connection ~release =
 
 let action dap =
   match Sys.argv with
+  | [| _; "chdir" |] ->
+    Unix.mkdir "elsewhere" 0o755;
+    Sys.chdir "elsewhere";
+    let open Lwt.Syntax in
+    let* data = read_file dap ~path:"input" in
+    Lwt_io.printl data
   | [| _ |] -> ordinary_action dap ~path:"some_dependency"
   | [| _; "read"; path |] -> ordinary_action dap ~path
   | [| _; "sandbox" |] -> sandbox_action dap

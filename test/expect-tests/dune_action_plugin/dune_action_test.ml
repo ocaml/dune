@@ -38,6 +38,26 @@ let%expect_test _ =
   |}]
 ;;
 
+let%expect_test "standalone reads use the current directory" =
+  let cwd = Sys.getcwd () in
+  Fun.protect
+    ~finally:(fun () -> Sys.chdir cwd)
+    (fun () ->
+       let dap = outside_of_dune in
+       Sys.chdir "some_dir";
+       let open Lwt.Syntax in
+       Lwt_main.run
+         (let* contents = read_file dap ~path:"some_file" in
+          print_endline contents;
+          let+ entries = read_directory_with_glob dap ~path:"." ~glob:Glob.universal in
+          print_endline (String.concat "," entries)));
+  [%expect
+    {|
+    Hello from foo!
+    some_file,subdir
+    |}]
+;;
+
 let run_action_expect_throws action =
   try
     run action;

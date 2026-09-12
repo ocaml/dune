@@ -3,7 +3,8 @@ toplevel
 
 The ``toplevel`` stanza allows one to define custom toplevels. Custom toplevels
 automatically load a set of specified libraries and are runnable like normal
-executables. Example:
+executables. The ``name`` field must be a nonempty filename without directory
+components. Example:
 
 .. code:: dune
 

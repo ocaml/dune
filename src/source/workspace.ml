@@ -747,7 +747,7 @@ module Context = struct
   let name t = (base t).name
   let targets t = (base t).targets
 
-  let all_names t =
+  let all_names t : Context_name.t Nonempty_list.t =
     let n = name t in
     n
     :: List.filter_map (targets t) ~f:(function
@@ -776,14 +776,7 @@ module Context = struct
   ;;
 
   let build_contexts t =
-    let name = name t in
-    let native = Build_context.create ~name in
-    native
-    :: List.filter_map (targets t) ~f:(function
-      | Native -> None
-      | Named { name = toolchain; _ } ->
-        let name = Context_name.target name ~toolchain in
-        Some (Build_context.create ~name))
+    Nonempty_list.to_list_map (all_names t) ~f:(fun name -> Build_context.create ~name)
   ;;
 end
 
@@ -1176,10 +1169,8 @@ let step1 ~(lang : Lang.Instance.t) clflags =
                    "second definition of build context %S"
                    (Context_name.to_string name)
                ];
-           defined_names
-           := Context_name.Set.union
-                !defined_names
-                (Context_name.Set.of_list (Context.all_names ctx));
+           Nonempty_list.iter (Context.all_names ctx) ~f:(fun name ->
+             defined_names := Context_name.Set.add !defined_names name);
            match Context.base ctx, acc with
            | { merlin = Selected; _ }, Some _ ->
              User_error.raise

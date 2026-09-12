@@ -1,7 +1,5 @@
 (** Bidirectional parsing of canonical s-expressions *)
 
-open Import
-
 type ('a, 'k) t
 type values
 type 'a value = ('a, values) t

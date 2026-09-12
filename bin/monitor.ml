@@ -9,7 +9,6 @@ include struct
   module Progress = Progress
   module Job = Job
   module Sub = Sub
-  module Conv = Conv
 end
 
 (** Utility module for generating [Map] modules for [Diagnostic]s and [Job]s which use

@@ -1,5 +1,7 @@
 (** V1 of the diagnostics module. *)
 
+open Import
+
 module Related : sig
   type t
 

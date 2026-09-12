@@ -1,5 +1,7 @@
 (** Types exposed to end-user consumers of [dune_rpc.mli]. *)
 
+open Import
+
 module Pp : sig
   include module type of Stdune.Pp
 

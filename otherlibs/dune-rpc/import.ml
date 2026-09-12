@@ -7,6 +7,7 @@ include struct
   module Int = Int
   module Poly = Poly
   module Code_error = Code_error
+  module Conv = Conv
   module Env = Env
   module Comparable = Comparable
   module Repr = Repr

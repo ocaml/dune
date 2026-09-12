@@ -26,7 +26,6 @@ module Request = struct
 end
 
 module Decl = struct
-  module Conv = Dune_rpc.Conv
   module Decl = Dune_rpc.Decl
 
   let marshal () =

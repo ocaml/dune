@@ -7,7 +7,6 @@ module Dune_rpc = Dune_rpc.Private
 include struct
   open Dune_rpc
   module Job = Job
-  module Conv = Conv
 end
 
 let files = List.iter ~f:(fun (f, contents) -> Io.String_path.write_file f contents)

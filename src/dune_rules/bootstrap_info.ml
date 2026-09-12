@@ -23,12 +23,13 @@ end
 module Include_subdirs = struct
   type t =
     | Unqualified
-    | Qualified
+    | Qualified of (string list * string list) list
     | No
 
   let to_dyn = function
     | Unqualified -> Dyn.variant "Unqualified" []
-    | Qualified -> Dyn.variant "Qualified" []
+    | Qualified dirs ->
+      Dyn.variant "Qualified" [ Dyn.(list (pair (list string) (list string))) dirs ]
     | No -> Dyn.variant "No" []
   ;;
 end
@@ -51,14 +52,37 @@ let local_library
 
 let for_ = Compilation_mode.Ocaml
 
-let include_subdirs dir_contents =
+let include_subdirs sctx dir_contents =
   let open Memo.O in
   Dir_contents.ml dir_contents ~for_
   >>| Ml_sources.include_subdirs
-  >>| function
-  | Import.Include_subdirs.No -> Include_subdirs.No
-  | Include Qualified -> Qualified
-  | Include Unqualified -> Unqualified
+  >>= function
+  | Import.Include_subdirs.No -> Memo.return Include_subdirs.No
+  | Include Unqualified -> Memo.return Include_subdirs.Unqualified
+  | Include (Qualified { dirs = [] }) -> Memo.return (Include_subdirs.Qualified [])
+  | Include (Qualified { dirs }) ->
+    let dir = Dir_contents.dir dir_contents in
+    let* expander = Super_context.expander sctx ~dir in
+    let+ dirs =
+      Memo.parallel_map dirs ~f:(fun binding ->
+        File_binding_expand.expand binding ~dir ~f:(fun sw ->
+          Action_builder.evaluate_and_collect_facts (Expander.expand_str expander sw)
+          >>| fst))
+    in
+    let root = Path.Build.local dir in
+    let components path =
+      Path.Local.descendant path ~of_:root
+      |> Option.value_exn
+      |> Path.Local.explode
+      |> Filename.L.to_string
+    in
+    let dirs =
+      List.filter_map dirs ~f:(fun binding ->
+        Option.map (File_binding.Expanded.dst binding) ~f:(fun dst ->
+          ( components (File_binding.Expanded.src binding |> Path.Build.local)
+          , components (Path.Local.relative root dst) )))
+    in
+    Include_subdirs.Qualified dirs
 ;;
 
 let make_root_module sctx ~name compile_info =
@@ -91,7 +115,7 @@ let rule sctx ~requires_link ~main =
       let* include_subdirs =
         Action_builder.of_memo
           (let open Memo.O in
-           Dir_contents.get sctx ~dir >>= include_subdirs)
+           Dir_contents.get sctx ~dir >>= include_subdirs sctx)
       in
       let+ root_module =
         match Lib_info.root_module info with
@@ -138,7 +162,7 @@ let make_main sctx ~root_module compile_info dir_contents =
     | None -> Action_builder.return None
     | Some name -> make_root_module sctx ~name compile_info >>| Option.some
   in
-  let+ include_subdirs = include_subdirs dir_contents |> Action_builder.of_memo in
+  let+ include_subdirs = include_subdirs sctx dir_contents |> Action_builder.of_memo in
   local_library
     ~root_module
     ~special_builtin_support:None

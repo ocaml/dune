@@ -241,7 +241,24 @@ let raise_duplicate_module ?loc ~dir name f1 f2 =
     ]
 ;;
 
-let module_files ~root_dir ~dialects ~dir ~files ~for_ =
+type group_interface_rename =
+  { source_name : Module_name.Unchecked.t
+  ; public_name : Module_name.Unchecked.t
+  }
+
+let rename_group_interface ~group_interface_rename name =
+  match group_interface_rename with
+  | Some { source_name; public_name } when Module_name.Unchecked.equal name source_name ->
+    public_name
+  | None | Some _ -> name
+;;
+
+let module_name_of_file ~loc ~group_interface_rename name =
+  Module_name.of_string_allow_invalid (loc, name)
+  |> rename_group_interface ~group_interface_rename
+;;
+
+let module_files ~root_dir ~dialects ~dir ~files ~for_ ~group_interface_rename =
   let loc = Loc.in_dir (Path.build dir) in
   let impl_files, intf_files =
     let make_module dialect name ~original_filename ~fn =
@@ -279,7 +296,7 @@ let module_files ~root_dir ~dialects ~dir ~files ~for_ =
            (match Dialect.DB.find_by_extension dialects ext with
             | None -> Skip
             | Some (dialect, ml_kind) ->
-              let name = Module_name.of_string_allow_invalid (loc, s) in
+              let name = module_name_of_file ~loc ~group_interface_rename s in
               let module_ =
                 let name, module_ =
                   make_module
@@ -324,8 +341,10 @@ let module_files ~root_dir ~dialects ~dir ~files ~for_ =
   parse_one_set impl_files, parse_one_set intf_files
 ;;
 
-let modules_of_files ~root_dir ~path ~dialects ~dir ~files ~for_ =
-  let impls, intfs = module_files ~root_dir ~dialects ~dir ~files ~for_ in
+let modules_of_files ~root_dir ~path ~dialects ~dir ~files ~for_ ~group_interface_rename =
+  let impls, intfs =
+    module_files ~root_dir ~dialects ~dir ~files ~for_ ~group_interface_rename
+  in
   Module_name.Unchecked.Map.merge impls intfs ~f:(fun name impl intf ->
     let path =
       Nonempty_list.(map (path @ [ name ]) ~f:Module_name.Unchecked.allow_invalid)
@@ -550,6 +569,23 @@ module Parser_generators = struct
     ;;
   end
 
+  let check_duplicate_module ~loc name first second =
+    let impl m =
+      let { Ml_kind.Dict.impl; _ } = Module.Source.files_by_ml_kind m in
+      Option.value_exn impl
+    in
+    let first = impl first in
+    let second = impl second in
+    if not (Path.equal (Module.File.path first) (Module.File.path second))
+    then (
+      let dir =
+        Module.File.original_path second
+        |> Path.as_in_build_dir_exn
+        |> Path.Build.parent_exn
+      in
+      raise_duplicate_module ~loc ~dir name first second)
+  ;;
+
   let expand_modules =
     let make_file ~original_path ~ml_kind ~root_dir ~for_ =
       let ext = Dialect.extension Dialect.ocaml ml_kind |> Option.value_exn in
@@ -590,7 +626,7 @@ module Parser_generators = struct
       let path = Module.Source.logical_path_of_trie_path module_path in
       Module.Source.make ~impl ~intf path
     in
-    fun ~expander ~root_dir ~src_dir ~module_path ~for_ ~mode ->
+    fun ~expander ~root_dir ~src_dir ~module_path ~group_interface_rename ~for_ ~mode ->
       let+ expanded =
         Modules_field_evaluator.expand_all_unchecked ~expander (Targets.modules ~for_)
       in
@@ -612,9 +648,16 @@ module Parser_generators = struct
         | Ocamllex { loc; _ }
         | Ocamlyacc { loc; _ }
         | Menhir { Menhir_stanza.merge_into = None; loc; _ } ->
-          Module_trie.Unchecked.mapi
+          Module_trie.Unchecked.foldi
             expanded
-            ~f:(fun path (_, (_module_name, basename)) ->
+            ~init:Module_trie.Unchecked.empty
+            ~f:(fun path (_, (_module_name, basename)) acc ->
+              let path =
+                match path with
+                | [ name ] ->
+                  Nonempty_list.[ rename_group_interface ~group_interface_rename name ]
+                | _ :: _ :: _ -> path
+              in
               let trie_path = Nonempty_list.(module_path @ path) in
               let module_path =
                 Nonempty_list.map trie_path ~f:Module_name.Unchecked.allow_invalid
@@ -632,7 +675,11 @@ module Parser_generators = struct
                   ~for_parser_gen:for_
                   ~for_:mode
               in
-              loc, m)
+              (match Module_trie.Unchecked.find acc path with
+               | None -> ()
+               | Some (_, previous) ->
+                 check_duplicate_module ~loc (Nonempty_list.last path) previous m);
+              Module_trie.Unchecked.set acc path (loc, m))
         | Menhir { Menhir_stanza.merge_into = Some basename; loc; _ } ->
           let impl =
             let original_path =
@@ -652,7 +699,7 @@ module Parser_generators = struct
             in
             Some (make_file ~original_path ~root_dir ~ml_kind:Ml_kind.Intf ~for_:mode)
           in
-          let module_name = Module_name.of_string_allow_invalid (loc, basename) in
+          let module_name = module_name_of_file ~loc ~group_interface_rename basename in
           let trie_path = Nonempty_list.(module_path @ [ module_name ]) in
           let m =
             let module_path =
@@ -787,7 +834,7 @@ let make_lib_modules
   let () = validate_buildable_preprocessing ~include_subdirs ~for_ lib.buildable in
   let () =
     match lib.stdlib, include_subdirs with
-    | Some stdlib, Include Qualified ->
+    | Some stdlib, Include (Qualified _) ->
       let main_message =
         Pp.text "a library with (stdlib ...) may not use (include_subdirs qualified)"
       in
@@ -827,13 +874,30 @@ let make_lib_modules
 let module_path ~loc ~include_subdirs ~dir path_to_root =
   match include_subdirs with
   | Include_subdirs.No | Include Unqualified -> []
-  | Include Qualified ->
+  | Include (Qualified _) ->
     let loc =
       match loc with
       | Some loc -> loc
       | None -> Path.build dir |> Path.drop_optional_build_context |> Loc.in_dir
     in
     List.map path_to_root ~f:(fun m -> Module_name.of_string_allow_invalid (loc, m))
+;;
+
+let group_interface_rename ~dir path_to_root =
+  match List.last path_to_root with
+  | None -> None
+  | Some public_name ->
+    let loc = Loc.in_dir (Path.build dir) in
+    let source_name =
+      Module_name.of_string_allow_invalid
+        (loc, Path.Build.basename dir |> Filename.to_string)
+    in
+    let public_name =
+      Module_name.of_string_allow_invalid (loc, Filename.to_string public_name)
+    in
+    Option.some_if
+      (not (Module_name.Unchecked.equal source_name public_name))
+      { source_name; public_name }
 ;;
 
 module Generated_modules = struct
@@ -884,7 +948,13 @@ module Generated_modules = struct
           ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f2))
           ]
     in
-    fun ~dir ~dialects ~include_subdirs { modules; _ } libraries ~for_ ->
+    fun ~dir
+      ~dialects
+      ~include_subdirs
+      ~path_to_root_of_dir
+      { modules; _ }
+      libraries
+      ~for_ ->
       (* Manually add files generated by the (select ...) dependencies *)
       let impl_files, intf_files =
         List.filter_partition_map libraries ~f:(fun dep ->
@@ -915,21 +985,25 @@ module Generated_modules = struct
                      Module.File.make dialect (Path.build file)
                    in
                    let module_path =
-                     let base_path =
+                     let target_dir = Path.Build.parent_exn dst in
+                     let path_to_root =
                        match include_subdirs with
                        | Include_subdirs.No | Include Unqualified -> []
-                       | Include Qualified ->
-                         module_path
-                           ~loc:(Some loc)
-                           ~include_subdirs
-                           ~dir
-                           (Path.Local.parent_exn descendant
-                            |> Path.Local.explode
-                            |> Filename.L.to_string)
+                       | Include (Qualified _) -> path_to_root_of_dir target_dir
+                     in
+                     let base_path =
+                       module_path
+                         ~loc:(Some loc)
+                         ~include_subdirs
+                         ~dir:target_dir
+                         (Filename.L.to_string path_to_root)
                      in
                      let module_name =
-                       Module_name.of_string_allow_invalid
-                         (loc, Filename.to_string basename)
+                       module_name_of_file
+                         ~loc
+                         ~group_interface_rename:
+                           (group_interface_rename ~dir:target_dir path_to_root)
+                         (Filename.to_string basename)
                        |> Module_name.Unchecked.validate_exn
                      in
                      Nonempty_list.(base_path @ [ Module_name.unchecked module_name ])
@@ -999,10 +1073,18 @@ module Generated_modules = struct
         |> List.fold_left
              ~init:Module_trie.Unchecked.empty
              ~f:(fun acc { targets; deps = _ } ->
-               Module_trie.foldi targets ~init:acc ~f:(fun module_path (_, m) acc ->
+               Module_trie.foldi targets ~init:acc ~f:(fun module_path (loc, m) acc ->
                  let module_path =
                    Nonempty_list.map module_path ~f:Module_name.unchecked
                  in
+                 (match Module_trie.Unchecked.find acc module_path with
+                  | None -> ()
+                  | Some previous ->
+                    Parser_generators.check_duplicate_module
+                      ~loc
+                      (Nonempty_list.last module_path)
+                      previous
+                      m);
                  Module_trie.Unchecked.set acc module_path m))
       in
       merge_two modules parser_gen_modules
@@ -1032,6 +1114,11 @@ module Generated_modules = struct
                     ~dir
                     (Filename.L.to_string path_to_root)
                 in
+                let group_interface_rename =
+                  match include_subdirs with
+                  | No | Include Unqualified -> None
+                  | Include (Qualified _) -> group_interface_rename ~dir path_to_root
+                in
                 (match Stanza.repr stanza with
                  | Parser_generators.Stanzas.Ocamllex.T ocamllex ->
                    let+ dep_info =
@@ -1039,6 +1126,7 @@ module Generated_modules = struct
                        ~expander
                        ~src_dir:dir
                        ~module_path
+                       ~group_interface_rename
                        ~for_:(Ocamllex ocamllex)
                        ~mode
                        ~root_dir
@@ -1050,6 +1138,7 @@ module Generated_modules = struct
                        ~expander
                        ~src_dir:dir
                        ~module_path
+                       ~group_interface_rename
                        ~for_:(Ocamlyacc ocamlyacc)
                        ~mode
                        ~root_dir
@@ -1061,6 +1150,7 @@ module Generated_modules = struct
                        ~expander
                        ~src_dir:dir
                        ~module_path
+                       ~group_interface_rename
                        ~for_:(Menhir menhir)
                        ~mode
                        ~root_dir
@@ -1166,6 +1256,40 @@ let modules_of_stanzas =
     ~for_
     ~include_subdirs:(loc_include_subdirs, include_subdirs) ->
     let dialects = Dune_project.dialects project in
+    let dirs_list = Nonempty_list.to_list dirs in
+    let nearest_path_to_root target_dir =
+      List.fold_left
+        dirs_list
+        ~init:None
+        ~f:(fun best { Source_file_dir.dir; path_to_root; _ } ->
+          match
+            Path.Local.descendant
+              (Path.Build.local target_dir)
+              ~of_:(Path.Build.local dir)
+          with
+          | None -> best
+          | Some suffix ->
+            let suffix = Path.Local.explode suffix in
+            let suffix_len = List.length suffix in
+            let path_to_root = path_to_root @ suffix in
+            (match best with
+             | None -> Some (suffix_len, path_to_root)
+             | Some (best_suffix_len, _) when suffix_len < best_suffix_len ->
+               Some (suffix_len, path_to_root)
+             | Some _ -> best))
+      |> Option.map ~f:snd
+    in
+    let path_to_root_of_dir ~dir ~path_to_root target_dir =
+      match nearest_path_to_root target_dir with
+      | Some path -> path
+      | None ->
+        let suffix =
+          Path.Local.descendant (Path.Build.local target_dir) ~of_:(Path.Build.local dir)
+          |> Option.value_exn
+          |> Path.Local.explode
+        in
+        path_to_root @ suffix
+    in
     let* ({ ocamllexes; ocamlyaccs; menhirs; _ } as modules) =
       Generated_modules.add_generated_modules
         ~expander
@@ -1175,8 +1299,9 @@ let modules_of_stanzas =
         modules
     in
     Memo.parallel_map
-      (Nonempty_list.to_list dirs)
-      ~f:(fun { Source_file_dir.dir; stanzas; _ } ->
+      dirs_list
+      ~f:(fun { Source_file_dir.dir; path_to_root; stanzas; _ } ->
+        let path_to_root_of_dir = path_to_root_of_dir ~dir ~path_to_root in
         Memo.parallel_map stanzas ~f:(fun stanza ->
           let enabled_if =
             match Stanza.repr stanza with
@@ -1205,6 +1330,7 @@ let modules_of_stanzas =
                      ~dialects
                      ~include_subdirs
                      ~for_
+                     ~path_to_root_of_dir
                      lib.buildable.libraries
                  in
                  make_lib_modules
@@ -1229,6 +1355,7 @@ let modules_of_stanzas =
                    ~dialects
                    ~include_subdirs
                    ~for_
+                   ~path_to_root_of_dir
                    exes.buildable.libraries
                in
                make_executables ~dir ~expander ~include_subdirs ~modules ~project exes
@@ -1240,6 +1367,7 @@ let modules_of_stanzas =
                    ~dialects
                    ~include_subdirs
                    ~for_
+                   ~path_to_root_of_dir
                    tests.exes.buildable.libraries
                in
                make_tests ~dir ~expander ~include_subdirs ~modules ~project tests
@@ -1254,7 +1382,8 @@ let modules_of_stanzas =
                      ~dir
                      ~dialects
                      ~include_subdirs
-                     ~for_:Melange
+                     ~for_:Compilation_mode.Melange
+                     ~path_to_root_of_dir
                      mel.libraries
                  in
                  let version = Dune_project.dune_version project in
@@ -1307,12 +1436,11 @@ let make
       let dirs = Nonempty_list.to_list dirs in
       let dialects = Dune_project.dialects project in
       match include_subdirs with
-      | Include Qualified ->
-        List.fold_left
-          dirs
-          ~init:Module_trie.Unchecked.empty
-          ~f:(fun acc { Source_file_dir.dir; files; path_to_root; _ } ->
-            match
+      | Include (Qualified _) ->
+        let dirs =
+          List.map
+            dirs
+            ~f:(fun ({ Source_file_dir.dir; path_to_root; _ } as source_dir) ->
               let path =
                 module_path
                   ~loc:None
@@ -1320,41 +1448,87 @@ let make
                   ~dir
                   (Filename.L.to_string path_to_root)
               in
-              let modules =
-                modules_of_files ~root_dir ~dialects ~dir ~files ~path ~for_
-              in
-              Module_trie.Unchecked.set_map acc path modules
-            with
-            | Ok s -> s
-            | Error module_ ->
-              let module_ =
-                match module_ with
-                | Leaf m ->
-                  Module.Source.files m
-                  |> List.hd
-                  |> Module.File.path
-                  |> Path.drop_optional_build_context
-                  |> Path.to_string_maybe_quoted
-                | Map _ ->
-                  (* it's not possible to define the same group twice because
-                     there can be at most one directory *)
-                  assert false
-              in
-              let group =
-                (dir
-                 |> Path.Build.drop_build_context_exn
-                 |> Path.Source.to_string_maybe_quoted)
-                ^ "/"
-              in
-              User_error.raise
-                ~loc
-                [ Pp.text
-                    "The following module and module group cannot co-exist in the same \
-                     executable or library because they correspond to the same module \
-                     path"
-                ; Pp.textf "- module %s" module_
-                ; Pp.textf "- module group %s" group
-                ])
+              path, source_dir)
+          |> List.sort ~compare:(fun (a, _) (b, _) ->
+            List.compare a b ~compare:Module_name.Unchecked.compare)
+        in
+        let source_dir dir =
+          (dir |> Path.Build.drop_build_context_exn |> Path.Source.to_string_maybe_quoted)
+          ^ "/"
+        in
+        let rec find_module_prefix (modules : _ Module_trie.Unchecked.t) = function
+          | [] -> None
+          | name :: path ->
+            (match Module_name.Unchecked.Map.find modules name with
+             | None -> None
+             | Some (Leaf m) -> Some m
+             | Some (Map modules) -> find_module_prefix modules path)
+        in
+        List.fold_left
+          dirs
+          ~init:(None, Module_trie.Unchecked.empty)
+          ~f:
+            (fun
+              (previous, acc) (path, { Source_file_dir.dir; files; path_to_root; _ }) ->
+            (match previous with
+             | Some (previous_path, previous_dir)
+               when List.equal Module_name.Unchecked.equal path previous_path ->
+               let path =
+                 List.map path ~f:(fun name ->
+                   Module_name.Unchecked.allow_invalid name |> Module_name.to_string)
+                 |> String.concat ~sep:"."
+               in
+               User_error.raise
+                 ~loc
+                 [ Pp.textf "Module group %S appears in several directories:" path
+                 ; Pp.textf "- %s" (source_dir previous_dir)
+                 ; Pp.textf "- %s" (source_dir dir)
+                 ]
+             | None | Some _ -> ());
+            let acc =
+              match
+                match find_module_prefix acc path with
+                | Some m -> Error (Module_trie.Unchecked.Leaf m)
+                | None ->
+                  let modules =
+                    modules_of_files
+                      ~root_dir
+                      ~dialects
+                      ~dir
+                      ~files
+                      ~path
+                      ~for_
+                      ~group_interface_rename:(group_interface_rename ~dir path_to_root)
+                  in
+                  Module_trie.Unchecked.set_map acc path modules
+              with
+              | Ok s -> s
+              | Error module_ ->
+                let module_ =
+                  match module_ with
+                  | Leaf m ->
+                    Module.Source.files m
+                    |> List.hd
+                    |> Module.File.path
+                    |> Path.drop_optional_build_context
+                    |> Path.to_string_maybe_quoted
+                  | Map _ ->
+                    Code_error.raise
+                      "Module group was already inserted"
+                      [ "dir", Path.Build.to_dyn dir ]
+                in
+                User_error.raise
+                  ~loc
+                  [ Pp.text
+                      "The following module and module group cannot co-exist in the same \
+                       executable or library because they correspond to the same module \
+                       path"
+                  ; Pp.textf "- module %s" module_
+                  ; Pp.textf "- module group %s" (source_dir dir)
+                  ]
+            in
+            Some (path, dir), acc)
+        |> snd
       | No | Include Unqualified ->
         let modules =
           List.fold_left
@@ -1363,7 +1537,14 @@ let make
             ~f:(fun acc { Source_file_dir.dir; files; path_to_root = _; _ } ->
               let modules =
                 let path = [] in
-                modules_of_files ~root_dir ~dialects ~dir ~files ~path ~for_
+                modules_of_files
+                  ~root_dir
+                  ~dialects
+                  ~dir
+                  ~files
+                  ~path
+                  ~for_
+                  ~group_interface_rename:None
               in
               Module_name.Unchecked.Map.union acc modules ~f:(fun name x y ->
                 User_error.raise

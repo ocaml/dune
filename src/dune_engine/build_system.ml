@@ -266,7 +266,7 @@ module Internal = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 34
+  let rule_digest_version = 35
 
   let compute_rule_digest
         (rule : Rule.t)
@@ -726,10 +726,6 @@ module Internal = struct
                   ~can_go_in_shared_cache
                   ~loc
                   ~rule_digest
-                  ~should_remove_write_permissions_on_generated_files:
-                    (Execution_parameters
-                     .should_remove_write_permissions_on_generated_files
-                       execution_parameters)
                   ~produced_targets:exec_result.produced_targets
               in
               let dynamic_deps_stages =

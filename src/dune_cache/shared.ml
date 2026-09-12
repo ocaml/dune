@@ -477,30 +477,12 @@ let try_to_store_to_shared_cache ~mode ~rule_digest ~loc ~produced_targets
 ;;
 
 module File_digest = struct
-  module Digest_result = Dune_digest.Digest_result
-  module Error = Digest_result.Error
-
   let refresh_async ~allow_dirs stats path =
     let path = Path.build path in
     Digest_result.path_with_unix_stats_async ~allow_dirs path stats
   ;;
 
-  let refresh_without_removing_write_permissions_async ~allow_dirs path =
-    match Unix.stat (Path.Build.to_string path) with
-    | stats -> refresh_async stats ~allow_dirs path
-    | exception exn ->
-      Fiber.return
-        (match exn with
-         | Unix.Unix_error (ENOENT, _, _) ->
-           (* Test if this is a broken symlink for better error messages. *)
-           Digest_result.catch_fs_errors (fun () ->
-             match Unix.lstat (Path.Build.to_string path) with
-             | exception Unix.Unix_error (ENOENT, _, _) -> Error Error.No_such_file
-             | _stats_so_must_be_a_symlink -> Error Broken_symlink)
-         | exn -> Error (Digest_result.Error.of_exn exn))
-  ;;
-
-  let refresh_and_remove_write_permissions_async ~allow_dirs path =
+  let refresh ~allow_dirs path =
     let open Digest_result.Error in
     match Unix.lstat (Path.Build.to_string path) with
     | exception Unix.Unix_error (ENOENT, _, _) -> Fiber.return (Error No_such_file)
@@ -528,20 +510,9 @@ module File_digest = struct
           What about stranger kinds like [S_SOCK]? *)
          refresh_async ~allow_dirs stats path)
   ;;
-
-  let refresh ~allow_dirs ~remove_write_permissions path =
-    (if remove_write_permissions
-     then refresh_and_remove_write_permissions_async
-     else refresh_without_removing_write_permissions_async)
-      ~allow_dirs
-      path
-  ;;
 end
 
-let compute_target_digests_or_raise_error
-      ~should_remove_write_permissions_on_generated_files
-      ~loc
-      ~produced_targets
+let compute_target_digests_or_raise_error ~loc ~produced_targets
   : Digest.t Targets.Produced.t Fiber.t
   =
   let open Fiber.O in
@@ -552,9 +523,7 @@ let compute_target_digests_or_raise_error
        not change state once built. A very practical reason is that enabling
        the cache will remove write permission because of hardlink sharing
        anyway, so always removing them enables to catch mistakes earlier. *)
-    File_digest.refresh
-      ~allow_dirs:true
-      ~remove_write_permissions:should_remove_write_permissions_on_generated_files
+    File_digest.refresh ~allow_dirs:true
   in
   Targets.Produced.map_with_errors_fiber ~f:compute_digest produced_targets
   >>| function
@@ -606,7 +575,6 @@ let examine_targets_and_store
       ~can_go_in_shared_cache
       ~loc
       ~rule_digest
-      ~should_remove_write_permissions_on_generated_files
       ~(produced_targets : unit Targets.Produced.t)
   : Digest.t Targets.Produced.t Fiber.t
   =
@@ -617,14 +585,6 @@ let examine_targets_and_store
     try_to_store_to_shared_cache ~mode ~rule_digest ~produced_targets ~loc
     >>= (function
      | Some produced_targets_with_digests -> Fiber.return produced_targets_with_digests
-     | None ->
-       compute_target_digests_or_raise_error
-         ~should_remove_write_permissions_on_generated_files
-         ~loc
-         ~produced_targets)
-  | _ ->
-    compute_target_digests_or_raise_error
-      ~should_remove_write_permissions_on_generated_files
-      ~loc
-      ~produced_targets
+     | None -> compute_target_digests_or_raise_error ~loc ~produced_targets)
+  | _ -> compute_target_digests_or_raise_error ~loc ~produced_targets
 ;;

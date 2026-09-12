@@ -44,45 +44,55 @@ let to_list_rev =
 let to_list xs = List.rev (to_list_rev xs)
 
 let length =
-  let rec loop1 len t stack =
+  let rec loop1 len t rest stack =
     match t with
-    | Empty -> loop0 len stack
-    | Singleton _ -> loop0 (len + 1) stack
-    | Cons (_, xs) -> loop1 (len + 1) xs stack
-    | List xs -> loop0 (len + List.length xs) stack
-    | Append (xs, ys) -> loop1 len xs (ys :: stack)
-    | Concat [] -> loop0 len stack
-    | Concat (x :: xs) -> loop1 len x (Concat xs :: stack)
-  and loop0 len stack =
-    match stack with
-    | [] -> len
-    | t :: stack -> loop1 len t stack
+    | Empty | Concat [] -> loop0 len rest stack
+    | Singleton _ -> loop0 (len + 1) rest stack
+    | Cons (_, xs) -> loop1 (len + 1) xs rest stack
+    | List xs -> loop0 (len + List.length xs) rest stack
+    | Append (xs, ys) -> loop1 len xs (ys :: rest) stack
+    | Concat xs ->
+      (match rest with
+       | [] -> loop0 len xs stack
+       | _ :: _ -> loop0 len xs (rest :: stack))
+  and loop0 len rest stack =
+    match rest with
+    | t :: rest -> loop1 len t rest stack
+    | [] ->
+      (match stack with
+       | [] -> len
+       | rest :: stack -> loop0 len rest stack)
   in
-  fun t -> loop1 0 t []
+  fun t -> loop1 0 t [] []
 ;;
 
 let iter =
-  let rec loop1 f t stack =
+  let rec loop1 f t rest stack =
     match t with
-    | Empty -> loop0 f stack
+    | Empty | Concat [] -> loop0 f rest stack
     | Singleton x ->
       f x;
-      loop0 f stack
+      loop0 f rest stack
     | Cons (x, xs) ->
       f x;
-      loop1 f xs stack
+      loop1 f xs rest stack
     | List xs ->
       List.iter xs ~f;
-      loop0 f stack
-    | Append (xs, ys) -> loop1 f xs (ys :: stack)
-    | Concat [] -> loop0 f stack
-    | Concat (x :: xs) -> loop1 f x (Concat xs :: stack)
-  and loop0 f stack =
-    match stack with
-    | [] -> ()
-    | t :: stack -> loop1 f t stack
+      loop0 f rest stack
+    | Append (xs, ys) -> loop1 f xs (ys :: rest) stack
+    | Concat xs ->
+      (match rest with
+       | [] -> loop0 f xs stack
+       | _ :: _ -> loop0 f xs (rest :: stack))
+  and loop0 f rest stack =
+    match rest with
+    | t :: rest -> loop1 f t rest stack
+    | [] ->
+      (match stack with
+       | [] -> ()
+       | rest :: stack -> loop0 f rest stack)
   in
-  fun t ~f -> loop1 f t []
+  fun t ~f -> loop1 f t [] []
 ;;
 
 let to_immutable_array (type a) (t : a t) =

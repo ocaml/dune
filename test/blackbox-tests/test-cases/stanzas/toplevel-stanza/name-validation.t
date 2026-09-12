@@ -1,23 +1,22 @@
-Custom toplevel names are currently not validated when parsing the stanza.
+Custom toplevel names must be filenames.
 
   $ make_dune_project 3.21
 
-A name containing a path causes an internal error.
+Names containing paths are rejected.
 
   $ cat >dune <<EOF
   > (toplevel
   >  (name ../foo))
   > EOF
 
-  $ dune build 2>&1 | sed '/^Raised at/,$d'
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("Filename.of_string_exn: invalid filename", { filename = "../foo.ml-gen" })
+  $ dune build
+  File "dune", line 2, characters 7-13:
+  2 |  (name ../foo))
+             ^^^^^^
+  Error: The name field must be a filename without directory components
   [1]
 
-An empty name is currently accepted.
+Empty names are also rejected.
 
   $ cat >dune <<EOF
   > (toplevel
@@ -25,3 +24,8 @@ An empty name is currently accepted.
   > EOF
 
   $ dune build
+  File "dune", line 2, characters 7-9:
+  2 |  (name ""))
+             ^^
+  Error: The name field must be a filename without directory components
+  [1]

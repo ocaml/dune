@@ -23,6 +23,45 @@ Target should not be empty
   Error: The field target can not be empty
   [1]
 
+Special directory names currently bypass target validation and cause an
+internal error during rule generation.
+
+  $ cat > dune <<EOF
+  > (library
+  >  (name $lib)
+  >  (modes melange))
+  > (melange.emit
+  >  (target .)
+  >  (emit_stdlib false)
+  >  (libraries $lib))
+  > EOF
+
+  $ dune build 2>&1 | sed '/^Raised at/,$d'
+  Internal error! Please report to https://github.com/ocaml/dune/issues,
+  providing the file _build/trace.csexp, if possible. This includes build
+  commands, message logs, and file paths.
+  Description:
+    ("Filename.of_string_exn: invalid filename", { filename = "." })
+  [1]
+
+  $ cat > dune <<EOF
+  > (library
+  >  (name $lib)
+  >  (modes melange))
+  > (melange.emit
+  >  (target ..)
+  >  (emit_stdlib false)
+  >  (libraries $lib))
+  > EOF
+
+  $ dune build 2>&1 | sed '/^Raised at/,$d'
+  Internal error! Please report to https://github.com/ocaml/dune/issues,
+  providing the file _build/trace.csexp, if possible. This includes build
+  commands, message logs, and file paths.
+  Description:
+    ("Filename.of_string_exn: invalid filename", { filename = ".." })
+  [1]
+
 Target should not try to descend into subdirectories
 
   $ cat > dune <<EOF

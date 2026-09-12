@@ -104,14 +104,45 @@ let held_action _dap ~connection ~release =
   loop ()
 ;;
 
+let change_dir dir =
+  if not (Sys.file_exists dir) then Unix.mkdir dir 0o755;
+  Sys.chdir dir
+;;
+
 let action dap =
   match Sys.argv with
-  | [| _; "chdir" |] ->
-    Unix.mkdir "elsewhere" 0o755;
-    Sys.chdir "elsewhere";
+  | [| _; "read-in"; dir; path |] ->
+    change_dir dir;
+    ordinary_action dap ~path
+  | [| _; "list-in"; dir |] ->
+    change_dir dir;
     let open Lwt.Syntax in
-    let* data = read_file dap ~path:"input" in
-    Lwt_io.printl data
+    let* files = read_directory_with_glob dap ~path:"." ~glob:(Glob.of_string "*.txt") in
+    Lwt_list.iter_s Lwt_io.printl files
+  | [| _; "in-flight" |] ->
+    let pending = read_file dap ~path:"input" in
+    change_dir "elsewhere";
+    let open Lwt.Syntax in
+    let* contents = pending in
+    Lwt_io.printl contents
+  | [| _; "list-in-flight" |] ->
+    let pending = read_directory_with_glob dap ~path:"." ~glob:(Glob.of_string "*.txt") in
+    change_dir "elsewhere";
+    let open Lwt.Syntax in
+    let* files = pending in
+    Lwt_list.iter_s Lwt_io.printl files
+  | [| _; "helper-in" |] ->
+    let prog = Filename.concat (Sys.getcwd ()) "foo.exe" in
+    let open Lwt.Syntax in
+    Lwt_process.with_process_in
+      ~cwd:"elsewhere"
+      (prog, [| prog; "read"; "input" |])
+      (fun process ->
+         let* contents = Lwt_io.read process#stdout in
+         let* status = process#status in
+         match status with
+         | Unix.WEXITED 0 -> Lwt_io.print contents
+         | _ -> failwith "helper failed")
   | [| _ |] -> ordinary_action dap ~path:"some_dependency"
   | [| _; "read"; path |] -> ordinary_action dap ~path
   | [| _; "sandbox" |] -> sandbox_action dap

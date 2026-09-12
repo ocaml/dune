@@ -498,6 +498,7 @@ let ocamlc_i_action ~deps cctx (m : Module.t) =
         ; Command.Ml_kind.flag Impl
         ; Dep src
         ; Hidden_deps (Dep.Set.of_files (Option.to_list original))
+        ; Hidden_deps (Dep.Set.of_files [ ocaml.lib_config.stdlib_dir ])
         ]
 ;;
 

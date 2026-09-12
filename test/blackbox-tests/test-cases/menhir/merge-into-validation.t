@@ -1,4 +1,4 @@
-Invalid merge_into names currently cause internal errors during rule generation.
+The merge_into field must name a file in the stanza directory.
 
   $ make_menhir_project 3.21 3.0
 
@@ -8,22 +8,11 @@ Invalid merge_into names currently cause internal errors during rule generation.
   >  (modules parser))
   > EOF
 
-  $ dune build 2>&1 | sed '/^Raised at/,$d'
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("[gen_rules] returned rules in a directory that is not a descendant of the directory it was called for",
-     { dir = In_build_dir "default"
-     ; example =
-         Rule
-           { targets =
-               { root = In_build_dir "."
-               ; files = set { "parser.ml"; "parser.mli" }
-               ; dirs = set {}
-               }
-           }
-     })
+  $ dune build
+  File "dune", line 2, characters 13-22:
+  2 |  (merge_into ../parser)
+                   ^^^^^^^^^
+  Error: The merge_into field must be a filename without directory components
   [1]
 
   $ cat >dune <<EOF
@@ -32,20 +21,9 @@ Invalid merge_into names currently cause internal errors during rule generation.
   >  (modules parser))
   > EOF
 
-  $ dune build 2>&1 | sed '/^Raised at/,$d'
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("[gen_rules] returned rules in a directory that is not a descendant of the directory it was called for",
-     { dir = In_build_dir "default"
-     ; example =
-         Rule
-           { targets =
-               { root = In_build_dir "."
-               ; files = set { "default.ml"; "default.mli" }
-               ; dirs = set {}
-               }
-           }
-     })
+  $ dune build
+  File "dune", line 2, characters 13-15:
+  2 |  (merge_into "")
+                   ^^
+  Error: The merge_into field must be a filename without directory components
   [1]

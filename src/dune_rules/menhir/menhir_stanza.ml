@@ -18,7 +18,18 @@ type t =
 
 let decode =
   fields
-    (let+ merge_into = field_o "merge_into" string
+    (let+ merge_into =
+       field_o
+         "merge_into"
+         (let+ loc, merge_into = located string in
+          match Filename.of_string merge_into with
+          | Some _ -> merge_into
+          | None ->
+            User_error.raise
+              ~loc
+              [ Pp.text
+                  "The merge_into field must be a filename without directory components"
+              ])
      and+ flags = Ordered_set_lang.Unexpanded.field "flags"
      and+ modules =
        Ordered_set_lang.Unexpanded.field

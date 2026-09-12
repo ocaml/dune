@@ -28,6 +28,7 @@ is:
 - ``(merge_into <base_name>)`` is used to define modular parsers. This
   correspond to the ``--base`` command line option of ``menhir``. With this
   option, a single parser named ``base_name`` is generated.
+  The base name must be a nonempty filename without directory components.
 
 - ``(flags <option1> <option2> ...)`` is used to pass extra flags to Menhir.
 

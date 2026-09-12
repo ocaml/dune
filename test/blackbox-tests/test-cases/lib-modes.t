@@ -43,3 +43,36 @@ in a version of dune lang that does not support them
 Works for the most recent version
 
   $ dune build hello.exe
+
+An explicitly empty mode list is accepted. The library builds, but its
+modules are unavailable to the executable.
+
+  $ cat > lib/dune <<EOF
+  > (library
+  >  (modes)
+  >  (name mylib))
+  > EOF
+
+  $ dune build lib
+  $ dune build hello.exe
+  File "hello.ml", line 2, characters 16-21:
+  2 |   print_endline Mylib.some_binding
+                      ^^^^^
+  Error: Unbound module Mylib
+  [1]
+
+The ordered set language can also remove every mode, with the same result.
+
+  $ cat > lib/dune <<EOF
+  > (library
+  >  (modes :standard \ byte best)
+  >  (name mylib))
+  > EOF
+
+  $ dune build lib
+  $ dune build hello.exe
+  File "hello.ml", line 2, characters 16-21:
+  2 |   print_endline Mylib.some_binding
+                      ^^^^^
+  Error: Unbound module Mylib
+  [1]

@@ -1,4 +1,5 @@
 module Glob = Glob
+module Dep = Dep
 
 type action_id = Action_id.t
 
@@ -12,6 +13,7 @@ module Make
 
   val run : Chan.t -> action_id:action_id -> f:(t -> unit Fiber.t) -> unit Fiber.t
   val outside_of_dune : t
+  val build_deps : t -> Dep.t list -> unit Fiber.t
   val read_file : t -> path:string -> string Fiber.t
   val read_directory_with_glob : t -> path:string -> glob:Glob.t -> string list Fiber.t
 end

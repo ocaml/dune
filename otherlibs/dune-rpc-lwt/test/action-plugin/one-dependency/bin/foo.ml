@@ -104,6 +104,10 @@ let held_action _dap ~connection ~release =
   loop ()
 ;;
 
+let absolute_path path =
+  if Filename.is_relative path then Filename.concat (Sys.getcwd ()) path else path
+;;
+
 let change_dir dir =
   if not (Sys.file_exists dir) then Unix.mkdir dir 0o755;
   Sys.chdir dir
@@ -143,6 +147,34 @@ let action dap =
          match status with
          | Unix.WEXITED 0 -> Lwt_io.print contents
          | _ -> failwith "helper failed")
+  | [| _; "batch"; first; second |] ->
+    let open Lwt.Syntax in
+    let first_path = absolute_path first in
+    let second_path = absolute_path second in
+    let* () = build_deps dap [ Dep.File first; Dep.File second; Dep.File first ] in
+    Lwt_process.exec ("cat", [| "cat"; first_path; second_path |])
+    |> Lwt.map (function
+      | Unix.WEXITED 0 -> ()
+      | _ -> failwith "cat failed")
+  | [| _; "mixed-batch" |] ->
+    change_dir "mixed";
+    let open Lwt.Syntax in
+    let paths = List.map absolute_path [ "one"; "glob/two.txt"; "directory/three" ] in
+    let pending =
+      build_deps
+        dap
+        [ Dep.File "one"
+        ; Dep.Glob { path = "glob"; glob = "*.txt" }
+        ; Dep.Directory "directory"
+        ; Dep.File "one"
+        ]
+    in
+    change_dir "..";
+    let* () = pending in
+    Lwt_process.exec ("cat", Array.of_list ("cat" :: paths))
+    |> Lwt.map (function
+      | Unix.WEXITED 0 -> ()
+      | _ -> failwith "cat failed")
   | [| _ |] -> ordinary_action dap ~path:"some_dependency"
   | [| _; "read"; path |] -> ordinary_action dap ~path
   | [| _; "sandbox" |] -> sandbox_action dap

@@ -140,6 +140,7 @@ module V1 = struct
   ;;
 
   module Action_plugin = struct
+    module Dep = Dune_rpc.V1.Action_plugin.Dep
     module Glob = Dune_rpc.V1.Action_plugin.Glob
     module Core = Dune_rpc.V1.Action_plugin
 
@@ -154,6 +155,7 @@ module V1 = struct
     module Error = Core.Error
 
     let outside_of_dune = Plugin.outside_of_dune
+    let build_deps = Plugin.build_deps
     let read_file = Plugin.read_file
     let read_directory_with_glob = Plugin.read_directory_with_glob
 

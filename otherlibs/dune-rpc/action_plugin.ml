@@ -3,6 +3,7 @@ module Glob = Glob
 module Build_deps = Procedures.Public.Action_plugin.Build_deps
 module Initialize_response = Procedures.Public.Action_plugin.Initialize_response
 module Path = Stdune.Path
+module Dep = Dep
 
 type action_id = Action_id.t
 
@@ -110,7 +111,7 @@ struct
 
   let outside_of_dune = Outside_of_dune
 
-  let build_deps t deps =
+  let request_deps t deps =
     match t with
     | Outside_of_dune -> Fiber.return ()
     | Under_dune { client; action_id; build_deps_request; root = _ } ->
@@ -120,7 +121,7 @@ struct
        | Some message -> Error.raise message)
   ;;
 
-  let resolve_path t path =
+  let prepare_path t path =
     validate_path path;
     let cwd = Sys.getcwd () in
     let dependency =
@@ -131,9 +132,23 @@ struct
     Filename.concat cwd path, dependency
   ;;
 
+  let build_deps t deps =
+    Dep.Set.of_list_map deps ~f:(function
+      | Dep.File path ->
+        let _, path = prepare_path t path in
+        Dep.File path
+      | Directory path ->
+        let _, path = prepare_path t path in
+        Dep.Directory path
+      | Glob { path; glob } ->
+        let _, path = prepare_path t path in
+        Dep.Glob { path; glob })
+    |> request_deps t
+  ;;
+
   let read_file t ~path =
-    let absolute_path, dependency = resolve_path t path in
-    let* () = build_deps t (Dep.Set.singleton (Dep.File dependency)) in
+    let absolute_path, dependency = prepare_path t path in
+    let* () = request_deps t (Dep.Set.singleton (Dep.File dependency)) in
     match Stdune.Io.String_path.read_file absolute_path with
     | contents -> Fiber.return contents
     | exception Unix.Unix_error (error, syscall, _) ->
@@ -143,9 +158,9 @@ struct
   ;;
 
   let read_directory_with_glob t ~path ~glob =
-    let absolute_path, dependency = resolve_path t path in
+    let absolute_path, dependency = prepare_path t path in
     let dep = Dep.Glob { path = dependency; glob = Glob.to_string glob } in
-    let* () = build_deps t (Dep.Set.singleton dep) in
+    let* () = request_deps t (Dep.Set.singleton dep) in
     let entries =
       match Stdune.Readdir.read_directory absolute_path with
       | Ok entries -> Stdune.Filename.L.to_string entries

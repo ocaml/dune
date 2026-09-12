@@ -121,3 +121,41 @@ physical cwd and Dune's spelling of the root still refer to the same tree.
   $ cat _build-linked/default/cwd-output
   second
   
+
+Batched declarations allow ordinary subprocess I/O without copying whole files
+into the plugin's heap.
+
+  $ cat >> dune <<'EOF'
+  > (rule (target first) (action (write-file first first)))
+  > (rule (target second) (action (write-file second second)))
+  > (rule
+  >  (target batched)
+  >  (action (with-stdout-to batched (dynamic-run ./foo.exe batch first second))))
+  > EOF
+  $ dune build -j 1 batched
+  $ cat _build/default/batched; echo
+  firstsecond
+
+A batch may mix files, globs, and directories. Paths use the client's cwd when
+called, even if it changes while the request is pending.
+
+  $ mkdir -p mixed/glob mixed/directory
+  $ cat > mixed/dune <<'EOF'
+  > (rule (target one) (action (write-file one file)))
+  > EOF
+  $ cat > mixed/glob/dune <<'EOF'
+  > (rule (target two.txt) (action (write-file two.txt glob)))
+  > (rule (target ignored.ml) (action (run false)))
+  > EOF
+  $ cat > mixed/directory/dune <<'EOF'
+  > (rule (target three) (action (write-file three directory)))
+  > EOF
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target mixed-output)
+  >  (action (with-stdout-to mixed-output (dynamic-run ./foo.exe mixed-batch))))
+  > EOF
+  $ dune build -j 1 mixed-output
+  $ cat _build/default/mixed-output; echo
+  fileglobdirectory
+  $ test ! -e _build/default/mixed/glob/ignored.ml

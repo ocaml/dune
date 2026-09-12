@@ -27,3 +27,8 @@
   $ dune runtest
   Hello there!
   Hello there!
+
+The output above is misleading: the plugin prints to Dune's stdout instead of
+its redirected target, which is empty.
+
+  $ cat _build/default/some_copy

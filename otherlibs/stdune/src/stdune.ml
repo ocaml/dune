@@ -14,6 +14,7 @@ module Array = Array
 module Bytes = Bytes
 module Char = Char
 module Comparator = Comparator
+module Conv = Conv
 module Dune_sexp = Dune_sexp
 module Either = Either
 module Exn = Exn

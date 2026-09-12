@@ -123,7 +123,7 @@ let term =
     server_response_map ~where ~f:(fun clients ->
       List.iter clients ~f:(fun (client, menu) ->
         let id =
-          let sexp = Dune_rpc.Conv.to_sexp Dune_rpc.Id.sexp client in
+          let sexp = Conv.to_sexp Dune_rpc.Id.sexp client in
           Sexp.to_string sexp
         in
         let message =

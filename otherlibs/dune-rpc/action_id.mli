@@ -1,3 +1,5 @@
+open Import
+
 type t
 
 val gen : unit -> t

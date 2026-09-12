@@ -1,4 +1,4 @@
-open Import
+module Float = Stdlib.Float
 
 (* Mini clone of Dune_lang.Decoder. Main advantage is that it forbids all the
    crazy stuff and is automatically bi-directional *)

@@ -580,11 +580,14 @@ module Action_plugin : sig
     (** Run [f] using a connection to the Dune RPC server. *)
     val run : Chan.t -> action_id:action_id -> f:(t -> unit Fiber.t) -> unit Fiber.t
 
-    (** Read [path] after asking Dune to build it. *)
+    (** Read [path] after asking Dune to build it. Relative paths use the current
+        directory at the time of this call, even if it changes while waiting for
+        Dune. *)
     val read_file : t -> path:string -> string Fiber.t
 
     (** Read entries of [path] matching [glob] after asking Dune to build the
-        corresponding directory dependency. An absent directory produces an
+        corresponding directory dependency. Relative paths use the current
+        directory at the time of this call. An absent directory produces an
         empty listing.
 
         BUG: the returned listing includes directories even though that dependency

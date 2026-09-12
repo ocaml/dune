@@ -20,7 +20,12 @@ module V1 : sig
     module Error = Dune_rpc.V1.Action_plugin.Error
 
     val outside_of_dune : t
+
+    (** Relative paths use the current directory at the time of the call,
+        including when cwd changes while the dependency is being built. *)
     val read_file : t -> path:string -> string Lwt.t
+
+    (** Relative paths use the current directory at the time of the call. *)
     val read_directory_with_glob : t -> path:string -> glob:Glob.t -> string list Lwt.t
 
     (** Run a dynamic action using Lwt for RPC communication. This function never

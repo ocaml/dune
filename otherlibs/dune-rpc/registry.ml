@@ -1,17 +1,14 @@
 open Import
 
+(* CR-someday rgrinberg: use [Stdune.Filename.t] properly *)
+module Filename = Stdlib.Filename
+
 module File = struct
   type t =
     { path : string
     ; contents : string
     }
 end
-
-let _pid_of_path path =
-  Filename.basename path
-  |> Filename.chop_suffix_opt ~suffix:".pid"
-  |> Option.bind ~f:Int.of_string
-;;
 
 module Dune = struct
   module T = struct

@@ -1,6 +1,5 @@
-Relative reads should use the client's current directory for both dependency
-requests and I/O. The server currently interprets requests relative to the
-launch directory instead.
+Relative reads use the client's current directory for both dependency requests
+and I/O. Clients translate requests into Dune's root-relative namespace.
 
   $ cat > dune-project <<'EOF'
   > (lang dune 2.0)
@@ -40,15 +39,16 @@ launch directory instead.
   >  (action (with-stdout-to helper-output (dynamic-run ./foo.exe helper-in))))
   > EOF
 
-A cold read currently builds the wrong input, leaving the requested file absent.
+A cold read builds the current directory's input, not the launch directory's.
 
   $ dune build cwd-output > cold.log 2>&1; echo $?
-  1
+  0
   $ test -f _build/default/input
+  [1]
 
-Prebuilding both inputs makes the read succeed, but hides the wrong dependency.
-Changing the file actually read then fails to invalidate the action. These
-prebuilds are separate targets, not static dependencies of cwd-output.
+Changing the file actually read invalidates the action, even when both inputs
+are already built. These prebuilds are separate targets, not static dependencies
+of cwd-output.
 
   $ dune build input elsewhere/input
   $ dune build cwd-output
@@ -59,11 +59,10 @@ prebuilds are separate targets, not static dependencies of cwd-output.
   $ dune build elsewhere/input
   $ dune build cwd-output
   $ cat _build/default/cwd-output
-  first
+  second
   
 
-Directory listings have the same problem: membership in the directory actually
-read is not tracked.
+Directory listings track membership in the directory actually read.
 
   $ dune build elsewhere/child.txt
   $ dune build listing
@@ -73,23 +72,24 @@ read is not tracked.
   $ dune build elsewhere/added.txt
   $ dune build listing
   $ cat _build/default/listing
+  added.txt
   child.txt
 
-Changing cwd after submitting a request also redirects the eventual I/O.
+Changing cwd after submitting a request does not redirect the eventual I/O.
 
   $ dune build in-flight listing-in-flight
   $ cat _build/default/in-flight
-  second
-  
+  launch
   $ cat _build/default/listing-in-flight
-  added.txt
-  child.txt
+  root.txt
 
 Parent-relative paths should also be interpreted from the current cwd. Helpers
 may start in a different directory while sharing the same action ID.
 
   $ dune build parent-output > parent.log 2>&1; echo $?
-  1
+  0
+  $ cat _build/default/parent-output
+  launch
   $ dune build helper-output > helper.log 2>&1; echo $?
   1
   $ cat _build/default/helper-output
@@ -102,9 +102,14 @@ assuming the sandbox has the same root as the canonical build tree.
   >     cwd-output > $mode.log 2>&1
   >   echo "$mode: $?"
   > done
-  copy: 1
-  symlink: 1
-  hardlink: 1
+  copy: 0
+  symlink: 0
+  hardlink: 0
+  $ cat _build-copy/default/cwd-output
+  second
+  
+  $ cmp _build-copy/default/cwd-output _build-symlink/default/cwd-output
+  $ cmp _build-copy/default/cwd-output _build-hardlink/default/cwd-output
 
 The build directory may itself be reached through a symlink. The client's
 physical cwd and Dune's spelling of the root still refer to the same tree.
@@ -112,4 +117,7 @@ physical cwd and Dune's spelling of the root still refer to the same tree.
   $ mkdir _build-physical
   $ ln -s _build-physical _build-linked
   $ dune build --build-dir=_build-linked cwd-output > linked.log 2>&1; echo $?
-  1
+  0
+  $ cat _build-linked/default/cwd-output
+  second
+  

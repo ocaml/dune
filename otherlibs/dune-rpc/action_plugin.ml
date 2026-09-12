@@ -1,6 +1,8 @@
 open Import
 module Glob = Glob
 module Build_deps = Procedures.Public.Action_plugin.Build_deps
+module Initialize_response = Procedures.Public.Action_plugin.Initialize_response
+module Path = Stdune.Path
 
 type action_id = Action_id.t
 
@@ -18,6 +20,35 @@ let validate_path path =
          "Path %S is absolute. All paths used with Dune_rpc.V1.Action_plugin must be \
           relative."
          path)
+;;
+
+(* Unlike Path.External.reach, the wire namespace requires relative paths on
+   Windows too. Split off the volume before using the local-path operation. *)
+let relative_dir ~root dir =
+  let split dir =
+    let rec loop dir components =
+      let parent = Filename.dirname dir in
+      if String.equal parent dir
+      then (
+        let volume =
+          if Sys.win32
+          then
+            String.map dir ~f:(function
+              | '\\' -> '/'
+              | c -> c)
+            |> String.lowercase_ascii
+          else dir
+        in
+        volume, Path.Local.of_comps components)
+      else loop parent (Filename.of_string_exn (Filename.basename dir) :: components)
+    in
+    loop dir []
+  in
+  let root_volume, root = split root in
+  let volume, dir = split dir in
+  if not (String.equal root_volume volume)
+  then Error.raise "The current directory and action root are on different volumes.";
+  Path.Local.reach dir ~from:root
 ;;
 
 module type Rpc_client = Client.Public
@@ -44,6 +75,7 @@ struct
     | Under_dune of
         { client : Client.t
         ; action_id : action_id
+        ; root : string
         ; build_deps_request : (Build_deps.t, string option) Client.Versioned.request
         }
 
@@ -64,8 +96,8 @@ struct
   let create client ~action_id =
     let* initialize_request = prepare_request client Rpc.initialize_request in
     let* build_deps_request = prepare_request client Rpc.build_deps_request in
-    let* () = request client initialize_request action_id in
-    Fiber.return (Under_dune { client; action_id; build_deps_request })
+    let* { Initialize_response.root } = request client initialize_request action_id in
+    Fiber.return (Under_dune { client; action_id; root; build_deps_request })
   ;;
 
   let run chan ~action_id ~f =
@@ -81,33 +113,45 @@ struct
   let build_deps t deps =
     match t with
     | Outside_of_dune -> Fiber.return ()
-    | Under_dune { client; action_id; build_deps_request } ->
+    | Under_dune { client; action_id; build_deps_request; root = _ } ->
       let* response = request client build_deps_request { Build_deps.action_id; deps } in
       (match response with
        | None -> Fiber.return ()
        | Some message -> Error.raise message)
   ;;
 
-  let read_file t ~path =
+  let resolve_path t path =
     validate_path path;
-    let* () = build_deps t (Dep.Set.singleton (Dep.File path)) in
-    match Stdune.Io.String_path.read_file path with
+    let cwd = Sys.getcwd () in
+    let dependency =
+      match t with
+      | Outside_of_dune -> path
+      | Under_dune { root; _ } -> Filename.concat (relative_dir ~root cwd) path
+    in
+    Filename.concat cwd path, dependency
+  ;;
+
+  let read_file t ~path =
+    let absolute_path, dependency = resolve_path t path in
+    let* () = build_deps t (Dep.Set.singleton (Dep.File dependency)) in
+    match Stdune.Io.String_path.read_file absolute_path with
     | contents -> Fiber.return contents
-    | exception Unix.Unix_error (error, syscall, arg) ->
-      let error = Stdune.Unix_error.Detailed.create error ~syscall ~arg in
+    | exception Unix.Unix_error (error, syscall, _) ->
+      let error = Stdune.Unix_error.Detailed.create error ~syscall ~arg:path in
       Error.raise ("read_file: " ^ Stdune.Unix_error.Detailed.to_string_hum error)
     | exception Sys_error error -> Error.raise ("read_file: " ^ error)
   ;;
 
   let read_directory_with_glob t ~path ~glob =
-    validate_path path;
-    let dep = Dep.Glob { path; glob = Glob.to_string glob } in
+    let absolute_path, dependency = resolve_path t path in
+    let dep = Dep.Glob { path = dependency; glob = Glob.to_string glob } in
     let* () = build_deps t (Dep.Set.singleton dep) in
     let entries =
-      match Stdune.Readdir.read_directory path with
+      match Stdune.Readdir.read_directory absolute_path with
       | Ok entries -> Stdune.Filename.L.to_string entries
       | Error ((Unix.ENOENT | ENOTDIR), _, _) -> []
-      | Error error ->
+      | Error (error, syscall, _) ->
+        let error = Stdune.Unix_error.Detailed.create error ~syscall ~arg:path in
         Error.raise ("read_directory: " ^ Stdune.Unix_error.Detailed.to_string_hum error)
     in
     List.filter entries ~f:(Glob.test glob)

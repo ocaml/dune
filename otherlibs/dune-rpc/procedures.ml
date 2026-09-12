@@ -174,9 +174,23 @@ module Public = struct
       ;;
     end
 
+    module Initialize_response = struct
+      type t = { root : string }
+
+      let conv =
+        let open Conv in
+        let to_ root = { root } in
+        let from { root } = root in
+        iso (record (field "root" (required string))) to_ from
+      ;;
+    end
+
     module Initialize = struct
       let v1 =
-        Decl.Request.make_current_gen ~req:Action_id.conv ~resp:Conv.unit ~version:1
+        Decl.Request.make_current_gen
+          ~req:Action_id.conv
+          ~resp:Initialize_response.conv
+          ~version:1
       ;;
 
       let decl =

@@ -99,20 +99,18 @@ module Emit = struct
       (let* loc = loc in
        let+ target =
          let of_string ~loc s =
-           match String.is_empty s with
-           | true ->
+           match Filename.of_string s with
+           | Some _ -> s
+           | None when String.is_empty s ->
              User_error.raise ~loc [ Pp.textf "The field target can not be empty" ]
-           | false ->
-             (match Filename.dirname s with
-              | "." -> s
-              | _ ->
-                User_error.raise
-                  ~loc
-                  [ Pp.textf
-                      "The field target must use simple names and can not include paths \
-                       to other folders. To emit JavaScript files in another folder, \
-                       move the `melange.emit` stanza to that folder"
-                  ])
+           | None ->
+             User_error.raise
+               ~loc
+               [ Pp.textf
+                   "The field target must use simple names and can not include paths to \
+                    other folders. To emit JavaScript files in another folder, move the \
+                    `melange.emit` stanza to that folder"
+               ]
          in
          field "target" (plain_string (fun ~loc s -> of_string ~loc s))
        and+ alias = field_o "alias" Dune_lang.Alias.decode

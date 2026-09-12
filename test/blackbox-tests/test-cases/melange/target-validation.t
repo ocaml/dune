@@ -23,8 +23,7 @@ Target should not be empty
   Error: The field target can not be empty
   [1]
 
-Special directory names currently bypass target validation and cause an
-internal error during rule generation.
+Special directory names are rejected when parsing the target field.
 
   $ cat > dune <<EOF
   > (library
@@ -36,12 +35,13 @@ internal error during rule generation.
   >  (libraries $lib))
   > EOF
 
-  $ dune build 2>&1 | sed '/^Raised at/,$d'
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("Filename.of_string_exn: invalid filename", { filename = "." })
+  $ dune build
+  File "dune", line 5, characters 9-10:
+  5 |  (target .)
+               ^
+  Error: The field target must use simple names and can not include paths to
+  other folders. To emit JavaScript files in another folder, move the
+  `melange.emit` stanza to that folder
   [1]
 
   $ cat > dune <<EOF
@@ -54,12 +54,13 @@ internal error during rule generation.
   >  (libraries $lib))
   > EOF
 
-  $ dune build 2>&1 | sed '/^Raised at/,$d'
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("Filename.of_string_exn: invalid filename", { filename = ".." })
+  $ dune build
+  File "dune", line 5, characters 9-11:
+  5 |  (target ..)
+               ^^
+  Error: The field target must use simple names and can not include paths to
+  other folders. To emit JavaScript files in another folder, move the
+  `melange.emit` stanza to that folder
   [1]
 
 Target should not try to descend into subdirectories

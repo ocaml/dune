@@ -19,6 +19,9 @@ val decode : t Decoder.t
 val set : t -> Package_variable_name.t -> Variable_value.t -> t
 val get : t -> Package_variable_name.t -> Variable_value.t option
 
+(** Return the names bound in the environment. *)
+val variable_names : t -> Package_variable_name.Set.t
+
 (** [extend a b] adds all variables from [b] to [a] overwriting any
     existing values of those variables in [a]. *)
 val extend : t -> t -> t

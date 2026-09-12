@@ -98,6 +98,11 @@ module Package_universe = struct
     | Dependencies ctx -> Lock_dir.get_exn ctx
     | Dev_tool dev_tool -> Lock_dir.of_dev_tool dev_tool
   ;;
+
+  let platform = function
+    | Dependencies ctx -> Lock_dir.solver_env_for_context ctx
+    | Dev_tool _ -> Lock_dir.Sys_vars.solver_env
+  ;;
 end
 
 module Pkg_digest = struct
@@ -1455,7 +1460,7 @@ module DB = struct
              let system_provided = default_system_provided in
              let+ pkg_digest_table =
                let* lock_dir = Lock_dir.get_exn ctx
-               and* platform = Lock_dir.Sys_vars.solver_env in
+               and* platform = Lock_dir.solver_env_for_context ctx in
                (if allow_sharing
                 then Memo.Lazy.force Pkg_table.all_existing_dev_tools
                 else Memo.return Pkg_table.empty)
@@ -1471,7 +1476,7 @@ module DB = struct
      within that context. *)
   let of_project_pkg ctx pkg_name =
     let* lock_dir = Lock_dir.get_exn ctx
-    and* platform = Lock_dir.Sys_vars.solver_env in
+    and* platform = Lock_dir.solver_env_for_context ctx in
     let+ t = of_ctx ctx ~allow_sharing:true in
     t, pkg_digest_of_name lock_dir platform pkg_name ~system_provided:t.system_provided
   ;;
@@ -1586,7 +1591,7 @@ end = struct
         ; pkg_digest = _
         } ->
       assert (Package.Name.equal pkg_digest.name info.name);
-      let* platform = Lock_dir.Sys_vars.solver_env in
+      let* platform = Package_universe.platform package_universe in
       let choose_for_current_platform field =
         Dune_pkg.Lock_dir.Conditional_choice.choose_for_platform field ~platform
       in

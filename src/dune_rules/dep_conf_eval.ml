@@ -196,6 +196,9 @@ let package loc pkg_name (context : Build_context.t) ~dune_version =
                 ])
         }
     else
+      (* Note that this branch misses the case where we have a non-dune findlib
+         package. In that case, the [pkg.files] field is empty so no
+         dependencies are actually registered. *)
       (let open Memo.O in
        Memo.parallel_map pkg.files ~f:(fun (s, l) ->
          let dir = Section.Map.find_exn pkg.sections s in
@@ -219,6 +222,46 @@ let package loc pkg_name (context : Build_context.t) ~dune_version =
               ~loc
               [ Pp.textf "Package %s does not exist" (Package.Name.to_string pkg_name) ])
       }
+;;
+
+(* Expands a package set by taking all the libraries in those packages and
+   collecting the libraries in their transitive closures and then adding the
+   packages that own those libraries. *)
+let expand_package_set =
+  let libs_of_package context (pkg : Package.Name.t) =
+    let open Memo.O in
+    let* db = Package_db.create context in
+    Package_db.find_package db pkg
+    >>= function
+    | None -> Memo.return []
+    | Some (Installed { entries; _ }) ->
+      let* lib_db = Scope.DB.public_libs context in
+      Lib_name.Map.keys entries |> Memo.List.filter_map ~f:(Lib.DB.find lib_db)
+    | Some (Local pkg) ->
+      let* { Scope.DB.Lib_entry.Set.libraries; deprecated_library_names } =
+        Scope.DB.lib_entries_of_package context (Package.name pkg)
+      in
+      let+ redirected =
+        let* lib_db = Scope.DB.public_libs context in
+        Memo.List.filter_map deprecated_library_names ~f:(fun redirect ->
+          Lib.DB.find lib_db (Deprecated_library_name.old_public_name redirect))
+      in
+      List.map libraries ~f:Lib.Local.to_lib @ redirected
+    | Some (Build _) ->
+      (* TODO *)
+      assert false
+  in
+  fun context package_names ->
+    let open Memo.O in
+    Memo.map_reduce_seq
+      (Package.Name.Set.to_seq package_names)
+      ~empty:package_names
+      ~combine:Package.Name.Set.union
+      ~f:(fun package_name ->
+        libs_of_package context package_name
+        >>= Lib.descriptive_closure ~with_pps:false ~for_:Compilation_mode.Ocaml
+        >>| List.filter_map ~f:(fun lib -> Lib_info.package (Lib.info lib))
+        >>| Package.Name.Set.of_list)
 ;;
 
 let rec dep expander : Dep_conf.t -> _ = function
@@ -323,11 +366,34 @@ and combined_package_deps_builder expander pkgs =
   in
   let context = Build_context.create ~name:host_name in
   let* package_db = Action_builder.of_memo (Package_db.create context.name) in
-  let* classified =
+  let* requested =
     Action_builder.List.map pkgs ~f:(fun (swv, loc) ->
-      let* pkg = expand_package_name expander swv in
-      let+ found = Action_builder.of_memo (Package_db.find_package package_db pkg) in
-      loc, pkg, found)
+      let+ pkg = expand_package_name expander swv in
+      loc, pkg)
+  in
+  let* package_names =
+    let requested_package_names = List.map requested ~f:snd |> Package.Name.Set.of_list in
+    Action_builder.of_memo (expand_package_set context.name requested_package_names)
+  in
+  (* CR-someday Alizter: The location here doesn't make sense for packages from
+     the lib-transitive closure and so defaults to none. Consider pushing a
+     stack frame in the action builder around this whole affair in order to get
+     some information on which package required which transitively, when there
+     is trouble materialising the dependency. 
+
+     See test/blackbox-tests/test-cases/package-materialization/install-dirs.t
+     for an example of a poor error message as a result of this. *)
+  let loc_of_package package =
+    List.find_map requested ~f:(fun (loc, requested_package) ->
+      if Package.Name.equal package requested_package then Some loc else None)
+    |> Option.value ~default:Loc.none
+  in
+  let* classified =
+    Package.Name.Set.to_list package_names
+    |> Action_builder.List.map ~f:(fun package ->
+      let loc = loc_of_package package in
+      let+ found = Action_builder.of_memo (Package_db.find_package package_db package) in
+      loc, package, found)
   in
   let local_package_names =
     List.filter_map classified ~f:(fun (_, _, found) ->
@@ -346,7 +412,7 @@ and combined_package_deps_builder expander pkgs =
     Action_builder.List.iter classified ~f:(fun (loc, pkg_name, found) ->
       match found with
       | Some (Local _) -> Action_builder.return ()
-      | Some (Build build) -> build
+      | Some (Build _) -> assert false
       | Some (Installed _) | None -> package loc pkg_name context ~dune_version)
   in
   env

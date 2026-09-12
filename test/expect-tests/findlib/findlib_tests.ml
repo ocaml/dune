@@ -141,6 +141,50 @@ let%expect_test _ =
   [%expect {|[ re_export "baz"; "xyz" ]|}]
 ;;
 
+let%expect_test "library compile-info sharing" =
+  let computation =
+    let open Memo.O in
+    let* context = Context.DB.get Dune_engine.Context_name.default in
+    let* db = Lib.DB.of_paths context ~paths:[ Path.outside_build_dir db_path ] in
+    let* lib =
+      Lib.DB.resolve db (Loc.none, Lib_name.of_string "xyz") |> Resolve.Memo.read_memo
+    in
+    let lib_id = Lib_info.lib_id (Lib.info lib) in
+    let* _, first = Lib.DB.get_compile_info db ~allow_overlaps:false lib_id in
+    let* _, second = Lib.DB.get_compile_info db ~allow_overlaps:false lib_id in
+    let* _, overlapping = Lib.DB.get_compile_info db ~allow_overlaps:true lib_id in
+    let* _, other_db =
+      Lib.DB.get_compile_info
+        (Lib.DB.with_parent db ~parent:None)
+        ~allow_overlaps:false
+        lib_id
+    in
+    let ocaml = Lib.Compile.requires_link first ~for_:Ocaml in
+    let melange = Lib.Compile.requires_link first ~for_:Melange in
+    Printf.printf "same compile info: %b\n" (first == second);
+    Printf.printf
+      "same OCaml closure: %b\n"
+      (ocaml == Lib.Compile.requires_link second ~for_:Ocaml);
+    Printf.printf
+      "same Melange closure: %b\n"
+      (melange == Lib.Compile.requires_link second ~for_:Melange);
+    Printf.printf "distinct modes: %b\n" (ocaml != melange);
+    Printf.printf "distinct overlap policies: %b\n" (first != overlapping);
+    Printf.printf "distinct databases: %b\n" (first != other_db);
+    Memo.return ()
+  in
+  Test_scheduler.(run (create ())) (Memo.run computation);
+  [%expect
+    {|
+    same compile info: false
+    same OCaml closure: false
+    same Melange closure: false
+    distinct modes: true
+    distinct overlap policies: true
+    distinct databases: true
+    |}]
+;;
+
 (* Meta parsing/simplification *)
 
 let%expect_test _ =

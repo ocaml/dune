@@ -93,8 +93,8 @@ The consumer requests package a, but uses only its independent usable root.
   $ dune-consumer/_build/default/main.exe
   2
 
-CR-someday alizter: The usable root's required library b should be tracked.
-Ignoring every root because one is unusable must not satisfy this test.
+The usable root's required package b is tracked. An unusable sibling does
+not prevent following the available dependencies.
 
   $ dune rules --root dune-consumer --format=json main.exe >dune-rules.json
   $ jq_dune --arg b "$b_lib" --arg metadata dune-package '
@@ -108,9 +108,9 @@ Ignoring every root because one is unusable must not satisfy this test.
   >   }' dune-rules.json
   {
     "reader": "dune-package",
-    "required_interface": false,
-    "required_archive": false,
-    "required_metadata": false
+    "required_interface": true,
+    "required_archive": true,
+    "required_metadata": true
   }
 
 Exercise the same bad-root control and usable-root checks through META.

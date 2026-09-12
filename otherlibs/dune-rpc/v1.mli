@@ -558,7 +558,9 @@ module Action_plugin : sig
         ; where : Where.t
         }
 
-  (** Determine whether the program is running as a Dune dynamic action. *)
+  (** Determine whether the program is running as a Dune dynamic action.
+      Connect before changing directories: Unix socket addresses may be relative
+      to the current directory to accommodate socket path length limits. *)
   val run_context : unit -> run_context
 
   module Error : sig

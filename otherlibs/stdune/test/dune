@@ -3,6 +3,7 @@
  (modules
   :standard
   \
+  appendable_list_quick_tests
   path_external_build_tests
   path_tests
   proc_linux_tests
@@ -23,6 +24,15 @@
   ppx_inline_test.config)
  (preprocess
   (pps ppx_expect)))
+
+(library
+ (name appendable_list_quick_tests)
+ (modules appendable_list_quick_tests)
+ (optional)
+ (inline_tests)
+ (libraries stdune base ppx_inline_test.config)
+ (preprocess
+  (pps ppx_quick_test)))
 
 (library
  (name stdune_path_tests)

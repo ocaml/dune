@@ -24,12 +24,12 @@ disabling the download of the source a second time.
   $ build_pkg test
 
 We see no cache store errors and the cache store events for the fetched dir,
-pkg-$DIGEST/source and pkg-$DIGEST/target in the trace:
+the package source and target directories in the trace:
 
   $ dune trace cat | jq -s '[.[] | select(.args.message == "cache store target creation errors") ] | length'
   0
   $ dune trace cat | jq -s '[.[] | select(.args.message == "cache store success") ] | length'
-  3
+  4
 
 Cleaning the project to force rebuilding. This no longer triggers an attempt to
 re-download the source after the change to turn symlinks in the fetched source

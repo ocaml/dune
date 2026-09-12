@@ -51,7 +51,7 @@ Create a custom dune-workspace to solve for openbsd.
 Build as though we were on openbsd.
   $ export DUNE_CONFIG__OS=openbsd DUNE_CONFIG__ARCH=x86_64
   $ dune build
-  $ cat $pkg_root/$(dune pkg print-digest foo)/target/share/kernel
+  $ cat $pkg_root/foo/target/share/kernel
   OpenBSD
   $ unset DUNE_CONFIG__OS DUNE_CONFIG__ARCH
 

@@ -19,8 +19,12 @@ let universe_install_path t =
     (Package.Name.to_string @@ package_name t)
 ;;
 
+let package_install_path t =
+  Path.Build.relative (universe_install_path t) (Package.Name.to_string (package_name t))
+;;
+
 let exe_path t =
   Path.Build.L.relative
-    (universe_install_path t)
+    (package_install_path t)
     ("target" :: exe_path_components_within_package t)
 ;;

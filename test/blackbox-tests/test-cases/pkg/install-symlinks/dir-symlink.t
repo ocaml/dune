@@ -19,11 +19,10 @@ Case 1: No .install file, directory symlink in %{lib}, engine rejects it.
 
 CR-someday Alizter: Maybe in this case it actually makes sense to resolve the directory symlink somehow.
 
-  $ build_pkg foo 2>&1 | sanitize_pkg_digest foo.0.0.1
+  $ build_pkg foo 2>&1
   Error: Error trying to read targets after a rule was run:
-  - default/.pkg/foo.0.0.1-DIGEST_HASH/target/lib/foo/subdir_link: Unexpected file kind "S_DIR" (directory)
-  -> required by
-     _build/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/target
+  - default/.pkg/foo/target/lib/foo/subdir_link: Unexpected file kind "S_DIR" (directory)
+  -> required by _build/_private/default/.pkg/foo/target
   [1]
 
 --------------------------------------------------------------------------------
@@ -43,11 +42,10 @@ error correctly. Engine bug? Let's try to repro later.
   >    && printf 'lib: [\"real_subdir/file.txt\" \"subdir_link\"]\n' > foo.install"))
   > EOF
 
-  $ build_pkg foo 2>&1 | sanitize_pkg_digest foo.0.0.1 | sed -E 's#\.sandbox/[^/]+#.sandbox/SANDBOX#g'
+  $ build_pkg foo 2>&1 | sed -E 's#\.sandbox/[^/]+#.sandbox/SANDBOX#g'
   Error:
-  link(_build/.sandbox/SANDBOX/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/target/lib/foo/subdir_link): Operation not permitted
-  -> required by
-     _build/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/target
+  link(_build/.sandbox/SANDBOX/_private/default/.pkg/foo/target/lib/foo/subdir_link): Operation not permitted
+  -> required by _build/_private/default/.pkg/foo/target
   [1]
 
 --------------------------------------------------------------------------------

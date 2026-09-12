@@ -644,10 +644,8 @@ module Internal = struct
       in
       let can_go_in_shared_cache =
         props.can_go_in_shared_cache
-        && (not
-              (always_rerun
-               || is_action_dynamic
-               || Action.is_useful_to_memoize action_ast = Clearly_not))
+        && (not (always_rerun || Action.is_useful_to_memoize action_ast = Clearly_not))
+        && ((not is_action_dynamic) || Option.is_none sandbox_mode)
         &&
         match sandbox_mode with
         | Some Patch_back_source_tree ->
@@ -694,17 +692,18 @@ module Internal = struct
           in
           let* produced_targets, dynamic_deps_stages =
             (* Step III. Try to restore artifacts from the shared cache. *)
-            Dune_cache.Shared.lookup ~can_go_in_shared_cache ~rule_digest ~targets
-            >>= function
-            | Some produced_targets ->
-              (* Rules with dynamic deps can't be stored to the shared cache
-                 (see the [is_action_dynamic] check above), so we know this is
-                 not a dynamic action, so returning an empty list is correct.
-                 The lack of information to fill in [dynamic_deps_stages] here
-                 is precisely the reason why we don't store dynamic actions in
-                 the shared cache. *)
-              let dynamic_deps_stages = [] in
-              Fiber.return (produced_targets, dynamic_deps_stages)
+            let* restored =
+              if is_action_dynamic && can_go_in_shared_cache
+              then
+                Rule_cache.Dynamic.lookup ~rule_digest ~targets ~env:props.env ~build_deps
+              else
+                let+ restored =
+                  Dune_cache.Shared.lookup ~can_go_in_shared_cache ~rule_digest ~targets
+                in
+                Option.map restored ~f:(fun targets -> targets, [])
+            in
+            match restored with
+            | Some restored -> Fiber.return restored
             | None ->
               (* Step IV. Execute the build action. *)
               let loc = Rule.loc rule in
@@ -719,19 +718,6 @@ module Internal = struct
                   ~sandbox_mode
                   ~targets
               in
-              (* Step V. Examine produced targets and store them to the shared
-                 cache if needed. *)
-              let* produced_targets =
-                Dune_cache.Shared.examine_targets_and_store
-                  ~can_go_in_shared_cache
-                  ~loc
-                  ~rule_digest
-                  ~should_remove_write_permissions_on_generated_files:
-                    (Execution_parameters
-                     .should_remove_write_permissions_on_generated_files
-                       execution_parameters)
-                  ~produced_targets:exec_result.produced_targets
-              in
               let dynamic_deps_stages =
                 List.map
                   exec_result.action_exec_result.dynamic_deps_stages
@@ -741,7 +727,25 @@ module Internal = struct
                       Dep.Facts.digest fact_map d ~env:props.env;
                       Digest.Manual.get d ))
               in
-              Fiber.return (produced_targets, dynamic_deps_stages)
+              let+ produced_targets =
+                (* Step V. Examine produced targets and store them to the shared
+                   cache if needed. *)
+                let cache_key =
+                  if is_action_dynamic && can_go_in_shared_cache
+                  then Rule_cache.Dynamic.store ~rule_digest ~stages:dynamic_deps_stages
+                  else rule_digest
+                in
+                Dune_cache.Shared.examine_targets_and_store
+                  ~can_go_in_shared_cache
+                  ~loc
+                  ~rule_digest:cache_key
+                  ~produced_targets:exec_result.produced_targets
+                  ~should_remove_write_permissions_on_generated_files:
+                    (Execution_parameters
+                     .should_remove_write_permissions_on_generated_files
+                       execution_parameters)
+              in
+              produced_targets, dynamic_deps_stages
           in
           (* We do not include target names into [targets_digest] because they
              are already included into the rule digest. *)

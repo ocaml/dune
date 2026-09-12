@@ -294,6 +294,44 @@ module Glob = struct
   let compare x y = compare Element.compare x y
   let equal x y = Ordering.is_eq (compare x y)
   let hash t = Poly.hash t
+
+  let conv =
+    let open Stdune.Conv in
+    fixpoint (fun predicate ->
+      let true_ = constr "true" unit (fun () -> True) in
+      let false_ = constr "false" unit (fun () -> False) in
+      let standard = constr "standard" unit (fun () -> Standard) in
+      let literal = constr "literal" string (fun s -> Element (Element.Literal s)) in
+      let glob =
+        constr "glob" string (fun s ->
+          let glob = Element.Proxy.of_string s in
+          let (_ : Glob.t) = Element.unproxy glob in
+          Element (Element.Glob glob))
+      in
+      let not = constr "not" predicate (fun predicate -> Not predicate) in
+      let or_ = constr "or" (list predicate) (fun predicates -> Or predicates) in
+      let and_ = constr "and" (list predicate) (fun predicates -> And predicates) in
+      sum
+        [ econstr true_
+        ; econstr false_
+        ; econstr standard
+        ; econstr literal
+        ; econstr glob
+        ; econstr not
+        ; econstr or_
+        ; econstr and_
+        ]
+        (function
+          | True -> case () true_
+          | False -> case () false_
+          | Standard -> case () standard
+          | Element (Literal s) -> case s literal
+          | Element (Glob { repr; _ }) -> case repr glob
+          | Not predicate -> case predicate not
+          | Or predicates -> case predicates or_
+          | And predicates -> case predicates and_))
+  ;;
+
   let decode = decode Element.decode
   let encode t = encode Element.encode t
   let digest t = Dune_digest.repr repr t

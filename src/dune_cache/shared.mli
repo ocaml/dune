@@ -6,6 +6,14 @@ open Import
     artifacts produced in different workspaces. To restore results from the
     shared cache, Dune copes or hardlinks them into the build directory. *)
 
+module Dynamic_deps : sig
+  (** Dependency manifests use ordinary cache entries so that trimming and
+      concurrent writes follow the same rules as build artifacts. *)
+  val load : rule_digest:Digest.t -> Sexp.t option
+
+  val store : rule_digest:Digest.t -> Sexp.t -> unit
+end
+
 (** Check if the shared cache contains results for a rule and decide whether
       to use these results or rerun the rule for a reproducibility check. *)
 val lookup

@@ -1,6 +1,158 @@
 open Import
 open Dune_cache.Hit_or_miss
 
+module Dynamic = struct
+  open Fiber.O
+
+  let conv =
+    let open Conv in
+    let build_path =
+      iso
+        string
+        (fun path -> Path.Build.of_local (Path.Local.of_string path))
+        (fun path -> Path.Local.to_string (Path.Build.local path))
+    in
+    let path =
+      let build = constr "build" build_path Path.build in
+      let source =
+        constr
+          "source"
+          (iso string Path.Source.of_string Path.Source.to_string)
+          Path.source
+      in
+      let external_ =
+        constr
+          "external"
+          (iso string Path.External.of_string Path.External.to_string)
+          Path.external_
+      in
+      sum
+        [ econstr build; econstr source; econstr external_ ]
+        (function
+          | Path.In_build_dir path -> case path build
+          | In_source_tree path -> case path source
+          | External path -> case path external_)
+    in
+    let selector =
+      iso
+        (triple path (enum [ "true", true; "false", false ]) Predicate_lang.Glob.conv)
+        (fun (dir, only_generated_files, predicate) ->
+           File_selector.of_predicate_lang ~dir ~only_generated_files predicate)
+        (fun selector ->
+           ( File_selector.dir selector
+           , File_selector.only_generated_files selector
+           , File_selector.predicate selector ))
+    in
+    let dep =
+      let file = constr "file" path Dep.file in
+      let env = constr "env" string (fun var -> Dep.env (Env.Var.of_string var)) in
+      let alias =
+        constr "alias" (pair build_path string) (fun (dir, name) ->
+          Dep.alias (Alias.make (Alias.Name.of_string name) ~dir))
+      in
+      let glob = constr "glob" selector Dep.file_selector in
+      sum
+        [ econstr file; econstr env; econstr alias; econstr glob ]
+        (function
+          | Dep.File path -> case path file
+          | Env var -> case (Env.Var.to_string var) env
+          | Alias value ->
+            case (Alias.dir value, Alias.Name.to_string (Alias.name value)) alias
+          | File_selector selector -> case selector glob
+          | Universe -> Code_error.raise "Cannot serialize a universe dependency" [])
+    in
+    let deps =
+      constr
+        "deps"
+        (iso (list dep) Dep.Set.of_list Dep.Set.to_list)
+        (fun deps -> `Deps deps)
+    in
+    let done_ = constr "done" unit (fun () -> `Done) in
+    sum
+      [ econstr deps; econstr done_ ]
+      (function
+        | `Deps values -> case values deps
+        | `Done -> case () done_)
+  ;;
+
+  let initial rule_digest =
+    Digest.Feed.compute_digest
+      (Digest.Feed.tuple2 Digest.Feed.string Digest.Feed.digest)
+      ("dynamic-dependency-manifest-v2", rule_digest)
+  ;;
+
+  let artifact_key key =
+    Digest.Feed.compute_digest
+      (Digest.Feed.tuple2 Digest.Feed.string Digest.Feed.digest)
+      ("dynamic-artifacts-v1", key)
+  ;;
+
+  let advance key deps digest =
+    let d = Digest.Manual.create () in
+    Digest.Manual.string d "dynamic-dependency-step-v1";
+    Digest.Manual.digest d key;
+    Dep.Set.digest deps d;
+    Digest.Manual.digest d digest;
+    Digest.Manual.get d
+  ;;
+
+  let facts_digest facts ~env =
+    let d = Digest.Manual.create () in
+    Dep.Facts.digest facts d ~env;
+    Digest.Manual.get d
+  ;;
+
+  (* Each node describes the next request. Its observed facts select the next
+     node, so a changed observation never evaluates obsolete later requests.
+     Missing nodes (including partially trimmed traces) are ordinary misses. *)
+  let lookup ~rule_digest ~targets ~env ~build_deps =
+    let rec loop key stages =
+      match
+        Dune_cache.Shared.Dynamic_deps.load ~rule_digest:key
+        |> Option.bind ~f:(fun sexp ->
+          Conv.of_sexp conv ~version:(0, 0) sexp |> Result.to_option)
+      with
+      | None ->
+        Dune_trace.emit ~buffered:true Cache (fun () ->
+          let reason =
+            match !Dune_cache.Shared.config with
+            | Disabled -> "cache disabled"
+            | Enabled _ -> "dynamic dependency manifest unavailable"
+          in
+          Dune_trace.Event.Cache.shared
+            (`Miss reason)
+            ~rule_digest:(Digest.to_string key)
+            ~head:(Targets.Validated.head targets));
+        Fiber.return None
+      | Some `Done ->
+        Dune_cache.Shared.lookup
+          ~can_go_in_shared_cache:true
+          ~rule_digest:(artifact_key key)
+          ~targets
+        >>| Option.map ~f:(fun targets -> targets, List.rev stages)
+      | Some (`Deps deps) ->
+        let* digest = build_deps deps |> Memo.run >>| facts_digest ~env in
+        loop (advance key deps digest) ((deps, digest) :: stages)
+    in
+    loop (initial rule_digest) []
+  ;;
+
+  let store ~rule_digest ~stages =
+    let rec loop key = function
+      | [] ->
+        Dune_cache.Shared.Dynamic_deps.store ~rule_digest:key (Conv.to_sexp conv `Done);
+        artifact_key key
+      | (deps, digest) :: rest ->
+        let manifest = Conv.to_sexp conv (`Deps deps) in
+        Dune_cache.Shared.Dynamic_deps.store ~rule_digest:key manifest;
+        loop (advance key deps digest) rest
+    in
+    match !Dune_cache.Shared.config with
+    | Disabled -> rule_digest
+    | Enabled _ -> loop (initial rule_digest) stages
+  ;;
+end
+
 module Workspace_local = struct
   (* Stores information for deciding if a rule needs to be re-executed. *)
   module Database = struct

@@ -20,6 +20,7 @@
   source
   fiber
   dune_lang
+  predicate_lang
   ocaml
   memo
   unix

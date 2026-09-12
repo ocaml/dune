@@ -71,6 +71,7 @@ module Local : sig
   val explode : t -> Filename.t list
   val descendant : t -> of_:t -> t option
   val of_comps : Filename.t list -> t
+  val reach : t -> from:t -> string
 
   module Table : Hashtbl.S with type key = t
 end

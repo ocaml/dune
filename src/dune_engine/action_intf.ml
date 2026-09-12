@@ -107,6 +107,7 @@ end
 module Exec = struct
   type context =
     { targets : Targets.Validated.t option
+    ; root : Path.t
     ; context : Build_context.t option
     ; metadata : Process_metadata.t
     ; sandbox : Process.Sandbox.t option

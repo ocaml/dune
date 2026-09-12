@@ -8,8 +8,8 @@ include struct
 end
 
 let to_dune_dep_set =
-  let of_action_plugin_dep ~loc ~working_dir : Dune_rpc.Dep.t -> Dep.t =
-    let to_dune_path = Path.relative working_dir in
+  let of_action_plugin_dep ~loc ~root : Dune_rpc.Dep.t -> Dep.t =
+    let to_dune_path = Path.relative root in
     function
     | File fn -> Dep.file (to_dune_path fn)
     | Directory dir ->
@@ -26,20 +26,25 @@ let to_dune_dep_set =
       in
       Dep.file_selector selector
   in
-  fun set ~loc ~working_dir ->
-    Dune_rpc.Dep.Set.to_list_map set ~f:(of_action_plugin_dep ~loc ~working_dir)
+  fun set ~loc ~root ->
+    let root = Path.drop_optional_sandbox_root root in
+    Dune_rpc.Dep.Set.to_list_map set ~f:(of_action_plugin_dep ~loc ~root)
     |> Dep.Set.of_list
 ;;
 
 module Server = struct
   module Rpc = Action_plugin.Rpc
   module Build_deps = Dune_rpc.Procedures.Public.Action_plugin.Build_deps
+
+  module Initialize_response =
+    Dune_rpc.Procedures.Public.Action_plugin.Initialize_response
+
   module Handler = Root.Rpc.Server.Handler
 
   type active =
     { build_deps : Dep.Set.t -> unit Fiber.t
     ; rule_loc : Loc.t
-    ; working_dir : Path.t
+    ; root : Path.t
     ; mutable initialized : bool
     ; mutable pending : unit Fiber.Ivar.t list
     }
@@ -61,15 +66,11 @@ module Server = struct
               ()))
   ;;
 
-  let with_active ~(ectx : context) ~(eenv : env) f =
+  let with_active ~(ectx : context) f =
+    let { Action.Ext.Exec.build_deps; rule_loc; root; _ } = ectx in
     let action_id = Action_id.gen () in
     let active_action =
-      { build_deps = ectx.build_deps
-      ; rule_loc = ectx.rule_loc
-      ; working_dir = Path.drop_optional_sandbox_root eenv.working_dir
-      ; initialized = false
-      ; pending = []
-      }
+      { build_deps; rule_loc; root; initialized = false; pending = [] }
     in
     Action_id.Table.add_exn active action_id active_action;
     Fiber.finalize
@@ -91,10 +92,8 @@ module Server = struct
       | { Exn_with_backtrace.exn; _ } :: _ -> exception_message exn
     in
     fun _session { Build_deps.action_id; deps } ->
-      let active = find_active action_id in
-      let deps_to_build =
-        to_dune_dep_set deps ~loc:active.rule_loc ~working_dir:active.working_dir
-      in
+      let ({ rule_loc; root; _ } as active) = find_active action_id in
+      let deps_to_build = to_dune_dep_set deps ~loc:rule_loc ~root in
       let open Fiber.O in
       let completed = Fiber.Ivar.create () in
       active.pending <- completed :: active.pending;
@@ -108,9 +107,11 @@ module Server = struct
   ;;
 
   let initialize _session action_id =
-    let active = find_active action_id in
+    let ({ root; _ } as active) = find_active action_id in
     active.initialized <- true;
-    Fiber.return ()
+    (* Match Sys.getcwd even when the build directory is a symlink. *)
+    let root = Unix.realpath (Path.to_absolute_filename root) in
+    Fiber.return { Initialize_response.root }
   ;;
 
   let implement_handler handler =
@@ -122,7 +123,7 @@ end
 let exec ~(ectx : context) ~(eenv : env) prog args =
   let open Fiber.O in
   let prog_name = Path.reach ~from:eenv.working_dir prog in
-  Server.with_active ~ectx ~eenv (fun action_id active_action ->
+  Server.with_active ~ectx (fun action_id active_action ->
     let env =
       let where =
         match Root.Rpc.Where.default () with

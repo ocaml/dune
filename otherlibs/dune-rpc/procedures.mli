@@ -24,7 +24,15 @@ module Public : sig
       val conv : t Conv.value
     end
 
-    val initialize : (Action_id.t, unit) Decl.Request.t
+    module Initialize_response : sig
+      (** [root] is the absolute path of the action's sandbox-mapped build-context
+          root. Dependency paths are relative to this root. *)
+      type t = { root : string }
+
+      val conv : t Conv.value
+    end
+
+    val initialize : (Action_id.t, Initialize_response.t) Decl.Request.t
     val build_deps : (Build_deps.t, string option) Decl.Request.t
   end
 end

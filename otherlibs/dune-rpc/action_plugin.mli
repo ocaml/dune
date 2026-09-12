@@ -18,7 +18,11 @@ end
 
 module Rpc : sig
   val action_id_env_variable : Stdune.Env.Var.t
-  val initialize : (Action_id.t, unit) Types.Decl.Request.t
+
+  val initialize
+    : ( Action_id.t
+        , Procedures.Public.Action_plugin.Initialize_response.t )
+        Types.Decl.Request.t
 
   val build_deps
     : (Procedures.Public.Action_plugin.Build_deps.t, string option) Types.Decl.Request.t

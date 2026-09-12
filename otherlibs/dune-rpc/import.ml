@@ -19,6 +19,7 @@ include struct
   module Fdecl = Fdecl
   module Univ_map = Univ_map
   module Comparable_intf = Comparable_intf
+  module Filename = Filename
 
   module Path = struct
     (* we don't want to depend on build or source directories here *)

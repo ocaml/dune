@@ -326,7 +326,7 @@ let exec
       let+ facts = build_deps deps in
       dynamic_deps_stages := (deps, facts) :: !dynamic_deps_stages
     in
-    { targets; metadata; context; sandbox; rule_loc; build_deps }
+    { targets; root; metadata; context; sandbox; rule_loc; build_deps }
   and eenv =
     let env =
       match

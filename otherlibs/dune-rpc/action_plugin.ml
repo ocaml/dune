@@ -181,6 +181,9 @@ let run_context () =
   | Some action_id, _ ->
     let where =
       match Where.of_env Env.initial with
+      | Ok (`Unix socket) when not (Filename.is_relative socket) ->
+        let dir = relative_dir ~root:(Sys.getcwd ()) (Filename.dirname socket) in
+        `Unix (Filename.concat dir (Filename.basename socket))
       | Ok where -> where
       | Error `Missing -> Error.raise "unable to find a dune rpc server"
       | Error (`Exn exn) ->

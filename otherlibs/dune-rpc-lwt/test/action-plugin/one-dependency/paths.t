@@ -91,8 +91,10 @@ may start in a different directory while sharing the same action ID.
   $ cat _build/default/parent-output
   launch
   $ dune build helper-output > helper.log 2>&1; echo $?
-  1
+  0
   $ cat _build/default/helper-output
+  second
+  
 
 The same cold read must work in sandboxes, without prebuilding the input or
 assuming the sandbox has the same root as the canonical build tree.

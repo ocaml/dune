@@ -27,6 +27,5 @@ val examine_targets_and_store
   :  can_go_in_shared_cache:bool
   -> loc:Loc.t
   -> rule_digest:Digest.t
-  -> should_remove_write_permissions_on_generated_files:bool
   -> produced_targets:unit Targets.Produced.t
   -> Digest.t Targets.Produced.t Fiber.t

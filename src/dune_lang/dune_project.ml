@@ -788,8 +788,6 @@ let update_execution_parameters t ep =
        (if t.map_workspace_root then Set "/workspace_root" else Unset)
   |> Execution_parameters.set_action_project_root
        (if t.dune_version >= (3, 23) then Some t.root else None)
-  |> Execution_parameters.set_should_remove_write_permissions_on_generated_files
-       (t.dune_version >= (2, 4))
   |> Execution_parameters.set_use_sandbox_policy (t.dune_version >= (3, 25))
 ;;
 

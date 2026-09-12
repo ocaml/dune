@@ -67,8 +67,10 @@ given ``%``. This might be supported in the future.
 After a rule's action exits, Dune records the produced targets. It must be able
 to read every target, including files inside directory targets. Dune also
 removes write permissions from generated files in the build directory before
-recording them. Actions may write their targets while they run, but generated
-targets should be treated as immutable once the rule finishes.
+recording them, regardless of the project's Dune language version or whether the
+shared cache is enabled. Executable permissions are preserved. Actions may write
+their targets while they run, but generated targets should be treated as immutable
+once the rule finishes.
 
 .. _modes:
 

@@ -1,14 +1,22 @@
-If an action does not respect the dependency specification, it results in a broken
-build. Dune fails to detect that:
+An action cannot overwrite another rule's completed target, even with an old
+Dune language version:
 
   $ echo '(lang dune 1.12)' > dune-project
   $ true > dune
   $ echo '(rule (target a) (deps) (action (bash "echo a | dune_cmd tee a > b")))' >> dune
   $ echo '(rule (target b) (deps) (action (bash "echo b | dune_cmd tee a > b")))' >> dune
   $ echo '(rule (target c) (deps a b) (action (bash "cat a b > c")))' >> dune
+  $ dune build a
   $ dune build c
-  $ tail -1 _build/default/c
-  b
+  File "dune", line 2, characters 0-70:
+  2 | (rule (target b) (deps) (action (bash "echo b | dune_cmd tee a > b")))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Fatal error: exception Sys_error("$TESTCASE_ROOT/_build/default/a: Permission denied")
+  [1]
+  $ dune_cmd exists _build/default/c
+  false
+
+Correcting the rules allows the build to succeed:
 
   $ true > dune
   $ echo '(rule (target a) (deps) (action (bash "echo a > a")))' >> dune
@@ -18,12 +26,8 @@ build. Dune fails to detect that:
   $ tail -1 _build/default/c
   b
 
-(The first invocation's result depends on execution order, but the second
-invocation is clearly broken — it uses a wrongly cached result since the last
-line should be "b" from rule b, yet the rules were replaced)
-
-These rules clearly depend on sandboxing. Specifying that makes the build
-well-behaved:
+Sandboxing also allows the original rules to succeed by isolating their
+undeclared writes:
 
   $ rm -rf _build
   $ true > dune

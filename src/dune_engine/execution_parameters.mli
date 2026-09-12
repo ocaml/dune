@@ -5,8 +5,6 @@ open Action_types
 
 (** Such as:
 
-    - should targets be set read-only?
-
     - should aliases be expanded when sandboxing rules?
 
     - should actions receive a project-root path via [DUNE_PROJECT_ROOT]?
@@ -56,7 +54,6 @@ val set_workspace_root_to_build_path_prefix_map
   -> t
 
 val set_action_project_root : Path.Source.t option -> t -> t
-val set_should_remove_write_permissions_on_generated_files : bool -> t -> t
 val set_sandbox_actions : bool -> t -> t
 val set_use_sandbox_policy : bool -> t -> t
 
@@ -65,7 +62,6 @@ val default : t Memo.t
 
 (** {1 Accessors} *)
 
-val should_remove_write_permissions_on_generated_files : t -> bool
 val expand_aliases_in_sandbox : t -> bool
 val action_stdout_on_success : t -> Action_output_on_success.t
 val action_stderr_on_success : t -> Action_output_on_success.t

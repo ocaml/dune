@@ -1,23 +1,24 @@
-In this test the "x" alias depends on the file "data" but the action
-associated to "x" appends a line to "data". The expected behavior is
-an error from Dune telling the user that this is not allowed, however
-Dune currently silently ignores this.
+The "x" alias depends on "data" but attempts to append to it. The write fails
+because dependencies are read-only, even with Dune language version 1.0.
+The action still succeeds because its final touch command succeeds.
 
+Normalize the shell-specific prefix of the error message.
+
+  $ build () {
+  >   dune build @x 2>&1 | sed 's/^.*data: Permission denied$/data: Permission denied/'
+  > }
   $ echo hello > data
-  $ dune build @x
+  $ build
+  data: Permission denied
   $ cat _build/default/data
-  hello
   hello
 
-  $ dune build @x
+  $ build
+  data: Permission denied
   $ cat _build/default/data
-  hello
-  hello
   hello
 
-  $ dune build @x
+  $ build
+  data: Permission denied
   $ cat _build/default/data
-  hello
-  hello
-  hello
   hello

@@ -1,5 +1,5 @@
-Legacy projects currently leave write permissions alone without the shared cache.
-This is inconsistent with builds using the cache.
+Even legacy projects remove all write permissions from generated files without
+caching, while preserving executable bits.
 
   $ export DUNE_CACHE=disabled
   $ umask 022
@@ -20,9 +20,9 @@ This is inconsistent with builds using the cache.
   > EOF
   $ dune build --root 2.3 target tool
   $ dune_cmd stat permissions 2.3/_build/default/target
-  666
+  444
   $ dune_cmd stat permissions 2.3/_build/default/tool
-  777
+  555
 
 Both cache storage modes remove write permissions on a miss and on a hit.
 Executable bits are preserved.

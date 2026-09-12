@@ -41,7 +41,6 @@ type t =
   ; expand_aliases_in_sandbox : bool
   ; workspace_root_to_build_path_prefix_map : Workspace_root_for_build_prefix_map.t
   ; action_project_root : Path.Source.t option
-  ; should_remove_write_permissions_on_generated_files : bool
   ; sandbox_actions : bool
   ; use_sandbox_policy : bool
   }
@@ -54,7 +53,6 @@ let equal
       ; expand_aliases_in_sandbox
       ; workspace_root_to_build_path_prefix_map
       ; action_project_root
-      ; should_remove_write_permissions_on_generated_files
       ; sandbox_actions
       ; use_sandbox_policy
       }
@@ -69,9 +67,6 @@ let equal
        workspace_root_to_build_path_prefix_map
        t.workspace_root_to_build_path_prefix_map
   && Option.equal Path.Source.equal action_project_root t.action_project_root
-  && Bool.equal
-       should_remove_write_permissions_on_generated_files
-       t.should_remove_write_permissions_on_generated_files
   && Bool.equal sandbox_actions t.sandbox_actions
   && Bool.equal use_sandbox_policy t.use_sandbox_policy
 ;;
@@ -86,7 +81,6 @@ let digest
       ; expand_aliases_in_sandbox
       ; workspace_root_to_build_path_prefix_map
       ; action_project_root
-      ; should_remove_write_permissions_on_generated_files
       ; sandbox_actions
       ; use_sandbox_policy
       }
@@ -102,9 +96,8 @@ let digest
     lor (Action_output_on_success.for_digest action_stderr_on_success lsl 2)
     lor (bool_to_int expand_aliases_in_sandbox lsl 4)
     lor (bool_to_int root_is_set lsl 5)
-    lor (bool_to_int should_remove_write_permissions_on_generated_files lsl 6)
-    lor (bool_to_int sandbox_actions lsl 7)
-    lor (bool_to_int use_sandbox_policy lsl 8)
+    lor (bool_to_int sandbox_actions lsl 6)
+    lor (bool_to_int use_sandbox_policy lsl 7)
   in
   Digest.Manual.int d flags;
   Digest.Manual.int d action_stdout_limit;
@@ -127,7 +120,6 @@ let make
       ~expand_aliases_in_sandbox
       ~workspace_root_to_build_path_prefix_map
       ~action_project_root
-      ~should_remove_write_permissions_on_generated_files
       ~sandbox_actions
       ~use_sandbox_policy
   =
@@ -138,7 +130,6 @@ let make
   ; expand_aliases_in_sandbox
   ; workspace_root_to_build_path_prefix_map
   ; action_project_root
-  ; should_remove_write_permissions_on_generated_files
   ; sandbox_actions
   ; use_sandbox_policy
   }
@@ -165,10 +156,6 @@ let repr =
         "action_project_root"
         Repr.(option Path.Source.repr)
         ~get:(fun t -> t.action_project_root)
-    ; Repr.field
-        "should_remove_write_permissions_on_generated_files"
-        Repr.bool
-        ~get:(fun t -> t.should_remove_write_permissions_on_generated_files)
     ; Repr.field "sandbox_actions" Repr.bool ~get:(fun t -> t.sandbox_actions)
     ; Repr.field "use_sandbox_policy" Repr.bool ~get:(fun t -> t.use_sandbox_policy)
     ]
@@ -184,7 +171,6 @@ let builtin_default =
     ~workspace_root_to_build_path_prefix_map:
       (Workspace_root_for_build_prefix_map.Set "/workspace_root")
     ~action_project_root:None
-    ~should_remove_write_permissions_on_generated_files:true
     ~sandbox_actions:false
     ~use_sandbox_policy:false
 ;;
@@ -200,11 +186,6 @@ let set_workspace_root_to_build_path_prefix_map x t =
 let set_action_project_root x t = { t with action_project_root = x }
 let set_sandbox_actions x t = { t with sandbox_actions = x }
 let set_use_sandbox_policy x t = { t with use_sandbox_policy = x }
-
-let set_should_remove_write_permissions_on_generated_files x t =
-  { t with should_remove_write_permissions_on_generated_files = x }
-;;
-
 let expand_aliases_in_sandbox t = t.expand_aliases_in_sandbox
 let workspace_root_to_build_path_prefix_map t = t.workspace_root_to_build_path_prefix_map
 let action_stdout_on_success t = t.action_stdout_on_success
@@ -213,11 +194,6 @@ let action_stdout_limit t = t.action_stdout_limit
 let action_stderr_limit t = t.action_stderr_limit
 let action_project_root t = t.action_project_root
 let use_sandbox_policy t = t.use_sandbox_policy
-
-let should_remove_write_permissions_on_generated_files t =
-  t.should_remove_write_permissions_on_generated_files
-;;
-
 let default = Fdecl.create Dyn.opaque
 let init t = Fdecl.set default t
 

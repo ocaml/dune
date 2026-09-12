@@ -22,11 +22,14 @@ val find_exn : Context_name.t -> t Memo.t
 
 val to_dyn : t -> Dyn.t
 val context : t -> Context.t
-
-(** Context env with additional variables computed from packages *)
-val context_env : t -> Env.t Memo.t
-
 val env_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
+
+(** Context env with additional variables computed from packages. Only the
+    lockdir packages visible to the dir (through depends on the owning package)
+    are on PATH. *)
+val context_env_by_dir : t -> dir:Path.Build.t -> Env.t Memo.t
+
+val artifacts_host : t -> dir:Path.Build.t -> Artifacts.t Memo.t
 
 val add_rule
   :  t

@@ -1,7 +1,7 @@
-In Lock-kind contexts, [%{bin:X}] and [%{bin-available:X}] resolution falls
-through to [Pkg_rules.which] via [Context.which]. [Pkg_rules.which] currently
-scans every lockdir package's binary index, so any binary installed by any
-locked package is discoverable from any stanza.
+In a context with a lock directory, [%{bin:X}] and [%{bin-available:X}] used to
+search every package in the lock directory, which meant building all of them.
+They now search only the transitive closure of the owning package's
+[(depends ...)] field, so only those packages are built.
 
   $ make_lockdir
 
@@ -37,7 +37,7 @@ Another lockdir package [check-env] that installs a binary [check-env]:
   >  ))
   > EOF
 
-With the current full-lockdir lookup, [check-env] is found and the rule is
+With the default full-lockdir lookup, [check-env] is found and the rule is
 enabled & [mybin] is found and executed, without the need for explicitly
 declaring any package dependencies:
 
@@ -73,7 +73,7 @@ The rule depends on the binary from the provider lockdir package:
   $ dune rules --format=json @test | jq_dune '.[] | ruleDepFilePaths' | censor
   "_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target/bin/mybin"
 
-All the packages' bin layouts are added to $PATH:
+All the packages' bin directories are added to $PATH:
 
   $ cat _build/default/system-mybin-output
   from provider
@@ -81,7 +81,6 @@ All the packages' bin layouts are added to $PATH:
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
   $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
-
 
 With a package defined in the project, *without a dir field*, the behavior is
 the same.
@@ -99,7 +98,7 @@ the same.
   $ cat _build/default/mybin-output
   from provider
 
-All the packages' bin layouts are added to $PATH:
+All the packages' bin directories are added to $PATH:
 
   $ cat _build/default/system-mybin-output
   from provider
@@ -108,9 +107,9 @@ All the packages' bin layouts are added to $PATH:
   $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
   $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
 
-
 With a package defined in the project, *with a dir field, but no dependencies*,
-the behavior is still the same.
+the program mybin is not found in PATH or via the bin pform, since the rule for
+building it gets disabled:
 
   $ make_dune_project 3.24
   $ cat >> dune-project << 'EOF'
@@ -124,22 +123,24 @@ the behavior is still the same.
   $ dune build @all
 
   $ cat _build/default/mybin-output
-  from provider
+  cat: _build/default/mybin-output: No such file or directory
+  [1]
 
-All the packages' bin layouts are added to $PATH:
+The rules adding a dependency on the lock dir and for building [mybin] are
+disabled.
 
   $ cat _build/default/system-mybin-output
-  from provider
+  cat: _build/default/system-mybin-output: No such file or directory
+  [1]
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
-
-
-
+  cat: _build/default/path-output: No such file or directory
+  
 
 With a package defined in the project, *with a dir field, and explicit depends
-on only [check-env]*, the behavior remains the same.
+on only [check-env]*, the program mybin is not found via the bin pform or on
+the PATH.
+
 
   $ make_dune_project 3.24
   $ cat >> dune-project << 'EOF'
@@ -151,23 +152,43 @@ on only [check-env]*, the behavior remains the same.
   > EOF
 
   $ dune clean
-  $ dune build @all
+  $ dune build @all 2>&1 | dune_cmd subst '.*/bin/sh([:0-9 ]|line)*:' '$SH:' | dune_cmd subst 'command not found' 'not found'
+  File "dune", line 10, characters 37-49:
+  10 |    (with-stdout-to mybin-output (run %{bin:mybin}))))
+                                            ^^^^^^^^^^^^
+  Error: Program mybin not found in the tree or in PATH
+   (context: default)
+  Hint: add a dependency on the package installing "mybin" to this package
+  [1]
 
   $ cat _build/default/mybin-output
-  from provider
+  cat: _build/default/mybin-output: No such file or directory
+  [1]
 
-All the packages' bin layouts are added to $PATH:
+The narrowed PATH does not include [provider], since it is not in [mypkg]'s
+dependencies. But the [@test-sys] rule declares [(deps (package provider))],
+which adds that package's install root to the action's environment, so the bare
+name resolves.
+
+  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
+  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST/target/bin
 
   $ cat _build/default/system-mybin-output
   from provider
 
-  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
+The [(deps (package provider))] declaration on [@test-sys] is an independent,
+action-level dependency. Its documented meaning is to build [provider] and add
+that package's install roots to the action environment. Building that alias in
+isolation shows that the package is built and the binary can be found on PATH:
 
+  $ dune build @test-sys 2>&1
+
+  $ cat _build/default/system-mybin-output
+  from provider
 
 With a package defined in the project, *with a dir field, and explicit depends
-on only [provider]*, the behavior remains the same.
+on only [provider]*, the rules for building [mybin] are disabled since the
+[check-env] binary is not available.
 
   $ make_dune_project 3.24
   $ cat >> dune-project << 'EOF'
@@ -182,22 +203,22 @@ on only [provider]*, the behavior remains the same.
   $ dune build @all
 
   $ cat _build/default/mybin-output
-  from provider
-
-All the packages' bin layouts are added to $PATH:
+  cat: _build/default/mybin-output: No such file or directory
+  [1]
 
   $ cat _build/default/system-mybin-output
-  from provider
+  cat: _build/default/system-mybin-output: No such file or directory
+  [1]
+
+The path output is not generated since the check-env package is missing from (depends ...):
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
-
-
-
+  cat: _build/default/path-output: No such file or directory
+  
 
 With a package defined in the project, *with a dir field, and explicit depends
-on both [check-env] and [provider]*, the behavior remains the same.
+on both [check-env] and [provider]*, mybin is found both on the PATH and via
+the bin pform.
 
   $ make_dune_project 3.24
   $ cat >> dune-project << 'EOF'
@@ -214,7 +235,7 @@ on both [check-env] and [provider]*, the behavior remains the same.
   $ cat _build/default/mybin-output
   from provider
 
-All the packages' bin layouts are added to $PATH:
+The bin directories of all the packages we depend on are added to $PATH:
 
   $ cat _build/default/system-mybin-output
   from provider
@@ -222,3 +243,30 @@ All the packages' bin layouts are added to $PATH:
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
   $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
+
+  $ cat >>dune <<'EOF'
+  > (rule
+  >  (alias test-run-literal)
+  >  (enabled_if %{bin-available:check-env})
+  >  (deps (package provider))
+  >  (action
+  >   (with-stdout-to literal-output (run mybin))))
+  > (rule
+  >  (alias test-run-pform)
+  >  (enabled_if %{bin-available:check-env})
+  >  (deps (package provider))
+  >  (action
+  >   (with-stdout-to pform-output (run %{bin:mybin}))))
+  > EOF
+
+  $ dune clean
+
+  $ dune build @test-run-literal
+
+  $ cat _build/default/literal-output
+  from provider
+
+  $ dune build @test-run-pform
+
+  $ cat _build/default/pform-output
+  from provider

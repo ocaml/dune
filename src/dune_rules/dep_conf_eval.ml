@@ -129,7 +129,16 @@ let make_bin_env expander bin_names =
         (let open Memo.O in
          Expander.host_context expander >>| Context.name)
     in
-    let* layout = Action_builder.of_memo (Bin_layout.create context ~dir bin_names) in
+    (* Resolve through the artifacts of [dir] not the context-wide database. *)
+    let* artifacts =
+      Action_builder.of_memo
+        (let open Memo.O in
+         let* sctx = Super_context.find_exn (Expander.context expander) in
+         Super_context.artifacts_host sctx ~dir)
+    in
+    let* layout =
+      Action_builder.of_memo (Bin_layout.create context ~artifacts ~dir bin_names)
+    in
     (match layout with
      | None -> Action_builder.return Env.empty
      | Some (layout_dir, files) ->
@@ -336,10 +345,30 @@ and combined_package_deps_builder expander pkgs =
       | _ -> None)
     |> Package.Name.Set.of_list
   in
+  let lockdir_package_names =
+    List.filter_map classified ~f:(fun (_, pkg, found) ->
+      match found with
+      | Some (Package_db.Build _) -> Some pkg
+      | _ -> None)
+    |> Package.Name.Set.of_list
+  in
   let* env =
-    if Package.Name.Set.is_empty local_package_names
-    then Action_builder.return Env.empty
-    else Install_layout.env context.name local_package_names
+    let* local_env =
+      if Package.Name.Set.is_empty local_package_names
+      then Action_builder.return Env.empty
+      else Install_layout.env context.name local_package_names
+    in
+    if Package.Name.Set.is_empty lockdir_package_names
+    then Action_builder.return local_env
+    else
+      let+ lockdir_env =
+        Action_builder.of_memo
+          (Pkg_rules.env_for_packages
+             ~packages:(Some lockdir_package_names)
+             ~direct_only:true
+             context.name)
+      in
+      Install.Roots.extend_env_concat_path_vars lockdir_env local_env
   in
   let dune_version = Expander.project expander |> Dune_project.dune_version in
   let+ () =

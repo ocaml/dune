@@ -55,7 +55,7 @@ let sandbox_action dap =
     Lwt_io.fprintf output "%s\n%s\n%s\n" data (String.concat ", " listing) static)
 ;;
 
-let detached_action dap state =
+let detached_action dap state ~cancel =
   let open Lwt.Syntax in
   let* () =
     Lwt_io.with_file ~mode:Output (Filename.concat state "pid") (fun output ->
@@ -68,9 +68,9 @@ let detached_action dap state =
       let* () = Lwt_unix.sleep 0.01 in
       wait_started ()
   in
-  let* () =
-    Lwt.choose [ Lwt.map ignore (read_file dap ~path:"slow-input"); wait_started () ]
-  in
+  let pending = read_file dap ~path:"slow-input" in
+  let* () = Lwt.choose [ Lwt.map ignore pending; wait_started () ] in
+  if cancel then Lwt.cancel pending;
   let* () =
     Lwt_io.with_file ~mode:Output "detached" (fun output -> Lwt_io.write output "done")
   in
@@ -178,7 +178,8 @@ let action dap =
   | [| _ |] -> ordinary_action dap ~path:"some_dependency"
   | [| _; "read"; path |] -> ordinary_action dap ~path
   | [| _; "sandbox" |] -> sandbox_action dap
-  | [| _; "detached"; state |] -> detached_action dap state
+  | [| _; "detached"; state |] -> detached_action dap state ~cancel:false
+  | [| _; "cancelled"; state |] -> detached_action dap state ~cancel:true
   | [| _; "hold"; connection; release |] -> held_action dap ~connection ~release
   | [| _; "initialize" |] -> Lwt.return_unit
   | [| _; "exit"; code |] -> exit (int_of_string code)

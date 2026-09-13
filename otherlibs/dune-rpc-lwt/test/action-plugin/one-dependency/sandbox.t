@@ -133,6 +133,24 @@ Their dependencies are recorded in the cached action result.
   $ cat _build-lifetime/default/slow-input
   second
 
+Cancelling the Lwt promise does not discard a request already accepted by Dune.
+Accepted requests still finish before sandbox cleanup and retain their
+invalidation dependencies.
+
+  $ sed 's/foo.exe detached/foo.exe cancelled/' dune > dune.new
+  $ mv dune.new dune
+  $ rm -f "$state/pid" "$state/started"
+  $ printf third > control
+  $ build_detached
+  ran
+  $ find _build-lifetime/.sandbox -name slow-input -exec echo leaked \;
+  $ rm "$state/pid" "$state/started"
+  $ printf fourth > control
+  $ build_detached
+  ran
+  $ cat _build-lifetime/default/slow-input
+  fourth
+
 Patch-back must track directories populated by dynamic requests, including
 parents created along the way. The input is not a static dependency, so its
 directories are absent from the initial sandbox. Deleting them after the

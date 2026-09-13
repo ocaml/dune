@@ -7,4 +7,4 @@ let action dap =
   Lwt_io.print (source1 ^ source2)
 ;;
 
-let () = run action
+let () = Lwt_main.run (run action)

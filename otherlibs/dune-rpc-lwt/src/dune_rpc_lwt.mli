@@ -33,8 +33,9 @@ module V1 : sig
     (** Relative paths use the current directory at the time of the call. *)
     val read_directory_with_glob : t -> path:string -> glob:Glob.t -> string list Lwt.t
 
-    (** Run a dynamic action using Lwt for RPC communication. This function never
-        returns. When run outside Dune, dependencies are assumed to be available. *)
-    val run : (t -> unit Lwt.t) -> 'a
+    (** Run a dynamic action without driving the event loop or exiting the
+        process. Errors propagate to the caller. When run outside Dune,
+        dependencies are assumed to be available. *)
+    val run : (t -> unit Lwt.t) -> unit Lwt.t
   end
 end

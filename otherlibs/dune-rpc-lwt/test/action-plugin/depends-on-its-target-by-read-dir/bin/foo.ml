@@ -7,4 +7,4 @@ let action dap =
   Lwt.return_unit
 ;;
 
-let () = run action
+let () = Lwt_main.run (run action)

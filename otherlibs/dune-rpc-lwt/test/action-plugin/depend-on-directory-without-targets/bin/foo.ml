@@ -7,4 +7,9 @@ let action dap =
   Lwt_io.printf "Directory listing: [%s]" (String.concat "; " listing)
 ;;
 
-let () = run action
+let () =
+  try Lwt_main.run (run action) with
+  | Error.E message ->
+    prerr_endline message;
+    exit 1
+;;

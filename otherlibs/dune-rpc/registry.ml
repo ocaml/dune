@@ -14,20 +14,20 @@ module Dune = struct
   module T = struct
     type t =
       { root : string
-      ; pid : int
+      ; pid : Pid.t
       ; where : Where.t
       }
 
     let compare t { root; pid; where } =
       let open Ordering.O in
-      let= () = Int.compare t.pid pid in
+      let= () = Pid.compare t.pid pid in
       let= () = String.compare t.root root in
       Where.compare t.where where
     ;;
 
     let to_dyn { root; pid; where } =
       let open Dyn in
-      record [ "root", string root; "pid", int pid; "where", Where.to_dyn where ]
+      record [ "root", string root; "pid", Pid.to_dyn pid; "where", Where.to_dyn where ]
     ;;
   end
 
@@ -38,8 +38,8 @@ module Dune = struct
   let create ~where ~root ~pid = { where; root; pid }
   let root t = t.root
   let where t = t.where
-  let pid t = t.pid
-  let filename dune = Printf.sprintf "%d.csexp" dune.pid
+  let pid t = Pid.to_int t.pid
+  let filename dune = Printf.sprintf "%d.csexp" (Pid.to_int dune.pid)
 
   let sexp : t Conv.value =
     let open Conv in
@@ -47,7 +47,7 @@ module Dune = struct
     let from { where; root; pid } = where, root, pid in
     let where = field "where" (required Where.sexp) in
     let root = field "root" (required string) in
-    let pid = field "pid" (required int) in
+    let pid = field "pid" (required Pid.conv) in
     iso (record (three where root pid)) to_ from
   ;;
 

@@ -15,7 +15,7 @@ module Dune : sig
   val compare : t -> t -> Ordering.t
   val root : t -> string
   val pid : t -> int
-  val create : where:Where.t -> root:string -> pid:int -> t
+  val create : where:Where.t -> root:string -> pid:Pid.t -> t
 
   type error =
     | Of_sexp of Conv.error

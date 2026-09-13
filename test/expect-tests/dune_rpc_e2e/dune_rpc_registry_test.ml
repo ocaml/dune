@@ -93,7 +93,9 @@ let%expect_test "poll skips scans after the registry mtime changes" =
           (List.length (Registry.current registry))
     in
     let* () = poll "initial" in
-    let dune = Registry.Dune.create ~where:(`Unix "rpc") ~root:"." ~pid:1 in
+    let dune =
+      Registry.Dune.create ~where:(`Unix "rpc") ~root:"." ~pid:(Pid.of_int_exn 1)
+    in
     let (`Caller_should_write file) = Registry.Config.register config dune in
     IO.file := Some file;
     IO.mtime := 1.0;

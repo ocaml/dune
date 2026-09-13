@@ -31,7 +31,7 @@ let register t =
     let (`Caller_should_write { Dune_rpc.Registry.File.path; contents }) =
       let registry_config = Dune_rpc.Registry.Config.create (Lazy.force Dune_util.xdg) in
       let dune =
-        let pid = Unix.getpid () in
+        let pid = Pid.me () in
         let where = normalize_where t.where in
         Dune_rpc.Registry.Dune.create ~where ~root:t.root ~pid
       in

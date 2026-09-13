@@ -1,6 +1,5 @@
-Multiple dynamic invocations should retain their own working directories and
-track all discovered dependencies. Currently both sequential and concurrent
-composition are rejected while loading the rules.
+Multiple dynamic invocations retain their own working directories and track
+all discovered dependencies.
 
   $ cat > dune-project <<'EOF'
   > (lang dune 3.8)
@@ -27,9 +26,8 @@ A single invocation discovers its generated input from the changed directory.
   $ cat _build/default/single; echo
   left
 
-Sequential invocations should concatenate both inputs and rebuild when a
-read dependency changes. The rejection also blocks unrelated aliases in the
-same dune file.
+Sequential invocations concatenate both inputs and rebuild when a read
+dependency changes. Unrelated aliases in the same dune file can also run.
 
   $ cat > dune <<'EOF'
   > (rule
@@ -42,40 +40,16 @@ same dune file.
   > (rule (alias unused) (action (echo unused)))
   > EOF
   $ dune build @unused
-  File "dune", lines 4-7, characters 2-125:
-  4 |   (with-stdout-to sequential
-  5 |    (progn
-  6 |     (chdir left (dynamic-run ../foo.exe))
-  7 |     (chdir right (dynamic-run ../foo.exe))))))
-  Error: Multiple 'dynamic-run' commands within single action are not
-  supported.
-  [1]
+  unused
   $ dune build -j 4 sequential
-  File "dune", lines 4-7, characters 2-125:
-  4 |   (with-stdout-to sequential
-  5 |    (progn
-  6 |     (chdir left (dynamic-run ../foo.exe))
-  7 |     (chdir right (dynamic-run ../foo.exe))))))
-  Error: Multiple 'dynamic-run' commands within single action are not
-  supported.
-  [1]
   $ test -f _build/default/sequential && { cat _build/default/sequential; echo; }
-  [1]
+  leftright
   $ printf changed > right/source
   $ dune build -j 4 sequential
-  File "dune", lines 4-7, characters 2-125:
-  4 |   (with-stdout-to sequential
-  5 |    (progn
-  6 |     (chdir left (dynamic-run ../foo.exe))
-  7 |     (chdir right (dynamic-run ../foo.exe))))))
-  Error: Multiple 'dynamic-run' commands within single action are not
-  supported.
-  [1]
   $ test -f _build/default/sequential && { cat _build/default/sequential; echo; }
-  [1]
+  leftchanged
 
-Test concurrent invocations separately so the sequential rule's rejection
-does not mask their behavior.
+Concurrent invocations also track both dependencies.
 
   $ printf right > right/source
   $ cat > dune <<'EOF'
@@ -87,25 +61,11 @@ does not mask their behavior.
   >    (with-stdout-to right-out (chdir right (dynamic-run ../foo.exe))))))
   > EOF
   $ dune build -j 4 left-out right-out
-  File "dune", lines 4-6, characters 2-150:
-  4 |   (concurrent
-  5 |    (with-stdout-to left-out (chdir left (dynamic-run ../foo.exe)))
-  6 |    (with-stdout-to right-out (chdir right (dynamic-run ../foo.exe))))))
-  Error: Multiple 'dynamic-run' commands within single action are not
-  supported.
-  [1]
   $ test -f _build/default/left-out && test -f _build/default/right-out &&
   > { cat _build/default/left-out _build/default/right-out; echo; }
-  [1]
+  leftright
   $ printf changed > right/source
   $ dune build -j 4 left-out right-out
-  File "dune", lines 4-6, characters 2-150:
-  4 |   (concurrent
-  5 |    (with-stdout-to left-out (chdir left (dynamic-run ../foo.exe)))
-  6 |    (with-stdout-to right-out (chdir right (dynamic-run ../foo.exe))))))
-  Error: Multiple 'dynamic-run' commands within single action are not
-  supported.
-  [1]
   $ test -f _build/default/left-out && test -f _build/default/right-out &&
   > { cat _build/default/left-out _build/default/right-out; echo; }
-  [1]
+  leftchanged

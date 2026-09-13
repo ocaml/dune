@@ -121,9 +121,6 @@ val map
   -> blang:(Slang.Blang.t -> Slang.Blang.t)
   -> t
 
-(** Raises User_error on invalid action. *)
-val validate : loc:Loc.t -> t -> unit
-
 val compare_no_locs : t -> t -> Ordering.t
 val equal_no_locs : t -> t -> bool
 val repr : t Repr.t

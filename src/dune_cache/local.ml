@@ -45,16 +45,10 @@ module Restore_result = struct
 end
 
 let restore_file_content path : string Restore_result.t =
-  match Io.read_file ~binary:false path with
+  match Io.read_file ~binary:true path with
   | Ok contents -> Restored contents
-  | Error (Sys_error (_some_error_message : string)) ->
-    (* CR-someday amokhov: [Io.read_file] in text mode doesn't return "typed"
-       errors like [Unix_error], so we guess that the error means "file not found".
-       Can we make the API of [Io] more precise? *)
-    Not_found_in_cache
-  | Error e ->
-    (* This code path might be unreachable until the above is resolved. *)
-    Error e
+  | Error (Unix.Unix_error (ENOENT, _, _)) -> Not_found_in_cache
+  | Error e -> Error e
 ;;
 
 let restore_metadata_file file ~of_sexp : _ Restore_result.t =

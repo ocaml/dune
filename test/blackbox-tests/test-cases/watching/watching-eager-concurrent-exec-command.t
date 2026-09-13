@@ -7,9 +7,7 @@ Demonstrate running "dune exec" concurrently with an eager rpc server.
 
 Just watch the readme file so we don't accidentally build foo.exe before
 testing the --no-build option:
-  $ dune build README.md --watch &
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
+  $ dune build README.md --watch > .#dune-output 2>&1 &
 
 Make sure the RPC server is properly started:
   $ dune rpc ping --wait
@@ -43,6 +41,12 @@ Demonstrate running an executable via an absolute path:
 
   $ dune shutdown
   $ wait
+
+The number of watch status messages depends on the timing of the RPC build.
+Only check that the server completed a build successfully:
+
+  $ grep -m1 '^Success, waiting for filesystem changes' .#dune-output
+  Success, waiting for filesystem changes...
 
 Demonstrate starting "dune exec --watch" when no other watch server is running.
 The watch server started by exec also accepts build requests forwarded from

@@ -68,7 +68,10 @@ let spawn_and_capture ?env ~prog ~argv ~cwd () =
         | Some { status; _ } -> status
         | None -> Code_error.raise "child process disappeared" []
       in
-      { status; stdout = Io.read_file stdout_path; stderr = Io.read_file stderr_path }))
+      { status
+      ; stdout = Io.read_file_exn stdout_path
+      ; stderr = Io.read_file_exn stderr_path
+      }))
 ;;
 
 let with_chdir dir ~f =
@@ -102,7 +105,7 @@ let run_dune ?env root argv =
       ]
 ;;
 
-let write_file root name contents = Io.write_file (Path.relative root name) contents
+let write_file root name contents = Io.write_file_exn (Path.relative root name) contents
 
 let setup_project root { wrapped; stubs } =
   write_file

@@ -18,7 +18,7 @@ module Test = struct
 
   let file t ~fname ~contents =
     let path = Path.relative t.dir fname in
-    Io.write_file path contents;
+    Io.write_file_exn path contents;
     path
   ;;
 
@@ -34,7 +34,7 @@ module Test = struct
     Sys.chdir (Path.to_string dir);
     let output =
       let out_file = Exn.protect ~f:(fun () -> f t) ~finally:restore_cwd in
-      let output = Io.read_file out_file in
+      let output = Io.read_file_exn out_file in
       Format.asprintf "%a@." Pp.to_fmt (Ansi_color.parse output)
     in
     (* Format.eprintf "print raw output:@.%s@.%!" output; *)

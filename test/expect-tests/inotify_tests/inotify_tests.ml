@@ -8,7 +8,7 @@ let ( / ) a b =
   | _ -> Filename.concat a b
 ;;
 
-let create_file fn = Io.String_path.write_file fn ""
+let create_file fn = Io.String_path.write_file_exn fn ""
 let mkdir fn = Unix.mkdir fn 0o777
 let rm = Sys.remove
 let rmdir = Unix.rmdir

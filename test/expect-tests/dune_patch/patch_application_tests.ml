@@ -17,13 +17,13 @@ let test_apply_patches patches files check_files =
         let target = Path.relative dir filename in
         Option.iter (Path.parent target) ~f:(fun parent ->
           ignore (Fpath.mkdir_p (Path.to_string parent)));
-        Io.write_file target contents);
+        Io.write_file_exn target contents);
       Dune_patch.For_tests.apply_patches ~dir patches;
       List.iter check_files ~f:(fun filename ->
         let target = Path.relative dir filename in
         if Fpath.exists (Path.to_string target)
         then (
-          let contents = Io.read_file target in
+          let contents = Io.read_file_exn target in
           Printf.printf "%s:\n%s" filename contents)
         else Printf.printf "%s: NOT FOUND\n" filename))
 ;;

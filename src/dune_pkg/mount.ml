@@ -56,8 +56,9 @@ let read t file =
     let+ () = Fiber.return () in
     let file = Path.append_local dir file in
     (match Io.read_file ~binary:true file with
-     | s -> Some s
-     | exception Unix.Unix_error (ENOENT, _, _) -> None)
+     | Ok s -> Some s
+     | Error (Unix.Unix_error (ENOENT, _, _)) -> None
+     | Error exn -> raise exn)
 ;;
 
 let stat t path =

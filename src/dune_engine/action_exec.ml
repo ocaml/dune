@@ -116,7 +116,7 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
       ~eenv:{ eenv with env = Env.add eenv.env ~var:(Env.Var.of_string var) ~value }
   | Redirect_out (Stdout, fn, perm, Echo s) ->
     let perm = File_perm.to_unix_perm perm in
-    Io.write_file ~perm (Path.build fn) (String.concat s ~sep:" ");
+    Io.write_file_exn ~perm (Path.build fn) (String.concat s ~sep:" ");
     Fiber.return ()
   | Redirect_out (outputs, fn, perm, t) ->
     let fn = Path.build fn in
@@ -199,7 +199,7 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
     let fn = Path.build fn in
     let () =
       let perm = File_perm.to_unix_perm perm in
-      Io.write_file fn s ~perm
+      Io.write_file_exn fn s ~perm
     in
     let finish = Time.now () in
     Dune_trace.emit ~buffered:true Action (fun () ->

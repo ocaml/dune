@@ -87,8 +87,8 @@ let%expect_test "downloading simple file" =
        ~target:(subdir destination)
        ~checksum:(calculate_checksum ~filename));
   Thread.join server;
-  let served_content = Io.String_path.read_file filename in
-  let downloaded_content = Io.String_path.read_file destination in
+  let served_content = Io.String_path.read_file_exn filename in
+  let downloaded_content = Io.String_path.read_file_exn destination in
   Printf.printf
     "Served file:\n%s\nDownloaded file:\n%s\nEqual: %B"
     served_content
@@ -227,7 +227,7 @@ let%expect_test "downloading via git" =
     let* rev_store = Rev_store.get in
     let* (_commit : string) = Git_test_utils.create_repo_at source in
     let+ () = download_git rev_store url ~target in
-    print_endline (Io.read_file entry));
+    print_endline (Io.read_file_exn entry));
   [%expect {| just some content |}]
 ;;
 
@@ -241,7 +241,7 @@ let%expect_test "attempting to download an invalid git url" =
     let* rev_store = Rev_store.get in
     let* (_commit : string) = Git_test_utils.create_repo_at source in
     let+ () = download_git rev_store url ~target in
-    print_endline (Io.read_file entry));
+    print_endline (Io.read_file_exn entry));
   [%expect.unreachable]
 [@@expect.uncaught_exn
   {|

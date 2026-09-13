@@ -3,7 +3,7 @@ open Stdune
 let%expect_test "making a directory for an existing file" =
   let dir = Temp.create Dir ~prefix:"fpath" ~suffix:"test" in
   let fn = Path.relative dir "foo" in
-  Io.write_file fn "";
+  Io.write_file_exn fn "";
   (* This does not error, but it will if it ends with a "/" on MacOS *)
   ignore (Fpath.mkdir (Path.to_string fn));
   [%expect {| |}];
@@ -28,7 +28,7 @@ let%expect_test "path with non-directory parent does not exist" =
   let dir = Temp.create Dir ~prefix:"fpath" ~suffix:"test" in
   let file = Path.relative dir "file" in
   let child = Path.relative file "child" in
-  Io.write_file file "";
+  Io.write_file_exn file "";
   printfn "exists: %b" (Fpath.exists (Path.to_string child));
   printfn "is_directory: %b" (Fpath.is_directory (Path.to_string child));
   [%expect
@@ -53,7 +53,7 @@ let%expect_test "mkdir_p" =
   [%expect {| Created |}];
   test "x/y/z";
   [%expect {| Already_exists |}];
-  Io.String_path.write_file "baz" "";
+  Io.String_path.write_file_exn "baz" "";
   test "baz";
   [%expect
     {|
@@ -61,7 +61,7 @@ let%expect_test "mkdir_p" =
     failed to create directory
     |}];
   Unix.mkdir "dir" 0o777;
-  Io.String_path.write_file "dir/baz" "";
+  Io.String_path.write_file_exn "dir/baz" "";
   test "dir/baz";
   [%expect
     {|

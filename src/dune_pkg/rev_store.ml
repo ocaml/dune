@@ -397,7 +397,7 @@ let with_flock lock_path ~f =
                Unix_error.Detailed.create ue ~syscall:"flock" ~arg:"unlock"
                |> Unix_error.Detailed.raise)
        | Ok `Failure ->
-         let pid = Io.read_file lock_path in
+         let pid = Io.read_file_exn lock_path in
          User_error.raise
            ~hints:
              [ Pp.textf
@@ -480,7 +480,7 @@ let run_with_exit_code ~env { dir; _ } ~allow_codes ~display args =
             let env = with_specified_git_dir ~dir env in
             Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
           in
-          Io.read_file path, exit_code)
+          Io.read_file_exn path, exit_code)
   in
   if allow_codes exit_code
   then Ok exit_code

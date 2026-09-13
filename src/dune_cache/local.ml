@@ -46,13 +46,13 @@ end
 
 let restore_file_content path : string Restore_result.t =
   match Io.read_file ~binary:false path with
-  | contents -> Restored contents
-  | exception Sys_error (_some_error_message : string) ->
-    (* CR-someday amokhov: [Io.read_file] doesn't raise "typed" exceptions like
-       [Unix_error], so we guess here that the exception means "file not found".
+  | Ok contents -> Restored contents
+  | Error (Sys_error (_some_error_message : string)) ->
+    (* CR-someday amokhov: [Io.read_file] in text mode doesn't return "typed"
+       errors like [Unix_error], so we guess that the error means "file not found".
        Can we make the API of [Io] more precise? *)
     Not_found_in_cache
-  | exception e ->
+  | Error e ->
     (* This code path might be unreachable until the above is resolved. *)
     Error e
 ;;

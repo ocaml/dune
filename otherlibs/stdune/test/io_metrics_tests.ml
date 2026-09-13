@@ -33,7 +33,7 @@ let measure_write f =
 let%expect_test "IO metrics are attributed to the operation being measured" =
   let dir = Temp.create Dir ~prefix:"io-metrics" ~suffix:"test" in
   let file = Path.relative dir "file" in
-  measure_write (fun () -> Io.write_file file "contents");
+  measure_write (fun () -> Io.write_file_exn file "contents");
   [%expect
     {|
     { file_write_count = 1
@@ -61,7 +61,7 @@ let%expect_test "writing a descriptor records IO metrics" =
     ~suffix:"test"
     ~f:(fun result ->
       let _, fd = Result.ok_exn result in
-      measure_write (fun () -> Io.write_fd_exn fd "contents"))
+      measure_write (fun () -> Io.write_fd fd "contents" |> Result.ok_exn))
     ();
   [%expect
     {|

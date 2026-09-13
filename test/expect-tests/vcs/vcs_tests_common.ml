@@ -79,7 +79,7 @@ let run_action (vcs : Vcs.t) action =
      | Hg -> run vcs [ "commit"; "-m"; "commit message"; "-u"; "toto" ])
   | Write (fn, s) ->
     printf "$ echo %S > %s\n" s fn;
-    Io.write_file (Path.relative vcs.root fn) s;
+    Io.write_file_exn (Path.relative vcs.root fn) s;
     Fiber.return ()
   | Describe expected ->
     printf

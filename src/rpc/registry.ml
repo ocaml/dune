@@ -38,7 +38,7 @@ let register t =
       Dune_rpc.Registry.Config.register registry_config dune
     in
     let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p (Filename.dirname path) in
-    Io.String_path.write_file path contents;
+    Io.String_path.write_file_exn path contents;
     Dune_trace.emit Rpc (fun () -> Dune_trace.Event.Rpc.registry_write ~path);
     t.path <- Some path;
     at_exit (fun () -> cleanup t)

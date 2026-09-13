@@ -169,7 +169,7 @@ let subst_file path ~map opam_package_files =
       | None, Some x -> Some x
       | Some x, Some y -> Some (replace_or_prepend_version x y)
     in
-    Option.iter contents ~f:(Io.write_file path)
+    Option.iter contents ~f:(Io.write_file_exn path)
 ;;
 
 (* Extending the Dune_project APIs, but adding capability to modify *)
@@ -205,7 +205,7 @@ module Dune_project = struct
     let* project = project in
     let* project_file = Dune_project.file project in
     let project_file = project_file in
-    let contents = Io.read_file (Path.source project_file) in
+    let contents = Io.read_file_exn (Path.source project_file) in
     let sexp =
       let lb = Lexbuf.from_string contents ~fname:(Path.Source.to_string project_file) in
       Dune_lang.Parser.parse lb ~mode:Many_as_one
@@ -279,7 +279,7 @@ module Dune_project = struct
            else replace_text !ofs !ofs ("\n" ^ version_field))
     in
     let s = Option.value (subst_string s ~map (Path.source filename)) ~default:s in
-    if s <> t.contents then Io.write_file (Path.source filename) s
+    if s <> t.contents then Io.write_file_exn (Path.source filename) s
   ;;
 end
 

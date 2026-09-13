@@ -785,7 +785,7 @@ module Internal = struct
         rule
         ~rule_kind:(Anonymous_action { capture_stdout; stamp_file = target })
     in
-    if capture_stdout then Io.read_file (Path.build target) else ""
+    if capture_stdout then Io.read_file_exn (Path.build target) else ""
 
   and execute_action_generic (anon : Rule.Anonymous_action.Evaluated.t) ~capture_stdout =
     (* We memoize the execution of anonymous actions, both via the persistent
@@ -1448,7 +1448,7 @@ let read_file =
        ~store:(module Path.Table)
        ~input:(module Path)
        ~cutoff:String.equal
-       (fun path -> with_file path ~f:Io.read_file))
+       (fun path -> with_file path ~f:Io.read_file_exn))
 ;;
 
 let state = State.t

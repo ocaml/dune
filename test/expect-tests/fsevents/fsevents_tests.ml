@@ -40,12 +40,12 @@ let end_filename = ".dune_fsevents_end"
 
 let emit_start dir =
   ignore (Fpath.mkdir_p dir);
-  Io.String_path.write_file (Filename.concat dir start_filename) ""
+  Io.String_path.write_file_exn (Filename.concat dir start_filename) ""
 ;;
 
 let emit_stop dir =
   ignore (Fpath.mkdir_p dir);
-  Io.String_path.write_file (Filename.concat dir end_filename) ""
+  Io.String_path.write_file_exn (Filename.concat dir end_filename) ""
 ;;
 
 let test f =
@@ -227,7 +227,7 @@ let test_with_operations ?on_event ?exclusion_paths f =
 ;;
 
 let%expect_test "file create event" =
-  test_with_operations (fun () -> Io.String_path.write_file "./file" "foobar");
+  test_with_operations (fun () -> Io.String_path.write_file_exn "./file" "foobar");
   [%expect
     {|
     > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/file" } |}]
@@ -242,7 +242,7 @@ let%expect_test "dir create event" =
 
 let%expect_test "move file" =
   test_with_operations (fun () ->
-    Io.String_path.write_file "old" "foobar";
+    Io.String_path.write_file_exn "old" "foobar";
     Unix.rename "old" "new");
   [%expect
     {|
@@ -256,8 +256,8 @@ let%expect_test "raise inside callback" =
       Logger.printfn logger "exiting.";
       raise Exit)
     (fun () ->
-       Io.String_path.write_file "old" "foobar";
-       Io.String_path.write_file "old" "foobar";
+       Io.String_path.write_file_exn "old" "foobar";
+       Io.String_path.write_file_exn "old" "foobar";
        (* Delay to allow the event handler callback to catch the exception
          before stopping the watcher. *)
        Unix.sleepf 1.0);
@@ -292,7 +292,7 @@ let%expect_test "set exclusion paths" =
       ~exclusion_paths:(fun cwd -> [ paths cwd ignored ])
       (fun () ->
          let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p ignored in
-         Io.String_path.write_file (Filename.concat ignored "old") "foobar")
+         Io.String_path.write_file_exn (Filename.concat ignored "old") "foobar")
   in
   (* absolute paths work *)
   run Filename.concat;
@@ -317,9 +317,9 @@ let%expect_test "multiple fsevents" =
       in
       [ create "foo"; create "bar" ])
     ~test:(fun () ->
-      Io.String_path.write_file "foo/file" "";
-      Io.String_path.write_file "bar/file" "";
-      Io.String_path.write_file "xxx" "" (* this one is ignored *));
+      Io.String_path.write_file_exn "foo/file" "";
+      Io.String_path.write_file_exn "bar/file" "";
+      Io.String_path.write_file_exn "xxx" "" (* this one is ignored *));
   [%expect
     {|
     > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/foo/file" }
@@ -372,9 +372,9 @@ let%expect_test "multiple paths in one fsevents" =
                await ~emit ~continue)
            in
            await ~emit:(fun () -> sync#emit_start) ~continue:(fun () -> not sync#started);
-           Io.String_path.write_file "foo/file" "";
-           Io.String_path.write_file "bar/file" "";
-           Io.String_path.write_file "xxx" "";
+           Io.String_path.write_file_exn "foo/file" "";
+           Io.String_path.write_file_exn "bar/file" "";
+           Io.String_path.write_file_exn "xxx" "";
            await ~emit:(fun () -> sync#emit_stop) ~continue:(fun () -> not sync#stopped))
         ()
     in

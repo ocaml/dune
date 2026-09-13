@@ -19,7 +19,7 @@ let test content =
       with_chdir temp_dir
       @@ fun () ->
       let test_file = Path.relative temp_dir "test.t" in
-      Io.write_file test_file content;
+      Io.write_file_exn test_file content;
       let lexbuf = Lexing.from_string ~with_positions:true content in
       Stdlib.Lexing.set_filename lexbuf (Path.basename test_file |> Filename.to_string);
       cram_stanzas lexbuf

@@ -253,13 +253,13 @@ end
 
 let set_copy_impl m = Copyfile.copy_file_impl := m
 
-let write_fd_exn (fd : Fd.t) content =
+let write_fd (fd : Fd.t) content =
   let start = Counter.Timer.start () in
   Counter.incr Metrics.File_write.count;
   Counter.add Metrics.File_write.bytes (String.length content);
   let res = Fs_io.write_fd (Fd.unsafe_to_unix_file_descr fd) content in
   Counter.Timer.stop Metrics.File_write.time start;
-  Result.ok_exn res
+  res
 ;;
 
 module Make (Path : sig
@@ -299,25 +299,25 @@ struct
       f lb)
   ;;
 
-  let read_file_chan ?binary fn =
-    match with_file_in fn ~f:Fs_io.read_all_unless_large ?binary with
-    | Ok x -> x
-    | Error exn -> raise exn
-  ;;
-
   let read_file ?(binary = true) fn =
     let start = Counter.Timer.start () in
     Counter.incr Metrics.File_read.count;
     let res =
-      if binary
-      then Fs_io.read_file (Path.to_string fn) |> Result.ok_exn
-      else read_file_chan ~binary fn
+      try
+        if binary
+        then Fs_io.read_file (Path.to_string fn)
+        else with_file_in ~binary fn ~f:Fs_io.read_all_unless_large
+      with
+      | exn -> Error exn
     in
-    Counter.add Metrics.File_read.bytes (String.length res);
+    (match res with
+     | Error _ -> ()
+     | Ok contents -> Counter.add Metrics.File_read.bytes (String.length contents));
     Counter.Timer.stop Metrics.File_read.time start;
     res
   ;;
 
+  let read_file_exn ?binary fn = read_file ?binary fn |> Result.ok_exn
   let lines_of_file fn = with_file_in fn ~f:input_lines ~binary:false
   let zero_strings_of_file fn = with_file_in fn ~f:input_zero_separated ~binary:true
 
@@ -326,17 +326,23 @@ struct
     Counter.incr Metrics.File_write.count;
     Counter.add Metrics.File_write.bytes (String.length data);
     let res =
-      if binary
-      then
-        Fs_io.write_file
-          ~perm:(Option.value ~default:default_out_perm perm |> Permissions.Mode.to_int)
-          ~data
-          ~path:(Path.to_string fn)
-        |> Result.ok_exn
-      else with_file_out ~binary ?perm fn ~f:(fun oc -> output_string oc data)
+      try
+        if binary
+        then
+          Fs_io.write_file
+            ~perm:(Option.value ~default:default_out_perm perm |> Permissions.Mode.to_int)
+            ~data
+            ~path:(Path.to_string fn)
+        else Ok (with_file_out ~binary ?perm fn ~f:(fun oc -> output_string oc data))
+      with
+      | exn -> Error exn
     in
     Counter.Timer.stop Metrics.File_write.time start;
     res
+  ;;
+
+  let write_file_exn ?binary ?perm fn data =
+    write_file ?binary ?perm fn data |> Result.ok_exn
   ;;
 
   let write_lines ?binary ?perm fn lines =
@@ -355,11 +361,11 @@ struct
     res
   ;;
 
-  let read_file_and_normalize_eols fn =
+  let read_file_and_normalize_eols_exn fn =
     if not Stdlib.Sys.win32
-    then read_file fn
+    then read_file_exn fn
     else (
-      let src = read_file fn in
+      let src = read_file_exn fn in
       let len = String.length src in
       let dst = Bytes.create len in
       let rec find_next_crnl i =
@@ -389,14 +395,14 @@ struct
   ;;
 
   let compare_text_files fn1 fn2 =
-    let s1 = read_file_and_normalize_eols fn1 in
-    let s2 = read_file_and_normalize_eols fn2 in
+    let s1 = read_file_and_normalize_eols_exn fn1 in
+    let s2 = read_file_and_normalize_eols_exn fn2 in
     String.compare s1 s2
   ;;
 
   let compare_files fn1 fn2 =
-    let s1 = read_file fn1 in
-    let s2 = read_file fn2 in
+    let s1 = read_file_exn fn1 in
+    let s2 = read_file_exn fn2 in
     String.compare s1 s2
   ;;
 

@@ -98,10 +98,10 @@ module Curl = struct
     then (
       let stderr =
         match Io.read_file stderr with
-        | s ->
+        | Ok s ->
           Fpath.unlink_no_err (Path.to_string stderr);
           [ Pp.text s ]
-        | exception s ->
+        | Error s ->
           [ Pp.textf
               "Failed to read stderr from file %s"
               (Path.to_string_maybe_quoted stderr)
@@ -486,7 +486,7 @@ let%test_module "resolve symlink tests" =
     ;;
 
     let make_dir dir name = Path.mkdir_p (Path.relative dir name)
-    let make_file dir name = Io.write_file (Path.relative dir name) name
+    let make_file dir name = Io.write_file_exn (Path.relative dir name) name
 
     let make_symlink dir ~src ~dst =
       Unix.symlink src (Path.to_string (Path.relative dir dst))

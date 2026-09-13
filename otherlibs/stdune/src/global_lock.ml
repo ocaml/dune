@@ -58,8 +58,8 @@ module Lock_held_by = struct
 
   let read_lock_file () =
     match Io.read_file (Path.build lock_file) with
-    | exception _ -> Unknown
-    | pid ->
+    | Error _ -> Unknown
+    | Ok pid ->
       (match int_of_string_opt pid with
        | Some pid -> Pid_from_lockfile pid
        | None ->

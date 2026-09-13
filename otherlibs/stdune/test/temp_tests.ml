@@ -31,8 +31,8 @@ let%expect_test "write through a read-only temporary file's creation descriptor"
           |> Permissions.Mode.of_int
         in
         printfn "read-only: %b" (not (Permissions.test_any Permissions.write mode));
-        Io.write_fd_exn fd content;
-        printfn "contents match: %b" (String.equal content (Io.read_file path));
+        Io.write_fd fd content |> Result.ok_exn;
+        printfn "contents match: %b" (String.equal content (Io.read_file_exn path));
         path, fd)
       ()
   in
@@ -102,13 +102,13 @@ let%expect_test "temporary file can be renamed while its descriptor is open" =
       ~suffix:"test"
       ~f:(fun result ->
         let path, fd = Result.ok_exn result in
-        Io.write_fd_exn fd "contents";
+        Io.write_fd fd "contents" |> Result.ok_exn;
         Unix.rename (Path.to_string path) (Path.to_string dst);
         path, fd)
       ()
   in
   print_cleanup file;
-  printfn "%s" (Io.read_file dst);
+  printfn "%s" (Io.read_file_exn dst);
   [%expect
     {|
     exists: false
@@ -119,7 +119,7 @@ let%expect_test "temporary file can be renamed while its descriptor is open" =
 
 let%expect_test "Temp.clear_dir works" =
   let path = Temp.create Dir ~prefix:"dune" ~suffix:"unit_test" in
-  Io.write_file (Path.relative path "foo") "";
+  Io.write_file_exn (Path.relative path "foo") "";
   let print () =
     Path.readdir_unsorted path |> Result.to_dyn (list Filename.to_dyn) opaque |> print_dyn
   in

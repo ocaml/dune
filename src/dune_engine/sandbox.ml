@@ -73,11 +73,11 @@ let init =
        (* We create an empty [.git] file to prevent git from escaping the
           sandbox. It will choke on this empty .git and report an error about
           its format being invalid. *)
-       Io.write_file (Path.relative dir ".git") "";
+       Io.write_file_exn (Path.relative dir ".git") "";
        (* We create a [.hg/requires] file to prevent hg from escaping the
           sandbox. It will complain that "Escaping the Dune sandbox" is an
           unknown feature. *)
-       Io.write_file (Path.relative dir ".hg/requires") "Escaping the Dune sandbox")
+       Io.write_file_exn (Path.relative dir ".hg/requires") "Escaping the Dune sandbox")
   in
   fun () -> Lazy.force init
 ;;

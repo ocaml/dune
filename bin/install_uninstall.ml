@@ -720,7 +720,7 @@ let run
                 package
             in
             Install.Entry.Expanded.gen_install_file entries
-            |> Io.write_file (Path.source fn))))
+            |> Io.write_file_exn (Path.source fn))))
   in
   Path.Set.to_list !files_deleted_in
   (* This [List.rev] is to ensure we process children directories before

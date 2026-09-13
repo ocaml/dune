@@ -11,7 +11,7 @@ let sendfile_rejects_premature_eof () =
   let dir = Temp.create Dir ~prefix:"sendfile" ~suffix:"test" in
   let src = Path.relative dir "src" in
   let dst = Path.relative dir "dst" in
-  Io.write_file src "";
+  Io.write_file_exn src "";
   match Unix.fork () with
   | 0 ->
     let src = Unix.openfile (Path.to_string src) [ O_RDONLY ] 0 in

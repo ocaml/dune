@@ -7,7 +7,7 @@ val input_lines : in_channel -> string list
 val copy_channels : in_channel -> out_channel -> unit
 
 (** Write the entire string without closing the descriptor. *)
-val write_fd_exn : Fd.t -> string -> unit
+val write_fd : Fd.t -> string -> (unit, exn) result
 
 include Io_intf.S with type path = Path.t
 module String_path : Io_intf.S with type path = string

@@ -25,7 +25,7 @@ let%expect_test "action and Dune temporary directories" =
   let action_dir = dtemp_dir (Build_job None) in
   let dune_file = Dune_engine.For_tests.Dtemp.file ~prefix:"dune" ~suffix:"file" in
   let action_file = Path.relative action_dir "action-file" in
-  Io.write_file action_file "";
+  Io.write_file_exn action_file "";
   let exists path = Fpath.exists (Path.to_string path) in
   Printf.printf "same directory: %b\n" (Path.equal dune_dir action_dir);
   Printf.printf

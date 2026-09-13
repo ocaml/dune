@@ -1887,7 +1887,7 @@ module Install_action = struct
         let config =
           let filename = Path.to_string config_file in
           match
-            Io.read_file config_file
+            Io.read_file_exn config_file
             |> OpamFile.Dot_config.read_from_string
                  ~filename:(OpamFile.make (OpamFilename.of_string filename))
           with
@@ -1897,7 +1897,7 @@ module Install_action = struct
               Option.map
                 pos
                 ~f:(fun { OpamParserTypes.FullPos.filename = _; start; stop } ->
-                  let file_contents = Io.read_file config_file in
+                  let file_contents = Io.read_file_exn config_file in
                   let bols = ref [ 0 ] in
                   String.iteri file_contents ~f:(fun i ch ->
                     if ch = '\n' then bols := (i + 1) :: !bols);

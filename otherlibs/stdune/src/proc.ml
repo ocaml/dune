@@ -82,9 +82,9 @@ end
 module Linux = struct
   let read_pid_max () =
     match Io.String_path.read_file "/proc/sys/kernel/pid_max" with
-    | exception Sys_error _ -> None
-    | exception Unix.Unix_error _ -> None
-    | pid_max -> String.trim pid_max |> Int.of_string
+    | Error (Sys_error _ | Unix.Unix_error _) -> None
+    | Error exn -> raise exn
+    | Ok pid_max -> String.trim pid_max |> Int.of_string
   ;;
 
   module Process_tree = struct

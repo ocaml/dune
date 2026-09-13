@@ -95,7 +95,7 @@ module Detect = struct
       let header = Temp.create File ~prefix:"dune-cc-vendor" ~suffix:".h" in
       Fiber.finalize
         (fun () ->
-           Io.write_file header header_file_content;
+           Io.write_file_exn header header_file_content;
            Process.run
              Strict
              c_compiler

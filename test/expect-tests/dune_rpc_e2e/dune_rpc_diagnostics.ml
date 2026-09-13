@@ -23,7 +23,7 @@ let%expect_test "turn on and shutdown" =
     shutting down |}]
 ;;
 
-let files = List.iter ~f:(fun (f, contents) -> Io.String_path.write_file f contents)
+let files = List.iter ~f:(fun (f, contents) -> Io.String_path.write_file_exn f contents)
 
 let on_diagnostic_event diagnostics =
   let cwd = Sys.getcwd () in
@@ -712,7 +712,7 @@ let%expect_test "promoting dune files" =
       in
       (match res with
        | Ok () ->
-         let contents = Io.String_path.read_file fname in
+         let contents = Io.String_path.read_file_exn fname in
          printfn "promoted file contents:\n%s" contents
        | Error e ->
          Format.eprintf

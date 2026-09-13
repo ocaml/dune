@@ -25,10 +25,10 @@ let%expect_test "mixed directory entries" =
     ~suffix:""
     ~f:(fun dir ->
       let dir = Result.ok_exn dir in
-      Io.write_file (Path.relative dir "a.ml") "";
-      Io.write_file (Path.relative dir ".#lock") "";
-      Io.write_file (Path.relative dir "ignored.swp") "";
-      Io.write_file (Path.relative dir "ignored~") "";
+      Io.write_file_exn (Path.relative dir "a.ml") "";
+      Io.write_file_exn (Path.relative dir ".#lock") "";
+      Io.write_file_exn (Path.relative dir "ignored.swp") "";
+      Io.write_file_exn (Path.relative dir "ignored~") "";
       Path.mkdir_p (Path.relative dir "dir");
       Unix.symlink "a.ml" (Path.to_string (Path.relative dir "file-link"));
       Unix.symlink "dir" (Path.to_string (Path.relative dir "dir-link"));

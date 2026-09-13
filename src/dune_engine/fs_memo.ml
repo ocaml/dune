@@ -97,7 +97,7 @@ module Cached_digest = struct
 
   let get_current_filesystem_time () =
     let special_path = Path.relative Path.build_dir ".filesystem-clock" in
-    Io.write_file special_path "<dummy>";
+    Io.write_file_exn special_path "<dummy>";
     (Stat.stat (Path.to_string special_path)).mtime
   ;;
 
@@ -947,7 +947,7 @@ let with_lexbuf_from_file path ~f =
 
 let file_contents path =
   let+ () = tracking_file_digest path in
-  Io.read_file (Path.outside_build_dir path)
+  Io.read_file_exn (Path.outside_build_dir path)
 ;;
 
 (* When a file or directory is created or deleted, we need to also invalidate

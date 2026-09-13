@@ -9,7 +9,7 @@ let ordering_of_float x y = Ordering.of_int (Stdlib.Float.compare x y)
 let%expect_test "Stat.stat matches Unix.stat on stable fields" =
   let dir = Temp.create Dir ~prefix:"stat" ~suffix:"test" in
   let path = Path.relative dir "file" in
-  Io.write_file path "hello";
+  Io.write_file_exn path "hello";
   let stat = stat path in
   let unix = Unix.stat (Path.to_string path) in
   print_bool "size_matches" (Int.equal stat.size unix.st_size);
@@ -30,7 +30,7 @@ let%expect_test "Stat.stat matches Unix.stat on stable fields" =
 let%expect_test "Stat.stat observes mtime updates" =
   let dir = Temp.create Dir ~prefix:"stat" ~suffix:"test" in
   let path = Path.relative dir "file" in
-  Io.write_file path "hello";
+  Io.write_file_exn path "hello";
   let now = Unix.gettimeofday () +. 5.0 in
   let later = now +. 2.0 in
   Unix.utimes (Path.to_string path) now now;

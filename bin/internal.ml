@@ -23,9 +23,8 @@ let bootstrap_info =
       let* setup = Util.setup () in
       let context = Dune_rules.Main.find_context_exn setup ~name:context_name in
       let file = Path.Build.relative (Context.build_dir context) "bin/bootstrap-info" in
-      let* () = Build_system.build_file (Path.build file) in
-      let+ () = Memo.return (print_string (Io.read_file (Path.build file))) in
-      ())
+      let+ () = Build_system.build_file (Path.build file) in
+      print_string (Io.read_file_exn (Path.build file)))
   in
   Cmd.v info term
 ;;

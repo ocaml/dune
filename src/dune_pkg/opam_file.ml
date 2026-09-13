@@ -45,7 +45,7 @@ let opam_file_of_string_exn ~contents path =
 ;;
 
 let opam_file_of_path path =
-  let contents = Io.read_file ~binary:true path in
+  let contents = Io.read_file_exn ~binary:true path in
   opam_file_of_string_exn ~contents path
 ;;
 

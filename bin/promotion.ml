@@ -201,7 +201,7 @@ module Show = struct
     List.iter present ~f:(fun file ->
       let correction_file = Diff_promotion.File.correction_file file in
       if Fpath.exists (Path.to_string correction_file)
-      then Io.read_file correction_file |> print_endline
+      then Io.read_file_exn correction_file |> print_endline
       else
         User_warning.emit
           [ Pp.textf

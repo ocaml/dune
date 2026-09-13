@@ -9,7 +9,7 @@ include struct
   module Job = Job
 end
 
-let files = List.iter ~f:(fun (f, contents) -> Io.String_path.write_file f contents)
+let files = List.iter ~f:(fun (f, contents) -> Io.String_path.write_file_exn f contents)
 
 let poll_exn client decl =
   let+ poll = Client.poll client decl in

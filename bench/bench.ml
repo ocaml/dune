@@ -121,7 +121,7 @@ let dune_build ~name ~sandbox =
   Dune_lang.Parser.parse_string
     ~mode:Single
     ~fname:(Path.to_string gc_dump)
-    (Io.read_file gc_dump)
+    (Io.read_file_exn gc_dump)
   |> Dune_lang.Decoder.parse Dune_util.Gc.decode Univ_map.empty
   |> Metrics.make times
 ;;

@@ -41,13 +41,11 @@ display itself is under test.
   test/blackbox-tests/test-cases/actions/with-exit-codes.t:  $ dune build --display=short --root . @b
   test/blackbox-tests/test-cases/actions/with-exit-codes.t:  $ dune build --display=short --root . @c
   test/blackbox-tests/test-cases/actions/with-exit-codes.t:  $ dune build --display=short --root . @d
-  test/blackbox-tests/test-cases/actions/with-exit-codes.t:  $ dune build --display=short --root . @e
   test/blackbox-tests/test-cases/actions/with-nested-exit-codes.t:  $ dune build --display=short --root . @f
   test/blackbox-tests/test-cases/actions/with-nested-exit-codes.t:  $ dune build --display=short --root . @f2
   test/blackbox-tests/test-cases/actions/with-nested-exit-codes.t:  $ dune build --display=short --root . @f3
   test/blackbox-tests/test-cases/actions/with-nested-exit-codes.t:  $ dune build --display=short --root . @f4
   test/blackbox-tests/test-cases/actions/with-nested-exit-codes.t:  $ dune build --display=short --root . @f5
-  test/blackbox-tests/test-cases/actions/with-nested-exit-codes.t:  $ dune build --display=short --root . @g
   test/blackbox-tests/test-cases/alias/all-alias/install-alias.t/run.t:  $ dune build --display short @all
   test/blackbox-tests/test-cases/alias/all-alias/private-lib.t/run.t:  $ dune build --display short @all 2>&1 | grep bar.cma
   test/blackbox-tests/test-cases/cram/git-diff-fail.t:  $ bash -c 'set -o pipefail; dune build --always-show-command-line --root=. --diff-command="exit 1; echo" --display=short @runtest 2>&1 | grep -v "(cd"' 

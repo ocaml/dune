@@ -16,9 +16,8 @@ type t =
   ; lib_config : Lib_config.t
   }
 
-let make_builtins ~ocaml_config ~version =
+let make_builtins ~stdlib_dir ~version =
   Memo.Lazy.create ~name:"ocaml-toolchain-builtins" (fun () ->
-    let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocaml_config) in
     Meta.builtins ~stdlib_dir ~version)
 ;;
 
@@ -96,8 +95,9 @@ let make name ~which ~env ~get_ocaml_tool =
   and* ocamldep = get_ocaml_tool "ocamldep"
   and* ocamlmklib = get_ocaml_tool "ocamlmklib"
   and* ocamlobjinfo = get_ocaml_tool "ocamlobjinfo" in
+  let lib_config = Lib_config.create ocaml_config ~ocamlopt in
   let version = Ocaml.Version.of_ocaml_config ocaml_config in
-  let builtins = make_builtins ~version ~ocaml_config in
+  let builtins = make_builtins ~stdlib_dir:lib_config.stdlib_dir ~version in
   Memo.return
     { bin_dir = ocaml_bin
     ; ocaml
@@ -109,8 +109,8 @@ let make name ~which ~env ~get_ocaml_tool =
     ; ocaml_config
     ; ocaml_config_vars
     ; version
+    ; lib_config
     ; builtins = Memo.Lazy.force builtins
-    ; lib_config = Lib_config.create ocaml_config ~ocamlopt
     }
 ;;
 

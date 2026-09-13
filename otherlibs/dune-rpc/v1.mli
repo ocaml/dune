@@ -541,6 +541,16 @@ module Where : sig
 end
 
 module Action_plugin : sig
+  module Dep : sig
+    type t = Dep.t =
+      | File of string
+      | Directory of string
+      | Glob of
+          { path : string
+          ; glob : string
+          }
+  end
+
   module Glob : sig
     type t
 
@@ -579,6 +589,11 @@ module Action_plugin : sig
 
     (** Run [f] using a connection to the Dune RPC server. *)
     val run : Chan.t -> action_id:action_id -> f:(t -> unit Fiber.t) -> unit Fiber.t
+
+    (** Build dependencies without reading their contents. Paths use the current
+        directory at the time of the call. Directories select their immediate
+        files; globs select matching files within the given directory. *)
+    val build_deps : t -> Dep.t list -> unit Fiber.t
 
     (** Read [path] after asking Dune to build it. Relative paths use the current
         directory at the time of this call, even if it changes while waiting for

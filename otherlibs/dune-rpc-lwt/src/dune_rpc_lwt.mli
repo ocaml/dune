@@ -13,6 +13,7 @@ module V1 : sig
     -> (Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
 
   module Action_plugin : sig
+    module Dep = Dune_rpc.V1.Action_plugin.Dep
     module Glob = Dune_rpc.V1.Action_plugin.Glob
 
     type t
@@ -20,6 +21,10 @@ module V1 : sig
     module Error = Dune_rpc.V1.Action_plugin.Error
 
     val outside_of_dune : t
+
+    (** Build dependencies without reading their contents. Paths use the current
+        directory at the time of the call. *)
+    val build_deps : t -> Dep.t list -> unit Lwt.t
 
     (** Relative paths use the current directory at the time of the call,
         including when cwd changes while the dependency is being built. *)

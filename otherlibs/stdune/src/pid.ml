@@ -4,12 +4,14 @@ let to_dyn (t : t) : Dyn.t = Variant ("pid", [ Int t ])
 let hash = Int.hash
 let equal = Int.equal
 let to_int t = t
+let compare = Int.compare
 
 let of_int_exn t =
   assert (t > 0);
   t
 ;;
 
+let conv = Conv.iso Conv.int to_int of_int_exn
 let me () = Unix.getpid ()
 
 let signal pid where signal =

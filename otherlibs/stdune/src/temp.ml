@@ -26,17 +26,19 @@ let try_paths n ~dir ~prefix ~suffix ~f =
 let tmp_files = ref Path.Set.empty
 let tmp_dirs = ref Path.Set.empty
 
-let create_temp_file ?(perms = Permissions.Mode.private_file) path =
-  let file = Path.to_string path in
+let create_temp_file_fd ~perm path =
   match
-    Unix.close
-      (Unix.openfile
-         file
-         [ O_WRONLY; Unix.O_CREAT; Unix.O_EXCL; Unix.O_CLOEXEC ]
-         (Permissions.Mode.to_int perms))
+    Unix.openfile
+      (Path.to_string path)
+      [ O_WRONLY; O_CREAT; O_EXCL; O_CLOEXEC; O_SHARE_DELETE ]
+      (Permissions.Mode.to_int perm)
   with
-  | () -> Ok ()
+  | fd -> Ok (Fd.unsafe_of_unix_file_descr fd)
   | exception Unix.Unix_error (EEXIST, _, _) -> Error `Retry
+;;
+
+let create_temp_file ?(perms = Permissions.Mode.private_file) path =
+  create_temp_file_fd ~perm:perms path |> Result.map ~f:Fd.close
 ;;
 
 let destroy = function
@@ -176,3 +178,18 @@ module Id = Monad (struct
 
 let with_temp_file = Id.with_temp_file
 let with_temp_dir = Id.with_temp_dir
+
+let with_temp_file_fd ?(perm = Permissions.Mode.private_file) ~dir ~prefix ~suffix ~f () =
+  match
+    try_paths 1000 ~dir ~prefix ~suffix ~f:(fun path ->
+      create_temp_file_fd ~perm path |> Result.map ~f:(fun fd -> path, fd))
+  with
+  | exception e -> f (Error e)
+  | (path, fd) as file ->
+    Exn.protect
+      ~f:(fun () -> f (Ok file))
+      ~finally:(fun () ->
+        Exn.protect
+          ~f:(fun () -> Fd.close fd)
+          ~finally:(fun () -> Fpath.unlink_no_err (Path.to_string path)))
+;;

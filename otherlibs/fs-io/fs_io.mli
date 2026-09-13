@@ -11,3 +11,6 @@ val read_all_unless_large : in_channel -> (string, exn) result
 
 val read_file : string -> (string, exn) result
 val write_file : perm:int -> path:string -> data:string -> (unit, exn) result
+
+(** Write the entire string without closing the descriptor. *)
+val write_fd : Unix.file_descr -> string -> (unit, exn) result

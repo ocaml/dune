@@ -60,32 +60,27 @@ let add_atomically ~mode ~src ~dst : Write_result.t =
 (* CR-someday amokhov: Switch to [renameat2] to go from two operations to
    one. *)
 let write_atomically ~mode ~content dst : Write_result.t =
-  let perm =
-    Permissions.Mode.create ~user:Permissions.read () |> Permissions.Mode.to_int
-  in
+  let perm = Permissions.Mode.create ~user:Permissions.read () in
   match
-    Temp.with_temp_file
+    Temp.with_temp_file_fd
+      ~perm
       ~dir:(Lazy.force Layout.temp_dir)
       ~prefix:"dune"
       ~suffix:"write"
       ~f:(function
-      | Error e -> Write_result.Error e
-      | Ok temp_file ->
-        (match
-           Io.write_file ~binary:true temp_file content;
-           (* CR-soon rgrinberg: [Io.write_file] can't set the permissions for
-              us if the file has already been created. *)
-           Unix.chmod (Path.to_string temp_file) perm
-         with
-         | exception e -> Error e
-         | () -> add_atomically ~mode ~src:temp_file ~dst))
+        | Error e -> Write_result.Error e
+        | Ok (temp_file, fd) ->
+          (match Io.write_fd_exn fd content with
+           | exception e -> Error e
+           | () -> add_atomically ~mode ~src:temp_file ~dst))
+      ()
   with
   | Ok when Sys.win32 && Mode.equal mode Hardlink ->
     (* CR-someday rgrinberg: Removing the temporary hardlink can clear
        the read-only attribute. This leaves a small race window where the
        file in the shared cache is observed without being read only.
        I don't know enough about windows to fix this. *)
-    (match Unix.chmod (Path.to_string dst) perm with
+    (match Unix.chmod (Path.to_string dst) (Permissions.Mode.to_int perm) with
      | () -> Ok
      | exception e -> Error e)
   | result -> result

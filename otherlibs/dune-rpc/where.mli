@@ -8,6 +8,7 @@ type t =
 val rpc_socket_relative_to_build_dir : string
 val to_string : t -> string
 val compare : t -> t -> Ordering.t
+val repr : t Repr.t
 val to_dyn : t -> Dyn.t
 val sexp : t Conv.value
 val env_var : Env.Var.t

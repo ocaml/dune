@@ -123,19 +123,24 @@ let read_file fn =
   | exception (Unix.Unix_error _ as exn) -> Error exn
 ;;
 
-let write_file =
+let write_fd =
   let rec write fd str pos left =
     if left > 0
     then (
       let written = Unix.single_write_substring fd str pos left in
       write fd str (pos + written) (left - written))
   in
-  fun ~perm ~path ~data ->
-    match
-      Unix.openfile path [ O_WRONLY; O_CLOEXEC; O_CREAT; O_TRUNC ] perm
-      |> Exn.protectx ~finally:Unix.close ~f:(fun fd ->
-        write fd data 0 (String.length data))
-    with
-    | exception exn -> Error exn
+  fun fd data ->
+    match write fd data 0 (String.length data) with
     | () -> Ok ()
+    | exception exn -> Error exn
+;;
+
+let write_file ~perm ~path ~data =
+  match
+    Unix.openfile path [ O_WRONLY; O_CLOEXEC; O_CREAT; O_TRUNC ] perm
+    |> Exn.protectx ~finally:Unix.close ~f:(fun fd -> write_fd fd data)
+  with
+  | result -> result
+  | exception exn -> Error exn
 ;;

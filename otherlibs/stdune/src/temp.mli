@@ -44,6 +44,19 @@ val with_temp_file
   -> f:(Path.t Or_exn.t -> 'a)
   -> 'a
 
+(** Like [with_temp_file], but keeps the write-only creation descriptor open.
+    [perm] defaults to [Permissions.Mode.private_file] and is subject to umask.
+    The callback must not close the descriptor. It is closed before the temporary
+    name is removed, whether the callback returns or raises. *)
+val with_temp_file_fd
+  :  ?perm:Permissions.Mode.t
+  -> dir:Path.t
+  -> prefix:string
+  -> suffix:string
+  -> f:((Path.t * Fd.t) Or_exn.t -> 'a)
+  -> unit
+  -> 'a
+
 (** Like [with_temp_file], but creates a temporary directory. *)
 val with_temp_dir
   :  parent_dir:Path.t

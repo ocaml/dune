@@ -253,6 +253,15 @@ end
 
 let set_copy_impl m = Copyfile.copy_file_impl := m
 
+let write_fd_exn (fd : Fd.t) content =
+  let start = Counter.Timer.start () in
+  Counter.incr Metrics.File_write.count;
+  Counter.add Metrics.File_write.bytes (String.length content);
+  let res = Fs_io.write_fd (Fd.unsafe_to_unix_file_descr fd) content in
+  Counter.Timer.stop Metrics.File_write.time start;
+  Result.ok_exn res
+;;
+
 module Make (Path : sig
     type t
 

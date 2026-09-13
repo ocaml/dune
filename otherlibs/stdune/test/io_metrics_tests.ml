@@ -53,6 +53,26 @@ let%expect_test "IO metrics are attributed to the operation being measured" =
     |}]
 ;;
 
+let%expect_test "writing a descriptor records IO metrics" =
+  let dir = Temp.create Dir ~prefix:"io-metrics" ~suffix:"test" in
+  Temp.with_temp_file_fd
+    ~dir
+    ~prefix:"file"
+    ~suffix:"test"
+    ~f:(fun result ->
+      let _, fd = Result.ok_exn result in
+      measure_write (fun () -> Io.write_fd_exn fd "contents"))
+    ();
+  [%expect
+    {|
+    { file_write_count = 1
+    ; file_write_time_changed = true
+    ; file_read_time_changed = false
+    ; directory_read_time_changed = false
+    }
+    |}]
+;;
+
 let%expect_test "directory metrics count directory scans" =
   let dir = Temp.create Dir ~prefix:"directory-metrics" ~suffix:"test" in
   let first = Path.relative dir "first" in

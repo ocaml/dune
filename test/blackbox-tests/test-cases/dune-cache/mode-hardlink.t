@@ -17,6 +17,12 @@ and shared cache misses, because we've never built target1 before.
   $ export DUNE_TRACE=cache
   $ dune build --config-file=config target1
 
+All cache metadata is read-only.
+
+  $ find .xdg-cache/dune/db/meta -type f \
+  >   -exec dune_cmd stat permissions {} \; | cut -c1 | sort -u
+  4
+
 Verify we see cache miss events for our targets in the trace:
 
   $ dune trace cat | jq_dune -s 'cacheMissesMatching("source|target1")'

@@ -150,11 +150,12 @@ struct
     let absolute_path, dependency = prepare_path t path in
     let* () = request_deps t (Dep.Set.singleton (Dep.File dependency)) in
     match Stdune.Io.String_path.read_file absolute_path with
-    | contents -> Fiber.return contents
-    | exception Unix.Unix_error (error, syscall, _) ->
+    | Ok contents -> Fiber.return contents
+    | Error (Unix.Unix_error (error, syscall, _)) ->
       let error = Stdune.Unix_error.Detailed.create error ~syscall ~arg:path in
       Error.raise ("read_file: " ^ Stdune.Unix_error.Detailed.to_string_hum error)
-    | exception Sys_error error -> Error.raise ("read_file: " ^ error)
+    | Error (Sys_error error) -> Error.raise ("read_file: " ^ error)
+    | Error exn -> raise exn
   ;;
 
   let read_directory_with_glob t ~path ~glob =

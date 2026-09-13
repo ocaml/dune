@@ -796,7 +796,7 @@ module Result = struct
       | No_capture -> ""
       | Read s -> s
       | File p ->
-        let contents = Stdune.Io.read_file p |> limit_output ~n:t.limit in
+        let contents = Stdune.Io.read_file_exn p |> limit_output ~n:t.limit in
         Temp.destroy File p;
         t.state <- Read contents;
         contents
@@ -1635,7 +1635,7 @@ let run_capture_gen
     x)
 ;;
 
-let run_capture = run_capture_gen ~f:Stdune.Io.read_file
+let run_capture = run_capture_gen ~f:Stdune.Io.read_file_exn
 let run_capture_lines = run_capture_gen ?sandbox:None ~f:Stdune.Io.lines_of_file
 
 let run_capture_zero_separated =

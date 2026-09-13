@@ -63,10 +63,10 @@ end = struct
     let loc = snd error.pkg in
     match Predicate.test error.accepted_exit_codes rc, error.display with
     | false, _ ->
-      let paragraphs = Stdune.Io.read_file error.filename |> to_paragraphs error in
+      let paragraphs = Stdune.Io.read_file_exn error.filename |> to_paragraphs error in
       User_warning.emit ~hints:(Lazy.force hints) ~loc ~is_error:true paragraphs
     | true, Display.Verbose ->
-      let content = Stdune.Io.read_file error.filename in
+      let content = Stdune.Io.read_file_exn error.filename in
       if not (String.is_empty content)
       then (
         let paragraphs = to_paragraphs error content in

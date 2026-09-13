@@ -14,7 +14,7 @@ let create_files =
           |> Path.Local.parent
           |> Option.value ~default:(Path.Local.of_string ".")
           |> Path.Local.to_string));
-    Io.String_path.write_file f contents)
+    Io.String_path.write_file_exn f contents)
 ;;
 
 let test files (patch, patch_contents) =

@@ -13,11 +13,7 @@ module Where =
       end
     end)
     (struct
-      let read_file f =
-        match Io.String_path.read_file f with
-        | contents -> Ok contents
-        | exception exn -> Error exn
-      ;;
+      let read_file f = Io.String_path.read_file f
 
       let analyze_path s =
         match (Unix.stat s).st_kind with

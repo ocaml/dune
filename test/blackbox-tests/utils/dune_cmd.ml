@@ -120,7 +120,7 @@ module Cat = struct
     | _ -> raise (Arg.Bad "Usage: dune_cmd cat <file>")
   ;;
 
-  let run p = print_string (Io.String_path.read_file p)
+  let run p = print_string (Io.String_path.read_file_exn p)
   let () = register name of_args run
 end
 
@@ -356,7 +356,7 @@ module Make_dir_with_files = struct
 
   let write dir file =
     let path = Filename.concat dir file in
-    Io.String_path.write_file path (file ^ " contents\n")
+    Io.String_path.write_file_exn path (file ^ " contents\n")
   ;;
 
   let run dir =
@@ -381,7 +381,7 @@ module Cat_dir = struct
     |> Array.to_list
     |> List.sort ~compare:String.compare
     |> List.iter ~f:(fun file ->
-      let contents = Io.String_path.read_file (Filename.concat dir file) in
+      let contents = Io.String_path.read_file_exn (Filename.concat dir file) in
       Printf.printf "%s:\n%s\n" file contents)
   ;;
 
@@ -399,7 +399,7 @@ module Make_fakenode_modules = struct
   let run () =
     Unix.mkdir "fakenode_modules" 0o777;
     Unix.mkdir "fakenode_modules/foo" 0o777;
-    Io.String_path.write_file "fakenode_modules/foo/file" "";
+    Io.String_path.write_file_exn "fakenode_modules/foo/file" "";
     Unix.symlink "file" "./fakenode_modules/foo/bar"
   ;;
 
@@ -440,7 +440,7 @@ module Sigterm_cleanup_sleeper = struct
 
   let touch dir file contents =
     let path = Filename.concat dir file in
-    Io.String_path.write_file path contents
+    Io.String_path.write_file_exn path contents
   ;;
 
   let run () =
@@ -532,7 +532,7 @@ module Find_by_contents = struct
         match stats.st_kind with
         | S_DIR -> find_files ~dir:path regexp
         | S_REG ->
-          let s = Io.String_path.read_file path in
+          let s = Io.String_path.read_file_exn path in
           if Str.string_match regexp s 0 then [ Printf.sprintf "%s\n" path ] else []
         | _other -> [])
   ;;
@@ -612,7 +612,7 @@ module Hold_rpc_client = struct
       raise exn
     | () ->
       let (_ : int) = Unix.write_substring socket "(" 0 1 in
-      Io.String_path.write_file connected_file "";
+      Io.String_path.write_file_exn connected_file "";
       while true do
         Unix.sleep 3600
       done
@@ -798,7 +798,7 @@ module Sed = struct
     let inputs, output =
       match io with
       | Inplace p ->
-        let inputs = p |> Io.read_file |> String.split_on_char ~sep:'\n' in
+        let inputs = p |> Io.read_file_exn |> String.split_on_char ~sep:'\n' in
         let output outputs =
           let temp = p |> Path.to_string |> sprintf "%s.tmp" |> Path.of_string in
           Io.with_file_out temp ~f:(write_lines ~outputs);

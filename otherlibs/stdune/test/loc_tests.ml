@@ -3,7 +3,7 @@ open Stdune
 let%expect_test "#7905 - inverted char offsets" =
   let dir = Temp.create Dir ~prefix:"" ~suffix:"loc" in
   let file = Path.relative dir "file.ml" in
-  Io.write_file
+  Io.write_file_exn
     file
     {|
 type t = A | B

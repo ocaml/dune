@@ -102,8 +102,8 @@ let%expect_test "PATH lookup skips non-executable files" =
   Path.mkdir_p second_dir;
   let first = Path.relative first_dir "tool" in
   let second = Path.relative second_dir "tool" in
-  Io.write_file first "";
-  Io.write_file second "";
+  Io.write_file_exn first "";
+  Io.write_file_exn second "";
   Unix.chmod (Path.to_string first) 0o644;
   Unix.chmod (Path.to_string second) 0o755;
   (match Bin.which ~path:[ first_dir; second_dir ] "tool" with

@@ -18,10 +18,5 @@ include
            | stat -> Ok (`Mtime (Time.to_secs stat.mtime)))
       ;;
 
-      let read_file s =
-        Fiber.return
-          (match Stdune.Io.String_path.read_file s with
-           | s -> Ok s
-           | exception exn -> Error exn)
-      ;;
+      let read_file s = Fiber.return (Io.String_path.read_file s)
     end)

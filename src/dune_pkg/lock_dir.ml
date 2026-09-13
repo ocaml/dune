@@ -1502,7 +1502,7 @@ module Write_disk = struct
         (* TODO the version should be chosen based on the version of the lock
            directory we're outputting *)
         let pp = Dune_lang.Format.pp_top_sexps ~version:(3, 11) cst in
-        Format.asprintf "%a" Pp.to_fmt pp |> Io.write_file path;
+        Format.asprintf "%a" Pp.to_fmt pp |> Io.write_file_exn path;
         Package_name.Map.iteri files ~f:(fun package_name files_by_version ->
           Package_version.Map.iteri files_by_version ~f:(fun package_version files ->
             let files_dir =
@@ -1517,7 +1517,7 @@ module Write_disk = struct
               Path.mkdir_p (Path.parent_exn dst);
               match original with
               | Path src -> Io.copy_file ~src ~dst ()
-              | Content content -> Io.write_file dst content))));
+              | Content content -> Io.write_file_exn dst content))));
       rename_old_lock_dir_to_hidden ();
       safely_rename_lock_dir_thunk ~dst:lock_dir_path_external lock_dir_path ();
       remove_hidden_dir_if_exists ()

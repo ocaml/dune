@@ -24,8 +24,17 @@ module type S = sig
   (** Reads zero-separated strings from a file *)
   val zero_strings_of_file : path -> string list
 
-  val read_file : ?binary:bool -> path -> string
-  val write_file : ?binary:bool -> ?perm:Permissions.Mode.t -> path -> string -> unit
+  val read_file : ?binary:bool -> path -> (string, exn) result
+  val read_file_exn : ?binary:bool -> path -> string
+
+  val write_file
+    :  ?binary:bool
+    -> ?perm:Permissions.Mode.t
+    -> path
+    -> string
+    -> (unit, exn) result
+
+  val write_file_exn : ?binary:bool -> ?perm:Permissions.Mode.t -> path -> string -> unit
   val compare_files : path -> path -> Ordering.t
   val compare_text_files : path -> path -> Ordering.t
 

@@ -26,11 +26,11 @@ let term =
         let template_file = Dune_rules.Opam_create.template_file opam_file in
         let template =
           if Fpath.exists (Path.to_string template_file)
-          then Some (template_file, Io.read_file template_file)
+          then Some (template_file, Io.read_file_exn template_file)
           else None
         in
         Dune_rules.Opam_create.generate project pkg ~template)
-      else Io.read_file opam_file
+      else Io.read_file_exn opam_file
     in
     Dyn.Tuple [ String (Path.to_string opam_file); String contents ]
   in

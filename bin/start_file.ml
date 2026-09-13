@@ -78,12 +78,12 @@ let write path =
     then
       User_error.raise
         [ Pp.textf "%s already exists and is a directory" (path_for_message target) ];
-    let existing = Io.read_file ~binary:false target in
+    let existing = Io.read_file_exn ~binary:false target in
     if existing <> contents
     then
       User_error.raise
         [ Pp.textf "Refusing to overwrite existing file %s" (path_for_message target) ])
-  else Io.write_file ~binary:false target contents;
+  else Io.write_file_exn ~binary:false target contents;
   print_completion target
 ;;
 

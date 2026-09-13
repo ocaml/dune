@@ -430,7 +430,7 @@ let create ~registry ~root ~build ~where ~action_runner watch_mode =
          match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:100 with
          | Ok s ->
            (match where with
-            | `Ip _ -> Io.write_file (Path.build socket_file) (Where.to_string where)
+            | `Ip _ -> Io.write_file_exn (Path.build socket_file) (Where.to_string where)
             | `Unix _ -> ());
            at_exit (fun () -> Fpath.unlink_no_err (Path.Build.to_string socket_file));
            s

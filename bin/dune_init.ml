@@ -168,7 +168,7 @@ module File = struct
       let path = Path.source path in
       if Fpath.exists (Path.to_string path)
       then Error path
-      else Ok (Io.write_file ~binary:false path f.content)
+      else Ok (Io.write_file_exn ~binary:false path f.content)
   ;;
 end
 

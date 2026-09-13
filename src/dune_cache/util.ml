@@ -70,9 +70,9 @@ let write_atomically ~mode ~content dst : Write_result.t =
       ~f:(function
         | Error e -> Write_result.Error e
         | Ok (temp_file, fd) ->
-          (match Io.write_fd_exn fd content with
-           | exception e -> Error e
-           | () -> add_atomically ~mode ~src:temp_file ~dst))
+          (match Io.write_fd fd content with
+           | Error e -> Error e
+           | Ok () -> add_atomically ~mode ~src:temp_file ~dst))
       ()
   with
   | Ok when Sys.win32 && Mode.equal mode Hardlink ->

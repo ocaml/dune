@@ -394,7 +394,7 @@ let upgrade () =
       | Dune2_project -> ());
     List.iter todo.to_edit ~f:(fun (fn, s) ->
       Console.print [ Pp.textf "Upgrading %s..." (Path.Source.to_string_maybe_quoted fn) ];
-      Io.write_file (Path.source fn) s ~binary:true);
+      Io.write_file_exn (Path.source fn) s ~binary:true);
     List.iter todo.to_rename_and_edit ~f:(fun x ->
       let { original_file; new_file; extra_files_to_delete; contents } = x in
       Console.print
@@ -408,7 +408,7 @@ let upgrade () =
         ];
       List.iter (original_file :: extra_files_to_delete) ~f:(fun p ->
         Fpath.unlink_exn (Path.Source.to_string p));
-      Io.write_file (Path.source new_file) contents ~binary:true);
+      Io.write_file_exn (Path.source new_file) contents ~binary:true);
     if !v1_updates && not last
     then (
       (* Run the upgrader again to update new v1 projects to v2 No more than one

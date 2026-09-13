@@ -19,7 +19,7 @@ let contents =
 
 let () =
   let src = Path.relative dir "initial" in
-  Io.write_file (Path.relative dir "initial") contents;
+  Io.write_file_exn (Path.relative dir "initial") contents;
   let chmod _ =
     let open Permissions in
     Mode.create ~user:read ~group:read ~other:read ()

@@ -1350,15 +1350,14 @@ struct
     let action (entries, dst) ~ectx:_ ~eenv:_ =
       let open Fiber.O in
       let* entries =
-        let+ entries =
-          Fiber.parallel_map entries ~f:(fun (entry : _ Install.Entry.t) ->
-            match entry.kind with
-            | Install.Entry.Expanded.File -> Fiber.return [ entry ]
-            | Directory -> Fiber.return (read_dir_recursively entry))
-        in
-        List.concat entries |> Install.Entry.Expanded.gen_install_file
+        Fiber.parallel_map entries ~f:(fun (entry : _ Install.Entry.t) ->
+          match entry.kind with
+          | Install.Entry.Expanded.File -> Fiber.return [ entry ]
+          | Directory -> Fiber.return (read_dir_recursively entry))
+        >>| List.concat
+        >>| Install.Entry.Expanded.gen_install_file
       in
-      Async.async (fun () -> Io.write_file (Path.build dst) entries)
+      Async.async (fun () -> Io.write_file_exn (Path.build dst) entries)
     ;;
   end
 

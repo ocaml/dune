@@ -77,7 +77,7 @@ struct
 
   let subst env self ~src ~dst =
     let contents =
-      let contents = Io.read_file src in
+      let contents = Io.read_file_exn src in
       let fname = OpamFilename.of_string (Path.to_string src) in
       if is_opam_format contents fname
       then `Opam contents

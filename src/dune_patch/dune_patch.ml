@@ -148,7 +148,7 @@ let parse_patches ~loc ~patch_file patch_contents =
 ;;
 
 let write_patch_result ~file target_path = function
-  | Some contents -> Io.write_file target_path contents
+  | Some contents -> Io.write_file_exn target_path contents
   | None ->
     Code_error.raise
       "Patch.patch returned None for non-delete"
@@ -178,7 +178,7 @@ let apply_patches ~dir patches =
       let source = resolve old_file in
       if Fpath.exists (Path.to_string source)
       then (
-        let contents = Io.read_file source in
+        let contents = Io.read_file_exn source in
         Patch.apply ~file:old_file ~cleanly (Some contents) patch
         |> write_patch_result ~file:old_file (resolve new_file))
       else
@@ -195,7 +195,7 @@ let apply_patches ~dir patches =
 let exec ~loc ~dir ~patch =
   let open Fiber.O in
   let+ () = Fiber.return () in
-  Io.read_file patch |> parse_patches ~loc ~patch_file:patch |> apply_patches ~dir
+  Io.read_file_exn patch |> parse_patches ~loc ~patch_file:patch |> apply_patches ~dir
 ;;
 
 module Action = Dune_engine.Action_ext.Make (struct

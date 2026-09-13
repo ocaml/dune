@@ -58,8 +58,8 @@ let with_sub f =
       let temp_dir = Result.ok_exn temp_dir in
       let sub = Path.relative temp_dir "sub" in
       Path.mkdir_p sub;
-      Io.write_file (Path.relative sub "foo") "";
-      Io.write_file (Path.relative sub "bar") "";
+      Io.write_file_exn (Path.relative sub "foo") "";
+      Io.write_file_exn (Path.relative sub "bar") "";
       f sub)
 ;;
 
@@ -256,7 +256,7 @@ let wait_for_no_file ?(timeout = 1.0) fn =
 let kill_child pid_file =
   if Sys.file_exists pid_file
   then (
-    let pid_file_contents = Stdune.Io.String_path.read_file pid_file in
+    let pid_file_contents = Io.String_path.read_file_exn pid_file in
     match Int.of_string (String.trim pid_file_contents) with
     | None -> ()
     | Some pid ->
@@ -287,7 +287,7 @@ let with_pdeathsig_child mode ~spawn ~f =
         try
           let args = mode :: [ ready_file; marker_file ] in
           let child = spawn args in
-          Stdune.Io.String_path.write_file
+          Io.String_path.write_file_exn
             pid_file
             (Printf.sprintf "%d\n" (Pid.to_int child));
           wait_for_file ready_file;

@@ -100,7 +100,7 @@ let run_expect_test file ~f =
   let open Fiber.O in
   let* file_contents =
     Async.async (fun () ->
-      let file_contents = Io.read_file ~binary:false file in
+      let file_contents = Io.read_file_exn ~binary:false file in
       (* Nasty hack so that the user doesn't observe the test file while running the
          test.
 
@@ -118,8 +118,8 @@ let run_expect_test file ~f =
     if file_contents <> expected
     then (
       (* we only need to restore the test file so the diff doesn't fail *)
-      let () = Io.write_file file file_contents in
-      Io.write_file ~binary:false corrected_file expected)
+      let () = Io.write_file_exn file file_contents in
+      Io.write_file_exn ~binary:false corrected_file expected)
     else if Fpath.exists (Path.to_string corrected_file)
     then Path.rm_rf corrected_file)
 ;;
@@ -212,11 +212,13 @@ let read_metadata_entries file =
     match file with
     | None -> ""
     | Some file ->
-      (try Io.read_file ~binary:true file with
-       | Unix.Unix_error _ | Sys_error _ ->
+      (match Io.read_file ~binary:true file with
+       | Ok contents -> contents
+       | Error (Unix.Unix_error _ | Sys_error _) ->
          (* a script where the first command immediately exits might not produce
             the metadata file *)
-         "")
+         ""
+       | Error exn -> raise exn)
   in
   let rec loop acc = function
     | [ "" ] | [] -> List.rev acc
@@ -241,7 +243,7 @@ let read_times =
   fun file ->
     let open Option.O in
     let* file = file in
-    let+ contents = Option.try_with (fun () -> Io.read_file file ~binary:true) in
+    let+ contents = Io.read_file file ~binary:true |> Result.to_option in
     String.split_lines contents
     |> List.filter_map ~f:(fun s ->
       match String.trim s with
@@ -391,8 +393,8 @@ let sanitize ~parent_script cram_to_output : command_out Cram_lexer.block list =
           | Not_ran -> None
           | Present _ | Missing_unreachable | Timed_out _ ->
             (match Io.read_file ~binary:false block.output_file with
-             | exception _ -> None
-             | contents -> Some (Ansi_color.strip contents))
+             | Error _ -> None
+             | Ok contents -> Some (Ansi_color.strip contents))
         in
         let rewrite build_path_prefix_map =
           Option.map
@@ -651,7 +653,7 @@ let print_timeout_correction_and_fail
   =
   let open Fiber.O in
   let* () =
-    let source_contents = Io.read_file ~binary:false src in
+    let source_contents = Io.read_file_exn ~binary:false src in
     let expected =
       let current_stanzas =
         Lexbuf.from_string source_contents ~fname:(Path.to_string src)
@@ -666,7 +668,7 @@ let print_timeout_correction_and_fail
       Path.rm_rf corrected_file;
       Fiber.return ())
     else (
-      Io.write_file ~binary:false corrected_file expected;
+      Io.write_file_exn ~binary:false corrected_file expected;
       let+ diff = Dune_engine.Print_diff.get ~sandbox src corrected_file in
       let () =
         let source_file = Path.drop_optional_build_context_src_exn src in
@@ -826,7 +828,7 @@ let run_and_produce_output
   let* commands =
     let+ cram_to_output =
       let cram_stanzas =
-        Io.read_file ~binary:false script
+        Io.read_file_exn ~binary:false script
         |> Lexbuf.from_string ~fname:(Path.to_string script)
         |> cram_stanzas ~conflict_markers
         |> List.map ~f:snd
@@ -967,7 +969,7 @@ module Make_script = struct
 
     let action { script = src; target = dst; conflict_markers } ~ectx:_ ~eenv:_ =
       let commands =
-        Io.read_file ~binary:false src
+        Io.read_file_exn ~binary:false src
         |> Lexbuf.from_string ~fname:(Path.to_string src)
         |> cram_stanzas ~conflict_markers
         |> List.map ~f:snd
@@ -976,7 +978,7 @@ module Make_script = struct
           | Command s -> Some s)
         |> cram_commmands
       in
-      Io.write_file ~binary:false (Path.build dst) commands;
+      Io.write_file_exn ~binary:false (Path.build dst) commands;
       Fiber.return ()
     ;;
   end
@@ -1004,7 +1006,7 @@ module Diff = struct
     let encode { script; out } path _ : Sexp.t = List [ path script; path out ]
 
     let action { script; out } ~ectx:_ ~eenv:_ =
-      let current = Io.read_file ~binary:false script in
+      let current = Io.read_file_exn ~binary:false script in
       let combined =
         let out =
           match Script.load out with
@@ -1024,7 +1026,7 @@ module Diff = struct
       let corrected_file = Path.extend_basename script ~suffix:Filename.corrected in
       if String.equal current expected
       then Path.rm_rf corrected_file
-      else Io.write_file ~binary:false corrected_file expected;
+      else Io.write_file_exn ~binary:false corrected_file expected;
       Fiber.return ()
     ;;
   end

@@ -136,7 +136,7 @@ let%expect_test "serialize and deserialize error message with location" =
 ;;
 
 let%expect_test "serialize and deserialize error with location excerpt and hint" =
-  Io.String_path.write_file "foo.ml" "let x = 1\nlet y = 2\nlet z = 3\n";
+  Io.String_path.write_file_exn "foo.ml" "let x = 1\nlet y = 2\nlet z = 3\n";
   let loc = Stdune.Loc.of_pos ("foo.ml", 1, 2, 3) in
   let dir = Some (Stdune.Path.of_string ".") in
   let hints = [ Pp.verbatim "Hint 1"; Pp.verbatim "Hint 2" ] in

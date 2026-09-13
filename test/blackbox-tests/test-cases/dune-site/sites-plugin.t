@@ -26,3 +26,25 @@ Test sites plugins (example from the manual)
   Main app starts...
   Plugin1 is doing something...
 
+An empty library list is accepted. The plugin's META has no requirements,
+so loading it does not run the library's initialization code.
+
+  $ cat >plugin/dune <<EOF
+  > (library
+  >  (public_name plugin1.plugin1_impl)
+  >  (name plugin1_impl)
+  >  (modules plugin1_impl)
+  >  (libraries app.register))
+  > 
+  > (plugin
+  >  (name plugin1)
+  >  (libraries)
+  >  (site (app plugins)))
+  > EOF
+
+  $ dune build @install
+  $ cat _build/default/plugin/.site/app/plugins/plugin1/META
+  requires = ""
+
+  $ dune exec ./app.exe
+  Main app starts...

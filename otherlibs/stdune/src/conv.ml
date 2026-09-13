@@ -146,6 +146,13 @@ type ('a, 'kind) t =
       * ('b, fields) t
       -> (('a, 'b) Either.t, fields) t
   | Record : ('a, fields) t -> ('a, values) t
+  | Record_fields : ('a, 'a) record_builder -> ('a, fields) t
+
+and ('record, 'remaining) record_builder =
+  | Make : 'constructor -> ('record, 'constructor) record_builder
+  | Add :
+      ('record, 'a -> 'remaining) record_builder * ('a, fields) t * ('record -> 'a)
+      -> ('record, 'remaining) record_builder
 
 and ('a, 'arg) constr =
   { (* TODO allow constructors without an argument *)
@@ -251,6 +258,15 @@ let sexp_for_digest t =
          | None -> List [ Atom "Fixpoint"; iter (id :: ids) (Fdecl.get fdecl) ])
       | Either (a, b) -> List [ Atom "Either"; iter ids a; iter ids b ]
       | Record t -> List [ Atom "Record"; iter ids t ]
+      | Record_fields builder ->
+        List (Atom "Record_fields" :: record_fields ids builder [])
+  and record_fields
+    : type r f. int list -> (r, f) record_builder -> Sexp.t list -> Sexp.t list
+    =
+    fun ids builder acc ->
+    match builder with
+    | Make _ -> acc
+    | Add (builder, fields, _) -> record_fields ids builder (iter ids fields :: acc)
   in
   iter [] t
 ;;
@@ -278,6 +294,7 @@ let to_sexp : 'a. ('a, values) t -> 'a -> Sexp.t =
     | Record r ->
       let fields = loop r a in
       Fields.to_sexp fields
+    | Record_fields builder -> record_fields builder a
     | Field (name, spec) ->
       (match spec with
        | Required t -> Fields.of_field name (loop t a)
@@ -310,6 +327,14 @@ let to_sexp : 'a. ('a, values) t -> 'a -> Sexp.t =
          Code_error.raise
            "enum does not include this value"
            [ "valid values", list (fun (x, _) -> string x) choices ])
+  and record_fields : type r f. (r, f) record_builder -> r -> Fields.t =
+    fun builder value ->
+    match builder with
+    | Make _ -> Fields.empty
+    | Add (builder, fields, get) ->
+      let previous = record_fields builder value in
+      let fields = loop fields (get value) in
+      Fields.merge previous fields
   in
   loop t a
 ;;
@@ -390,6 +415,9 @@ let of_sexp : 'a. ('a, values) t -> version:int * int -> Sexp.t -> 'a =
       let a, Fields f = loop r fields in
       Fields.check_empty f;
       a, Values
+    | Record_fields builder ->
+      let value, rest = record_fields builder ctx in
+      value, Fields rest
     | Field (name, spec) ->
       (match spec with
        | Required v ->
@@ -449,6 +477,14 @@ let of_sexp : 'a. ('a, values) t -> version:int * int -> Sexp.t -> 'a =
          (match List.assoc choices a with
           | None -> raise_of_sexp "unable to read enum"
           | Some s -> s, Values))
+  and record_fields : type r f. (r, f) record_builder -> Fields.t -> f * Fields.t =
+    fun builder ctx ->
+    match builder with
+    | Make constructor -> constructor, ctx
+    | Add (builder, fields, _) ->
+      let constructor, rest = record_fields builder ctx in
+      let value, Fields rest = loop fields rest in
+      constructor value, rest
   in
   discard_values (loop t sexp)
 ;;
@@ -509,6 +545,16 @@ let eight a b c d e f g h =
 let sexp = Sexp
 let required x = Required x
 let optional x = Optional x
+
+module Record = struct
+  type ('record, 'remaining) builder = ('record, 'remaining) record_builder
+
+  let make constructor = Make constructor
+  let add fields ~get builder = Add (builder, fields, get)
+  let field name spec ~get builder = add (field name spec) ~get builder
+  let finish builder = Record_fields builder
+end
+
 let fdecl_id = ref 0
 
 let fixpoint f =

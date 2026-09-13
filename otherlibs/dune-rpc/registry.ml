@@ -47,12 +47,12 @@ module Dune = struct
 
   let sexp : t Conv.value =
     let open Conv in
-    let to_ (where, root, pid) = { where; root; pid } in
-    let from { where; root; pid } = where, root, pid in
-    let where = field "where" (required Where.sexp) in
-    let root = field "root" (required string) in
-    let pid = field "pid" (required Pid.conv) in
-    iso (record (three where root pid)) to_ from
+    record
+      (Record.make (fun where root pid -> { where; root; pid })
+       |> Record.field "where" (required Where.sexp) ~get:where
+       |> Record.field "root" (required string) ~get:root
+       |> Record.field "pid" (required Pid.conv) ~get:(fun { pid; _ } -> pid)
+       |> Record.finish)
   ;;
 
   type error =

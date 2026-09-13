@@ -44,6 +44,35 @@ let run =
         Scheduler.Run.go config run ~timeout:(Time.Span.of_secs 5.0))
 ;;
 
+let%expect_test "registry record wire format" =
+  let config =
+    Registry.Config.create
+      (Xdg.create
+         ~env:(function
+           | "XDG_RUNTIME_DIR" -> Some "."
+           | _ -> None)
+         ())
+  in
+  List.iter
+    [ `Unix "rpc"; `Ip (`Host "localhost", `Port 8587) ]
+    ~f:(fun where ->
+      let dune = Registry.Dune.create ~where ~root:"project" ~pid:(Pid.of_int_exn 123) in
+      let (`Caller_should_write file) = Registry.Config.register config dune in
+      print_endline file.contents;
+      let round_trip =
+        match Registry.Dune.of_file file with
+        | Error _ -> false
+        | Ok decoded -> Ordering.is_eq (Registry.Dune.compare dune decoded)
+      in
+      printfn "round trip: %b" round_trip);
+  [%expect
+    {|
+    ((3:pid3:123)(4:root7:project)(5:where13:unix:path=rpc))
+    round trip: true
+    ((3:pid3:123)(4:root7:project)(5:where28:tcp:host=localhost,port=8587))
+    round trip: true |}]
+;;
+
 let%expect_test "poll skips scans after the registry mtime changes" =
   let module IO = struct
     let mtime = ref 0.0

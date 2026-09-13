@@ -87,11 +87,14 @@ module Public = struct
     module V1 = struct
       let req =
         let open Conv in
-        let path = field "path" (required string) in
-        let contents = field "contents" (required string) in
-        let to_ (path, contents) = path, `Contents contents in
-        let from (path, `Contents contents) = path, contents in
-        iso (record (both path contents)) to_ from
+        record
+          (Record.make (fun path contents -> path, `Contents contents)
+           |> Record.field "path" (required string) ~get:fst
+           |> Record.field
+                "contents"
+                (required string)
+                ~get:(fun (_, `Contents contents) -> contents)
+           |> Record.finish)
       ;;
     end
 
@@ -179,9 +182,10 @@ module Public = struct
 
       let conv =
         let open Conv in
-        let to_ root = { root } in
-        let from { root } = root in
-        iso (record (field "root" (required string))) to_ from
+        record
+          (Record.make (fun root -> { root })
+           |> Record.field "root" (required string) ~get:(fun { root } -> root)
+           |> Record.finish)
       ;;
     end
 

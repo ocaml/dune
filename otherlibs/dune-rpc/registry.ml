@@ -18,21 +18,25 @@ module Dune = struct
       ; where : Where.t
       }
 
-    let compare t { root; pid; where } =
-      let open Ordering.O in
-      let= () = Pid.compare t.pid pid in
-      let= () = String.compare t.root root in
-      Where.compare t.where where
+    let repr =
+      Repr.record
+        "dune"
+        [ Repr.field "root" Repr.string ~get:(fun { root; _ } -> root)
+        ; Repr.field "pid" Pid.repr ~get:(fun { pid; _ } -> pid)
+        ; Repr.field "where" Where.repr ~get:(fun { where; _ } -> where)
+        ]
     ;;
 
-    let to_dyn { root; pid; where } =
-      let open Dyn in
-      record [ "root", string root; "pid", Pid.to_dyn pid; "where", Where.to_dyn where ]
-    ;;
+    let to_dyn = Repr.to_dyn repr
   end
 
-  include T
-  module C = Comparable.Make (T)
+  module T_with_compare = struct
+    include T
+    include Repr.Poly (T)
+  end
+
+  include T_with_compare
+  module C = Comparable.Make (T_with_compare)
   module Set = C.Set
 
   let create ~where ~root ~pid = { where; root; pid }

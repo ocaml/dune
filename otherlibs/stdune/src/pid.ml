@@ -5,6 +5,7 @@ let hash = Int.hash
 let equal = Int.equal
 let to_int t = t
 let compare = Int.compare
+let repr = Repr.int
 
 let of_int_exn t =
   assert (t > 0);

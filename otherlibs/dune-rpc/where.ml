@@ -67,14 +67,29 @@ let to_dbus : t -> Dbus_address.t = function
     { name = "tcp"; args = [ "host", host; "port", port ] }
 ;;
 
-let to_dyn : t -> Dyn.t =
-  let open Dyn in
-  function
-  | `Unix s -> variant "Unix" [ string s ]
-  | `Ip (`Host host, `Port port) ->
-    variant "Ip" [ variant "Host" [ string host ]; variant "Port" [ int port ] ]
+let repr =
+  let host =
+    Repr.variant
+      "host"
+      [ Repr.case "Host" Repr.string ~proj:(fun (`Host host) -> Some host) ]
+  in
+  let port =
+    Repr.variant
+      "port"
+      [ Repr.case "Port" Repr.int ~proj:(fun (`Port port) -> Some port) ]
+  in
+  Repr.variant
+    "where"
+    [ Repr.case "Unix" Repr.string ~proj:(function
+        | `Unix path -> Some path
+        | `Ip _ -> None)
+    ; Repr.case "Ip" (Repr.pair host port) ~proj:(function
+        | `Ip (host, port) -> Some (host, port)
+        | `Unix _ -> None)
+    ]
 ;;
 
+let to_dyn = Repr.to_dyn repr
 let to_string t = Dbus_address.to_string (to_dbus t)
 
 let sexp : t Conv.value =

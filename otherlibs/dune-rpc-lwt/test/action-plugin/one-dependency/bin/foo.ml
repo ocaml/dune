@@ -181,6 +181,7 @@ let action dap =
   | [| _; "detached"; state |] -> detached_action dap state
   | [| _; "hold"; connection; release |] -> held_action dap ~connection ~release
   | [| _; "initialize" |] -> Lwt.return_unit
+  | [| _; "exit"; code |] -> exit (int_of_string code)
   | _ -> invalid_arg "invalid arguments"
 ;;
 

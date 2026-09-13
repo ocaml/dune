@@ -49,7 +49,7 @@ let add_variable t =
   t.nb_vars <- i;
   t.lits <- Int.Map.set t.lits i (Sat.add_variable t.problem i);
   t.preferred <- Int.Map.set t.preferred i (Random.State.bool t.rng);
-  t.order <- i :: t.order;
+  t.order <- t.order @ [ i ];
   i
 ;;
 
@@ -125,7 +125,29 @@ let decide t () =
   pick t.order
 ;;
 
-let solve t = Sat.run_solver t.problem (decide t)
+let solve t =
+  let budget = ref 10_000 in
+  let rec loop () =
+    decr budget;
+    if !budget <= 0 then failwith "fuzz: the solver did not terminate";
+    match Sat.step t.problem with
+    | `Sat -> true
+    | `Unsat -> false
+    | `Backtrack _ -> loop ()
+    | `Decide ->
+      if Random.State.int t.rng 3 = 0
+      then (
+        if Random.State.bool t.rng then ignore (add_variable t : int);
+        add_constraint t)
+      else (
+        match decide t () with
+        | Some lit -> Sat.choose t.problem (`True lit)
+        | None -> failwith "fuzz: [step] asked for a choice with nothing undecided");
+      loop ()
+  in
+  loop ()
+;;
+
 let solution t = Int.Map.of_list_exn (List.map t.order ~f:(fun i -> i, value_exn t i))
 
 let holds constraint_ ~value_of_var =
@@ -203,7 +225,7 @@ let run ~seed ~nb_iterations =
   Format.printf "%d failure(s) in %d iterations@." !nb_failures nb_iterations
 ;;
 
-let%expect_test "run_solver reaches the same solution as a brute-force search" =
+let%expect_test "SAT solver reaches the same solution as a brute-force search" =
   run ~seed:42 ~nb_iterations:1000;
   [%expect {| 0 failure(s) in 1000 iterations |}]
 ;;

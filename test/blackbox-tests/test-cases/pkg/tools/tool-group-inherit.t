@@ -1,4 +1,4 @@
-The (inherit ...) and (share ...) fields of a tool group's lock_dir block.
+The (inherit ...) and (shared_packages ...) fields of a tool group's lock_dir block.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.25)
@@ -21,7 +21,7 @@ A group inheriting from a named context and sharing only some packages:
   > (context (default (name other)))
   > (tool_group
   >  (tools ocaml-lsp-server)
-  >  (lock_dir (inherit other) (share ocaml)))
+  >  (lock_dir (inherit other) (shared_packages ocaml)))
   > EOF
   $ dune build
 
@@ -71,19 +71,19 @@ No other lock_dir field may be combined with inherit for now:
   Error: This field cannot be combined with "inherit" yet.
   [1]
 
-share requires inherit:
+shared_packages requires inherit:
 
   $ cat > dune-workspace <<EOF
   > (lang dune 3.25)
   > (tool_group
   >  (tools ocaml-lsp-server)
-  >  (lock_dir (share ocaml)))
+  >  (lock_dir (shared_packages ocaml)))
   > EOF
   $ dune build
-  File "dune-workspace", line 4, characters 18-23:
-  4 |  (lock_dir (share ocaml)))
-                        ^^^^^
-  Error: "share" requires "inherit".
+  File "dune-workspace", line 4, characters 28-33:
+  4 |  (lock_dir (shared_packages ocaml)))
+                                  ^^^^^
+  Error: "shared_packages" requires "inherit".
   [1]
 
 The same tool may be declared once per context, and a group without inherit

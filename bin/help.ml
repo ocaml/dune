@@ -39,7 +39,7 @@ let config =
         (List.map
            ~f:(fun (x, desc) -> `I (sprintf "$(b,%s)" x, desc))
            [ ( "progress"
-             , {|This is the default, Dune shows and update a
+             , {|This is the default, Dune shows and updates a
                status line as build goals are being completed.|}
              )
            ; "quiet", {|Only display errors.|}
@@ -54,6 +54,47 @@ let config =
                programs.|}
              )
            ])
+    ; `S "PROGRESS STATUS LINE"
+    ; `P {|In $(b,progress) mode, a running build displays a line similar to:|}
+    ; `Pre "Done: 75% (3/4, 1 left) (jobs: 1) | [1.2s] [0.8x] [2] | [rpc 1]"
+    ; `P "Its components are:"
+    ; `Blocks
+        [ `I
+            ( "$(b,Done)"
+            , {|The percentage and number of build rules completed, the total
+               number discovered so far, and the number remaining. The total
+               can increase as Dune discovers rules, and rules that are already
+               up to date still count as completed. A failure count is added
+               when a rule fails.|}
+            )
+        ; `I ("$(b,jobs)", "The number of jobs currently running.")
+        ; `I
+            ( "$(b,[1.2s])"
+            , {|The elapsed time for the current build. In watch mode, it is
+               the duration of the most recently completed build while Dune
+               waits for changes.|}
+            )
+        ; `I
+            ( "$(b,[0.8x])"
+            , {|The average process parallelism: the accumulated CPU time of
+               build processes divided by the elapsed build time. On Windows,
+               where process CPU time is unavailable, Dune uses accumulated
+               process wall-clock time.|}
+            )
+        ; `I ("$(b,[2])", "The current build number in watch mode, starting at 1.")
+        ; `I
+            ( "$(b,[rpc 1])"
+            , {|The number of RPC clients currently connected to this Dune
+               process. It is shown only while at least one client is
+               connected.|}
+            )
+        ]
+    ; `P
+        {|Bracketed components are displayed only when applicable. When a
+           command sends its request to an existing watch-mode Dune process,
+           its own status line displays $(b,Connected to RPC server); the
+           detailed build status remains in the server's output and is also
+           available through $(b,dune monitor).|}
     ; `P
         {|Note that when the selected display mode is $(b,progress) and the
            output is not a terminal then the $(b,quiet) mode is selected

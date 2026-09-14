@@ -590,23 +590,23 @@ end
 
 type t = DB.t
 
-let create_with_paths ~paths =
-  Per_context.create_by_name ~name:"findlib" (fun context ->
-    Memo.lazy_ ~name:"findlib" (fun () ->
-      let* context = Context.DB.get context in
-      let* lib_config =
-        let+ ocaml = Context.ocaml context in
-        ocaml.lib_config
-      in
-      DB.create ~paths ~lib_config)
-    |> Memo.Lazy.force)
-  |> Staged.unstage
+let create_with_paths ~paths context_name =
+  let* context = Context.DB.get context_name in
+  let* lib_config =
+    let+ ocaml = Context.ocaml context in
+    ocaml.lib_config
+  in
+  DB.create ~paths ~lib_config
 ;;
 
-let create context_name =
-  let* context = Context.DB.get context_name in
-  let* paths = Context.findlib_paths context in
-  create_with_paths context_name ~paths
+let create =
+  Per_context.create_by_name ~name:"findlib" (fun context_name ->
+    Memo.lazy_ ~name:"findlib" (fun () ->
+      let* context = Context.DB.get context_name in
+      let* paths = Context.findlib_paths context in
+      create_with_paths context_name ~paths)
+    |> Memo.Lazy.force)
+  |> Staged.unstage
 ;;
 
 include Public

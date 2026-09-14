@@ -26,12 +26,12 @@ end
 
 module Tool_group : sig
   (** A group that inherits from a context is solved on top of that context's
-      lock directory and is only usable from that context. [share] restricts
-      which of the context's packages (with their dependencies) are reused;
-      [None] means all of them. *)
+      lock directory and is only usable from that context. [shared_packages]
+      restricts which of the context's packages (with their dependencies) are
+      reused; [None] means all of them. *)
   type inherit_ =
     { context : Loc.t * Context_name.t
-    ; share : (Loc.t * Package.Name.t) list option
+    ; shared_packages : (Loc.t * Package.Name.t) list option
     }
 
   type t =

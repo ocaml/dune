@@ -22,8 +22,8 @@ not dependencies of the project, such as ``ocamlformat`` or
 
       The packages providing the tools, in the
       :token:`~pkg-dep:dep_specification` format used by ``depends``. At least
-      one is required. A package may appear in at most one group per inherited
-      context.
+      one is required. A package may be declared at most once per inherited
+      context, and at most once among groups that do not inherit a context.
 
    .. describe:: (lock_dir ...)
 

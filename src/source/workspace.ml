@@ -1195,47 +1195,60 @@ let check_lock_dirs_no_dupes lock_dirs =
       ]
 ;;
 
-let check_tool_groups_no_dupes (tool_groups : Tool_group.t list) =
-  (match
-     List.filter_map tool_groups ~f:(fun (group : Tool_group.t) -> group.name)
-     |> String.Map.of_list_map ~f:(fun (loc, name) -> name, loc)
-   with
-   | Ok _ -> ()
-   | Error (name, (loc1, _), (loc2, _)) ->
-     User_error.raise
-       ~loc:loc2
-       [ Pp.textf "Tool group %S is defined multiple times:" name
-       ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
-       ]);
-  (* A tool may be declared once per inherited context. A group without
-     [inherit] counts as its own context. *)
-  List.concat_map tool_groups ~f:(fun (group : Tool_group.t) ->
-    let context = Option.map group.inherit_ ~f:(fun i -> snd i.context) in
-    List.map group.tools ~f:(fun (loc, { Dune_lang.Package_dependency.name; _ }) ->
-      name, (context, loc)))
-  |> List.fold_left ~init:Package.Name.Map.empty ~f:(fun seen (name, (context, loc2)) ->
-    let previous = Package.Name.Map.find seen name |> Option.value ~default:[] in
-    (match
-       List.find previous ~f:(fun (context', _) ->
-         Option.equal Context_name.equal context context')
-     with
-     | None -> ()
-     | Some (_, loc1) ->
-       let where =
-         match context with
-         | None -> ""
-         | Some context -> sprintf " for context %S" (Context_name.to_string context)
-       in
-       User_error.raise
-         ~loc:loc2
-         [ Pp.textf
-             "Tool %S is defined multiple times%s:"
-             (Package.Name.to_string name)
-             where
-         ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
-         ]);
-    Package.Name.Map.add_multi seen name (context, loc2))
-  |> ignore
+let check_no_duplicate_group_names (tool_groups : Tool_group.t list) =
+  match
+    List.filter_map tool_groups ~f:(fun (group : Tool_group.t) -> group.name)
+    |> String.Map.of_list_map ~f:(fun (loc, name) -> name, loc)
+  with
+  | Ok _ -> ()
+  | Error (name, (loc1, _), (loc2, _)) ->
+    User_error.raise
+      ~loc:loc2
+      [ Pp.textf "Tool group %S is declared multiple times:" name
+      ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
+      ]
+;;
+
+(* Tools are looked up by name within a scope. Groups that inherit a context
+   are scoped to that context; all groups without [inherit] form a single
+   scope, since a tool must resolve to one isolated instance by name alone. *)
+let check_no_duplicate_tools (tool_groups : Tool_group.t list) =
+  let check scope tools =
+    match
+      Package.Name.Map.of_list_map tools ~f:(fun (loc, dep) ->
+        dep.Dune_lang.Package_dependency.name, loc)
+    with
+    | Ok _ -> ()
+    | Error (name, (loc1, _), (loc2, _)) ->
+      let where =
+        match scope with
+        | None -> ""
+        | Some context -> sprintf " for context %S" (Context_name.to_string context)
+      in
+      User_error.raise
+        ~loc:loc2
+        [ Pp.textf
+            "Tool %S is declared multiple times%s:"
+            (Package.Name.to_string name)
+            where
+        ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
+        ]
+        ~hints:
+          [ Pp.text
+              "A tool may be declared once per inherited context, and once among groups \
+               that do not inherit a context."
+          ]
+  in
+  let inherited, isolated =
+    List.partition_map tool_groups ~f:(fun (group : Tool_group.t) ->
+      match group.inherit_ with
+      | Some { context = _, context; _ } -> Left (context, group.tools)
+      | None -> Right group.tools)
+  in
+  check None (List.concat isolated);
+  Context_name.Map.of_list_multi inherited
+  |> Context_name.Map.iteri ~f:(fun context tools ->
+    check (Some context) (List.concat tools))
 ;;
 
 let check_tool_groups_contexts contexts (tool_groups : Tool_group.t list) =
@@ -1394,7 +1407,8 @@ let step1 ~(lang : Lang.Instance.t) clflags =
            else None
        in
        check_lock_dirs_no_dupes lock_dirs;
-       check_tool_groups_no_dupes tool_groups;
+       check_no_duplicate_group_names tool_groups;
+       check_no_duplicate_tools tool_groups;
        check_tool_groups_contexts contexts tool_groups;
        { merlin_context
        ; contexts = top_sort (List.rev contexts)

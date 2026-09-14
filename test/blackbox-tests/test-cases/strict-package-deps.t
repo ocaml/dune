@@ -9,12 +9,12 @@ the package dependencies inferred by dune:
   > EOF
   $ mkdir foo bar
   $ touch foo/foo.ml
-  $ touch bar/bar.ml
+  $ echo 'let value = 1' >bar/bar.ml
   $ cat >foo/dune <<EOF
   > (executable (public_name foo) (libraries bar) (package foo))
   > EOF
   $ cat >bar/dune <<EOF
-  > (library (public_name bar))
+  > (library (public_name bar) (wrapped false))
   > EOF
   $ dune build @install
   Error: Package foo is missing the following package dependencies
@@ -26,6 +26,17 @@ the package dependencies inferred by dune:
   $ cat >foo/dune <<EOF
   > (library (public_name foo) (libraries bar))
   > EOF
+  $ dune build @install
+  Error: Package foo is missing the following package dependencies
+  - bar
+  -> required by _build/default/foo.install
+  -> required by alias install
+  [1]
+
+The same check must work when source references keep the library's CMI in the
+narrowed compilation dependencies:
+
+  $ echo 'let use_bar () = Bar.value' >foo/foo.ml
   $ dune build @install
   Error: Package foo is missing the following package dependencies
   - bar
@@ -47,10 +58,31 @@ transitive deps.
   > EOF
   $ touch baz.ml bar.ml foo.ml
   $ cat >dune <<EOF
-  > (library (public_name baz) (modules baz))
-  > (library (public_name bar) (libraries baz) (modules bar))
-  > (library (public_name foo) (libraries bar) (modules foo))
+  > (library (public_name baz) (wrapped false) (modules baz))
+  > (library
+  >  (public_name bar)
+  >  (wrapped false)
+  >  (libraries baz)
+  >  (modules bar))
+  > (library
+  >  (public_name foo)
+  >  (wrapped false)
+  >  (libraries bar)
+  >  (modules foo))
   > EOF
+  $ dune build @install
+  Error: Package foo is missing the following package dependencies
+  - baz
+  -> required by _build/default/foo.install
+  -> required by alias install
+  [1]
+
+Retain the transitive check when every library in the source-level chain is
+kept by per-module narrowing:
+
+  $ echo 'let value = 1' >baz.ml
+  $ echo 'let chain = Baz.value' >bar.ml
+  $ echo 'let use = Bar.chain' >foo.ml
   $ dune build @install
   Error: Package foo is missing the following package dependencies
   - baz

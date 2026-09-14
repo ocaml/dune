@@ -28,6 +28,7 @@ type t =
   | Shutdown of Shutdown.Reason.t
   | Fiber_fill_ivar of Fiber.fill
   | Job_complete_ready
+  | Status_line_refresh
 
 module Queue : sig
   type event := t
@@ -43,5 +44,6 @@ module Queue : sig
   val send_job_completed : t -> job -> Proc.Process_info.t -> unit
   val send_job_completed_ready : t -> unit
   val send_shutdown : t -> Shutdown.Reason.t -> unit
+  val send_status_line_refresh : t -> unit
   val yield_if_there_are_pending_events : t -> unit Fiber.t
 end

@@ -347,6 +347,7 @@ let rec cleanup_iter t saw_shutdown =
      | [] -> cleanup_iter t saw_shutdown
      | fills -> fills)
   | Fiber_fill_ivar fill -> [ fill ]
+  | Status_line_refresh -> cleanup_iter t saw_shutdown
   | Shutdown reason ->
     got_shutdown reason;
     saw_shutdown := Got_shutdown;
@@ -392,7 +393,7 @@ let kill_and_wait_for_all_processes t =
       let rec next () =
         match Event.Queue.next t.events with
         | Fiber_fill_ivar fill -> [ fill ]
-        | Job_complete_ready | Shutdown _ -> next ()
+        | Job_complete_ready | Status_line_refresh | Shutdown _ -> next ()
       in
       next ());
   (* This silliness is needed because we have tests that run the scheduler
@@ -474,6 +475,7 @@ module Run_once = struct
        | [] -> iter t
        | fills -> fills)
     | Fiber_fill_ivar fill -> [ fill ]
+    | Status_line_refresh -> []
     | Shutdown reason ->
       got_shutdown reason;
       raise @@ Abort (Shutdown_requested reason)

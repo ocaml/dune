@@ -41,6 +41,7 @@ type t =
   | Shutdown of Shutdown.Reason.t
   | Fiber_fill_ivar of Fiber.fill
   | Job_complete_ready
+  | Status_line_refresh
 
 module Queue = struct
   type event = t
@@ -51,6 +52,7 @@ module Queue = struct
     ; mutex : Mutex.t
     ; cond : Condition.t
     ; mutable job_complete_ready : bool
+    ; mutable status_line_refresh_pending : bool
     ; worker_tasks_completed : Fiber.fill Queue.t
     ; mutable got_event : bool
     ; mutable yield : unit Fiber.Ivar.t option
@@ -72,6 +74,7 @@ module Queue = struct
     ; got_event = false
     ; yield = None
     ; job_complete_ready = false
+    ; status_line_refresh_pending = false
     }
   ;;
 
@@ -119,6 +122,10 @@ module Queue = struct
         Some Job_complete_ready
     ;;
 
+    let status_line_refresh : t =
+      fun q -> if q.status_line_refresh_pending then Some Status_line_refresh else None
+    ;;
+
     let jobs_completed q =
       Option.map (Queue.pop q.jobs_completed) ~f:(fun (job, proc_info) ->
         Fiber_fill_ivar (Fill (job.ivar, proc_info)))
@@ -143,13 +150,15 @@ module Queue = struct
        highest priority to maximize responsiveness to Ctrl+C.
        [worker_tasks_completed] is used for reacting to user input, so its
        latency is also important. [jobs_completed] and [yield] are where the
-       bulk of the work is done, so they are the lowest priority to avoid
-       starving other things. *)
+       bulk of the work is done, so they are low priority to avoid starving
+       other things. Status line refreshes are lowest because they are
+       redundant whenever another event wakes the scheduler. *)
     Event_source.
       [ shutdown
       ; worker_tasks_completed
       ; (if Sys.win32 then jobs_completed else job_complete_ready)
       ; yield
+      ; status_line_refresh
       ]
   ;;
 
@@ -170,6 +179,9 @@ module Queue = struct
       loop ()
     in
     let ev = loop () in
+    (* The scheduler refreshes the status line before requesting each event, so
+       whichever event was selected subsumes a pending dedicated refresh. *)
+    q.status_line_refresh_pending <- false;
     Mutex.unlock q.mutex;
     ev
   ;;
@@ -186,6 +198,10 @@ module Queue = struct
   ;;
 
   let send_job_completed_ready q = add_event q (fun q -> q.job_complete_ready <- true)
+
+  let send_status_line_refresh q =
+    add_event q (fun q -> q.status_line_refresh_pending <- true)
+  ;;
 
   let send_shutdown q signal =
     add_event q (fun q ->

@@ -53,3 +53,4 @@ project.
   pkg
   profile
   repository
+  tool_group

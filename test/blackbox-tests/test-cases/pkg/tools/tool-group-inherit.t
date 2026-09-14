@@ -120,8 +120,10 @@ But not twice for the same context:
   File "dune-workspace", line 6, characters 8-24:
   6 |  (tools ocaml-lsp-server utop)
               ^^^^^^^^^^^^^^^^
-  Error: Tool "ocaml-lsp-server" is defined multiple times for context
+  Error: Tool "ocaml-lsp-server" is declared multiple times for context
   "default":
   - dune-workspace:3
   - dune-workspace:6
+  Hint: A tool may be declared once per inherited context, and once among
+  groups that do not inherit a context.
   [1]

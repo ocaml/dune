@@ -61,9 +61,11 @@ Declaring the same tool in two groups is an error:
   File "dune-workspace", line 6, characters 13-24:
   6 |  (tools utop ocamlformat)
                    ^^^^^^^^^^^
-  Error: Tool "ocamlformat" is defined multiple times:
+  Error: Tool "ocamlformat" is declared multiple times:
   - dune-workspace:3
   - dune-workspace:6
+  Hint: A tool may be declared once per inherited context, and once among
+  groups that do not inherit a context.
   [1]
 
 So is declaring it twice within one group:
@@ -78,9 +80,11 @@ So is declaring it twice within one group:
   File "dune-workspace", line 3, characters 20-31:
   3 |  (tools ocamlformat ocamlformat)
                           ^^^^^^^^^^^
-  Error: Tool "ocamlformat" is defined multiple times:
+  Error: Tool "ocamlformat" is declared multiple times:
   - dune-workspace:3
   - dune-workspace:3
+  Hint: A tool may be declared once per inherited context, and once among
+  groups that do not inherit a context.
   [1]
 
 Two groups may not share a name:
@@ -100,7 +104,7 @@ Two groups may not share a name:
   File "dune-workspace", line 7, characters 7-10:
   7 |  (name dev)
              ^^^
-  Error: Tool group "dev" is defined multiple times:
+  Error: Tool group "dev" is declared multiple times:
   - dune-workspace:3
   - dune-workspace:7
   [1]

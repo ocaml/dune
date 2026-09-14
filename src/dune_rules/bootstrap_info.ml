@@ -23,12 +23,13 @@ end
 module Include_subdirs = struct
   type t =
     | Unqualified
-    | Qualified
+    | Qualified of (string list * string list) list
     | No
 
   let to_dyn = function
     | Unqualified -> Dyn.variant "Unqualified" []
-    | Qualified -> Dyn.variant "Qualified" []
+    | Qualified dirs ->
+      Dyn.variant "Qualified" [ Dyn.(list (pair (list string) (list string))) dirs ]
     | No -> Dyn.variant "No" []
   ;;
 end
@@ -53,12 +54,17 @@ let for_ = Compilation_mode.Ocaml
 
 let include_subdirs dir_contents =
   let open Memo.O in
-  Dir_contents.ml dir_contents ~for_
-  >>| Ml_sources.include_subdirs
-  >>| function
+  let+ ml = Dir_contents.ml dir_contents ~for_ in
+  match Ml_sources.include_subdirs ml with
   | Import.Include_subdirs.No -> Include_subdirs.No
-  | Include Qualified -> Qualified
-  | Include Unqualified -> Unqualified
+  | Include Unqualified -> Include_subdirs.Unqualified
+  | Include (Qualified _) ->
+    let dirs =
+      Dir_contents.dir_renames dir_contents
+      |> List.map ~f:(fun (src, dst) ->
+        Filename.L.to_string src, Filename.L.to_string dst)
+    in
+    Include_subdirs.Qualified dirs
 ;;
 
 let make_root_module sctx ~name compile_info =

@@ -341,3 +341,156 @@ The previous namespace is no longer available.
   Error: Module Public.Leaf does not exist.
   Leaving directory 'dynamic'
   [1]
+
+A lexer-generated implementation can use a handwritten interface, including
+when their physical basenames differ after renaming.
+
+  $ mkdir -p handwritten-lexer/internal
+  $ cat >handwritten-lexer/dune-project <<EOF
+  > (lang dune 3.25)
+  > EOF
+  $ cat >handwritten-lexer/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (internal as public)))
+  > (library
+  >  (name example)
+  >  (modules Public))
+  > (executable
+  >  (name main)
+  >  (modules Main)
+  >  (libraries example))
+  > EOF
+  $ cat >handwritten-lexer/internal/dune <<EOF
+  > (ocamllex public)
+  > EOF
+  $ cat >handwritten-lexer/internal/public.mll <<EOF
+  > { let value = "generated" }
+  > rule token = parse
+  > | eof { () }
+  > EOF
+  $ cat >handwritten-lexer/internal/internal.mli <<EOF
+  > val value : string
+  > EOF
+  $ cat >handwritten-lexer/main.ml <<EOF
+  > let () = print_endline Example.Public.value
+  > EOF
+  $ dune exec --root=handwritten-lexer ./main.exe
+  generated
+
+But a generated implementation must not replace a handwritten implementation
+of the renamed module. Currently the generated implementation silently wins.
+
+  $ cat >handwritten-lexer/internal/internal.ml <<EOF
+  > let value = "handwritten"
+  > EOF
+  $ dune exec --root=handwritten-lexer ./main.exe
+  generated
+
+A selected interface can likewise accompany a handwritten implementation.
+
+  $ mkdir -p handwritten-select/internal
+  $ cat >handwritten-select/dune-project <<EOF
+  > (lang dune 3.25)
+  > EOF
+  $ cat >handwritten-select/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (internal as public)))
+  > (library
+  >  (name example)
+  >  (modules Public)
+  >  (libraries
+  >   (select internal/public.mli from
+  >    (-> internal/public.fallback.mli))))
+  > (executable
+  >  (name main)
+  >  (modules Main)
+  >  (libraries example))
+  > EOF
+  $ cat >handwritten-select/internal/internal.ml <<EOF
+  > let value = "handwritten"
+  > EOF
+  $ cat >handwritten-select/internal/public.fallback.mli <<EOF
+  > val value : string
+  > EOF
+  $ cat >handwritten-select/main.ml <<EOF
+  > let () = print_endline Example.Public.value
+  > EOF
+  $ dune exec --root=handwritten-select ./main.exe
+  handwritten
+
+Selecting another interface for the same module must be rejected, even if the
+interfaces have identical contents. Currently the selected interface wins.
+
+  $ cat >handwritten-select/internal/internal.mli <<EOF
+  > val value : string
+  > EOF
+  $ dune exec --root=handwritten-select ./main.exe
+  handwritten
+
+Selecting another implementation must also be rejected. Currently it replaces
+the handwritten implementation.
+
+  $ cat >handwritten-select/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (internal as public)))
+  > (library
+  >  (name example)
+  >  (modules Public)
+  >  (libraries
+  >   (select internal/public.ml from
+  >    (-> internal/public.fallback.ml))))
+  > (executable
+  >  (name main)
+  >  (modules Main)
+  >  (libraries example))
+  > EOF
+  $ cat >handwritten-select/internal/public.fallback.ml <<EOF
+  > let value = "selected"
+  > EOF
+  $ dune exec --root=handwritten-select ./main.exe
+  selected
+
+Repeating the same mapping is harmless, including equivalent source and
+destination paths.
+
+  $ mkdir -p duplicate/internal
+  $ cat >duplicate/dune-project <<EOF
+  > (lang dune 3.25)
+  > EOF
+  $ cat >duplicate/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (internal as public)
+  >        (./internal as ./public)))
+  > (library (name example))
+  > EOF
+  $ cat >duplicate/internal/leaf.ml <<EOF
+  > let value = 42
+  > EOF
+  $ dune build --root=duplicate '%{cmi:Public.Leaf}'
+
+Conflicting mappings for the same source must be rejected. Currently the first
+mapping wins, even when the source paths normalize to the same directory.
+
+  $ cat >duplicate/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (internal as public)
+  >        (./internal as exposed)))
+  > (library (name example))
+  > EOF
+  $ dune build --root=duplicate '%{cmi:Public.Leaf}'
+
+Conflicting destinations can also come from variable expansion.
+
+  $ cat >dynamic/lib/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (internal as public)
+  >        (internal as %{read:../config/mapping})))
+  > (library (name renamed))
+  > EOF
+  $ dune build --root=dynamic '%{cmi:lib/Public.Leaf}'

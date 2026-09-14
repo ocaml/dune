@@ -38,12 +38,12 @@ Now we add some source with duplicate base names and test again:
           (source (path Bar Baz) (impl (path bar/baz.ml))))))
         (source (path Baz) (impl (path baz.ml))))))
 
-The structured form is accepted before directory renaming support, as long as
-the (dirs ...) field is not used.
+The structured form should require Dune 3.25, even without a dirs field.
+Currently it is accepted in earlier versions.
 
   $ mkdir form
   $ cat >form/dune-project <<EOF
-  > (lang dune 3.22)
+  > (lang dune 3.24)
   > EOF
   $ cat >form/dune <<EOF
   > (include_subdirs
@@ -59,6 +59,98 @@ the (dirs ...) field is not used.
   > let value = Sub.Leaf.value
   > EOF
   $ dune build --root form form.cma
+
+All legacy modes remain available in Dune 3.24.
+
+  $ mkdir syntax
+  $ cat >syntax/dune-project <<EOF
+  > (lang dune 3.24)
+  > EOF
+  $ for mode in no unqualified qualified; do
+  >   cat >syntax/dune <<EOF
+  > (include_subdirs $mode)
+  > EOF
+  >   dune build --root=syntax
+  > done
+
+The version requirement should apply to every mode in the structured form.
+
+  $ for mode in no unqualified qualified; do
+  >   cat >syntax/dune <<EOF
+  > (include_subdirs (mode $mode))
+  > EOF
+  >   dune build --root=syntax
+  > done
+
+An explicitly empty dirs field also needs Dune 3.25.
+
+  $ cat >syntax/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs))
+  > EOF
+  $ dune build --root=syntax
+  Entering directory 'syntax'
+  File "dune", line 3, characters 1-7:
+  3 |  (dirs))
+       ^^^^^^
+  Error: 'dirs' is only available since version 3.25 of the dune language.
+  Please update your dune-project file to have (lang dune 3.25).
+  Leaving directory 'syntax'
+  [1]
+
+So does a nonempty dirs field.
+
+  $ cat >syntax/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (internal as public)))
+  > EOF
+  $ dune build --root=syntax
+  Entering directory 'syntax'
+  File "dune", line 3, characters 1-28:
+  3 |  (dirs (internal as public)))
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'dirs' is only available since version 3.25 of the dune language.
+  Please update your dune-project file to have (lang dune 3.25).
+  Leaving directory 'syntax'
+  [1]
+
+In Dune 3.25, all three modes support the structured form.
+
+  $ cat >syntax/dune-project <<EOF
+  > (lang dune 3.25)
+  > EOF
+  $ for mode in no unqualified qualified; do
+  >   cat >syntax/dune <<EOF
+  > (include_subdirs (mode $mode))
+  > EOF
+  >   dune build --root=syntax
+  > done
+
+An empty dirs field is accepted only in qualified mode.
+
+  $ for mode in qualified no unqualified; do
+  >   cat >syntax/dune <<EOF
+  > (include_subdirs
+  >  (mode $mode)
+  >  (dirs))
+  > EOF
+  >   dune build --root=syntax
+  > done
+  Entering directory 'syntax'
+  File "dune", line 3, characters 1-7:
+  3 |  (dirs))
+       ^^^^^^
+  Error: The dirs field is only allowed with (mode qualified).
+  Leaving directory 'syntax'
+  Entering directory 'syntax'
+  File "dune", line 3, characters 1-7:
+  3 |  (dirs))
+       ^^^^^^
+  Error: The dirs field is only allowed with (mode qualified).
+  Leaving directory 'syntax'
+  [1]
 
 Directory renames must not target the directory containing the
 (include_subdirs ...) stanza itself.

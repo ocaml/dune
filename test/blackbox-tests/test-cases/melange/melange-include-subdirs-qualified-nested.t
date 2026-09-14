@@ -30,3 +30,38 @@ in a nested subdirectory.
   _build/default/a/.melange_src/foo__.ml-gen
   _build/default/a/.melange_src/foo__B.ml-gen
   _build/default/a/.melange_src/foo__B__C.ml-gen
+
+A generated group interface can be paired with a handwritten interface under
+its original directory name.
+
+  $ make_melange_project 3.25 1.0
+  $ mkdir a/internal
+  $ cat >a/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (internal as public)))
+  > (library (name foo) (modes melange))
+  > EOF
+  $ cat >a/internal/dune <<EOF
+  > (ocamllex public)
+  > EOF
+  $ cat >a/internal/public.mll <<EOF
+  > rule token = parse
+  > | eof { () }
+  > EOF
+  $ cat >a/internal/internal.mli <<EOF
+  > val token : Lexing.lexbuf -> unit
+  > EOF
+  $ cat >a/foo.ml <<EOF
+  > module L = B.C.Lexer
+  > let token = Public.token
+  > EOF
+  $ dune build
+
+A generated implementation must not replace a handwritten one after renaming.
+Currently the generated implementation silently wins.
+
+  $ cat >a/internal/internal.ml <<EOF
+  > let token _ = ()
+  > EOF
+  $ dune build

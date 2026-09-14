@@ -38,8 +38,7 @@ Now we add some source with duplicate base names and test again:
           (source (path Bar Baz) (impl (path bar/baz.ml))))))
         (source (path Baz) (impl (path baz.ml))))))
 
-The structured form should require Dune 3.25, even without a dirs field.
-Currently it is accepted in earlier versions.
+The structured form requires Dune 3.25, even without a dirs field.
 
   $ mkdir form
   $ cat >form/dune-project <<EOF
@@ -59,6 +58,14 @@ Currently it is accepted in earlier versions.
   > let value = Sub.Leaf.value
   > EOF
   $ dune build --root form form.cma
+  Entering directory 'form'
+  File "dune", line 2, characters 1-17:
+  2 |  (mode qualified))
+       ^^^^^^^^^^^^^^^^
+  Error: 'mode' is only available since version 3.25 of the dune language.
+  Please update your dune-project file to have (lang dune 3.25).
+  Leaving directory 'form'
+  [1]
 
 All legacy modes remain available in Dune 3.24.
 
@@ -73,7 +80,7 @@ All legacy modes remain available in Dune 3.24.
   >   dune build --root=syntax
   > done
 
-The version requirement should apply to every mode in the structured form.
+The version requirement applies to every mode in the structured form.
 
   $ for mode in no unqualified qualified; do
   >   cat >syntax/dune <<EOF
@@ -81,6 +88,28 @@ The version requirement should apply to every mode in the structured form.
   > EOF
   >   dune build --root=syntax
   > done
+  Entering directory 'syntax'
+  File "dune", line 1, characters 17-26:
+  1 | (include_subdirs (mode no))
+                       ^^^^^^^^^
+  Error: 'mode' is only available since version 3.25 of the dune language.
+  Please update your dune-project file to have (lang dune 3.25).
+  Leaving directory 'syntax'
+  Entering directory 'syntax'
+  File "dune", line 1, characters 17-35:
+  1 | (include_subdirs (mode unqualified))
+                       ^^^^^^^^^^^^^^^^^^
+  Error: 'mode' is only available since version 3.25 of the dune language.
+  Please update your dune-project file to have (lang dune 3.25).
+  Leaving directory 'syntax'
+  Entering directory 'syntax'
+  File "dune", line 1, characters 17-33:
+  1 | (include_subdirs (mode qualified))
+                       ^^^^^^^^^^^^^^^^
+  Error: 'mode' is only available since version 3.25 of the dune language.
+  Please update your dune-project file to have (lang dune 3.25).
+  Leaving directory 'syntax'
+  [1]
 
 An explicitly empty dirs field also needs Dune 3.25.
 
@@ -91,10 +120,10 @@ An explicitly empty dirs field also needs Dune 3.25.
   > EOF
   $ dune build --root=syntax
   Entering directory 'syntax'
-  File "dune", line 3, characters 1-7:
-  3 |  (dirs))
-       ^^^^^^
-  Error: 'dirs' is only available since version 3.25 of the dune language.
+  File "dune", line 2, characters 1-17:
+  2 |  (mode qualified)
+       ^^^^^^^^^^^^^^^^
+  Error: 'mode' is only available since version 3.25 of the dune language.
   Please update your dune-project file to have (lang dune 3.25).
   Leaving directory 'syntax'
   [1]
@@ -108,10 +137,10 @@ So does a nonempty dirs field.
   > EOF
   $ dune build --root=syntax
   Entering directory 'syntax'
-  File "dune", line 3, characters 1-28:
-  3 |  (dirs (internal as public)))
-       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: 'dirs' is only available since version 3.25 of the dune language.
+  File "dune", line 2, characters 1-17:
+  2 |  (mode qualified)
+       ^^^^^^^^^^^^^^^^
+  Error: 'mode' is only available since version 3.25 of the dune language.
   Please update your dune-project file to have (lang dune 3.25).
   Leaving directory 'syntax'
   [1]

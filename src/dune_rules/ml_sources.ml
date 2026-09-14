@@ -911,7 +911,7 @@ module Generated_modules = struct
   let merge_two a b =
     (* Handle the corresponding opposite `Ml_kind.t` coming from one of the
        generated modules *)
-    Module_trie.Unchecked.merge a b ~f:(fun _ m1 m2 ->
+    Module_trie.Unchecked.merge a b ~f:(fun path m1 m2 ->
       match m1, m2 with
       | None, None -> None
       | Some m, None | None, Some m -> Some m
@@ -922,7 +922,17 @@ module Generated_modules = struct
           Ml_kind.Dict.of_func (fun ~ml_kind ->
             match Ml_kind.Dict.get files1 ml_kind, Ml_kind.Dict.get files2 ml_kind with
             | None, None -> None
-            | Some m, None | (None | Some _), Some m -> Some m)
+            | Some m, None | None, Some m -> Some m
+            | Some f1, Some f2 ->
+              if Path.equal (Module.File.path f1) (Module.File.path f2)
+              then Some f2
+              else (
+                let dir =
+                  Module.File.original_path f2
+                  |> Path.as_in_build_dir_exn
+                  |> Path.Build.parent_exn
+                in
+                raise_duplicate_module ~dir (Nonempty_list.last path) f1 f2))
         in
         let m = Module.Source.make ~impl ~intf (Module.Source.path m1) in
         Some m)
@@ -1257,7 +1267,7 @@ let modules_of_stanzas =
     ~include_subdirs:(loc_include_subdirs, include_subdirs) ->
     let dialects = Dune_project.dialects project in
     let dirs_list = Nonempty_list.to_list dirs in
-    let nearest_path_to_root target_dir =
+    let path_to_root_of_dir target_dir =
       List.fold_left
         dirs_list
         ~init:None
@@ -1277,18 +1287,10 @@ let modules_of_stanzas =
              | Some (best_suffix_len, _) when suffix_len < best_suffix_len ->
                Some (suffix_len, path_to_root)
              | Some _ -> best))
-      |> Option.map ~f:snd
-    in
-    let path_to_root_of_dir ~dir ~path_to_root target_dir =
-      match nearest_path_to_root target_dir with
-      | Some path -> path
-      | None ->
-        let suffix =
-          Path.Local.descendant (Path.Build.local target_dir) ~of_:(Path.Build.local dir)
-          |> Option.value_exn
-          |> Path.Local.explode
-        in
-        path_to_root @ suffix
+      (* Select targets are checked to be descendants of their stanza directory,
+         which is always included in [dirs_list]. *)
+      |> Option.value_exn
+      |> snd
     in
     let* ({ ocamllexes; ocamlyaccs; menhirs; _ } as modules) =
       Generated_modules.add_generated_modules
@@ -1298,56 +1300,28 @@ let modules_of_stanzas =
         ~for_
         modules
     in
-    Memo.parallel_map
-      dirs_list
-      ~f:(fun { Source_file_dir.dir; path_to_root; stanzas; _ } ->
-        let path_to_root_of_dir = path_to_root_of_dir ~dir ~path_to_root in
-        Memo.parallel_map stanzas ~f:(fun stanza ->
-          let enabled_if =
-            match Stanza.repr stanza with
-            | Library.T lib -> lib.enabled_if
-            | Tests.T tests -> tests.exes.enabled_if
-            | Executables.T exes -> exes.enabled_if
-            | Melange_stanzas.Emit.T mel -> mel.enabled_if
-            | _ -> Blang.false_
-          in
-          Expander.eval_blang expander enabled_if
-          >>= function
-          | false -> Memo.return `Skip
-          | true ->
-            (match Stanza.repr stanza with
-             | Library.T lib ->
-               (* jeremiedimino: this [Resolve.get] means that if the user writes an
+    Memo.parallel_map dirs_list ~f:(fun { Source_file_dir.dir; stanzas; _ } ->
+      Memo.parallel_map stanzas ~f:(fun stanza ->
+        let enabled_if =
+          match Stanza.repr stanza with
+          | Library.T lib -> lib.enabled_if
+          | Tests.T tests -> tests.exes.enabled_if
+          | Executables.T exes -> exes.enabled_if
+          | Melange_stanzas.Emit.T mel -> mel.enabled_if
+          | _ -> Blang.false_
+        in
+        Expander.eval_blang expander enabled_if
+        >>= function
+        | false -> Memo.return `Skip
+        | true ->
+          (match Stanza.repr stanza with
+           | Library.T lib ->
+             (* jeremiedimino: this [Resolve.get] means that if the user writes an
                 invalid [implements] field, we will get an error immediately even if
                 the library is not built. We should change this to carry the
                 [Or_exn.t] a bit longer. *)
-               let+ sources, modules =
-                 let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
-                 let modules =
-                   Generated_modules.with_lib_select_deps
-                     modules
-                     ~dir
-                     ~dialects
-                     ~include_subdirs
-                     ~for_
-                     ~path_to_root_of_dir
-                     lib.buildable.libraries
-                 in
-                 make_lib_modules
-                   ~expander
-                   ~dir
-                   ~libs
-                   ~lookup_vlib
-                   ~modules
-                   ~lib
-                   ~for_
-                   ~include_subdirs:(loc_include_subdirs, include_subdirs)
-                   ~version:lib.dune_version
-                 >>= Resolve.read_memo
-               in
-               let obj_dir = Library.obj_dir lib ~dir in
-               `Library { Per_stanza.stanza = lib; sources; modules; dir; obj_dir }
-             | Executables.T exes ->
+             let+ sources, modules =
+               let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
                let modules =
                  Generated_modules.with_lib_select_deps
                    modules
@@ -1356,64 +1330,87 @@ let modules_of_stanzas =
                    ~include_subdirs
                    ~for_
                    ~path_to_root_of_dir
-                   exes.buildable.libraries
+                   lib.buildable.libraries
                in
-               make_executables ~dir ~expander ~include_subdirs ~modules ~project exes
-             | Tests.T tests ->
+               make_lib_modules
+                 ~expander
+                 ~dir
+                 ~libs
+                 ~lookup_vlib
+                 ~modules
+                 ~lib
+                 ~for_
+                 ~include_subdirs:(loc_include_subdirs, include_subdirs)
+                 ~version:lib.dune_version
+               >>= Resolve.read_memo
+             in
+             let obj_dir = Library.obj_dir lib ~dir in
+             `Library { Per_stanza.stanza = lib; sources; modules; dir; obj_dir }
+           | Executables.T exes ->
+             let modules =
+               Generated_modules.with_lib_select_deps
+                 modules
+                 ~dir
+                 ~dialects
+                 ~include_subdirs
+                 ~for_
+                 ~path_to_root_of_dir
+                 exes.buildable.libraries
+             in
+             make_executables ~dir ~expander ~include_subdirs ~modules ~project exes
+           | Tests.T tests ->
+             let modules =
+               Generated_modules.with_lib_select_deps
+                 modules
+                 ~dir
+                 ~dialects
+                 ~include_subdirs
+                 ~for_
+                 ~path_to_root_of_dir
+                 tests.exes.buildable.libraries
+             in
+             make_tests ~dir ~expander ~include_subdirs ~modules ~project tests
+           | Melange_stanzas.Emit.T mel ->
+             let obj_dir =
+               Obj_dir.make_for_exe_target ~dir (Melange_stanzas.Emit.exe_target mel)
+             in
+             let+ sources, modules =
                let modules =
                  Generated_modules.with_lib_select_deps
                    modules
                    ~dir
                    ~dialects
                    ~include_subdirs
-                   ~for_
+                   ~for_:Compilation_mode.Melange
                    ~path_to_root_of_dir
-                   tests.exes.buildable.libraries
+                   mel.libraries
                in
-               make_tests ~dir ~expander ~include_subdirs ~modules ~project tests
-             | Melange_stanzas.Emit.T mel ->
-               let obj_dir =
-                 Obj_dir.make_for_exe_target ~dir (Melange_stanzas.Emit.exe_target mel)
-               in
-               let+ sources, modules =
-                 let modules =
-                   Generated_modules.with_lib_select_deps
-                     modules
-                     ~dir
-                     ~dialects
-                     ~include_subdirs
-                     ~for_:Compilation_mode.Melange
-                     ~path_to_root_of_dir
-                     mel.libraries
-                 in
-                 let version = Dune_project.dune_version project in
-                 Modules_field_evaluator.eval
-                   ~expander
-                   ~modules
-                   ~stanza_loc:mel.loc
-                   ~kind:Modules_field_evaluator.Exe_or_normal_lib
-                   ~version
-                   ~private_modules:Ordered_set_lang.Unexpanded.standard
-                   ~src_dir:dir
-                   ~include_subdirs
-                   ~for_:Melange
-                   mel.modules
-               in
-               let () =
-                 validate_qualified_module_references
-                   ~include_subdirs
-                   mel.preprocess.config;
-                 validate_qualified_module_references ~include_subdirs mel.lint
-               in
-               let modules =
-                 Modules.make_wrapped
-                   ~obj_dir:(Obj_dir.obj_dir obj_dir)
-                   ~modules
-                   ~has_instances:false
-                   `Melange
-               in
-               `Melange_emit { Per_stanza.stanza = mel; sources; modules; dir; obj_dir }
-             | _ -> Memo.return `Skip)))
+               let version = Dune_project.dune_version project in
+               Modules_field_evaluator.eval
+                 ~expander
+                 ~modules
+                 ~stanza_loc:mel.loc
+                 ~kind:Modules_field_evaluator.Exe_or_normal_lib
+                 ~version
+                 ~private_modules:Ordered_set_lang.Unexpanded.standard
+                 ~src_dir:dir
+                 ~include_subdirs
+                 ~for_:Melange
+                 mel.modules
+             in
+             let () =
+               validate_qualified_module_references ~include_subdirs mel.preprocess.config;
+               validate_qualified_module_references ~include_subdirs mel.lint
+             in
+             let modules =
+               Modules.make_wrapped
+                 ~obj_dir:(Obj_dir.obj_dir obj_dir)
+                 ~modules
+                 ~has_instances:false
+                 `Melange
+             in
+             `Melange_emit { Per_stanza.stanza = mel; sources; modules; dir; obj_dir }
+           | _ -> Memo.return `Skip)))
     >>| filter_partition_map
     >>| fun modules_of_stanzas ->
     { modules_of_stanzas with ocamllexes; ocamlyaccs; menhirs }

@@ -20,6 +20,7 @@ let loc_of_dune_file st_dir =
 type t =
   { kind : kind
   ; dir : Path.Build.t
+  ; dir_renames : (Filename.t list * Filename.t list) list
   ; text_files : Filename.Array.Set.t
   ; foreign_sources : Foreign_sources.t Memo.Lazy.t
   ; mlds : (Documentation.t * Doc_sources.mld list) list Memo.Lazy.t
@@ -37,6 +38,7 @@ and kind =
 let empty kind ~dir ~source_dir =
   { kind
   ; dir
+  ; dir_renames = []
   ; source_dir
   ; text_files = Filename.Array.Set.empty
   ; ocaml = Memo.Lazy.of_val Ml_sources.empty
@@ -88,6 +90,7 @@ type triage =
   | Group_part of Path.Build.t
 
 let dir t = t.dir
+let dir_renames t = t.dir_renames
 let source_dir t = t.source_dir
 let rocq t = Memo.Lazy.force t.rocq
 
@@ -300,6 +303,7 @@ end = struct
               { kind = Standalone
               ; source_dir = Some st_dir
               ; dir
+              ; dir_renames = []
               ; text_files = files
               ; ocaml = ml
               ; melange
@@ -334,6 +338,7 @@ end = struct
       -> t Memo.t
 
     val translate : t -> Filename.t list -> Filename.t list
+    val to_list : t -> (Filename.t list * Filename.t list) list
   end = struct
     type binding =
       { src : Filename.t list
@@ -396,7 +401,7 @@ end = struct
                 "The source and destination directories must have the same number of \
                  path components."
             ]
-        else Some { src; src_len; dst }
+        else Some (Path.Local.of_comps src, (dst_loc, { src; src_len; dst }))
     ;;
 
     let expand sctx ~dir dirs =
@@ -404,10 +409,27 @@ end = struct
         let+ expander = Super_context.expander sctx ~dir in
         Expander.expand_str expander
       in
-      Memo.parallel_map dirs ~f:(fun binding ->
-        File_binding_expand.expand binding ~dir ~f:(fun sw ->
-          Action_builder.evaluate_and_collect_facts (expand sw) >>| fst))
-      >>| List.filter_map ~f:(expand_binding ~dir)
+      let+ bindings =
+        Memo.parallel_map dirs ~f:(fun binding ->
+          File_binding_expand.expand binding ~dir ~f:(fun sw ->
+            Action_builder.evaluate_and_collect_facts (expand sw) >>| fst))
+      in
+      List.filter_map bindings ~f:(expand_binding ~dir)
+      |> Path.Local.Map.of_list_reducei
+           ~f:(fun src ((_, first) as previous) (loc, second) ->
+             if List.equal Filename.equal first.dst second.dst
+             then previous
+             else
+               User_error.raise
+                 ~loc
+                 [ Pp.textf
+                     "The directory %s is mapped to both %s and %s."
+                     (Path.Local.to_string_maybe_quoted src)
+                     (Path.Local.of_comps first.dst |> Path.Local.to_string_maybe_quoted)
+                     (Path.Local.of_comps second.dst |> Path.Local.to_string_maybe_quoted)
+                 ])
+      |> Path.Local.Map.values
+      |> List.map ~f:snd
     ;;
 
     let rec drop_prefix path prefix =
@@ -431,6 +453,8 @@ end = struct
       | None -> path
       | Some (_, dst, rest) -> dst @ rest
     ;;
+
+    let to_list t = List.map t ~f:(fun { src; src_len = _; dst } -> src, dst)
   end
 
   let make_group_root
@@ -522,6 +546,7 @@ end = struct
                Rocq_sources.of_dir stanzas ~dir ~dirs ~include_subdirs)
            in
            let mlds = mlds ~sctx ~dir ~dune_file ~files in
+           let dir_renames = Dir_renames.to_list dir_renames in
            let subdirs =
              List.map
                subdirs
@@ -537,6 +562,7 @@ end = struct
                  { kind = Group_part
                  ; source_dir
                  ; dir
+                 ; dir_renames
                  ; text_files = files
                  ; ocaml = ml
                  ; melange
@@ -549,6 +575,7 @@ end = struct
              { kind = Group_root subdirs
              ; source_dir = Some source_dir
              ; dir
+             ; dir_renames
              ; text_files = files
              ; ocaml = ml
              ; melange

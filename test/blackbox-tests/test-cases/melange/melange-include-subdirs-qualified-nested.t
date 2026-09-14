@@ -59,9 +59,13 @@ its original directory name.
   $ dune build
 
 A generated implementation must not replace a handwritten one after renaming.
-Currently the generated implementation silently wins.
 
   $ cat >a/internal/internal.ml <<EOF
   > let token _ = ()
   > EOF
   $ dune build
+  Error: Too many files for module Public in a/internal:
+  - _build/default/a/.melange_src/internal/internal.ml
+  - _build/default/a/.melange_src/internal/public.ml
+  -> required by alias default
+  [1]

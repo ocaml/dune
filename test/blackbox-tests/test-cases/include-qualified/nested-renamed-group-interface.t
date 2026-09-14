@@ -379,13 +379,18 @@ when their physical basenames differ after renaming.
   generated
 
 But a generated implementation must not replace a handwritten implementation
-of the renamed module. Currently the generated implementation silently wins.
+of the renamed module.
 
   $ cat >handwritten-lexer/internal/internal.ml <<EOF
   > let value = "handwritten"
   > EOF
   $ dune exec --root=handwritten-lexer ./main.exe
-  generated
+  Entering directory 'handwritten-lexer'
+  Error: Too many files for module Public in internal:
+  - _build/default/internal/internal.ml
+  - _build/default/internal/public.ml
+  Leaving directory 'handwritten-lexer'
+  [1]
 
 A selected interface can likewise accompany a handwritten implementation.
 
@@ -421,16 +426,20 @@ A selected interface can likewise accompany a handwritten implementation.
   handwritten
 
 Selecting another interface for the same module must be rejected, even if the
-interfaces have identical contents. Currently the selected interface wins.
+interfaces have identical contents.
 
   $ cat >handwritten-select/internal/internal.mli <<EOF
   > val value : string
   > EOF
   $ dune exec --root=handwritten-select ./main.exe
-  handwritten
+  Entering directory 'handwritten-select'
+  Error: Too many files for module Public in internal:
+  - _build/default/internal/internal.mli
+  - _build/default/internal/public.mli
+  Leaving directory 'handwritten-select'
+  [1]
 
-Selecting another implementation must also be rejected. Currently it replaces
-the handwritten implementation.
+Selecting another implementation must also be rejected.
 
   $ cat >handwritten-select/dune <<EOF
   > (include_subdirs
@@ -451,7 +460,12 @@ the handwritten implementation.
   > let value = "selected"
   > EOF
   $ dune exec --root=handwritten-select ./main.exe
-  selected
+  Entering directory 'handwritten-select'
+  Error: Too many files for module Public in internal:
+  - _build/default/internal/internal.ml
+  - _build/default/internal/public.ml
+  Leaving directory 'handwritten-select'
+  [1]
 
 Repeating the same mapping is harmless, including equivalent source and
 destination paths.
@@ -472,8 +486,8 @@ destination paths.
   > EOF
   $ dune build --root=duplicate '%{cmi:Public.Leaf}'
 
-Conflicting mappings for the same source must be rejected. Currently the first
-mapping wins, even when the source paths normalize to the same directory.
+Conflicting mappings for the same source must be rejected, including when the
+source paths normalize to the same directory.
 
   $ cat >duplicate/dune <<EOF
   > (include_subdirs
@@ -483,6 +497,13 @@ mapping wins, even when the source paths normalize to the same directory.
   > (library (name example))
   > EOF
   $ dune build --root=duplicate '%{cmi:Public.Leaf}'
+  Entering directory 'duplicate'
+  File "dune", line 4, characters 22-29:
+  4 |        (./internal as exposed)))
+                            ^^^^^^^
+  Error: The directory internal is mapped to both public and exposed.
+  Leaving directory 'duplicate'
+  [1]
 
 Conflicting destinations can also come from variable expansion.
 
@@ -494,3 +515,10 @@ Conflicting destinations can also come from variable expansion.
   > (library (name renamed))
   > EOF
   $ dune build --root=dynamic '%{cmi:lib/Public.Leaf}'
+  Entering directory 'dynamic'
+  File "lib/dune", line 4, characters 20-45:
+  4 |        (internal as %{read:../config/mapping})))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: The directory internal is mapped to both public and exposed.
+  Leaving directory 'dynamic'
+  [1]

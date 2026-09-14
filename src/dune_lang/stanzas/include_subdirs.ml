@@ -37,7 +37,8 @@ let decode ~qualified =
   let legacy = decode ~qualified in
   let decode =
     fields
-      (let+ loc, mode = field "mode" (decode ~qualified)
+      (let+ loc, mode =
+         field "mode" (Syntax.since Stanza.syntax (3, 25) >>> decode ~qualified)
        and+ dirs =
          field_o
            "dirs"

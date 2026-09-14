@@ -12,6 +12,10 @@ open Import
 type t
 
 val dir : t -> Path.Build.t
+
+(** Expanded directory mappings relative to the group root. *)
+val dir_renames : t -> (Filename.t list * Filename.t list) list
+
 val source_dir : t -> Source_tree.Dir.t option
 
 (** Files in this directory. At the moment, this doesn't include all generated

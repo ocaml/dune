@@ -210,7 +210,7 @@ end
 module Tool_group = struct
   type inherit_ =
     { context : Loc.t * Context_name.t
-    ; share : (Loc.t * Package.Name.t) list option
+    ; shared_packages : (Loc.t * Package.Name.t) list option
     }
 
   type t =
@@ -227,9 +227,9 @@ module Tool_group = struct
       [ Repr.field "context" (Repr.abstract Context_name.to_dyn) ~get:(fun t ->
           snd t.context)
       ; Repr.field
-          "share"
+          "shared_packages"
           (Repr.option (Repr.list (Repr.abstract Package.Name.to_dyn)))
-          ~get:(fun t -> Option.map t.share ~f:(List.map ~f:snd))
+          ~get:(fun t -> Option.map t.shared_packages ~f:(List.map ~f:snd))
       ]
   ;;
 
@@ -254,12 +254,12 @@ module Tool_group = struct
     Poly.hash (loc, name, tools, lock_dir, inherit_)
   ;;
 
-  let equal_inherit { context; share } t =
+  let equal_inherit { context; shared_packages } t =
     Tuple.T2.equal Loc.equal Context_name.equal context t.context
     && Option.equal
          (List.equal (Tuple.T2.equal Loc.equal Package.Name.equal))
-         share
-         t.share
+         shared_packages
+         t.shared_packages
   ;;
 
   let equal { loc; name; tools; lock_dir; inherit_ } t =
@@ -274,7 +274,7 @@ module Tool_group = struct
   ;;
 
   (* The lock_dir block is either [(inherit ctx)] with an optional
-     [(share ...)], or ordinary lock_dir fields. The two cannot be mixed yet,
+     [(shared_packages ...)], or ordinary lock_dir fields. The two cannot be mixed yet,
      so the ordinary fields are collected as leftovers and handed to
      [Lock_dir.decode] whole. *)
   let lock_dir_block ~dir =
@@ -282,21 +282,22 @@ module Tool_group = struct
       (let+ loc = loc
        and+ ctx = get_all
        and+ inherit_ = field_o "inherit" (located Context_name.decode)
-       and+ share = field_o "share" (located (repeat (located Package.Name.decode)))
+       and+ shared_packages =
+         field_o "shared_packages" (located (repeat (located Package.Name.decode)))
        and+ rest = leftover_fields in
        let inherit_ =
-         match inherit_, share with
+         match inherit_, shared_packages with
          | None, None -> None
          | None, Some (loc, _) ->
-           User_error.raise ~loc [ Pp.text "\"share\" requires \"inherit\"." ]
-         | Some context, share ->
+           User_error.raise ~loc [ Pp.text "\"shared_packages\" requires \"inherit\"." ]
+         | Some context, shared_packages ->
            (match rest with
             | [] -> ()
             | field :: _ ->
               User_error.raise
                 ~loc:(Dune_lang.Ast.loc field)
                 [ Pp.text "This field cannot be combined with \"inherit\" yet." ]);
-           Some { context; share = Option.map share ~f:snd }
+           Some { context; shared_packages = Option.map shared_packages ~f:snd }
        in
        let lock_dir = parse (enter (Lock_dir.decode ~dir)) ctx (List (loc, rest)) in
        lock_dir, inherit_)

@@ -76,7 +76,7 @@ File with just shebang characters, but no executable
   $ pkg foo ./whitespace.sh <<EOF
   > #!    
   > EOF
-  $ dune build @pkg-install 2>&1 | sanitize_pkg_digest foo.dev
+  $ dune build @pkg-install 2>&1
   Error: Dune could not parse the shebang line in whitespace.sh:
     #!    
   Dune currently only supports the following forms of shebang lines:
@@ -85,8 +85,7 @@ File with just shebang characters, but no executable
     #!/path/to/env -S <executable> <arg1> <arg2> ...
   If this is a valid shebang line that should be parsed by Dune, please report
   upstream including the contents of the shebang line.
-  -> required by
-     _build/_private/default/.pkg/foo.dev-DIGEST_HASH/target
+  -> required by _build/_private/default/.pkg/foo/target
   -> required by alias pkg-install
   [1]
 
@@ -96,7 +95,7 @@ Running env with arguments other than -S
   > #!/usr/bin/env -vS sh
   > echo "Not supported"
   > EOF
-  $ dune build @pkg-install 2>&1 | sanitize_pkg_digest foo.dev
+  $ dune build @pkg-install 2>&1
   Error: Dune could not parse the shebang line in executable.sh:
     #!/usr/bin/env -vS sh
   Dune currently only supports the following forms of shebang lines:
@@ -105,8 +104,7 @@ Running env with arguments other than -S
     #!/path/to/env -S <executable> <arg1> <arg2> ...
   If this is a valid shebang line that should be parsed by Dune, please report
   upstream including the contents of the shebang line.
-  -> required by
-     _build/_private/default/.pkg/foo.dev-DIGEST_HASH/target
+  -> required by _build/_private/default/.pkg/foo/target
   -> required by alias pkg-install
   [1]
 
@@ -116,7 +114,7 @@ Running env with extra arguments after -S
   > #!/usr/bin/env -S -u DUNE_FOO sh
   > echo "Not supported"
   > EOF
-  $ dune build @pkg-install 2>&1 | sanitize_pkg_digest foo.dev
+  $ dune build @pkg-install 2>&1
   Error: Dune could not parse the shebang line in executable.sh:
     #!/usr/bin/env -S -u DUNE_FOO sh
   Dune currently only supports the following forms of shebang lines:
@@ -125,7 +123,6 @@ Running env with extra arguments after -S
     #!/path/to/env -S <executable> <arg1> <arg2> ...
   If this is a valid shebang line that should be parsed by Dune, please report
   upstream including the contents of the shebang line.
-  -> required by
-     _build/_private/default/.pkg/foo.dev-DIGEST_HASH/target
+  -> required by _build/_private/default/.pkg/foo/target
   -> required by alias pkg-install
   [1]

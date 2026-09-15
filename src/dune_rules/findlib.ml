@@ -546,14 +546,16 @@ module Public = struct
 
   open Memo.O
 
-  let find t name =
+  let find_with_package t name =
     Lib_name.package_name name
     |> find_root_package t
     >>| Result.bind ~f:(fun (p : Dune_package.t) ->
       match Lib_name.Map.find p.entries name with
-      | Some x -> Ok x
+      | Some entry -> Ok (p, entry)
       | None -> Error Unavailable_reason.Not_found)
   ;;
+
+  let find t name = find_with_package t name >>| Result.map ~f:snd
 
   let load_all_packages (t : DB.t) =
     Loader.root_packages t

@@ -1,8 +1,8 @@
 #include <caml/mlvalues.h>
 
 #ifdef _WIN32
-#include <caml/fail.h>
 #else
+#include <caml/unixsupport.h>
 #include <signal.h>
 #include <sys/ioctl.h>
 #endif

@@ -1,6 +1,8 @@
 (library
  (name dune_scheduler_tests)
- (inline_tests)
+ (modules async_io_tests)
+ (inline_tests
+  (deps signal_cleanup_repro.exe))
  (preprocess
   (pps ppx_expect))
  (libraries
@@ -9,9 +11,14 @@
   unix
   threads.posix
   fiber
-  ;; This is because of the (implicit_transitive_deps false)
-  ;; in dune-project
+  ; This is because of the (implicit_transitive_deps false)
+  ; in dune-project
   ppx_expect.config
   ppx_expect.config_types
   base
   ppx_inline_test.config))
+
+(executable
+ (name signal_cleanup_repro)
+ (modules signal_cleanup_repro)
+ (libraries stdune dune_scheduler unix threads.posix fiber))

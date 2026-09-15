@@ -19,3 +19,4 @@ val running_pids : t -> Pid.Set.t
 val killall : t -> Signal.t -> unit
 
 val wait_unix : t -> Fiber.fill list
+val shutdown : t -> unit

@@ -86,7 +86,7 @@ Invalid section name is rejected:
                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: badsection is not a valid section.
   Hint: supported sections are lib, lib_root, libexec, libexec_root, bin, sbin,
-  toplevel, share, share_root, etc, doc, stublibs and man.
+  toplevel, share, share_root, etc, doc, stublibs, man, root and rootexec.
   [1]
 
 The misc section is rejected:
@@ -103,7 +103,7 @@ The misc section is rejected:
                       ^^^^^^^^^^^^^^^^^^^^^^^^
   Error: misc is not a valid section.
   Hint: supported sections are lib, lib_root, libexec, libexec_root, bin, sbin,
-  toplevel, share, share_root, etc, doc, stublibs and man.
+  toplevel, share, share_root, etc, doc, stublibs, man, root and rootexec.
   [1]
 
 Wrong number of arguments (too few):

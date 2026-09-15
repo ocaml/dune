@@ -2,7 +2,7 @@
 
 The following are workflows for Dune tools described from a user's perspective.
 They are intentionally kept short, and don't touch upon implementation details.
-This is expected to be complement the [Requirements Document](/requirements.md).
+This is expected to complement the [Requirements Document](/requirements.md).
 
 ## Lifecycle
 
@@ -35,7 +35,8 @@ Dune can show me a list of all available tools in the current project.
 When a version of the tool being installed is not mentioned, I want Dune to pick
 a sensible default version of the tool. In case of tools like ocaml-lsp-server
 that require the tool to be built with the same compiler, or utop with similar
-requirements, Dune should pick it up or it should be possible to specify it.
+requirements, Dune should ensure the required compiler is used or it should be
+possible to specify the required compiler.
 
 6. Updating tools
 
@@ -51,7 +52,7 @@ development branches.
 
 8. Constraints
 
-I can specify constraints for my tool without needing pin it to a branch.
+I can specify constraints for my tool without needing to pin it to a branch.
 
 9. Reproducibility
 
@@ -60,7 +61,7 @@ without any extra setup on their end.
 
 10. Conflicting tools
 
-Two tools, or a tool with a project dependency conflicting with each others'
+Two tools, or a tool with a project dependency conflicting with each other's
 dependencies should not stop them from being installed.
 
 ## Compiler Interaction
@@ -77,18 +78,19 @@ should build and run even if my project is not built.
 
 13. Compiler matching
 
-Dune should sensibly pick and install a compiler toolchain for a given tool.
+I want Dune to pick and install a compatible compiler toolchain for each tool,
+so that I don't have to manage compiler versions myself.
 
-- By default, this could be that tools use the same compiler version as the
-  project.
-- If a tool is incompatible with the project's compiler, it can be upgraded or
-  downgraded
+- I want tools to reuse my project's compiler when possible, to ensure
+  predictable behaviour and fast builds.
+- If a tool is incompatible with the project's compiler, I want the tool to
+  still work without changing my project setup.
 
 14. Upgrading the compiler
 
 When my project's compiler version is upgraded, I want to have a straightforward
 way to update all the tools to be compatible. Dune need not do an upgrade unless
-explicitly asked
+explicitly asked.
 
 15. Switching contexts
 
@@ -99,7 +101,7 @@ independent tools shouldn't be rebuilt when I change the context.
 
 16. Build Aliases
 
-I want the familar build aliases (dune fmt, dune build @doc, etc.) to continue
+I want the familiar build aliases (dune fmt, dune build @doc, etc.) to continue
 working, and to automatically invoke the right tool.
 
 17. Editor integration

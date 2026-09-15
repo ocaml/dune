@@ -42,7 +42,10 @@
   source
   xdg
   re)
- (bootstrap_info bootstrap-info))
+ (bootstrap_info bootstrap-info)
+ (foreign_stubs
+  (language c)
+  (names runtime_stubs)))
 
 ; Installing the dune binary depends on the kind of build:
 ; - for bootstrap builds, dune.exe is copied from ../dune.exe

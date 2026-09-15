@@ -1042,28 +1042,46 @@ let spawn
        in the stub for [Spawn.spawn] to be as precise as possible *)
     Time.now ()
   in
+  let cleanup_outputs ~destroy_captures =
+    Io.release stdout;
+    Io.release stderr;
+    if destroy_captures
+    then (
+      Option.iter stdout_capture ~f:(Temp.destroy File);
+      Option.iter stderr_capture ~f:(Temp.destroy File))
+  in
   let pid =
-    let stdout = Io.fd stdout in
-    let stderr = Io.fd stderr in
-    let stdin = Io.fd stdin in
-    let cwd =
-      match dir with
-      | None -> Spawn.Working_dir.inherit_
-      | Some dir -> Spawn.Working_dir.path (Path.to_string dir)
-    in
-    let landlock = Option.bind sandbox ~f:Sandbox.to_landlock in
-    Spawn.spawn
-      ()
-      ~prog:prog_str
-      ~argv0:prog_str
-      ~args
-      ~env
-      ~stdout
-      ~stderr
-      ~stdin
-      ?setpgid
-      ?landlock
-      ~cwd
+    match
+      let stdout = Io.fd stdout in
+      let stderr = Io.fd stderr in
+      let stdin = Io.fd stdin in
+      let cwd =
+        match dir with
+        | None -> Spawn.Working_dir.inherit_
+        | Some dir -> Spawn.Working_dir.path (Path.to_string dir)
+      in
+      let landlock = Option.bind sandbox ~f:Sandbox.to_landlock in
+      Spawn.spawn
+        ()
+        ~prog:prog_str
+        ~argv0:prog_str
+        ~args
+        ~env
+        ~stdout
+        ~stderr
+        ~stdin
+        ?setpgid
+        ?landlock
+        ~cwd
+    with
+    | pid ->
+      cleanup_outputs ~destroy_captures:false;
+      pid
+    | exception exn ->
+      let exn = Exn_with_backtrace.capture exn in
+      Option.iter response_file ~f:(Temp.destroy File);
+      cleanup_outputs ~destroy_captures:true;
+      Exn_with_backtrace.reraise exn
   in
   if emit_trace
   then
@@ -1080,8 +1098,6 @@ let spawn
         ~categories:metadata.Process_metadata.categories
         ~started_at
         ~queued);
-  Io.release stdout;
-  Io.release stderr;
   { started_at
   ; pid
   ; is_process_group_leader = Option.is_some setpgid

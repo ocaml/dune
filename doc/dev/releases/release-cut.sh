@@ -18,6 +18,9 @@
 # - The optional DUNE_REMOTE can be used to set the name of the git remote to
 #   fetch tags from and push the release branch to. It defaults to 'git config
 #   remote.pushdefault' if set or finally to 'origin' if not.
+# - The optional DUNE_REPO is the repository whose CI results gate the release,
+#   in owner/repo form. It defaults to 'ocaml/dune'. Set it to your fork when
+#   staging a release, since it is resolved independently of DUNE_REMOTE.
 # - NB. To stage a release against forks, dune-release reads the following from
 #   the environment; they pass through 'make opam-release' unchanged:
 #   - DUNE_RELEASE_DEV_REPO    the dune fork the release/tag/tarball goes to
@@ -38,6 +41,7 @@
 #
 #  $ RELEASE_KIND=prerelease \
 #      DUNE_REMOTE=my-fork \
+#      DUNE_REPO=me/dune \
 #      DUNE_RELEASE_DEV_REPO=https://github.com/me/dune.git \
 #      DUNE_RELEASE_OPAM_REPO=me/opam-repository \
 #      ./release-cut.sh
@@ -54,20 +58,41 @@ function err () {
     exit 1
 }
 
+# Set try run to true to skip running mutating commands
+DRY_RUN=${DRY_RUN:-"false"}
+
 # run command if DRY_RUN is false or not set, else just print the command
 function run_cmd () {
-    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+    if [[ "${DRY_RUN}" == "true" ]]; then
         echo "DRY RUN: $*"
     else
         "$@"
     fi
 }
 
+# run a precondition check, and if DRY_RUN is true, don't stop
+# allowing every every unmet precondition to be reported in DRY_RUNS
+function run_check () {
+    if [[ "${DRY_RUN}" == "true" ]]; then
+        ( "$@" ) || echo >&2 "DRY RUN: continuing despite the failure above"
+    else
+        "$@"
+    fi
+}
+
+
 # Prompt for confirmation before running the irreversible release steps
 function confirm () {
     local release_version="$1"
     read \
-        -p "About to cut ${RELEASE_KIND} ${release_version} on branch '${branch}', push to '${DUNE_REMOTE}', and publish via dune-release. Continue? (y/Y) " \
+        -p "About to
+
+  - cut ${RELEASE_KIND} ${release_version} on branch '${branch}'
+  - push to '${DUNE_REMOTE}'
+  - and publish via dune-release
+  - with the changelog above.
+
+Confirm? (y/Y) " \
         -n 1 -r
     echo # Print a newline since -n 1 suppresses the newline after input
     if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -80,6 +105,7 @@ function confirm () {
 
 # Validate and prepare input variables
 [ ! -z "${RELEASE_KIND}" ] || err "variable RELEASE_KIND is not set"
+DUNE_REPO=${DUNE_REPO:-"ocaml/dune"}
 # Get the remote configured by envvar, or via the git config remote.pushDefault,
 DUNE_REMOTE=${DUNE_REMOTE:-$(git config remote.pushdefault || echo "")}
 # Finally fallback to 'origin' if the remote isn't configured
@@ -91,6 +117,7 @@ ROOT_DIR=$(realpath "${SCRIPT_DIR}/../../..")
 # Check for required utilities
 command -v git >/dev/null 2>&1 || err "script requires git"
 command -v dune-release >/dev/null 2>&1 || err "script requires dune-release"
+command -v gh >/dev/null 2>&1 || err "script requires gh"
 
 # All variables should be set from this point on
 set -u
@@ -177,20 +204,99 @@ function strip_in_progress_section () {
     fi
 }
 
-# Regenerate the in-progress changelog section from the change fragments in
-# doc/changes. Those fragments are the single source of truth: they are consumed
+# Rewrite the in-progress changelog section from the change fragments in
+# doc/changes, replacing any section already there for that version.
+function render_changelog () {
+    local keep_fragments="$1" release_version="$2"
+    strip_in_progress_section
+    env "KEEP_FRAGMENTS=${keep_fragments}" \
+        "${ROOT_DIR}/doc/changes/scripts/build_changelog.sh" "${release_version}"
+}
+
+# Refuse to release from a tree with uncommitted changes: the tarball is built
+# from the tag, so local edits would be published silently or not at all.
+function check_clean_worktree () {
+    if [[ -n "$(git status --porcelain)" ]]; then
+        err "the working tree has uncommitted changes"
+    fi
+}
+
+# The packages declare their dune dependency from the language version in
+# dune-project, so cutting X.Y.Z from a branch that still declares an older
+# language version publishes packages with the wrong lower bound.
+function check_version_consistency () {
+    local series lang_version
+    local bounds=()
+    series=$(cut -d. -f1,2 <<< "${version}")
+    lang_version=$(sed -n 's/^(lang dune \([0-9]*\.[0-9]*\))$/\1/p' \
+        "${ROOT_DIR}/dune-project")
+    if [[ -z "${lang_version}" ]]; then
+        err "could not read the dune language version from dune-project"
+    fi
+    if [[ "${lang_version}" != "${series}" ]]; then
+        err "dune-project declares (lang dune ${lang_version}) but ${version} is a ${series} release"
+    fi
+    mapfile -t bounds < <(sed -n 's/.*"dune" {>= "\([0-9.]*\)".*/\1/p' \
+        "${ROOT_DIR}"/opam/*.opam | sort -u)
+    if [[ "${#bounds[@]}" -ne 1 || "${bounds[0]}" != "${series}" ]]; then
+        err "opam files declare dune lower bounds '${bounds[*]}' but ${version} is a ${series} release"
+    fi
+}
+
+# dune-release escapes '~' as '_' when it creates the tag. An existing tag means
+# this version was already cut, so publishing again would either fail or move a
+# published tag.
+function check_tag_unused () {
+    local release_version="$1"
+    local tag="${release_version//\~/_}"
+    if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+        err "tag ${tag} already exists locally; if a previous attempt failed part
+way through, resume it with the individual make opam-release-<step> targets
+rather than rerunning this script"
+    fi
+    if [[ -n "$(git ls-remote --tags "${DUNE_REMOTE}" "refs/tags/${tag}")" ]]; then
+        err "tag ${tag} already exists on ${DUNE_REMOTE}"
+    fi
+}
+
+
+# Render the changelog exactly as the release would and print the resulting
+# diff, then restore the working tree. Fragments are always kept: a preview
+# must not consume them, not even when previewing a full release.
+function preview_changelog () {
+    local release_version="$1"
+    local changes="${ROOT_DIR}/CHANGES.md"
+    (
+        backup=$(mktemp "${changes}.XXXXXX") \
+            || err "could not create a temporary file"
+        cp "${changes}" "${backup}"
+        trap 'mv -f "${backup}" "${changes}"' EXIT
+        render_changelog true "${release_version}"
+        echo
+        # diff exits 1 when the files differ, which is the expected case here,
+        # and 2 or more when it actually failed.
+        status=0
+        diff -u \
+            --label "CHANGES.md (current)" \
+            --label "CHANGES.md (after cutting ${release_version})" \
+            "${backup}" "${changes}" || status=$?
+        if (( status > 1 )); then
+            err "could not diff the generated changelog"
+        fi
+        echo
+    )
+}
+
+# The change fragments are the single source of truth: they are consumed
 # (deleted) only for a full release, so successive prereleases regenerate the
-# section in place from the accumulating fragments. Any existing section for the
-# in-progress version is stripped first so the regenerated one replaces it.
+# section in place from the accumulating fragments.
 function update_changelog () {
     local release_version="$1"
     local keep_fragments=true
     if [[ "${RELEASE_KIND}" == "release" ]]; then
         keep_fragments=false
     fi
-    run_cmd strip_in_progress_section
-    run_cmd env "KEEP_FRAGMENTS=${keep_fragments}" \
-        "${ROOT_DIR}/doc/changes/scripts/build_changelog.sh" "${release_version}"
+    run_cmd render_changelog "${keep_fragments}" "${release_version}"
 }
 
 function pre_release_version () {
@@ -207,10 +313,14 @@ function pre_release_version () {
 
 function release () {
     local release_version="$1"
+    run_check check_clean_worktree
+    run_cmd git pull --ff-only "${DUNE_REMOTE}" "${branch}"
+    run_check check_version_consistency
+    run_check check_tag_unused "${release_version}"
+    preview_changelog "${release_version}"
     if [[ "${DRY_RUN:-false}" != "true" ]]; then
         confirm "${release_version}"
     fi
-    run_cmd git pull --ff-only "${DUNE_REMOTE}" "${branch}"
     update_changelog "${release_version}"
     run_cmd git add "${ROOT_DIR}/doc/changes" "${ROOT_DIR}/CHANGES.md"
     run_cmd git commit -s -m "[${release_version}] prepare release"

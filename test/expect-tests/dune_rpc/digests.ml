@@ -101,10 +101,10 @@ let%expect_test "print digests for all declared RPCs" =
     diagnostics
       Version 1:
         Request: Unit
-        Response: ffd3de9652c685594aacfc51d28f2533
+        Response: 310b6c3a69cc19c0eca499630848ac3e
       Version 2:
         Request: Unit
-        Response: 0d4442e0c36d6727a9acf9aabce6a6ad
+        Response: 389288a99e13b445dea30465c28c748b
     shutdown
       Version 1:
         Payload: Unit
@@ -118,7 +118,7 @@ let%expect_test "print digests for all declared RPCs" =
         Response: 14894520de5f9b49826c37876bedfaad
     format-dune-file
       Version 1:
-        Request: 15eae4b546faf05a0fc3b6d03aed0c63
+        Request: 07e42be6c22c1562e5c71693ecca2cee
         Response: String
     promote
       Version 1:
@@ -127,10 +127,10 @@ let%expect_test "print digests for all declared RPCs" =
     promote_many
       Version 1:
         Request: (Iso (List String))
-        Response: 9b023f3c0fa25b79499054bca94d5498
+        Response: 0e3f2f6008422025e109eea164914c9b
       Version 2:
-        Request: 083acd32b67fa4dfd9b625241d1d91d0
-        Response: 9b023f3c0fa25b79499054bca94d5498
+        Request: d45d16a280aee5f61d5045595dfae97d
+        Response: 0e3f2f6008422025e109eea164914c9b
     build_dir
       Version 1:
         Request: Unit
@@ -138,32 +138,32 @@ let%expect_test "print digests for all declared RPCs" =
     runtest
       Version 1:
         Request: (List String)
-        Response: 9b023f3c0fa25b79499054bca94d5498
+        Response: 0e3f2f6008422025e109eea164914c9b
     dap/initialize
       Version 1:
         Request: String
-        Response: 0762ced460c7fc004b73a87b2eaf4664
+        Response: 59e9b8fc460bc46600782f11ff800103
     dap/build-deps
       Version 1:
         Request: 042dc00d68ff9ee66979e82fefde258a
         Response: (Sum (None Unit) (Some String))
     notify/abort
       Version 1:
-        Payload: 0e9dfd1099101769896cf0bb06f891c6
+        Payload: 3c23fff9a001cfddf6d82eecd81d845f
     notify/log
       Version 1:
-        Payload: 0e9dfd1099101769896cf0bb06f891c6
+        Payload: 3c23fff9a001cfddf6d82eecd81d845f
     poll/running-jobs
       Version 1:
         Request: Sexp
-        Response: 33528f248084297d123a6ebd4c3ddee0
+        Response: 1faa7cea90ac2e24ad1dac47ab7360c4
     poll/diagnostic
       Version 1:
         Request: Sexp
-        Response: 443627a52ab5595206164d020ff01c56
+        Response: 8cb1e41f5131e4c1f0833a9335c303f8
       Version 2:
         Request: Sexp
-        Response: 12995aa06697c01ef35c0339bd2fa29e
+        Response: 1d96678d29ab01ca8adf929be6d5a077
     poll/progress
       Version 1:
         Request: Sexp

@@ -24,11 +24,8 @@ val enum : (string * 'a) list -> ('a, values) t
 
 (** [iso t to_ from] creates a parser for a type ['b] out of a parser for a
     type ['a], where ['a] and ['b] are isomorphic to one another. The functions
-    [to_] and [from] convert between the two types ['a] and ['b]. A typical
-    approach for parsing record types is to convert them to/from tuples (via the
-    [three], [four], etc. combinators) which can be parsed with [record], and
-    then use [iso] to convert the parser for a tuple type into a parser for the
-    original record type. *)
+    [to_] and [from] convert between the two types ['a] and ['b]. For record
+    types, [Record] avoids the need to convert to and from tuples. *)
 val iso : ('a, 'k) t -> ('a -> 'b) -> ('b -> 'a) -> ('b, 'k) t
 
 val iso_result : ('a, 'k) t -> ('a -> ('b, exn) result) -> ('b -> 'a) -> ('b, 'k) t
@@ -92,6 +89,43 @@ val eight
 
 val record : ('a, fields) t -> ('a, values) t
 val either : ('a, fields) t -> ('b, fields) t -> (('a, 'b) Either.t, fields) t
+
+(** Record construction for decoding, paired with field projections for encoding.
+    The constructor and projections must agree, as with the two directions of
+    [iso]. For example:
+    {[
+      record
+        (Record.make (fun name age -> { name; age })
+         |> Record.field "name" (required string) ~get:(fun t -> t.name)
+         |> Record.field "age" (optional int) ~get:(fun t -> t.age)
+         |> Record.finish)
+    ]} *)
+module Record : sig
+  type ('record, 'remaining) builder
+
+  val make : 'constructor -> ('record, 'constructor) builder
+
+  (** Consume one constructor argument, using [get] to recover it when encoding.
+      Fields are decoded in the order they are added. Field names must not
+      overlap with previously added fields. *)
+  val add
+    :  ('a, fields) t
+    -> get:('record -> 'a)
+    -> ('record, 'a -> 'remaining) builder
+    -> ('record, 'remaining) builder
+
+  (** [field name spec] is [add (field name spec)]. *)
+  val field
+    :  string
+    -> 'a field
+    -> get:('record -> 'a)
+    -> ('record, 'a -> 'remaining) builder
+    -> ('record, 'remaining) builder
+
+  (** Finish once all constructor arguments have been supplied. The resulting
+      fields may be composed with other fields, or wrapped with [record]. *)
+  val finish : ('record, 'record) builder -> ('record, fields) t
+end
 
 (** {2 parsing sums} *)
 

@@ -181,16 +181,12 @@ module Add = struct
   let v2 =
     let req =
       let open Conv in
-      let parse =
-        record
-          (three
-             (field "x" (required int))
-             (field "y" (required int))
-             (field "others" (required (list int))))
-      in
-      let to_ (x, y, others) = { x; y; others } in
-      let from { x; y; others } = x, y, others in
-      iso parse to_ from
+      record
+        (Record.make (fun x y others -> { x; y; others })
+         |> Record.field "x" (required int) ~get:(fun { x; _ } -> x)
+         |> Record.field "y" (required int) ~get:(fun { y; _ } -> y)
+         |> Record.field "others" (required (list int)) ~get:(fun { others; _ } -> others)
+         |> Record.finish)
     in
     let resp =
       let open Conv in
@@ -336,4 +332,278 @@ let%expect_test "server to client request" =
     client: received request from server
     client: received response 20
     server: finished. |}]
+;;
+
+let check_wire_compatibility legacy current values =
+  let encode = Conv.to_sexp in
+  let decode conv sexp =
+    Conv.of_sexp conv ~version:(3, 0) sexp |> Result.map ~f:(encode legacy)
+  in
+  let all f = List.for_all values ~f in
+  printfn
+    "same bytes: %b; old -> new: %b; new -> old: %b"
+    (all (fun value ->
+       String.equal
+         (Csexp.to_string (encode legacy value))
+         (Csexp.to_string (encode current value))))
+    (all (fun value ->
+       let sexp = encode legacy value in
+       Poly.equal (decode current sexp) (Ok sexp)))
+    (all (fun value ->
+       Poly.equal (decode legacy (encode current value)) (Ok (encode legacy value))))
+;;
+
+let%expect_test "call fields preserve the flattened wire format" =
+  let legacy =
+    let open Conv in
+    iso
+      (both (field "method" (required Method.Name.sexp)) (field "params" (required sexp)))
+      (fun (method_, params) -> { Call.method_; params })
+      (fun { Call.method_; params } -> method_, params)
+  in
+  let call =
+    Call.create ~method_:(Method.Name.of_string "build") ~params:(Atom "target") ()
+  in
+  let with_id fields = Conv.(record (both (field "id" (required int)) fields)) in
+  check_wire_compatibility (with_id legacy) (with_id Call.fields) [ 42, call ];
+  Conv.to_sexp (with_id Call.fields) (42, call) |> Sexp.to_string |> print_endline;
+  [%expect
+    {|
+    same bytes: true; old -> new: true; new -> old: true
+    ((id 42) (method build) (params target)) |}]
+;;
+
+let%expect_test "diagnostic record wire compatibility" =
+  let legacy =
+    let open Conv in
+    iso
+      (record
+         (eight
+            (field "targets" (required (list Target.sexp)))
+            (field "message" (required (Pp.sexp User_message.Style.sexp)))
+            (field "loc" (optional Loc.sexp))
+            (field
+               "severity"
+               (optional (enum [ "error", Diagnostic.Error; "warning", Warning ])))
+            (field "promotion" (required (list Diagnostic.Promotion.sexp)))
+            (field "directory" (optional string))
+            (field "id" (required Diagnostic.Id.sexp))
+            (field "related" (required (list Diagnostic.Related.sexp)))))
+      (fun (targets, message, loc, severity, promotion, directory, id, related) ->
+         { Diagnostic.targets; message; loc; severity; promotion; directory; id; related })
+      (fun { Diagnostic.targets
+           ; message
+           ; loc
+           ; severity
+           ; promotion
+           ; directory
+           ; id
+           ; related
+           } -> targets, message, loc, severity, promotion, directory, id, related)
+  in
+  let start =
+    { Lexing.pos_fname = "source.ml"; pos_lnum = 2; pos_bol = 10; pos_cnum = 12 }
+  in
+  let loc = { Loc.start; stop = { start with pos_cnum = 18 } } in
+  let message = Pp.tag User_message.Style.Error (Pp.verbatim "a styled message") in
+  let values =
+    List.concat_map [ None; Some loc ] ~f:(fun location ->
+      List.concat_map [ None; Some Diagnostic.Error; Some Warning ] ~f:(fun severity ->
+        List.map [ None; Some "directory" ] ~f:(fun directory ->
+          { Diagnostic.targets = [ Target.Path "target"; Alias "all" ]
+          ; message
+          ; loc = location
+          ; severity
+          ; promotion =
+              [ { Diagnostic.Promotion.in_build = "build"; in_source = "source" } ]
+          ; directory
+          ; id = Diagnostic.Id.create 42
+          ; related = [ { Diagnostic.Related.loc; message } ]
+          })))
+  in
+  check_wire_compatibility legacy Diagnostic.sexp values;
+  [%expect {| same bytes: true; old -> new: true; new -> old: true |}]
+;;
+
+let%expect_test "exported record wire formats" =
+  let check conv value =
+    let sexp = Conv.to_sexp conv value in
+    print_endline (Sexp.to_string sexp);
+    printfn
+      "round trip: %b"
+      (Poly.equal (Conv.of_sexp conv ~version:(3, 0) sexp) (Ok value))
+  in
+  let start = { Lexing.pos_fname = "a.ml"; pos_lnum = 2; pos_bol = 10; pos_cnum = 12 } in
+  let loc =
+    { Loc.start
+    ; stop = { Lexing.pos_fname = "b.ml"; pos_lnum = 3; pos_bol = 20; pos_cnum = 25 }
+    }
+  in
+  check Loc.sexp loc;
+  [%expect
+    {|
+    ((start ((pos_bol 10) (pos_cnum 12) (pos_fname a.ml) (pos_lnum 2))) (stop ((pos_bol 20) (pos_cnum 25) (pos_fname b.ml) (pos_lnum 3))))
+    round trip: true |}];
+  check
+    Diagnostic.Promotion.sexp
+    { Diagnostic.Promotion.in_build = "_build/a"; in_source = "a" };
+  [%expect
+    {|
+    ((in_build _build/a) (in_source a))
+    round trip: true |}];
+  check
+    Diagnostic.Related.sexp
+    { Diagnostic.Related.loc
+    ; message = Pp.tag User_message.Style.Hint (Pp.verbatim "hint")
+    };
+  [%expect
+    {|
+    ((loc ((start ((pos_bol 10) (pos_cnum 12) (pos_fname a.ml) (pos_lnum 2))) (stop ((pos_bol 20) (pos_cnum 25) (pos_fname b.ml) (pos_lnum 3))))) (message (Tag ((Hint ()) (Verbatim hint)))))
+    round trip: true |}];
+  List.iter [ None; Some (Sexp.Atom "payload") ] ~f:(fun payload ->
+    check Message.sexp { Message.payload; message = "message" });
+  [%expect
+    {|
+    ((message message))
+    round trip: true
+    ((message message) (payload payload))
+    round trip: true |}];
+  let id = Job.Id.create 42 in
+  check
+    Job.Event.sexp
+    (Job.Event.Start
+       { Job.id
+       ; pid = 123
+       ; description = Pp.tag () (Pp.verbatim "job")
+       ; started_at = 1.5
+       });
+  check Job.Event.sexp (Job.Event.Stop id);
+  [%expect
+    {|
+    (Start ((description (Tag (Verbatim job))) (id 42) (pid 123) (started_at 1.5)))
+    round trip: true
+    (Stop 42)
+    round trip: true |}];
+  List.iter
+    [ Files_to_promote.All; These [ Stdune.Path.Source.of_string "a" ] ]
+    ~f:(fun files ->
+      List.iter [ Promote_targets.Matching.Exact; Prefix ] ~f:(fun matching ->
+        check Promote_targets.sexp { Promote_targets.files; matching }));
+  [%expect
+    {|
+    ((files ()) (matching exact))
+    round trip: true
+    ((files ()) (matching prefix))
+    round trip: true
+    ((files (a)) (matching exact))
+    round trip: true
+    ((files (a)) (matching prefix))
+    round trip: true |}]
+;;
+
+let%expect_test "RPC protocol record wire formats" =
+  let check conv value =
+    let sexp = Conv.to_sexp conv value in
+    print_endline (Sexp.to_string sexp);
+    printfn
+      "round trip: %b"
+      (Poly.equal (Conv.of_sexp conv ~version:(3, 0) sexp) (Ok value))
+  in
+  let response = Conv.record Response.fields in
+  let id = Id.make (Atom "request") in
+  List.iter [ Response.Error.Invalid_request; Code_error ] ~f:(fun kind ->
+    List.iter [ None; Some (Sexp.Atom "payload") ] ~f:(fun payload ->
+      check response (id, Error { Response.Error.kind; payload; message = "message" })));
+  [%expect
+    {|
+    ((id request) (result (error ((kind Invalid_request) (message message)))))
+    round trip: true
+    ((id request) (result (error ((kind Invalid_request) (message message) (payload payload)))))
+    round trip: true
+    ((id request) (result (error ((kind Code_error) (message message)))))
+    round trip: true
+    ((id request) (result (error ((kind Code_error) (message message) (payload payload)))))
+    round trip: true |}];
+  let request = { Initialize.Request.dune_version = 3, 0; protocol_version = 0; id } in
+  let call = Initialize.Request.to_call request in
+  Conv.to_sexp (Conv.record Call.fields) call |> Sexp.to_string |> print_endline;
+  printfn
+    "round trip: %b"
+    (Poly.equal (Initialize.Request.of_call call ~version:(3, 0)) (Ok request));
+  [%expect
+    {|
+    ((method initialize) (params ((dune_version (3 0)) (id request) (protocol_version 0))))
+    round trip: true |}];
+  let module Initialize_response = Procedures.Public.Action_plugin.Initialize_response in
+  check Initialize_response.conv { Initialize_response.root = "/sandbox/default" };
+  [%expect
+    {|
+    ((root /sandbox/default))
+    round trip: true |}]
+;;
+
+let%expect_test "format and add request wire formats" =
+  let check (_, Decl.Generation.T { req; upgrade_req; downgrade_req; _ }) value =
+    let sexp = Conv.to_sexp req (downgrade_req value) in
+    print_endline (Sexp.to_string sexp);
+    let decoded = Conv.of_sexp req ~version:(3, 0) sexp |> Result.map ~f:upgrade_req in
+    printfn "round trip: %b" (Poly.equal decoded (Ok value))
+  in
+  List.iter Procedures.Public.format_dune_file.generations ~f:(fun gen ->
+    check gen ("dune", `Contents "contents"));
+  [%expect
+    {|
+    ((contents contents) (path dune))
+    round trip: true |}];
+  check Add.v2 { Add.x = 2; y = 7; others = [ -1; 3 ] };
+  [%expect
+    {|
+    ((others (-1 3)) (x 2) (y 7))
+    round trip: true |}]
+;;
+
+let%expect_test "V1 diagnostic record wire format" =
+  let start = { Lexing.pos_fname = "a.ml"; pos_lnum = 2; pos_bol = 10; pos_cnum = 12 } in
+  let loc = { Loc.start; stop = { start with pos_cnum = 18 } } in
+  let message = Pp.tag User_message.Style.Details (Pp.verbatim "message") in
+  let minimal =
+    { Diagnostic.id = Diagnostic.Id.create 7
+    ; message
+    ; targets = []
+    ; loc = None
+    ; severity = None
+    ; promotion = []
+    ; directory = None
+    ; related = []
+    }
+  in
+  let full =
+    { minimal with
+      targets = [ Target.Alias "all" ]
+    ; loc = Some loc
+    ; severity = Some Warning
+    ; promotion = [ { Diagnostic.Promotion.in_build = "build"; in_source = "source" } ]
+    ; directory = Some "dir"
+    ; related = [ { Diagnostic.Related.loc; message } ]
+    }
+  in
+  List.iter
+    Procedures.Public.diagnostics.generations
+    ~f:(fun (version, Decl.Generation.T { resp; upgrade_resp; downgrade_resp; _ }) ->
+      if version = 1
+      then
+        List.iter [ minimal; full ] ~f:(fun diagnostic ->
+          let value = [ diagnostic ] in
+          let sexp = Conv.to_sexp resp (downgrade_resp value) in
+          print_endline (Sexp.to_string sexp);
+          let decoded =
+            Conv.of_sexp resp ~version:(3, 0) sexp |> Result.map ~f:upgrade_resp
+          in
+          printfn "round trip: %b" (Poly.equal decoded (Ok value))));
+  [%expect
+    {|
+    (((id 7) (message (Tag (Verbatim message))) (promotion ()) (related ()) (targets ())))
+    round trip: true
+    (((directory dir) (id 7) (loc ((start ((pos_bol 10) (pos_cnum 12) (pos_fname a.ml) (pos_lnum 2))) (stop ((pos_bol 10) (pos_cnum 18) (pos_fname a.ml) (pos_lnum 2))))) (message (Tag (Verbatim message))) (promotion (((in_build build) (in_source source)))) (related (((loc ((start ((pos_bol 10) (pos_cnum 12) (pos_fname a.ml) (pos_lnum 2))) (stop ((pos_bol 10) (pos_cnum 18) (pos_fname a.ml) (pos_lnum 2))))) (message (Tag (Verbatim message)))))) (severity warning) (targets ((Alias all)))))
+    round trip: true |}]
 ;;

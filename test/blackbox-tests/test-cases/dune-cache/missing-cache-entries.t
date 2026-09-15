@@ -68,3 +68,19 @@ Selectively delete just one of the set of targets.
   twin-a-contents
   $ cat _build/default/twin-b
   twin-b-contents
+
+The metadata reader reports a missing file as not found.
+
+  $ dune internal cache-metadata missing-metadata
+  Error: cache metadata not found:
+  $TESTCASE_ROOT/missing-metadata
+  [1]
+
+An existing directory is not a missing file. BUG: the text-mode read error is
+also treated as not found, hiding the actual IO error.
+
+  $ mkdir metadata-directory
+  $ dune internal cache-metadata metadata-directory
+  Error: cache metadata not found:
+  $TESTCASE_ROOT/metadata-directory
+  [1]

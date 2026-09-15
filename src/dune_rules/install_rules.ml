@@ -1489,9 +1489,10 @@ let gen_package_install_file_rules sctx (package : Package.t) =
           User_warning.emit
             ~is_error
             [ Pp.textf
-                "The package %s does not have any user defined stanzas attached to it. \
-                 If this is intentional, add (allow_empty) to the package definition in \
-                 the dune-project file"
+                "The package %s does not define anything to install. If this is \
+                 intentional, add (allow_empty) to the package definition in the \
+                 dune-project file. Otherwise, add a public_name or package field to \
+                 stanzas that should install files as part of this package."
                 (Package.Name.to_string package_name)
             ]);
       List.rev_map entries ~f:(fun (e : Install.Entry.Sourced.Expanded.t) ->

@@ -207,6 +207,121 @@ module Lock_dir = struct
   ;;
 end
 
+module Tool_group = struct
+  type inherit_ =
+    { context : Loc.t * Context_name.t
+    ; shared_packages : (Loc.t * Package.Name.t) list option
+    }
+
+  type t =
+    { loc : Loc.t
+    ; name : (Loc.t * string) option
+    ; tools : (Loc.t * Dune_lang.Package_dependency.t) list
+    ; lock_dir : Lock_dir.t
+    ; inherit_ : inherit_ option
+    }
+
+  let inherit_repr =
+    Repr.record
+      "inherit"
+      [ Repr.field "context" (Repr.abstract Context_name.to_dyn) ~get:(fun t ->
+          snd t.context)
+      ; Repr.field
+          "shared_packages"
+          (Repr.option (Repr.list (Repr.abstract Package.Name.to_dyn)))
+          ~get:(fun t -> Option.map t.shared_packages ~f:(List.map ~f:snd))
+      ]
+  ;;
+
+  let repr =
+    Repr.record
+      "tool-group"
+      [ Repr.field "loc" Loc.repr ~get:(fun t -> t.loc)
+      ; Repr.field "name" (Repr.option Repr.string) ~get:(fun t ->
+          Option.map t.name ~f:snd)
+      ; Repr.field
+          "tools"
+          (Repr.list (Repr.abstract Dune_lang.Package_dependency.to_dyn))
+          ~get:(fun t -> List.map t.tools ~f:snd)
+      ; Repr.field "lock_dir" Lock_dir.repr ~get:(fun t -> t.lock_dir)
+      ; Repr.field "inherit" (Repr.option inherit_repr) ~get:(fun t -> t.inherit_)
+      ]
+  ;;
+
+  let to_dyn = Repr.to_dyn repr
+
+  let hash { loc; name; tools; lock_dir; inherit_ } =
+    Poly.hash (loc, name, tools, lock_dir, inherit_)
+  ;;
+
+  let equal_inherit { context; shared_packages } t =
+    Tuple.T2.equal Loc.equal Context_name.equal context t.context
+    && Option.equal
+         (List.equal (Tuple.T2.equal Loc.equal Package.Name.equal))
+         shared_packages
+         t.shared_packages
+  ;;
+
+  let equal { loc; name; tools; lock_dir; inherit_ } t =
+    Loc.equal loc t.loc
+    && Option.equal (Tuple.T2.equal Loc.equal String.equal) name t.name
+    && List.equal
+         (Tuple.T2.equal Loc.equal Dune_lang.Package_dependency.equal)
+         tools
+         t.tools
+    && Lock_dir.equal lock_dir t.lock_dir
+    && Option.equal equal_inherit inherit_ t.inherit_
+  ;;
+
+  (* The lock_dir block is either [(inherit ctx)] with an optional
+     [(shared_packages ...)], or ordinary lock_dir fields. The two cannot be mixed yet,
+     so the ordinary fields are collected as leftovers and handed to
+     [Lock_dir.decode] whole. *)
+  let lock_dir_block ~dir =
+    fields
+      (let+ loc = loc
+       and+ ctx = get_all
+       and+ inherit_ = field_o "inherit" (located Context_name.decode)
+       and+ shared_packages =
+         field_o "shared_packages" (located (repeat (located Package.Name.decode)))
+       and+ rest = leftover_fields in
+       let inherit_ =
+         match inherit_, shared_packages with
+         | None, None -> None
+         | None, Some (loc, _) ->
+           User_error.raise ~loc [ Pp.text "\"shared_packages\" requires \"inherit\"." ]
+         | Some context, shared_packages ->
+           (match rest with
+            | [] -> ()
+            | field :: _ ->
+              User_error.raise
+                ~loc:(Dune_lang.Ast.loc field)
+                [ Pp.text "This field cannot be combined with \"inherit\" yet." ]);
+           Some { context; shared_packages = Option.map shared_packages ~f:snd }
+       in
+       let lock_dir = parse (enter (Lock_dir.decode ~dir)) ctx (List (loc, rest)) in
+       lock_dir, inherit_)
+  ;;
+
+  let decode ~dir =
+    fields
+      (let+ loc = loc
+       and+ name = field_o "name" (located string)
+       and+ tools =
+         let+ loc, tools =
+           located @@ field "tools" (repeat (located Dune_lang.Package_dependency.decode))
+         in
+         if List.is_empty tools
+         then
+           User_error.raise
+             ~loc
+             [ Pp.text "A tool group must declare at least one tool." ];
+         tools
+       and+ lock_dir, inherit_ = field "lock_dir" (lock_dir_block ~dir) in
+       { loc; name; tools; lock_dir; inherit_ })
+  ;;
+end
+
 (* workspace files use the same version numbers as dune-project files for
    simplicity *)
 let syntax = Stanza.syntax
@@ -789,6 +904,7 @@ type t =
   ; lock_dirs : Lock_dir.t list
   ; dir : Path.Source.t
   ; pins : Pin_stanza.Workspace.t
+  ; tool_groups : Tool_group.t list
   }
 
 let repr =
@@ -808,12 +924,16 @@ let repr =
     ; Repr.field "solver" (Repr.list Lock_dir.repr) ~get:(fun t -> t.lock_dirs)
     ; Repr.field "dir" Path.Source.repr ~get:(fun t -> t.dir)
     ; Repr.field "pins" (Repr.abstract Pin_stanza.Workspace.to_dyn) ~get:(fun t -> t.pins)
+    ; Repr.field "tool_groups" (Repr.list Tool_group.repr) ~get:(fun t -> t.tool_groups)
     ]
 ;;
 
 let to_dyn = Repr.to_dyn repr
 
-let equal { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins } w =
+let equal
+      { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins; tool_groups }
+      w
+  =
   Option.equal Context_name.equal merlin_context w.merlin_context
   && List.equal Context.equal contexts w.contexts
   && Option.equal Dune_env.equal env w.env
@@ -822,9 +942,12 @@ let equal { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins }
   && List.equal Lock_dir.equal lock_dirs w.lock_dirs
   && Path.Source.equal dir w.dir
   && Pin_stanza.Workspace.equal pins w.pins
+  && List.equal Tool_group.equal tool_groups w.tool_groups
 ;;
 
-let hash { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins } =
+let hash
+      { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins; tool_groups }
+  =
   Poly.hash
     ( Option.hash Context_name.hash merlin_context
     , List.hash Context.hash contexts
@@ -833,7 +956,8 @@ let hash { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins } 
     , List.hash Repository.hash repos
     , List.hash Lock_dir.hash lock_dirs
     , Path.Source.hash dir
-    , Pin_stanza.Workspace.hash pins )
+    , Pin_stanza.Workspace.hash pins
+    , List.hash Tool_group.hash tool_groups )
 ;;
 
 let pkg_enabled { config; lock_dirs; _ } =
@@ -1071,6 +1195,84 @@ let check_lock_dirs_no_dupes lock_dirs =
       ]
 ;;
 
+let check_no_duplicate_group_names (tool_groups : Tool_group.t list) =
+  match
+    List.filter_map tool_groups ~f:(fun (group : Tool_group.t) -> group.name)
+    |> String.Map.of_list_map ~f:(fun (loc, name) -> name, loc)
+  with
+  | Ok _ -> ()
+  | Error (name, (loc1, _), (loc2, _)) ->
+    User_error.raise
+      ~loc:loc2
+      [ Pp.textf "Tool group %S is declared multiple times:" name
+      ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
+      ]
+;;
+
+(* Tools are looked up by name within a scope. Groups that inherit a context
+   are scoped to that context; all groups without [inherit] form a single
+   scope, since a tool must resolve to one isolated instance by name alone. *)
+let check_no_duplicate_tools (tool_groups : Tool_group.t list) =
+  let check scope tools =
+    match
+      Package.Name.Map.of_list_map tools ~f:(fun (loc, dep) ->
+        dep.Dune_lang.Package_dependency.name, loc)
+    with
+    | Ok _ -> ()
+    | Error (name, (loc1, _), (loc2, _)) ->
+      let where =
+        match scope with
+        | None -> ""
+        | Some context -> sprintf " for context %S" (Context_name.to_string context)
+      in
+      User_error.raise
+        ~loc:loc2
+        [ Pp.textf
+            "Tool %S is declared multiple times%s:"
+            (Package.Name.to_string name)
+            where
+        ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
+        ]
+        ~hints:
+          [ Pp.text
+              "A tool may be declared once per inherited context, and once among groups \
+               that do not inherit a context."
+          ]
+  in
+  let inherited, isolated =
+    List.partition_map tool_groups ~f:(fun (group : Tool_group.t) ->
+      match group.inherit_ with
+      | Some { context = _, context; _ } -> Left (context, group.tools)
+      | None -> Right group.tools)
+  in
+  check None (List.concat isolated);
+  Context_name.Map.of_list_multi inherited
+  |> Context_name.Map.iteri ~f:(fun context tools ->
+    check (Some context) (List.concat tools))
+;;
+
+let check_tool_groups_contexts contexts (tool_groups : Tool_group.t list) =
+  List.iter tool_groups ~f:(fun (group : Tool_group.t) ->
+    match group.inherit_ with
+    | None -> ()
+    | Some { context = loc, name; _ } ->
+      (match
+         List.find contexts ~f:(fun ctx -> Context_name.equal (Context.name ctx) name)
+       with
+       | Some (Context.Default _) -> ()
+       | Some (Context.Opam _) ->
+         User_error.raise
+           ~loc
+           [ Pp.textf
+               "Context %S is an opam context and has no lock directory to inherit."
+               (Context_name.to_string name)
+           ]
+       | None ->
+         User_error.raise
+           ~loc
+           [ Pp.textf "Context %S is not defined." (Context_name.to_string name) ]))
+;;
+
 let step1 ~(lang : Lang.Instance.t) clflags =
   let { Clflags.x
       ; profile = cl_profile
@@ -1130,6 +1332,10 @@ let step1 ~(lang : Lang.Instance.t) clflags =
          ~default:(lazy []))
   and+ config_from_workspace_file = Dune_config.decode_fields_of_workspace_file
   and+ lock_dirs = multi_field "lock_dir" (Lock_dir.decode ~dir)
+  and+ tool_groups =
+    multi_field
+      "tool_group"
+      (Dune_lang.Syntax.since Stanza.syntax (3, 25) >>> Tool_group.decode ~dir)
   and+ pins = Pin_stanza.Workspace.decode in
   let+ contexts = multi_field "context" (lazy_ Context.decode) in
   let config =
@@ -1201,6 +1407,9 @@ let step1 ~(lang : Lang.Instance.t) clflags =
            else None
        in
        check_lock_dirs_no_dupes lock_dirs;
+       check_no_duplicate_group_names tool_groups;
+       check_no_duplicate_tools tool_groups;
+       check_tool_groups_contexts contexts tool_groups;
        { merlin_context
        ; contexts = top_sort (List.rev contexts)
        ; env
@@ -1209,6 +1418,7 @@ let step1 ~(lang : Lang.Instance.t) clflags =
        ; lock_dirs
        ; dir
        ; pins
+       ; tool_groups
        })
   in
   { Step1.t; config }
@@ -1244,6 +1454,7 @@ let default clflags =
   ; lock_dirs = []
   ; dir = Path.Source.root
   ; pins = Pin_stanza.Workspace.empty
+  ; tool_groups = []
   }
 ;;
 

@@ -4,6 +4,7 @@
  (ctypes
   (external_library_name examplelib)
   (deps (source_tree vendor))
+  ; LINK_DEPS
   (build_flags_resolver
    (vendored
     (c_flags "-Ivendor")

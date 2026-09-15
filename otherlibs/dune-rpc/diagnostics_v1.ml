@@ -95,15 +95,14 @@ module Event = struct
     | Remove of t
 
   let sexp =
-    let diagnostic = sexp in
-    let open Conv in
-    let add = constr "Add" diagnostic (fun a -> Add a) in
-    let remove = constr "Remove" diagnostic (fun a -> Remove a) in
-    sum
-      [ econstr add; econstr remove ]
+    Conv.iso
+      (event_sexp sexp)
       (function
-        | Add t -> case t add
-        | Remove t -> case t remove)
+        | `Add t -> Add t
+        | `Remove t -> Remove t)
+      (function
+        | Add t -> `Add t
+        | Remove t -> `Remove t)
   ;;
 
   let to_event : t -> Diagnostic.Event.t = function

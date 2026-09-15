@@ -550,6 +550,23 @@ module Parser_generators = struct
     ;;
   end
 
+  let check_duplicate_module ~loc name first second =
+    let impl m =
+      let { Ml_kind.Dict.impl; _ } = Module.Source.files_by_ml_kind m in
+      Option.value_exn impl
+    in
+    let first = impl first in
+    let second = impl second in
+    if not (Path.equal (Module.File.path first) (Module.File.path second))
+    then (
+      let dir =
+        Module.File.original_path second
+        |> Path.as_in_build_dir_exn
+        |> Path.Build.parent_exn
+      in
+      raise_duplicate_module ~loc ~dir name first second)
+  ;;
+
   let expand_modules =
     let make_file ~original_path ~ml_kind ~root_dir ~for_ =
       let ext = Dialect.extension Dialect.ocaml ml_kind |> Option.value_exn in
@@ -847,7 +864,7 @@ module Generated_modules = struct
   let merge_two a b =
     (* Handle the corresponding opposite `Ml_kind.t` coming from one of the
        generated modules *)
-    Module_trie.Unchecked.merge a b ~f:(fun _ m1 m2 ->
+    Module_trie.Unchecked.merge a b ~f:(fun path m1 m2 ->
       match m1, m2 with
       | None, None -> None
       | Some m, None | None, Some m -> Some m
@@ -858,7 +875,17 @@ module Generated_modules = struct
           Ml_kind.Dict.of_func (fun ~ml_kind ->
             match Ml_kind.Dict.get files1 ml_kind, Ml_kind.Dict.get files2 ml_kind with
             | None, None -> None
-            | Some m, None | (None | Some _), Some m -> Some m)
+            | Some m, None | None, Some m -> Some m
+            | Some f1, Some f2 ->
+              if Path.equal (Module.File.path f1) (Module.File.path f2)
+              then Some f2
+              else (
+                let dir =
+                  Module.File.original_path f2
+                  |> Path.as_in_build_dir_exn
+                  |> Path.Build.parent_exn
+                in
+                raise_duplicate_module ~dir (Nonempty_list.last path) f1 f2))
         in
         let m = Module.Source.make ~impl ~intf (Module.Source.path m1) in
         Some m)
@@ -999,10 +1026,18 @@ module Generated_modules = struct
         |> List.fold_left
              ~init:Module_trie.Unchecked.empty
              ~f:(fun acc { targets; deps = _ } ->
-               Module_trie.foldi targets ~init:acc ~f:(fun module_path (_, m) acc ->
+               Module_trie.foldi targets ~init:acc ~f:(fun module_path (loc, m) acc ->
                  let module_path =
                    Nonempty_list.map module_path ~f:Module_name.unchecked
                  in
+                 (match Module_trie.Unchecked.find acc module_path with
+                  | None -> ()
+                  | Some previous ->
+                    Parser_generators.check_duplicate_module
+                      ~loc
+                      (Nonempty_list.last module_path)
+                      previous
+                      m);
                  Module_trie.Unchecked.set acc module_path m))
       in
       merge_two modules parser_gen_modules

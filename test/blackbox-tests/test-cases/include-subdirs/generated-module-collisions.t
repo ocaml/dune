@@ -1,6 +1,5 @@
 Generated modules must not silently replace other sources in an
-(include_subdirs unqualified) group. Currently, a generated implementation
-replaces a handwritten implementation with the same module name.
+(include_subdirs unqualified) group.
 
   $ make_dune_project 3.24
   $ mkdir a b
@@ -29,7 +28,10 @@ replaces a handwritten implementation with the same module name.
   > let () = print_endline Collision.Foo.value
   > EOF
   $ dune exec ./main.exe
-  generated
+  Error: Too many files for module Foo in b:
+  - _build/default/a/foo.ml
+  - _build/default/b/foo.ml
+  [1]
 
 A handwritten interface can accompany a generated implementation.
 
@@ -40,8 +42,7 @@ A handwritten interface can accompany a generated implementation.
   $ dune exec ./main.exe
   generated
 
-Two generators in different directories also produce the same module.
-Currently the second generator replaces the first one.
+Two generators in different directories cannot produce the same module.
 
   $ cat >a/dune <<EOF
   > (ocamllex foo)
@@ -52,9 +53,15 @@ Currently the second generator replaces the first one.
   > | eof { () }
   > EOF
   $ dune exec ./main.exe
-  generated
+  File "b/dune", line 1, characters 0-14:
+  1 | (ocamllex foo)
+      ^^^^^^^^^^^^^^
+  Error: Too many files for module Foo in b:
+  - _build/default/a/foo.ml
+  - _build/default/b/foo.ml
+  [1]
 
-A selected implementation likewise silently replaces a handwritten one.
+A selected implementation must not replace a handwritten one either.
 
   $ mkdir -p selected/a
   $ cat >selected/dune-project <<EOF
@@ -83,7 +90,12 @@ A selected implementation likewise silently replaces a handwritten one.
   > let () = print_endline Collision.Foo.value
   > EOF
   $ dune exec --root=selected ./main.exe
-  selected
+  Entering directory 'selected'
+  Error: Too many files for module Foo in .:
+  - _build/default/a/foo.ml
+  - _build/default/foo.ml
+  Leaving directory 'selected'
+  [1]
 
 A selected interface can accompany a handwritten implementation.
 
@@ -106,11 +118,15 @@ A selected interface can accompany a handwritten implementation.
   $ dune exec --root=selected ./main.exe
   handwritten
 
-But a selected interface currently replaces a handwritten interface too,
-instead of reporting the conflicting files.
+But a selected interface must not replace a handwritten interface.
 
   $ cat >selected/a/foo.mli <<EOF
   > val value : string
   > EOF
   $ dune exec --root=selected ./main.exe
-  handwritten
+  Entering directory 'selected'
+  Error: Too many files for module Foo in .:
+  - _build/default/a/foo.mli
+  - _build/default/foo.mli
+  Leaving directory 'selected'
+  [1]

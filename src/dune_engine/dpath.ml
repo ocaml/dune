@@ -31,6 +31,18 @@ module Target_dir = struct
     | Regular of context_related
     | Invalid of Path.Build.t
 
+  let context fn =
+    match Path.Build.extract_first_component fn with
+    | None -> None
+    | Some (name, sub) ->
+      if Filename.equal name Build.anonymous_actions_dir_basename
+      then (
+        match Path.Local.split_first_component sub with
+        | None -> None
+        | Some (name, _) -> Some (Context_name.of_string (Filename.to_string name)))
+      else Context_name.of_string_opt (Filename.to_string name)
+  ;;
+
   (* _build/foo or _build/install/foo where foo is invalid *)
 
   let of_target fn =

@@ -33,6 +33,8 @@ Make a dune file and build the project, using the "flags" field to exercise OSL.
   $ test '(:include x)'
   File ".merlin-conf/_unknown_", line 1, characters 0-0:
   Error: No rule found for x
+  Hint: If this is a source file or directory, make sure it exists in the
+  source tree. If it is generated, add or fix the rule that produces x.
   [1]
 
   $ test '(:include x y)'

@@ -3,36 +3,50 @@ module Lock_dir = Dune_pkg.Lock_dir
 module Local_package = Dune_pkg.Local_package
 
 module Show_lock = struct
-  let print_lock lock_dir_arg () =
-    let open Fiber.O in
-    let* lock_dir_paths =
-      Memo.run (Workspace.workspace ())
-      >>| Pkg.Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dir_arg
-    in
-    Fiber.parallel_map lock_dir_paths ~f:(fun lock_dir_path ->
-      let lock_dir_path = Path.source lock_dir_path in
-      let+ platform = Pkg.Pkg_common.solver_env_from_system_and_context ~lock_dir_path in
-      let lock_dir = Lock_dir.read_disk_exn lock_dir_path in
-      let packages =
-        Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform
-        |> Package_name.Map.values
-      in
-      Pp.concat
-        ~sep:Pp.space
-        [ Pp.hovbox
-          @@ Pp.textf "Contents of %s:" (Path.to_string_maybe_quoted lock_dir_path)
-        ; Pkg.Pkg_common.pp_packages packages
+  let print_lock_of_context context_name =
+    Build.build_memo_exn (fun () ->
+      let open Memo.O in
+      (* Reading the lock dir via [get_with_path] builds it, which autolocks when
+         no lock dir is committed. Only do this when a lock dir is active for the
+         context (i.e. package management is enabled or a lock dir is committed),
+         otherwise there is nothing to show. *)
+      Dune_rules.Lock_dir.lock_dir_active context_name
+      >>= function
+      | false ->
+        [ Pp.textf
+            "No lock directory found for context %s (package management is not enabled \
+             and no lock directory is committed)."
+            (Context_name.to_string context_name)
         ]
-      |> Pp.vbox)
-    >>| Console.print
+        |> Memo.return
+      | true ->
+        let+ lock_dir_path, lock_dir =
+          Dune_rules.Lock_dir.get_with_path context_name >>| User_error.ok_exn
+        in
+        let portable_lock_dir =
+          lock_dir.solved_for_platforms |> snd |> List.is_non_empty
+        in
+        Pkg.Lock.summary_message
+          ~portable_lock_dir
+          ~lock_dir_path
+          ~lock_dir
+          ~maybe_perf_stats:[]
+          ~maybe_unsolved_platforms_message:[])
+  ;;
+
+  let print_lock context_name () =
+    let open Fiber.O in
+    let+ summary = print_lock_of_context context_name in
+    Console.print summary
   ;;
 
   let term =
     let+ builder = Common.Builder.term
-    and+ lock_dir_arg = Pkg.Pkg_common.Lock_dirs_arg.term in
-    let builder = Common.Builder.forbid_builds builder in
+    and+ context_arg =
+      Common.context_arg ~doc:(Some "The build context of the lock directory")
+    in
     let common, config = Common.init builder in
-    Scheduler_setup.go_with_rpc_server ~common ~config @@ print_lock lock_dir_arg
+    Scheduler_setup.go_with_rpc_server ~common ~config @@ print_lock context_arg
   ;;
 
   let command =

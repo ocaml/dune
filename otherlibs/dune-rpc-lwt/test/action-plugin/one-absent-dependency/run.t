@@ -21,3 +21,26 @@ and requires dependency that can not be build fails.
   3 |  (action (dynamic-run ./foo.exe)))
   No rule found for some_absent_dependency
   [1]
+
+Catching a failed dependency request currently allows a successful cached result
+without recording the input whose absence caused the fallback.
+
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target result)
+  >  (action (dynamic-run ./foo.exe recover)))
+  > EOF
+  $ dune build result > build.output 2>&1; echo $?
+  0
+  $ cat _build/default/result
+  fallback
+  $ printf available > some_absent_dependency
+  $ dune build result
+  $ cat _build/default/result
+  fallback
+
+A fresh build reads the newly available input instead of using the fallback.
+
+  $ dune build --build-dir _build-fresh result
+  $ cat _build-fresh/default/result
+  available

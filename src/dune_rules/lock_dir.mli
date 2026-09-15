@@ -14,6 +14,10 @@ val of_dev_tool_if_lock_dir_exists : Dune_pkg.Dev_tool.t -> t option Memo.t
 val lock_dir_active : Context_name.t -> bool Memo.t
 val get_path : Context_name.t -> Path.t option Memo.t
 
+(** The current system's solver environment with the selected lock directory's
+    [solver_env] and [unset_solver_vars] applied. *)
+val solver_env_for_context : Context_name.t -> Dune_pkg.Solver_env.t Memo.t
+
 (** The default filesystem location where the lock dir is going to get created *)
 val default_path : Path.t
 

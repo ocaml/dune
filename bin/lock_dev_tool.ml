@@ -106,9 +106,7 @@ let compiler_package () =
   let open Memo.O in
   let context = Context_name.default in
   let* result = Dune_rules.Lock_dir.get context
-  and* platform =
-    Pkg.Pkg_common.poll_solver_env_from_current_system () |> Memo.of_reproducible_fiber
-  in
+  and* platform = Dune_rules.Lock_dir.solver_env_for_context context in
   match result with
   | Error _ ->
     User_error.raise

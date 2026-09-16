@@ -48,7 +48,7 @@ module DB = struct
     ; stdlib_package : Package.Name.t option
     ; paths : (Path.t * Package.Name.t option) list
     ; lock_dir_active : bool
-    ; builtins : Meta.Simplified.t Package.Name.Map.t
+    ; builtins : Meta.Simplified.t Package.Name.Map.t option
     ; ext_lib : Filename.Extension.t
     }
 
@@ -61,7 +61,7 @@ module DB = struct
       ; "stdlib_package", option Package.Name.to_dyn stdlib_package
       ; "paths", list (pair Path.to_dyn (option Package.Name.to_dyn)) paths
       ; "lock_dir_active", bool lock_dir_active
-      ; "builtins", Package.Name.Map.to_dyn Meta.Simplified.to_dyn builtins
+      ; "builtins", option (Package.Name.Map.to_dyn Meta.Simplified.to_dyn) builtins
       ; "ext_lib", Filename.Extension.to_dyn ext_lib
       ]
   ;;
@@ -69,12 +69,21 @@ module DB = struct
   let equal x y = Id.equal x.id y.id
   let hash t = Id.hash t.id
 
-  let create ~paths ~stdlib_package ~lock_dir_active ~(lib_config : Lib_config.t) =
+  let create
+        ~paths
+        ~stdlib_package
+        ~lock_dir_active
+        ~with_builtins
+        ~(lib_config : Lib_config.t)
+    =
     let stdlib_dir = lib_config.stdlib_dir in
     let ext_lib = lib_config.ext_lib in
     let+ builtins =
-      let version = lib_config.ocaml_version in
-      Meta.builtins ~stdlib_dir ~version
+      if with_builtins
+      then (
+        let version = lib_config.ocaml_version in
+        Meta.builtins ~stdlib_dir ~version >>| Option.some)
+      else Memo.return None
     in
     { id = Id.gen ()
     ; stdlib_dir
@@ -405,7 +414,10 @@ module Loader = struct
           Findlib.Package.exists
             pkg
             ~is_builtin:
-              (Package.Name.Map.mem db.builtins (Lib_name.package_name pkg.name))
+              (match db.builtins with
+               | None -> false
+               | Some builtins ->
+                 Package.Name.Map.mem builtins (Lib_name.package_name pkg.name))
         in
         if exists then Dune_package.Entry.Library lib else Hidden_library lib
       in
@@ -505,20 +517,26 @@ module Loader = struct
   ;;
 
   let lookup_and_load (db : DB.t) name =
-    let resolve_package package = if db.lock_dir_active then package else Some name in
+    let resolve_package = function
+      | Some _ as package -> package
+      | None -> if db.lock_dir_active then None else Some name
+    in
     Memo.List.find_map db.paths ~f:(fun (path, package) ->
       lookup db ~package:(resolve_package package) name path)
     >>= function
     | Some m -> Memo.return m
     | None ->
-      (match Package.Name.to_string name with
-       | "dune" -> Memo.return (Ok builtin_for_dune)
-       | _ ->
-         (match Package.Name.Map.find db.builtins name with
-          | None -> Memo.return (Error Unavailable_reason.Not_found)
-          | Some meta ->
-            load_builtin db ~package:(resolve_package db.stdlib_package) meta
-            >>| Result.ok))
+      (match db.builtins with
+       | None -> Memo.return (Error Unavailable_reason.Not_found)
+       | Some builtins ->
+         (match Package.Name.to_string name with
+          | "dune" -> Memo.return (Ok builtin_for_dune)
+          | _ ->
+            (match Package.Name.Map.find builtins name with
+             | None -> Memo.return (Error Unavailable_reason.Not_found)
+             | Some meta ->
+               load_builtin db ~package:(resolve_package db.stdlib_package) meta
+               >>| Result.ok)))
   ;;
 
   let root_packages (db : DB.t) =
@@ -538,11 +556,12 @@ module Loader = struct
           let+ sub_dirs =
             Filename.Set.to_list sub_dirs
             |> Memo.List.filter_map ~f:(fun name ->
-              Path.relative_fname (Path.relative_fname dir name) Findlib.Package.meta_fn
-              |> Fs.file_exists
-              >>| function
-              | true -> Some (Package.Name.of_string (Filename.to_string name))
-              | false -> None)
+              let dir = Path.relative_fname dir name in
+              let+ meta = Fs.file_exists (Path.relative_fname dir Findlib.Package.meta_fn)
+              and+ dune_package = Fs.file_exists (Path.relative dir Dune_package.fn) in
+              Option.some_if
+                (meta || dune_package)
+                (Package.Name.of_string (Filename.to_string name)))
           in
           let metas =
             Filename.Set.to_list_map metas ~f:(fun fn ->
@@ -554,7 +573,9 @@ module Loader = struct
           List.rev_append sub_dirs metas)
       >>| Package.Name.Set.of_list
     in
-    Package.Name.Set.of_keys db.builtins |> Package.Name.Set.union pkgs
+    match db.builtins with
+    | None -> pkgs
+    | Some builtins -> Package.Name.Set.of_keys builtins |> Package.Name.Set.union pkgs
   ;;
 end
 
@@ -623,6 +644,7 @@ module For_tests = struct
       ~paths:(List.map paths ~f:(fun path -> path, None))
       ~stdlib_package:None
       ~lock_dir_active:false
+      ~with_builtins:true
       ~lib_config
   ;;
 end
@@ -649,7 +671,21 @@ let create_with_paths ~paths context_name =
   in
   let paths = List.map paths ~f:(fun path -> path, package_of_dir path) in
   let stdlib_package = package_of_dir lib_config.stdlib_dir in
-  DB.create ~paths ~stdlib_package ~lock_dir_active ~lib_config
+  DB.create ~paths ~stdlib_package ~lock_dir_active ~with_builtins:true ~lib_config
+;;
+
+let create_for_package context_name ~package ~lib_root =
+  let* context = Context.DB.get context_name in
+  let* lib_config =
+    let+ ocaml = Context.ocaml context in
+    ocaml.lib_config
+  in
+  DB.create
+    ~paths:[ lib_root, Some package ]
+    ~stdlib_package:None
+    ~lock_dir_active:false
+    ~with_builtins:false
+    ~lib_config
 ;;
 
 let create =

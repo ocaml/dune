@@ -44,3 +44,51 @@ Public library:
   > EOF
 
   $ dune build
+
+Package metadata contains only the requested package's enabled public and
+packaged private libraries. Deprecated names need not resolve their destination.
+
+  $ mkdir metadata
+  $ cd metadata
+  $ cat > dune-project <<EOF
+  > (lang dune 3.21)
+  > (package (name foo))
+  > (package (name bar))
+  > (package (name empty) (allow_empty))
+  > EOF
+  $ mkdir a b
+  $ touch a/foo.ml a/secret.ml a/disabled.ml b/bar.ml
+  $ cat > a/dune <<EOF
+  > (library (public_name foo) (modules foo))
+  > (library (name secret) (package foo) (modules secret))
+  > (library
+  >  (name disabled)
+  >  (public_name foo.disabled)
+  >  (modules disabled)
+  >  (enabled_if false))
+  > (deprecated_library_name
+  >  (old_public_name foo.old)
+  >  (new_public_name bar.missing))
+  > EOF
+  $ cat > b/dune <<EOF
+  > (library (public_name bar))
+  > EOF
+
+Request metadata for several packages without package filtering.
+
+  $ dune build META.foo foo.dune-package META.bar META.empty
+  $ grep '^package ' _build/default/META.foo
+  package "__private__" (
+  package "old" (
+  $ grep 'archive(byte)' _build/default/META.foo
+  archive(byte) = "foo.cma"
+      archive(byte) = "secret.cma"
+  $ grep 'bar.missing' _build/default/META.foo
+    requires = "bar.missing"
+    exports = "bar.missing"
+  $ grep 'disabled' _build/default/META.foo
+  [1]
+  $ grep 'archive(byte)' _build/default/META.bar
+  archive(byte) = "bar.cma"
+  $ grep 'archive(byte)' _build/default/META.empty
+  [1]

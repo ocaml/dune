@@ -33,22 +33,16 @@ let artifacts_host t ~dir =
   t.get_node dir >>= Env_node.artifacts
 ;;
 
-let scope_host ~scope (context : Context.t) =
-  match Context.for_host context with
-  | None -> scope
-  | Some host ->
-    let* dir =
-      let* scope = scope in
-      let+ host = host in
-      set_context host (Scope.root scope)
-    in
-    Scope.DB.find_by_dir dir
-;;
-
 let expander_for_artifacts t ~dir =
   let external_env = t.get_node dir >>= Env_node.external_env in
   let scope = Scope.DB.find_by_dir dir in
-  let scope_host = scope_host ~scope t.context in
+  let scope_host =
+    match Context.for_host t.context with
+    | None -> scope
+    | Some host ->
+      let* host = host in
+      Scope.DB.find_by_dir (set_context host dir)
+  in
   let+ project = Dune_load.find_project ~dir in
   Expander.extend_env t.root_expander ~env:external_env
   |> Expander.set_scope ~dir ~project ~scope ~scope_host
@@ -300,27 +294,15 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
   in
   let artifacts = Artifacts_db.get context in
   let+ root_expander =
-    let public_libs = Scope.DB.public_libs context_name in
-    let artifacts_host, public_libs_host, host_build_dir =
+    let artifacts_host, host_build_dir =
       match Context.for_host context with
-      | None -> artifacts, public_libs, Memo.return (Context.build_dir context)
-      | Some host ->
-        let artifacts = host >>= Artifacts_db.get in
-        let public_libs = host >>| Context.name >>= Scope.DB.public_libs in
-        artifacts, public_libs, host >>| Context.build_dir
+      | None -> artifacts, Memo.return (Context.build_dir context)
+      | Some host -> host >>= Artifacts_db.get, host >>| Context.build_dir
     in
     let scope = Scope.DB.find_by_dir (Context.build_dir context) in
     let scope_host = host_build_dir >>= Scope.DB.find_by_dir in
     let+ project = Dune_load.find_project ~dir:(Context.build_dir context) in
-    Expander.make_root
-      ~project
-      ~scope
-      ~scope_host
-      ~context
-      ~env
-      ~public_libs
-      ~artifacts_host
-      ~public_libs_host
+    Expander.make_root ~project ~scope ~scope_host ~context ~env ~artifacts_host
   in
   (* Env node that represents the environment configured for the workspace. It
      is used as default at the root of every project in the workspace. *)

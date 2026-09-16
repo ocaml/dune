@@ -4,6 +4,7 @@ open Memo.O
 type t =
   { project : Dune_project.t
   ; db : Lib.DB.t
+  ; public_libs : Lib.DB.t
   ; rocq_db : Rocq_lib.DB.t Memo.t
   ; root : Path.Build.t
   }
@@ -11,13 +12,25 @@ type t =
 let root t = t.root
 let project t = t.project
 let libs t = t.db
+let public_libs t = t.public_libs
 let rocq_libs t = t.rocq_db
 
 module DB = struct
   type scope = t
-  type t = { by_dir : scope Path.Source.Map.t }
 
-  let find_by_dir t dir = Find_closest_source_dir.find_by_dir_exn t.by_dir ~dir
+  type t =
+    { by_dir : scope Path.Source.Map.t
+    ; by_package : scope Package.Name.Map.t
+    ; dependency_libs_by_package : Lib.DB.t Package.Name.Map.t
+    }
+
+  let find_by_dir t dir =
+    let scope = Find_closest_source_dir.find_by_dir_exn t.by_dir ~dir in
+    let src_dir = Path.Build.drop_build_context_exn dir in
+    match Dune_project.exclusive_package scope.project ~dir:src_dir with
+    | None -> scope
+    | Some package -> Package.Name.Map.find_exn t.by_package (Package.Id.name package)
+  ;;
 
   let find_by_project t project =
     Path.Source.Map.find_exn t.by_dir (Dune_project.root project)
@@ -25,7 +38,10 @@ module DB = struct
 
   module Found_or_redirect : sig
     type t = private
-      | Found of Lib_info.external_
+      | Found of
+          { info : Lib_info.external_
+          ; owner : Package.Name.t option
+          }
       | Redirect of
           { loc : Loc.t
           ; to_ : Lib_name.t
@@ -40,10 +56,13 @@ module DB = struct
       -> Lib_name.t * t
 
     val deprecated_library_name : Lib_name.t -> Loc.t * Lib_name.t -> Lib_name.t * t
-    val found : Lib_info.external_ -> t
+    val found : Lib_info.external_ -> owner:Package.Name.t option -> t
   end = struct
     type t =
-      | Found of Lib_info.external_
+      | Found of
+          { info : Lib_info.external_
+          ; owner : Package.Name.t option
+          }
       | Redirect of
           { loc : Loc.t
           ; to_ : Lib_name.t
@@ -63,7 +82,7 @@ module DB = struct
       else from, Deprecated_library_name (loc, to_)
     ;;
 
-    let found x = Found x
+    let found info ~owner = Found { info; owner }
   end
 
   module Library_related_stanza = struct
@@ -76,7 +95,7 @@ module DB = struct
   let create_db_from_stanzas =
     (* Here, [parent] is always the public_libs DB. Check the call to
        [create_db_from_stanzas] below. *)
-    let resolve_found_or_redirect ~public_libs fr =
+    let resolve_found_or_redirect ~scopes ~project ~owner ~public_libs fr =
       match (fr : Found_or_redirect.t) with
       | Redirect { loc; to_; enabled; _ } ->
         let+ enabled =
@@ -86,16 +105,24 @@ module DB = struct
         if enabled
         then Lib.DB.Resolve_result.redirect_in_the_same_db (loc, to_)
         else Lib.DB.Resolve_result.not_found
-      | Found lib -> Memo.return (Lib.DB.Resolve_result.found lib)
+      | Found { info; owner = library_owner } ->
+        let result =
+          if Option.equal Package.Name.equal owner library_owner
+          then Lib.DB.Resolve_result.found info
+          else (
+            let scopes = Fdecl.get scopes in
+            let scope =
+              match library_owner with
+              | None -> find_by_project scopes project
+              | Some package -> Package.Name.Map.find_exn scopes.by_package package
+            in
+            Lib.DB.Resolve_result.redirect_by_id scope.db (Lib_info.lib_id info))
+        in
+        Memo.return result
       | Deprecated_library_name lib ->
         Memo.return (Lib.DB.Resolve_result.redirect_by_name public_libs lib)
     in
-    let resolve_lib_id ~public_libs lib_id_map lib_id =
-      match Lib_id.Map.find lib_id_map lib_id with
-      | None -> Memo.return Lib.DB.Resolve_result.not_found
-      | Some found_or_redirect -> resolve_found_or_redirect ~public_libs found_or_redirect
-    in
-    fun ~instrument_with ~public_libs ~lib_config stanzas ->
+    fun ~lib_config ~project stanzas ->
       let by_name, by_id, _ =
         List.fold_left
           stanzas
@@ -129,7 +156,14 @@ module DB = struct
                   let expander = Expander0.get ~dir in
                   Library.to_lib_info conf ~expander ~dir ~lib_config |> Lib_info.of_local
                 and lib_id = Library.to_lib_id ~src_dir conf in
-                Some lib_id, Library.best_name conf, Found_or_redirect.found info
+                let owner =
+                  match Library.package conf with
+                  | Some package -> Some (Package.name package)
+                  | None ->
+                    Dune_project.exclusive_package project ~dir:src_dir
+                    |> Option.map ~f:Package.Id.name
+                in
+                Some lib_id, Library.best_name conf, Found_or_redirect.found info ~owner
             in
             let libname_conflict_map =
               Lib_name.Map.update libname_conflict_map name ~f:(function
@@ -141,8 +175,8 @@ module DB = struct
                     | Found _, Redirect _
                     | Redirect _, Found _
                     | Redirect _, Redirect _ -> Ok r1
-                    | Found info, Deprecated_library_name (loc, _)
-                    | Deprecated_library_name (loc, _), Found info ->
+                    | Found { info; _ }, Deprecated_library_name (loc, _)
+                    | Deprecated_library_name (loc, _), Found { info; _ } ->
                       Error (loc, Lib_info.loc info)
                     | ( Deprecated_library_name (loc2, lib2)
                       , Redirect { loc = loc1; to_ = lib1; _ } )
@@ -182,19 +216,28 @@ module DB = struct
             in
             by_name, by_id, libname_conflict_map)
       in
-      let resolve name =
-        match Lib_name.Map.find by_name name with
-        | None | Some [] -> Memo.return []
-        | Some [ fr ] -> resolve_found_or_redirect ~public_libs fr >>| List.singleton
-        | Some frs -> Memo.parallel_map frs ~f:(resolve_found_or_redirect ~public_libs)
-      and resolve_lib_id = resolve_lib_id ~public_libs by_id in
-      Lib.DB.create
-        ()
-        ~parent:(Some public_libs)
-        ~resolve
-        ~resolve_lib_id
-        ~all:(fun () -> Lib_name.Map.keys by_name |> Memo.return)
-        ~instrument_with
+      Staged.stage (fun ~scopes ~owner ~public_libs ~instrument_with ~package_scopes ->
+        let resolve_found_or_redirect =
+          resolve_found_or_redirect ~scopes ~project ~owner ~public_libs
+        in
+        let resolve name =
+          match Lib_name.Map.find by_name name with
+          | None | Some [] -> Memo.return []
+          | Some [ fr ] -> resolve_found_or_redirect fr >>| List.singleton
+          | Some frs -> Memo.parallel_map frs ~f:resolve_found_or_redirect
+        and resolve_lib_id lib_id =
+          match Lib_id.Map.find by_id lib_id with
+          | None -> Memo.return Lib.DB.Resolve_result.not_found
+          | Some fr -> resolve_found_or_redirect fr
+        in
+        Lib.DB.create
+          ()
+          ~parent:(Some public_libs)
+          ~resolve
+          ~resolve_lib_id
+          ~all:(fun () -> Lib_name.Map.keys by_name |> Memo.return)
+          ~instrument_with
+        |> Lib.DB.with_package_scopes ~package_scopes)
   ;;
 
   type redirect_to =
@@ -222,12 +265,44 @@ module DB = struct
         else Lib.DB.Resolve_result.not_found
       | Name name -> Memo.return (Lib.DB.Resolve_result.redirect_in_the_same_db name)
     in
-    let resolve_lib_id t public_libs lib_id =
-      match Lib_id.Map.find public_libs lib_id with
-      | None -> Memo.return Lib.DB.Resolve_result.not_found
-      | Some rt -> resolve_redirect_to t rt
-    in
-    fun t ~installed_libs stanzas ->
+    fun t ~context ~installed_libs ~instrument_with stanzas ->
+      let opam_libraries =
+        Memo.create
+          "opam-package-libraries"
+          ~input:(module Package.Name)
+          (fun name ->
+             let* package = Opam_package.find context name in
+             match package with
+             | None -> Memo.return None
+             | Some package ->
+               let* dependency, _ =
+                 Action_builder.evaluate_and_collect_facts
+                   (Opam_package.dependency package)
+               in
+               let roots = Opam_build.Paths.install_roots dependency.paths in
+               let* findlib =
+                 Findlib.create_for_package context ~package:name ~lib_root:roots.lib_root
+               in
+               let resolve library =
+                 let+ entry = Findlib.find findlib library in
+                 Lib.DB.Resolve_result.of_findlib entry
+               in
+               let parent =
+                 Package.Name.Map.find_exn (Fdecl.get t).dependency_libs_by_package name
+               in
+               let db =
+                 Lib.DB.create
+                   ()
+                   ~parent:(Some parent)
+                   ~resolve:(fun name -> resolve name >>| List.singleton)
+                   ~resolve_lib_id:(fun id -> resolve (Lib_id.name id))
+                   ~all:(fun () ->
+                     Findlib.all_packages findlib >>| List.map ~f:Dune_package.Entry.name)
+                   ~instrument_with
+               in
+               Memo.return (Some (findlib, db)))
+        |> Memo.exec
+      in
       let by_name, by_id =
         List.fold_left
           stanzas
@@ -276,27 +351,91 @@ module DB = struct
               in
               by_name, by_id)
       in
-      let resolve_lib_id lib_id = resolve_lib_id t by_id lib_id in
-      let resolve name =
-        match Lib_name.Map.find by_name name with
-        | None -> Memo.return []
-        | Some rt -> Memo.List.map ~f:(resolve_redirect_to t) rt
-      in
-      Lib.DB.create
-        ~parent:(Some installed_libs)
-        ~resolve
-        ~resolve_lib_id
-        ~all:(fun () -> Lib_name.Map.keys by_name |> Memo.return)
-        ()
+      Staged.stage (fun ~owner ~include_owner ->
+        let candidates =
+          Memo.lazy_ ~name:"opaque-library-candidates" (fun () ->
+            let* packages = Opam_package.all context in
+            match owner with
+            | None -> Memo.return (Package.Name.Map.keys packages)
+            | Some owner ->
+              let+ visible =
+                Dune_load.package_closure (Package.Name.Set.singleton owner)
+              in
+              let visible =
+                if include_owner then visible else Package.Name.Set.remove visible owner
+              in
+              Package.Name.Map.keys packages
+              |> List.filter ~f:(Package.Name.Set.mem visible))
+        in
+        let resolve_opam name =
+          let* candidates = Memo.Lazy.force candidates in
+          Memo.parallel_map candidates ~f:(fun package ->
+            let* libraries = opam_libraries package in
+            match libraries with
+            | None -> Memo.return None
+            | Some (findlib, db) ->
+              let+ entry = Findlib.find findlib name in
+              (match entry with
+               | Error Not_found -> None
+               | Ok _ | Error (Invalid_dune_package _) ->
+                 Some (Lib.DB.Resolve_result.redirect_by_name db (Loc.none, name))))
+          >>| List.filter_opt
+        in
+        let all_opam () =
+          let* candidates = Memo.Lazy.force candidates in
+          Memo.List.concat_map candidates ~f:(fun name ->
+            let* libraries = opam_libraries name in
+            match libraries with
+            | None -> Memo.return []
+            | Some (findlib, _) ->
+              Findlib.all_packages findlib >>| List.map ~f:Dune_package.Entry.name)
+        in
+        let opaque_libs =
+          Lib.DB.create
+            ()
+            ~parent:(Some installed_libs)
+            ~resolve:resolve_opam
+            ~resolve_lib_id:(fun lib_id ->
+              Memo.return
+                (Lib.DB.Resolve_result.redirect_in_the_same_db
+                   (Loc.none, Lib_id.name lib_id)))
+            ~all:all_opam
+            ~instrument_with
+        in
+        let resolve_lib_id lib_id =
+          match Lib_id.Map.find by_id lib_id with
+          | None -> Memo.return Lib.DB.Resolve_result.not_found
+          | Some rt -> resolve_redirect_to t rt
+        in
+        let resolve name =
+          match Lib_name.Map.find by_name name with
+          | None -> Memo.return []
+          | Some rt -> Memo.List.map ~f:(resolve_redirect_to t) rt
+        in
+        Lib.DB.create
+          ~parent:(Some opaque_libs)
+          ~resolve
+          ~resolve_lib_id
+          ~all:(fun () ->
+            let+ libraries = all_opam () in
+            List.sort_uniq
+              (Lib_name.Map.keys by_name @ libraries)
+              ~compare:Lib_name.compare)
+          ~instrument_with
+          ())
   ;;
 
   module Path_source_map_traversals = Memo.Map (Path.Source.Map)
 
   let scopes_by_dir
+        ~scopes
+        ~package_scopes
         ~build_dir
         ~lib_config
         ~projects_by_root
         ~public_libs
+        ~public_libs_by_package
+        ~dependency_libs_by_package
         ~instrument_with
         context
         stanzas
@@ -313,7 +452,7 @@ module DB = struct
         Dune_project.root project, (dir, stanza))
       |> Path.Source.Map.of_list_multi
     in
-    let db_by_project_dir =
+    let make_db_by_project_dir =
       Path.Source.Map.merge
         projects_by_root
         stanzas_by_project_dir
@@ -322,10 +461,11 @@ module DB = struct
           let stanzas = Option.value stanzas ~default:[] in
           Some (project, stanzas))
       |> Path.Source.Map.map ~f:(fun (project, stanzas) ->
-        let db =
-          create_db_from_stanzas stanzas ~instrument_with ~public_libs ~lib_config
-        in
-        project, db)
+        project, Staged.unstage (create_db_from_stanzas stanzas ~lib_config ~project))
+    in
+    let db_by_project_dir =
+      Path.Source.Map.map make_db_by_project_dir ~f:(fun (project, make_db) ->
+        project, make_db ~scopes ~owner:None ~public_libs ~instrument_with ~package_scopes)
     in
     let rocq_scopes =
       Rocq_scope.make
@@ -335,14 +475,42 @@ module DB = struct
         ~db_by_project_dir
         ~projects_by_root
     in
-    Path.Source.Map.mapi db_by_project_dir ~f:(fun dir (project, db) ->
-      let root = Path.Build.append_source build_dir (Dune_project.root project) in
-      let rocq_db = Rocq_scope.find rocq_scopes ~dir in
-      { project; db; rocq_db; root })
+    let by_dir =
+      Path.Source.Map.mapi db_by_project_dir ~f:(fun dir (project, db) ->
+        let root = Path.Build.append_source build_dir (Dune_project.root project) in
+        let rocq_db = Rocq_scope.find rocq_scopes ~dir in
+        { project; db; public_libs; rocq_db; root })
+    in
+    let by_package =
+      Path.Source.Map.to_list make_db_by_project_dir
+      |> List.concat_map ~f:(fun (dir, (project, make_db)) ->
+        let scope = Path.Source.Map.find_exn by_dir dir in
+        Dune_project.including_hidden_packages project
+        |> Package.Name.Map.to_list_map ~f:(fun name _ ->
+          let public_libs = Package.Name.Map.find_exn public_libs_by_package name in
+          let db =
+            make_db
+              ~scopes
+              ~owner:(Some name)
+              ~public_libs
+              ~instrument_with
+              ~package_scopes
+          in
+          name, { scope with db; public_libs }))
+      |> Package.Name.Map.of_list_exn
+    in
+    { by_dir; by_package; dependency_libs_by_package }
   ;;
 
   let create ~context ~projects_by_root stanzas rocq_stanzas =
     let t = Fdecl.create Dyn.opaque in
+    let* opaque_packages = Opam_package.all context in
+    let package_scopes =
+      lazy
+        (Package.Name.Map.mapi opaque_packages ~f:(fun name package ->
+           let scope = Package.Name.Map.find_exn (Fdecl.get t).by_package name in
+           Path.build package.paths.target_dir, scope.db))
+    in
     let* context = Context.DB.get context in
     let build_dir = Context.build_dir context in
     let* lib_config =
@@ -350,22 +518,45 @@ module DB = struct
       ocaml.lib_config
     in
     let instrument_with = Context.instrument_with context in
-    let+ public_libs =
+    let+ make_public_libs =
       let+ installed_libs = Lib.DB.installed context in
-      public_libs t ~instrument_with ~installed_libs stanzas
+      public_libs
+        t
+        ~context:(Context.name context)
+        ~instrument_with
+        ~installed_libs
+        stanzas
+      |> Staged.unstage
     in
-    let by_dir =
+    let public_libs = make_public_libs ~owner:None ~include_owner:true in
+    let package_names =
+      Path.Source.Map.values projects_by_root
+      |> List.concat_map ~f:(fun project ->
+        Dune_project.including_hidden_packages project |> Package.Name.Map.keys)
+    in
+    let public_libs_by_package =
+      Package.Name.Map.of_list_map_exn package_names ~f:(fun name ->
+        name, make_public_libs ~owner:(Some name) ~include_owner:true)
+    in
+    let dependency_libs_by_package =
+      Package.Name.Map.of_list_map_exn package_names ~f:(fun name ->
+        name, make_public_libs ~owner:(Some name) ~include_owner:false)
+    in
+    let value =
       scopes_by_dir
+        ~scopes:t
+        ~package_scopes
         ~build_dir
         ~lib_config
         ~projects_by_root
         ~public_libs
+        ~public_libs_by_package
+        ~dependency_libs_by_package
         ~instrument_with
         context
         stanzas
         rocq_stanzas
     in
-    let value = { by_dir } in
     Fdecl.set t value;
     value, public_libs
   ;;
@@ -440,6 +631,14 @@ module DB = struct
     find_by_project scopes project
   ;;
 
+  let for_package (scope : scope) = function
+    | None -> Memo.return scope
+    | Some package ->
+      let* context = Context.DB.by_dir scope.root in
+      let+ scopes, _ = create_from_stanzas (Context.name context) in
+      Package.Name.Map.find_exn scopes.by_package (Package.name package)
+  ;;
+
   module Lib_entry = struct
     type t =
       | Library of Lib.Local.t
@@ -462,8 +661,6 @@ module DB = struct
         { libraries : Lib.Local.t list
         ; deprecated_library_names : Deprecated_library_name.t list
         }
-
-      let empty = { libraries = []; deprecated_library_names = [] }
 
       let of_list =
         let by_name x = Lib.Local.info x |> Lib_info.name in
@@ -507,89 +704,81 @@ module DB = struct
   end
 
   let lib_entries_of_package =
-    let make_map build_dir public_libs stanzas =
+    let package_entries build_dir public_libs stanzas =
       let+ libs =
-        Dune_file.Memo_fold.fold_static_stanzas stanzas ~init:[] ~f:(fun d stanza acc ->
+        Memo.List.fold_left stanzas ~init:[] ~f:(fun acc (src_dir, stanza) ->
           match Stanza.repr stanza with
           | Library.T ({ enabled_if; _ } as lib) ->
-            let src_dir = Dune_file.dir d in
             let lib_dir = Path.Build.append_source build_dir src_dir in
-            let* package_and_db =
+            let* db =
               match lib.visibility with
-              | Private None -> Memo.return None
-              | Private (Some package) ->
+              | Public _ -> Memo.return public_libs
+              | Private _ ->
                 let+ scope = find_by_dir lib_dir in
-                Some (package, libs scope)
-              | Public public ->
-                Memo.return (Some (Public_lib.package public, public_libs))
+                libs scope
             in
-            (match package_and_db with
-             | None -> Memo.return acc
-             | Some (package, db) ->
-               let* enabled =
-                 let* expander = Expander0.get ~dir:lib_dir in
-                 Expander0.eval_blang expander enabled_if
-               in
-               if not enabled
-               then Memo.return acc
-               else
-                 Lib.DB.find_lib_id db (Local (Library.to_lib_id ~src_dir lib))
-                 >>| (function
-                  | None -> acc
-                  | Some lib ->
-                    (Package.name package, Lib_entry.Library (Lib.Local.of_lib_exn lib))
-                    :: acc))
-          | Deprecated_library_name.T ({ old_name = old_public_name, _; _ } as d) ->
-            let package = Public_lib.package old_public_name in
-            let name = Package.name package in
-            Memo.return ((name, Lib_entry.Deprecated_library_name d) :: acc)
+            let* enabled =
+              let* expander = Expander0.get ~dir:lib_dir in
+              Expander0.eval_blang expander enabled_if
+            in
+            if enabled
+            then
+              Lib.DB.find_lib_id db (Local (Library.to_lib_id ~src_dir lib))
+              >>| function
+              | None -> acc
+              | Some lib -> Lib_entry.Library (Lib.Local.of_lib_exn lib) :: acc
+            else Memo.return acc
+          | Deprecated_library_name.T d ->
+            Memo.return (Lib_entry.Deprecated_library_name d :: acc)
           | _ -> Memo.return acc)
       in
-      Package.Name.Map.of_list_multi libs |> Package.Name.Map.map ~f:Lib_entry.Set.of_list
+      Lib_entry.Set.of_list libs
     in
-    let per_context =
-      Per_context.create_by_name ~name:"scope-db" (fun ctx ->
-        Memo.lazy_ ~name:"scope-db" (fun () ->
-          let* public_libs =
-            let* ctx = Context.DB.get ctx in
-            public_libs (Context.name ctx)
-          and* stanzas = Dune_load.dune_files ctx in
-          make_map (Context_name.build_dir ctx) public_libs stanzas)
-        |> Memo.Lazy.force)
-      |> Staged.unstage
+    let entries =
+      Memo.create
+        "package-library-entries"
+        ~input:
+          (module struct
+            type t = Context_name.t * Package.Name.t
+
+            let equal = Tuple.T2.equal Context_name.equal Package.Name.equal
+            let hash = Tuple.T2.hash Context_name.hash Package.Name.hash
+            let to_dyn = Tuple.T2.to_dyn Context_name.to_dyn Package.Name.to_dyn
+          end)
+        (fun (ctx, pkg_name) ->
+           let* public_libs = public_libs ctx
+           and* stanzas = Dune_load.stanzas_of_package ctx pkg_name in
+           package_entries (Context_name.build_dir ctx) public_libs stanzas)
     in
     fun (ctx : Context_name.t) pkg_name ->
-      let+ map = per_context ctx in
-      match Package.Name.Map.find map pkg_name with
-      | None -> Lib_entry.Set.empty
-      | Some libs ->
-        let _by_name =
-          Lib_entry.Set.fold libs ~init:Lib_name.Map.empty ~f:(fun entry2 by_name ->
-            let public_name = Lib_entry.name entry2 in
-            Lib_name.Map.update by_name public_name ~f:(function
-              | None -> Some entry2
-              | Some entry1 ->
-                let loc1 = Lib_entry.loc entry1
-                and loc2 = Lib_entry.loc entry2 in
-                let main_message =
-                  Pp.textf
-                    "Public library %s is defined twice:"
-                    (Lib_name.to_string public_name)
-                in
-                let compound =
-                  Compound_user_error.duplicate
-                    ~main_loc:loc2
-                    ~previous_loc:loc1
-                    main_message
-                in
-                User_error.raise
-                  ~compound
-                  ~loc:loc2
-                  [ main_message
-                  ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-                  ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-                  ]))
-        in
-        libs
+      let+ libs = Memo.exec entries (ctx, pkg_name) in
+      let _by_name =
+        Lib_entry.Set.fold libs ~init:Lib_name.Map.empty ~f:(fun entry2 by_name ->
+          let public_name = Lib_entry.name entry2 in
+          Lib_name.Map.update by_name public_name ~f:(function
+            | None -> Some entry2
+            | Some entry1 ->
+              let loc1 = Lib_entry.loc entry1
+              and loc2 = Lib_entry.loc entry2 in
+              let main_message =
+                Pp.textf
+                  "Public library %s is defined twice:"
+                  (Lib_name.to_string public_name)
+              in
+              let compound =
+                Compound_user_error.duplicate
+                  ~main_loc:loc2
+                  ~previous_loc:loc1
+                  main_message
+              in
+              User_error.raise
+                ~compound
+                ~loc:loc2
+                [ main_message
+                ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+                ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+                ]))
+      in
+      libs
   ;;
 end

@@ -654,6 +654,8 @@ let setup_emit_cmj_rules
     in
     ( cctx
     , Merlin.make
+        ~scope
+        ~expander
         ~requires_compile
         ~requires_hidden
         ~stdlib_dir

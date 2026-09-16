@@ -101,7 +101,8 @@ The materialized files must come from the corresponding package's sources.
   foo
   bar
 
-Collecting foo's entries must not expand an unrelated bar install stanza.
+Collecting foo's entries must not expand an unrelated bar install stanza,
+even when that directory also contains a deprecated name belonging to foo.
 
   $ mkdir bar-only
   $ cat >bar-only/dune <<'EOF'
@@ -109,8 +110,14 @@ Collecting foo's entries must not expand an unrelated bar install stanza.
   >  (package bar)
   >  (section doc)
   >  (source_trees missing))
+  > (deprecated_library_name
+  >  (old_public_name foo.compat)
+  >  (new_public_name bar.missing))
   > EOF
-  $ dune build out1
+  $ dune build out1 META.foo
+  $ grep 'bar.missing' _build/default/META.foo
+    requires = "bar.missing"
+    exports = "bar.missing"
   $ dune build out3
   File "bar-only/dune", line 4, characters 15-22:
   4 |  (source_trees missing))

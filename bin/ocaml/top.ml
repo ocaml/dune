@@ -112,13 +112,11 @@ module Module = struct
   let module_directives sctx mod_ =
     let ctx = Super_context.context sctx in
     let src = Path.Build.append_source (Context.build_dir ctx) mod_ in
-    let dir = Path.Build.parent_exn src in
     let filename = Path.Build.basename src in
     let extension = Filename.extension filename in
     if Filename.Extension.Or_empty.is_empty extension
     then User_error.raise [ Pp.text "file is missing an extension" ];
     let open Memo.O in
-    let* expander = Super_context.expander sctx ~dir in
     let* top_module_info = Dune_rules.Top_module.find_module sctx mod_ in
     match top_module_info with
     | None -> User_error.raise [ Pp.text "no module found" ]
@@ -191,7 +189,7 @@ module Module = struct
       in
       let pps () =
         let module Merlin = Dune_rules.Merlin in
-        let pps = Merlin.pp_config merlin ctx ~expander in
+        let pps = Merlin.pp_config merlin ctx in
         let+ pps, _ = Action_builder.evaluate_and_collect_facts pps in
         let pp =
           Dune_lang.Module_reference.Per_item.find pps (Dune_rules.Module.path module_)

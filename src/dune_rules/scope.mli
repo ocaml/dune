@@ -12,6 +12,9 @@ val project : t -> Dune_project.t
 (** Return the library database associated to this scope *)
 val libs : t -> Lib.DB.t
 
+(** Return public libraries visible from this scope. *)
+val public_libs : t -> Lib.DB.t
+
 (** Return the Rocq library database associated to this scope *)
 val rocq_libs : t -> Rocq_lib.DB.t Memo.t
 
@@ -20,6 +23,7 @@ module DB : sig
   val find_by_dir : Path.Build.t -> t Memo.t
   val find_by_project_root : Context.t -> Path.Source.t option -> t Memo.t
   val find_by_project : Context_name.t -> Dune_project.t -> t Memo.t
+  val for_package : t -> Package.t option -> t Memo.t
   val public_libs : Context_name.t -> Lib.DB.t Memo.t
 
   module Lib_entry : sig

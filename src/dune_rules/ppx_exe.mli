@@ -9,6 +9,7 @@ module Key : sig
     type t = private
       { pps : Lib_name.t list
       ; project_root : Path.Source.t option
+      ; opaque_packages : Package.Name.t Lib_name.Map.t
       }
   end
 

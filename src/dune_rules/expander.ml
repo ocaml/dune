@@ -51,8 +51,6 @@ type t =
   { dir : Path.Build.t
   ; env : Env.t Memo.t
   ; local_env : string Action_builder.t Env.Var.Map.t
-  ; public_libs : Lib.DB.t Memo.t
-  ; public_libs_host : Lib.DB.t Memo.t
   ; artifacts_host : Artifacts.t Memo.t
   ; bindings : value Pform.Map.t
   ; scope : Scope.t Memo.t
@@ -78,6 +76,17 @@ let set_local_env_var t ~var ~value =
 
 let set_scope t ~dir ~project ~scope ~scope_host =
   { t with dir; project; scope; scope_host }
+;;
+
+let for_package t = function
+  | None -> t
+  | Some _ as package ->
+    let select scope =
+      let open Memo.O in
+      let* scope = scope in
+      Scope.DB.for_package scope package
+    in
+    { t with scope = select t.scope; scope_host = select t.scope_host }
 ;;
 
 let set_artifacts t ~artifacts_host = { t with artifacts_host }
@@ -446,13 +455,9 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
                     |> String.quoted)
              ])
     else (
-      let artifacts, context =
-        if lib_exec
-        then t.public_libs_host, Context.host t.context
-        else t.public_libs, Memo.return t.context
-      in
-      let* artifacts = Resolve.Memo.lift_memo artifacts in
-      file_of_lib artifacts context ~loc ~lib ~file)
+      let context = if lib_exec then Context.host t.context else Memo.return t.context in
+      let* scope = Resolve.Memo.lift_memo scope in
+      file_of_lib (Scope.public_libs scope) context ~loc ~lib ~file)
   in
   (let open Memo.O in
    let* project = project in
@@ -1131,24 +1136,13 @@ let expand_str_partial t template =
     ~f:(fun ~source pform -> expand_pform t ~source pform >>| Option.some)
 ;;
 
-let make_root
-      ~project
-      ~scope
-      ~scope_host
-      ~(context : Context.t)
-      ~env
-      ~public_libs
-      ~public_libs_host
-      ~artifacts_host
-  =
+let make_root ~project ~scope ~scope_host ~(context : Context.t) ~env ~artifacts_host =
   { dir = Context.build_dir context
   ; env
   ; local_env = Env.Var.Map.empty
   ; bindings = Pform.Map.empty
   ; scope
   ; scope_host
-  ; public_libs
-  ; public_libs_host
   ; artifacts_host
   ; context
   ; expanding_what = Nothing_special

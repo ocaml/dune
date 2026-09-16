@@ -532,6 +532,7 @@ end = struct
            then Memo.return true
            else
              let* compile_info =
+               let* scope = Scope.DB.for_package scope exes.package in
                let dune_version = Scope.project scope |> Dune_project.dune_version in
                let libs = Scope.libs scope in
                (* This is wrong. If the preprocessors fail to resolve, we
@@ -639,25 +640,6 @@ end = struct
        | _ -> Memo.return [])
   ;;
 
-  let stanzas_by_package =
-    Per_context.create_by_name ~name:"install-stanzas-by-package" (fun context ->
-      Memo.lazy_ ~name:"install-stanzas-by-package" (fun () ->
-        let+ stanzas = Dune_load.dune_files context in
-        Dune_file.fold_static_stanzas
-          stanzas
-          ~init:Package.Name.Map.empty
-          ~f:(fun dune_file stanza acc ->
-            match Stanzas.stanza_package stanza with
-            | None -> acc
-            | Some package ->
-              Package.Name.Map.add_multi
-                acc
-                (Package.Id.name package)
-                (Dune_file.dir dune_file, stanza)))
-      |> Memo.Lazy.force)
-    |> Staged.unstage
-  ;;
-
   module Package_map_traversals = Memo.Map (Package.Name.Map)
 
   let package_entries (sctx, package_name) =
@@ -728,14 +710,17 @@ end = struct
               Install.Entry.Sourced.Unexpanded.create entry :: acc)
             else acc)
       and+ entries =
-        let* stanzas = stanzas_by_package ctx.name
+        let* stanzas = Dune_load.stanzas_of_package ctx.name package_name
         and* package_db = Package_db.create ctx.name in
-        Package.Name.Map.Multi.find stanzas package_name
+        List.rev stanzas
         |> Memo.parallel_map ~f:(fun (src_dir, stanza) ->
-          let dir = Path.Build.append_source ctx.build_dir src_dir in
-          let* expander = Super_context.expander sctx ~dir
-          and* scope = Scope.DB.find_by_dir dir in
-          stanza_to_entries ~package_db ~sctx ~dir ~scope ~expander stanza)
+          match Stanza.repr stanza with
+          | Deprecated_library_name.T _ -> Memo.return []
+          | _ ->
+            let dir = Path.Build.append_source ctx.build_dir src_dir in
+            let* expander = Super_context.expander sctx ~dir
+            and* scope = Scope.DB.find_by_dir dir in
+            stanza_to_entries ~package_db ~sctx ~dir ~scope ~expander stanza)
       in
       List.concat (init :: entries)
       (* Sort entries so that the ordering in [dune-package] is independent

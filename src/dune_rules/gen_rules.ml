@@ -259,9 +259,7 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
     let more_src_dirs =
       Merlin.more_src_dirs dir_contents ~source_dirs:(src_dir :: source_dirs)
     in
-    Memo.parallel_iter
-      merlins
-      ~f:(Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander)
+    Memo.parallel_iter merlins ~f:(Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs)
   and+ () =
     Memo.parallel_iter stanzas ~f:(fun stanza ->
       match Stanza.repr stanza with

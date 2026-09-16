@@ -230,6 +230,37 @@ let dune_files context =
   t.dune_files context
 ;;
 
+let stanzas_of_package =
+  let memo =
+    Memo.create
+      "stanzas-by-package"
+      ~input:(module Context_name)
+      (fun context ->
+         let+ stanzas = dune_files context in
+         Dune_file.fold_static_stanzas
+           stanzas
+           ~init:Package.Name.Map.empty
+           ~f:(fun dune_file stanza acc ->
+             let package =
+               match Stanza.repr stanza with
+               | Deprecated_library_name.T { old_name = old_public_name, _; _ } ->
+                 Some (Package.id (Public_lib.package old_public_name))
+               | _ -> Stanzas.stanza_package stanza
+             in
+             match package with
+             | None -> acc
+             | Some package ->
+               Package.Name.Map.add_multi
+                 acc
+                 (Package.Id.name package)
+                 (Dune_file.dir dune_file, stanza))
+         |> Package.Name.Map.map ~f:List.rev)
+  in
+  fun context package ->
+    let+ stanzas = Memo.exec memo context in
+    Package.Name.Map.Multi.find stanzas package
+;;
+
 let projects_by_root () =
   let+ t = load () in
   t.projects_by_root

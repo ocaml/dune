@@ -174,10 +174,10 @@ module Error = struct
         | _ -> [ Dep_path.pp dp ]))
   ;;
 
-  let overlap ~in_workspace ~installed =
+  let overlap first second =
     make
       [ Pp.text "Conflict between the following libraries:"
-      ; Pp.enumerate [ in_workspace, []; installed ] ~f:pp_lib_and_dep_path
+      ; Pp.enumerate [ first; second ] ~f:pp_lib_and_dep_path
       ]
   ;;
 
@@ -470,6 +470,7 @@ end
 
 type db =
   { parent : db option
+  ; package_scopes : (Path.t * db) Package.Name.Map.t Lazy.t
   ; resolve : Lib_name.t -> resolve_result list Memo.t
   ; resolve_lib_id : Lib_id.t -> resolve_result Memo.t
   ; instantiate :
@@ -1334,13 +1335,18 @@ end = struct
     type state =
       { result : (lib * Dep_stack.t) list
       ; visited : Set.t
+      ; by_name : (lib * Dep_stack.t) Lib_name.Map.t
       ; unimplemented : Vlib.Unimplemented.t
       }
 
     let make ~db ~forbidden_libraries = { db; forbidden_libraries }
 
     let empty_state =
-      { result = []; visited = Set.empty; unimplemented = Vlib.Unimplemented.empty }
+      { result = []
+      ; visited = Set.empty
+      ; by_name = Lib_name.Map.empty
+      ; unimplemented = Vlib.Unimplemented.empty
+      }
     ;;
 
     let result state kind ~for_ = Vlib.associate (List.rev state.result) kind ~for_
@@ -1366,7 +1372,24 @@ end = struct
           ; Dep_path.pp req_by
           ]
       | None ->
-        let state = { state with visited = Set.add state.visited lib } in
+        let* by_name =
+          match t.db, Lib_info.status lib.info with
+          | None, _ | Some _, Private (_, Some _) -> Resolve.Memo.return state.by_name
+          | Some _, _ ->
+            let* () =
+              match Lib_name.Map.find state.by_name lib.name with
+              | None -> Resolve.Memo.return ()
+              | Some (previous, previous_stack) ->
+                if Id.equal previous.unique_id lib.unique_id
+                then Resolve.Memo.return ()
+                else
+                  Error.overlap
+                    (previous.info, Dep_stack.to_required_by previous_stack)
+                    (lib.info, Dep_stack.to_required_by stack)
+            in
+            Resolve.Memo.return (Lib_name.Map.set state.by_name lib.name (lib, stack))
+        in
+        let state = { state with visited = Set.add state.visited lib; by_name } in
         let* () =
           match t.db with
           | None -> Resolve.Memo.return ()
@@ -1374,6 +1397,18 @@ end = struct
             (match Lib_info.status lib.info with
              | Private (_, Some _) -> Resolve.Memo.return ()
              | _ ->
+               let db =
+                 match Lib_info.package lib.info with
+                 | None -> db
+                 | Some package ->
+                   (match
+                      Package.Name.Map.find (Lazy.force db.package_scopes) package
+                    with
+                    | Some (root, scope)
+                      when Path.is_descendant (Lib_info.src_dir lib.info) ~of_:root ->
+                      scope
+                    | None | Some _ -> db)
+               in
                let open Memo.O in
                find_internal db lib.name
                >>= (function
@@ -1382,7 +1417,7 @@ end = struct
                   then Resolve.Memo.return ()
                   else (
                     let req_by = Dep_stack.to_required_by stack in
-                    Error.overlap ~in_workspace:lib'.info ~installed:(lib.info, req_by))
+                    Error.overlap (lib'.info, []) (lib.info, req_by))
                 | found ->
                   Code_error.raise
                     "Unexpected find result"
@@ -1759,21 +1794,30 @@ end = struct
        | [] -> Status.Not_found
        | [ status ] -> status
        | libs ->
-         List.fold_left libs ~init:Status.Not_found ~f:(fun acc status ->
-           match acc, status with
-           | Status.Found a, Status.Found b ->
-             let a_id = Lib_info.lib_id a.info in
-             let b_id = Lib_info.lib_id b.info in
-             (match Lib_id.equal a_id b_id with
-              | true -> acc
-              | false ->
-                let name =
-                  if Lib_name.equal a.name b.name then a.name else Lib_id.name a_id
-                and loc_a = Lib_info.loc a.info
-                and loc_b = Lib_info.loc b.info in
-                Status.Invalid (Error.duplicated ~loc_a ~loc_b ~name))
-           | (Found _ as lib), _ | _, (Found _ as lib) -> lib
-           | _, _ -> acc))
+         List.fold_left libs ~init:(Ok Status.Not_found) ~f:(fun acc status ->
+           Result.bind acc ~f:(fun acc ->
+             match acc, status with
+             | Status.Found a, Status.Found b ->
+               let a_id = Lib_info.lib_id a.info in
+               let b_id = Lib_info.lib_id b.info in
+               (match
+                  Lib_id.equal a_id b_id
+                  && Path.equal (Lib_info.src_dir a.info) (Lib_info.src_dir b.info)
+                with
+                | true -> Ok acc
+                | false ->
+                  let name =
+                    if Lib_name.equal a.name b.name then a.name else Lib_id.name a_id
+                  and loc_a = Lib_info.loc a.info
+                  and loc_b = Lib_info.loc b.info in
+                  Error (Error.duplicated ~loc_a ~loc_b ~name))
+             | (Found _ as lib), _ | _, (Found _ as lib) -> Ok lib
+             | Invalid _, _ -> Ok acc
+             | _, (Invalid _ as status) | Not_found, status -> Ok status
+             | _, _ -> Ok acc))
+         |> (function
+          | Ok status -> status
+          | Error error -> Status.Invalid error))
 
   and find_internal db (name : Lib_name.t) =
     let open Memo.O in
@@ -2336,6 +2380,17 @@ module DB = struct
       | Redirect_by_name of db * (Loc.t * Lib_name.t)
       | Redirect_by_id of db * Lib_id.t
 
+    let of_findlib result =
+      match result with
+      | Ok (Dune_package.Entry.Library lib) -> Found (Dune_package.Lib.info lib)
+      | Ok (Deprecated_library_name d) ->
+        Redirect_in_the_same_db (d.loc, d.new_public_name)
+      | Ok (Hidden_library lib) ->
+        Hidden (Hidden.unsatisfied_exists_if (Dune_package.Lib.info lib))
+      | Error (Findlib.Unavailable_reason.Invalid_dune_package why) -> Invalid why
+      | Error Not_found -> Not_found
+    ;;
+
     let found info = Found info
     let not_found = Not_found
     let redirect_by_name db lib = Redirect_by_name (db, lib)
@@ -2364,6 +2419,7 @@ module DB = struct
     let rec t =
       lazy
         { parent
+        ; package_scopes = lazy Package.Name.Map.empty
         ; resolve
         ; resolve_lib_id
         ; all = Memo.lazy_ ~name:"library-db-all" all
@@ -2381,26 +2437,14 @@ module DB = struct
         let open Memo.O in
         Findlib.find findlib name
         >>| function
-        | Ok entry ->
-          [ (match entry with
-             | Library lib -> Found (Dune_package.Lib.info lib)
-             | Deprecated_library_name d ->
-               Redirect_in_the_same_db (d.loc, d.new_public_name)
-             | Hidden_library lib ->
-               Hidden (Hidden.unsatisfied_exists_if (Dune_package.Lib.info lib)))
-          ]
-        | Error e ->
-          [ (match e with
-             | Invalid_dune_package why -> Invalid why
-             | Not_found when (not has_bigarray_library) && Lib_name.equal name bigarray
-               ->
-               (* Recent versions of OCaml already include a [bigrray] library,
-                  so we just silently ignore dependencies on it. The more
-                  correct thing to do would be to redirect it to the stdlib,
-                  but the stdlib isn't first class. *)
-               Ignore
-             | Not_found -> Not_found)
-          ]
+        | Error Not_found when (not has_bigarray_library) && Lib_name.equal name bigarray
+          ->
+          (* Recent versions of OCaml already include a [bigarray] library,
+             so we just silently ignore dependencies on it. The more
+             correct thing to do would be to redirect it to the stdlib,
+             but the stdlib isn't first class. *)
+          [ Ignore ]
+        | entry -> [ Resolve_result.of_findlib entry ]
       in
       create
         ()
@@ -2415,6 +2459,7 @@ module DB = struct
   ;;
 
   let with_parent t ~parent = { t with parent }
+  let with_package_scopes t ~package_scopes = { t with package_scopes }
 
   let from_findlib context findlib =
     let open Memo.O in

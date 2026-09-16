@@ -46,19 +46,39 @@ let get_rules sctx key =
   let ctx = Super_context.context sctx in
   let build_context = Context.build_context ctx in
   let exe = Ppx_exe.ppx_exe_path build_context ~key in
-  let* pp_names, scope =
+  let* pp_names, opaque_packages, scope =
     match Digest.from_hex key with
     | None ->
       User_error.raise
         [ Pp.textf "invalid ppx key for %s" (Path.Build.to_string_maybe_quoted exe) ]
     | Some key ->
-      let { Ppx_exe.Key.Decoded.pps; project_root } = Ppx_exe.Key.decode key in
+      let { Ppx_exe.Key.Decoded.pps; project_root; opaque_packages } =
+        Ppx_exe.Key.decode key
+      in
       let+ scope = Scope.DB.find_by_project_root ctx project_root in
-      pps, scope
+      pps, opaque_packages, scope
   in
   let* pps =
-    let lib_db = Scope.libs scope in
-    List.map pp_names ~f:(fun x -> Loc.none, x) |> Lib.DB.resolve_pps lib_db
+    Resolve.Memo.List.concat_map pp_names ~f:(fun name ->
+      let open Resolve.Memo.O in
+      let* scope =
+        Resolve.Memo.lift_memo
+          (match Lib_name.Map.find opaque_packages name with
+           | None -> Memo.return scope
+           | Some package_name ->
+             let open Memo.O in
+             let* package = Opam_package.find (Context.name ctx) package_name in
+             (match package with
+              | Some package -> Scope.DB.for_package scope (Some package.stanza.package)
+              | None ->
+                User_error.raise
+                  [ Pp.textf
+                      "Package %S providing PPX library %S is no longer available."
+                      (Package.Name.to_string package_name)
+                      (Lib_name.to_string name)
+                  ]))
+      in
+      Lib.DB.resolve_pps (Scope.libs scope) [ Loc.none, name ])
   in
   Ppx_driver.build_ppx_driver sctx ~scope ~pps ~pp_names ~target:exe
 ;;

@@ -4,6 +4,7 @@ open Memo.O
 let available_exes ~dir (exes : Executables.t) =
   let* compile_info =
     let* scope = Scope.DB.find_by_dir dir in
+    let* scope = Scope.DB.for_package scope exes.package in
     let dune_version =
       let project = Scope.project scope in
       Dune_project.dune_version project

@@ -654,6 +654,7 @@ let library_rules
       ~flags
       ~modules
       ~preprocess:(Preprocess.Per_module.without_instrumentation preprocess)
+      ~preprocessor_deps:lib.buildable.preprocess.preprocessor_deps
       ~libname:(Some (snd lib.name))
       ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))

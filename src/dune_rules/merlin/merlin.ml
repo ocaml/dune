@@ -83,6 +83,7 @@ module Processed = struct
     ; extensions : string option Ml_kind.Dict.t list
     ; indexes : Path.t list
     ; parameters : Module_name.t list
+    ; pp_deps : Path.Set.t
     }
 
   let path_set_repr = Repr.abstract Path.Set.to_dyn
@@ -112,6 +113,7 @@ module Processed = struct
           ~get:(fun t -> t.extensions)
       ; Repr.field "indexes" (Repr.list Path.repr) ~get:(fun t -> t.indexes)
       ; Repr.field "parameters" (Repr.list Module_name.repr) ~get:(fun t -> t.parameters)
+      ; Repr.field "pp_deps" path_set_repr ~get:(fun t -> t.pp_deps)
       ]
   ;;
 
@@ -323,6 +325,7 @@ module Processed = struct
         ; extensions
         ; indexes
         ; parameters
+        ; pp_deps
         }
     =
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
@@ -396,6 +399,14 @@ module Processed = struct
         ]
       | None -> []
     in
+    let pp_deps =
+      if Path.Set.is_empty pp_deps
+      then []
+      else
+        Path.Set.to_list_map
+          ~f:(fun pp_dep -> make_directive "PPX_DEPS" (Atom (Path.to_string pp_dep)))
+          pp_deps
+    in
     Sexp.List
       (List.concat
          [ index_files
@@ -411,6 +422,7 @@ module Processed = struct
          ; unit_name
          ; suffixes
          ; reader
+         ; pp_deps
          ])
   ;;
 
@@ -431,6 +443,7 @@ module Processed = struct
         stdlib_dir
         source_root
         pp_configs
+        pp_deps
         flags
         obj_dirs
         cmt_dirs
@@ -457,6 +470,7 @@ module Processed = struct
     List.iter extensions ~f:(fun x ->
       Option.iter (get_ext x) ~f:(fun (impl, intf) ->
         printf "SUFFIX %s\n" (Printf.sprintf "%s %s" impl intf)));
+    Path.Set.iter pp_deps ~f:(fun s -> printf "PPX_DEPS %s\n" (Path.to_string s));
     (* We print all FLG directives as comments *)
     List.iter
       pp_configs
@@ -732,7 +746,8 @@ module Processed = struct
           , hidden_src_dirs
           , flags
           , extensions
-          , indexes )
+          , indexes
+          , pp_deps )
         =
         (* We merge what is easy to merge and ignore the rest *)
         List.fold_left
@@ -746,7 +761,8 @@ module Processed = struct
             , init.config.hidden_src_dirs
             , [ init.config.flags ]
             , init.config.extensions
-            , init.config.indexes )
+            , init.config.indexes
+            , init.config.pp_deps )
           ~f:
             (fun
               ( acc_pp
@@ -757,7 +773,8 @@ module Processed = struct
               , acc_hidden_src
               , acc_flags
               , acc_ext
-              , acc_indexes )
+              , acc_indexes
+              , acc_pp_deps )
               { per_file_config = _
               ; pp_config
               ; for_ = _
@@ -773,6 +790,7 @@ module Processed = struct
                   ; extensions
                   ; indexes
                   ; parameters = _
+                  ; pp_deps
                   }
               }
             ->
@@ -784,7 +802,8 @@ module Processed = struct
             , Path.Set.union acc_hidden_src hidden_src_dirs
             , flags :: acc_flags
             , extensions @ acc_ext
-            , indexes @ acc_indexes ))
+            , indexes @ acc_indexes
+            , Path.Set.union pp_deps acc_pp_deps ))
       in
       Printf.printf
         "%s\n"
@@ -792,6 +811,7 @@ module Processed = struct
            init.config.stdlib_dir
            init.config.source_root
            pp_configs
+           pp_deps
            flags
            obj_dirs
            cmt_dirs
@@ -867,6 +887,7 @@ module Unprocessed = struct
     ; flags : string list Action_builder.t
     ; preprocess :
         Preprocess.Without_instrumentation.t Preprocess.t Module_reference.Per_item.t
+    ; preprocessor_deps : Dep_conf.t list
     ; libname : Lib_name.Local.t option
     ; objs_dirs : Path.Set.t
     ; extensions : string option Ml_kind.Dict.t list
@@ -887,6 +908,7 @@ module Unprocessed = struct
         ~stdlib_dir
         ~flags
         ~preprocess
+        ~preprocessor_deps
         ~libname
         ~modules
         ~obj_dir
@@ -914,6 +936,7 @@ module Unprocessed = struct
       ; requires_hidden
       ; flags
       ; preprocess
+      ; preprocessor_deps
       ; libname
       ; objs_dirs
       ; extensions
@@ -1102,6 +1125,7 @@ module Unprocessed = struct
              ; requires_compile
              ; requires_hidden
              ; preprocess = _
+             ; preprocessor_deps
              ; libname = _
              ; for_
              ; parameters
@@ -1158,7 +1182,7 @@ module Unprocessed = struct
                in
                List.concat [ requires_compile; libs ])
       in
-      let+ flags = flags
+      let* flags = flags
       and+ indexes, indexes_digest = Ocaml_index.context_indexes context ~for_
       and+ use_hidden_includes =
         match for_ with
@@ -1184,6 +1208,13 @@ module Unprocessed = struct
         else hidden_obj_dirs
       in
       let source_root = Path.Source.root |> Path.source in
+      let+ pp_deps =
+        let runtime_deps, _sandbox =
+          Dep_conf_eval.unnamed_get_paths ~expander preprocessor_deps
+        in
+        (* TODO: Why is it so different from [lib_file_deps.eval] call site? *)
+        runtime_deps
+      in
       ( { Processed.stdlib_dir
         ; source_root
         ; src_dirs
@@ -1195,6 +1226,7 @@ module Unprocessed = struct
         ; extensions
         ; indexes
         ; parameters
+        ; pp_deps
         }
       , indexes_digest )
     and+ pp_config = pp_config t context ~expander

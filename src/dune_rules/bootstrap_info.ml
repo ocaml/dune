@@ -23,13 +23,12 @@ end
 module Include_subdirs = struct
   type t =
     | Unqualified
-    | Qualified of (string list * string list) list
+    | Qualified
     | No
 
   let to_dyn = function
     | Unqualified -> Dyn.variant "Unqualified" []
-    | Qualified dirs ->
-      Dyn.variant "Qualified" [ Dyn.(list (pair (list string) (list string))) dirs ]
+    | Qualified -> Dyn.variant "Qualified" []
     | No -> Dyn.variant "No" []
   ;;
 end
@@ -58,13 +57,11 @@ let include_subdirs dir_contents =
   match Ml_sources.include_subdirs ml with
   | Import.Include_subdirs.No -> Include_subdirs.No
   | Include Unqualified -> Include_subdirs.Unqualified
-  | Include (Qualified _) ->
-    let dirs =
-      Dir_contents.dir_renames dir_contents
-      |> List.map ~f:(fun (src, dst) ->
-        Filename.L.to_string src, Filename.L.to_string dst)
-    in
-    Include_subdirs.Qualified dirs
+  | Include (Qualified { dirs = [] }) -> Include_subdirs.Qualified
+  | Include (Qualified { dirs = binding :: _ }) ->
+    User_error.raise
+      ~loc:(File_binding.Unexpanded.loc binding)
+      [ Pp.text "Directory mappings are not supported in bootstrap info." ]
 ;;
 
 let make_root_module sctx ~name compile_info =

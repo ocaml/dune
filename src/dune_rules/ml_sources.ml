@@ -569,21 +569,22 @@ module Parser_generators = struct
     ;;
   end
 
-  let check_duplicate_module ~loc name first second =
+  let check_duplicate_module =
     let impl m =
       let { Ml_kind.Dict.impl; _ } = Module.Source.files_by_ml_kind m in
       Option.value_exn impl
     in
-    let first = impl first in
-    let second = impl second in
-    if not (Path.equal (Module.File.path first) (Module.File.path second))
-    then (
-      let dir =
-        Module.File.original_path second
-        |> Path.as_in_build_dir_exn
-        |> Path.Build.parent_exn
-      in
-      raise_duplicate_module ~loc ~dir name first second)
+    fun ~loc name first second ->
+      let first = impl first in
+      let second = impl second in
+      if not (Path.equal (Module.File.path first) (Module.File.path second))
+      then (
+        let dir =
+          Module.File.original_path second
+          |> Path.as_in_build_dir_exn
+          |> Path.Build.parent_exn
+        in
+        raise_duplicate_module ~loc ~dir name first second)
   ;;
 
   let expand_modules =

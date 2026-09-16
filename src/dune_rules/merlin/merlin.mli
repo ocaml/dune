@@ -54,6 +54,7 @@ val make
   -> flags:Ocaml_flags.t
   -> preprocess:
        Preprocess.Without_instrumentation.t Preprocess.t Module_reference.Per_item.t
+  -> preprocessor_deps:Dep_conf.t list
   -> libname:Lib_name.Local.t option
   -> modules:Modules.With_vlib.t
   -> obj_dir:Path.Build.t Obj_dir.t

@@ -54,6 +54,13 @@ is used when generating OPAM files (see :doc:`generate_opam_files`).
       still require an explicit ``(package)`` field when the project defines
       more than one package.
 
+      .. versionchanged:: 3.26
+
+      Dune generates ``META.<name>`` and ``<name>.dune-package`` in this
+      directory and looks for ``META.<name>.template`` there. Without this
+      field, these files are located at the project root. The locations of
+      ``.opam`` and ``.install`` files are unchanged.
+
    .. describe:: (depends <dep-specification>)
 
       Package dependencies, as :token:`~pkg-dep:dep_specification`.

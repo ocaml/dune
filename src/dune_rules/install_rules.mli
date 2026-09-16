@@ -19,6 +19,13 @@ val resolve_package_install_file
   -> file:Path.Local.t
   -> Path.Build.t Memo.t
 
-(** Generate rules for [.dune-package], [META.<package-name>] files. and
-    [<package-name>.install] files. *)
+(** Generate [META.<package-name>] and [<package-name>.dune-package] in the
+    package's [(dir)], or the project root when no [(dir)] is specified. *)
+val gen_metadata_rules
+  :  Super_context.t
+  -> Dune_project.t
+  -> dir:Path.Build.t
+  -> unit Memo.t
+
+(** Generate [<package-name>.install] files and project install aliases. *)
 val gen_project_rules : Super_context.t -> Dune_project.t -> unit Memo.t

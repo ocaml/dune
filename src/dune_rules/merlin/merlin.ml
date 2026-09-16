@@ -186,7 +186,7 @@ module Processed = struct
 
     let name = "merlin-conf"
     let sharing = false
-    let version = 11
+    let version = 12
 
     let repr =
       Repr.view Repr.string ~to_:(fun _ -> "Use [dune ocaml dump-dot-merlin] instead")
@@ -309,12 +309,9 @@ module Processed = struct
       | None -> []
     in
     let pp_deps =
-      if Path.Set.is_empty pp_deps
-      then []
-      else
-        Path.Set.to_list_map
-          ~f:(fun pp_dep -> make_directive "PPX_DEPS" (Atom (Path.to_string pp_dep)))
-          pp_deps
+      Path.Set.to_list_map
+        ~f:(fun pp_dep -> make_directive "PPX_DEPS" (Atom (serialize_path pp_dep)))
+        pp_deps
     in
     let use_ppx_cache = [ Sexp.List [ Atom "USE_PPX_CACHE" ] ] in
     Sexp.List
@@ -381,7 +378,7 @@ module Processed = struct
     List.iter extensions ~f:(fun x ->
       Option.iter (get_ext x) ~f:(fun (impl, intf) ->
         printf "SUFFIX %s\n" (Printf.sprintf "%s %s" impl intf)));
-    Path.Set.iter pp_deps ~f:(fun s -> printf "PPX_DEPS %s\n" (Path.to_string s));
+    Path.Set.iter pp_deps ~f:(fun s -> printf "PPX_DEPS %s\n" (serialize_path s));
     print "USE_PPX_CACHE\n";
     (* We print all FLG directives as comments *)
     List.iter

@@ -316,6 +316,7 @@ module Processed = struct
           ~f:(fun pp_dep -> make_directive "PPX_DEPS" (Atom (Path.to_string pp_dep)))
           pp_deps
     in
+    let use_ppx_cache = [ Sexp.List [ Atom "USE_PPX_CACHE" ] ] in
     Sexp.List
       (List.concat
          [ index_files
@@ -332,6 +333,7 @@ module Processed = struct
          ; suffixes
          ; reader
          ; pp_deps
+         ; use_ppx_cache
          ])
   ;;
 
@@ -380,6 +382,7 @@ module Processed = struct
       Option.iter (get_ext x) ~f:(fun (impl, intf) ->
         printf "SUFFIX %s\n" (Printf.sprintf "%s %s" impl intf)));
     Path.Set.iter pp_deps ~f:(fun s -> printf "PPX_DEPS %s\n" (Path.to_string s));
+    print "USE_PPX_CACHE\n";
     (* We print all FLG directives as comments *)
     List.iter
       pp_configs

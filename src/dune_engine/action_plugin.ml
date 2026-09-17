@@ -127,7 +127,7 @@ let exec ~(ectx : context) ~(eenv : env) prog args =
     let env =
       let where =
         match Root.Rpc.Where.default () with
-        | `Unix path -> `Unix (Path.reach (Path.of_string path) ~from:eenv.working_dir)
+        | `Unix path -> `Unix (Path.to_absolute_filename (Path.of_string path))
         | where -> where
       in
       Dune_rpc.Where.add_to_env where eenv.env

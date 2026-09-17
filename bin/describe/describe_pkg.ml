@@ -199,10 +199,61 @@ module List_locked_dependencies = struct
   let command = Cmd.v info term
 end
 
+module Tree = struct
+  module Package_universe = Dune_pkg.Package_universe
+  module Dependency_graph = Dune_pkg.Dependency_graph
+
+  let info =
+    let doc = "Display the dependency tree of the packages in a lockdir" in
+    let man = [ `S "DESCRIPTION"; `P doc ] in
+    Cmd.info "tree" ~doc ~man
+  ;;
+
+  let print_tree context_name () =
+    let open Fiber.O in
+    let* lock_dir_with_path, local_packages =
+      Build.build_memo_exn (fun () ->
+        Memo.both
+          (Dune_rules.Lock_dir.get_with_path context_name)
+          Pkg.Pkg_common.find_local_packages)
+    in
+    let lock_dir_path, lock_dir = User_error.ok_exn lock_dir_with_path in
+    let+ platform = Pkg.Pkg_common.solver_env_from_system_and_context ~lock_dir_path in
+    let package_universe =
+      Package_universe.create ~platform local_packages lock_dir |> User_error.ok_exn
+    in
+    let pp =
+      Pp.vbox
+        (Pp.concat
+           ~sep:Pp.cut
+           [ Pp.hbox
+               (Pp.textf
+                  "Dependency tree of local packages locked in %s"
+                  (Path.to_string_maybe_quoted lock_dir_path))
+           ; Dependency_graph.create package_universe |> Dependency_graph.pp_deps_tree
+           ])
+    in
+    Console.print [ pp ]
+  ;;
+
+  let term =
+    let+ builder = Common.Builder.term
+    and+ context_name = Common.context_arg ~doc:(Some "Build context to use.") in
+    let common, config = Common.init builder in
+    Scheduler_setup.go_with_rpc_server ~common ~config @@ print_tree context_name
+  ;;
+
+  let command = Cmd.v info term
+end
+
 let command =
   let doc = "Subcommands related to package management" in
   let info = Cmd.info ~doc "pkg" in
   Cmd.group
     info
-    [ Show_lock.command; List_locked_dependencies.command; Dependency_hash.command ]
+    [ Show_lock.command
+    ; List_locked_dependencies.command
+    ; Tree.command
+    ; Dependency_hash.command
+    ]
 ;;

@@ -330,7 +330,13 @@ end = struct
     type t
 
     val empty : t
-    val create : dir:Path.Build.t -> File_binding.Unexpanded.t list -> t
+
+    val expand
+      :  Super_context.t
+      -> dir:Path.Build.t
+      -> File_binding.Unexpanded.t list
+      -> t Memo.t
+
     val translate : t -> Filename.t list -> Filename.t list
     val to_list : t -> (Filename.t list * Filename.t list) list
   end = struct
@@ -366,28 +372,16 @@ end = struct
          | segments -> segments)
     ;;
 
-    let literal sw =
-      let loc = String_with_vars.loc sw in
-      match String_with_vars.text_only sw with
-      | Some text -> loc, text
-      | None ->
-        User_error.raise
-          ~loc
-          [ Pp.text "Variables are not supported in directory mappings." ]
-    ;;
-
-    let of_binding ~dir binding =
-      let src_loc, src = literal (File_binding.Unexpanded.src binding) in
-      match File_binding.Unexpanded.dst binding with
+    let expand_binding ~dir binding =
+      match File_binding.Expanded.dst_with_loc binding with
       | None -> None
-      | Some dst ->
-        let dst_loc, dst = literal dst in
+      | Some (dst_loc, dst) ->
         let root = Path.Build.local dir in
         let src =
           descendant_segments
-            ~loc:src_loc
+            ~loc:(File_binding.Expanded.src_loc binding)
             ~what:"The source directory"
-            (Path.Build.relative dir src |> Path.Build.local)
+            (File_binding.Expanded.src binding |> Path.Build.local)
             ~of_:root
         in
         let dst =
@@ -408,8 +402,17 @@ end = struct
         else Some (Path.Local.of_comps src, (dst_loc, { src; dst }))
     ;;
 
-    let create ~dir dirs =
-      List.filter_map dirs ~f:(of_binding ~dir)
+    let expand sctx ~dir dirs =
+      let* expand =
+        let+ expander = Super_context.expander sctx ~dir in
+        Expander.expand_str expander
+      in
+      let+ bindings =
+        Memo.parallel_map dirs ~f:(fun binding ->
+          File_binding_expand.expand binding ~dir ~f:(fun sw ->
+            Action_builder.evaluate_and_collect_facts (expand sw) >>| fst))
+      in
+      List.filter_map bindings ~f:(expand_binding ~dir)
       |> Path.Local.Map.of_list_reducei
            ~f:(fun src ((_, first) as previous) (loc, second) ->
              if List.equal Filename.equal first.dst second.dst
@@ -462,13 +465,12 @@ end = struct
       let loc, qualif_mode = qualification in
       loc, Include_subdirs.Include qualif_mode
     in
-    let dir_renames =
+    let+ dir_renames =
       match snd qualification with
-      | Unqualified | Qualified { dirs = [] } -> Dir_renames.empty
-      | Qualified { dirs } -> Dir_renames.create ~dir dirs
+      | Unqualified | Qualified { dirs = [] } -> Memo.return Dir_renames.empty
+      | Qualified { dirs } -> Dir_renames.expand sctx ~dir dirs
     in
     let loc = loc_of_dune_file source_dir in
-    let+ components = components in
     let contents =
       Memo.lazy_
         ~name:"group-dir-contents"
@@ -488,6 +490,7 @@ end = struct
                           ~src_dir:(Dune_file.dir dune_file)
                           ~dir)
                  (fun () ->
+                    let* components = components in
                     Memo.parallel_map
                       components
                       ~f:(fun { dir; path_to_group_root; source_dir; stanzas } ->

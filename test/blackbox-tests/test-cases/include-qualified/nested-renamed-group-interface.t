@@ -302,7 +302,9 @@ Repeating a generator for the same source still reports conflicting rules.
   Leaving directory 'lexer'
   [1]
 
-Directory mappings require literal source and destination paths for now.
+Dynamic mappings should build a generated mapping file outside the qualified
+group and update the namespace when its input changes, without cleaning.
+This currently fails because directory mappings require literal paths.
 
   $ mkdir -p dynamic/config dynamic/lib/internal
   $ cat >dynamic/dune-project <<EOF
@@ -331,16 +333,40 @@ Directory mappings require literal source and destination paths for now.
   Leaving directory 'dynamic'
   [1]
 
+  $ printf exposed >dynamic/config/mapping.in
+  $ dune build --root=dynamic '%{cmi:lib/Exposed.Leaf}'
+  Entering directory 'dynamic'
+  File "lib/dune", line 3, characters 20-45:
+  3 |  (dirs (internal as %{read:../config/mapping})))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Variables are not supported in directory mappings.
+  Leaving directory 'dynamic'
+  [1]
+
+After remapping, the old namespace should no longer exist.
+
+  $ dune build --root=dynamic '%{cmi:lib/Public.Leaf}'
+  Entering directory 'dynamic'
+  File "lib/dune", line 3, characters 20-45:
+  3 |  (dirs (internal as %{read:../config/mapping})))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Variables are not supported in directory mappings.
+  Leaving directory 'dynamic'
+  [1]
+
+Environment variables on either side are also rejected for now.
+
+  $ export TEST_RENAME=public TEST_SOURCE=internal
   $ cat >dynamic/lib/dune <<EOF
   > (include_subdirs
   >  (mode qualified)
-  >  (dirs (internal as %{env:TEST_RENAME=public})))
+  >  (dirs (internal as %{env:TEST_RENAME=unused})))
   > (library (name renamed))
   > EOF
   $ dune build --root=dynamic '%{cmi:lib/Public.Leaf}'
   Entering directory 'dynamic'
   File "lib/dune", line 3, characters 20-45:
-  3 |  (dirs (internal as %{env:TEST_RENAME=public})))
+  3 |  (dirs (internal as %{env:TEST_RENAME=unused})))
                           ^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Variables are not supported in directory mappings.
   Leaving directory 'dynamic'
@@ -349,14 +375,33 @@ Directory mappings require literal source and destination paths for now.
   $ cat >dynamic/lib/dune <<EOF
   > (include_subdirs
   >  (mode qualified)
-  >  (dirs (%{env:TEST_SOURCE=internal} as public)))
+  >  (dirs (%{env:TEST_SOURCE=unused} as public)))
   > (library (name renamed))
   > EOF
   $ dune build --root=dynamic '%{cmi:lib/Public.Leaf}'
   Entering directory 'dynamic'
-  File "lib/dune", line 3, characters 8-35:
-  3 |  (dirs (%{env:TEST_SOURCE=internal} as public)))
-              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "lib/dune", line 3, characters 8-33:
+  3 |  (dirs (%{env:TEST_SOURCE=unused} as public)))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Variables are not supported in directory mappings.
+  Leaving directory 'dynamic'
+  [1]
+
+A dynamic destination can conflict with a literal mapping. For now,
+expansion is rejected before checking for that conflict.
+
+  $ cat >dynamic/lib/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (internal as public)
+  >        (internal as %{read:../config/mapping})))
+  > (library (name renamed))
+  > EOF
+  $ dune build --root=dynamic '%{cmi:lib/Public.Leaf}'
+  Entering directory 'dynamic'
+  File "lib/dune", line 4, characters 20-45:
+  4 |        (internal as %{read:../config/mapping})))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Variables are not supported in directory mappings.
   Leaving directory 'dynamic'
   [1]

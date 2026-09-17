@@ -1,12 +1,12 @@
-Baseline: library dependency recompilation for unwrapped libraries.
-
-When an unwrapped library module's interface changes, Dune currently recompiles
-all modules in stanzas that depend on the library, even those referencing
-different modules in the library.
+Per-module filtering for unwrapped libraries: a consumer that references
+only some modules of an unwrapped library must not be recompiled when
+unreferenced modules in that library change.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ make_dune_project 3.0
+  $ cat > dune-project <<EOF
+  > (lang dune 3.0)
+  > EOF
 
   $ mkdir unwrapped
   $ cat > unwrapped/dune <<EOF
@@ -71,11 +71,11 @@ Change only helper.mli:
   > let new_helper s = s ^ "!"
   > EOF
 
-Uses_utils is recompiled even though it only references Utils, not Helper:
+Uses_utils references Utils only, not Helper, so it is not recompiled:
 
   $ dune build ./main.exe
-  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("Uses_utils"))] | length'
-  2
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_utils"))] | length'
+  0
 
 Change only utils.mli:
 
@@ -88,8 +88,8 @@ Change only utils.mli:
   > let new_utils s = s ^ "?"
   > EOF
 
-Uses_helper is recompiled even though it only references Helper, not Utils:
+Uses_helper references Helper only, not Utils, so it is not recompiled:
 
   $ dune build ./main.exe
-  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("Uses_helper"))] | length'
-  2
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_helper"))] | length'
+  0

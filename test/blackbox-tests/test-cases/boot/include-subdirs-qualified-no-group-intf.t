@@ -24,25 +24,26 @@ Testing the bootstrap of a wrapped include subdirs qualified.
   Hello from wrapped a/b/x.ml
   Hello from bootstrapped binary!
 
-Bootstrap info does not support directory mappings with generated group aliases
-yet.
+Generated group aliases also use the renamed module path.
 
-  $ cat >dune-project <<EOF
+  $ cat > dune-project <<EOF
   > (lang dune 3.25)
   > (using dune-bootstrap-info 0.1)
   > EOF
-  $ cat >src/a/dune <<EOF
+  $ cat > src/a/dune <<EOF
   > (library (name a))
   > (include_subdirs
   >  (mode qualified)
   >  (dirs (b as public)))
   > EOF
-  $ cat >bin/main.ml <<EOF
-  > module M = A.Public.X
+
+  $ chmod +w boot/libs.ml
+  $ create_dune a <<EOF
+  > module M1 = A.Public
+  > module M2 = A.Public.X
+  > let () = Printf.printf "Hello from renamed bootstrapped binary!"
   > EOF
-  $ dune build bin/bootstrap-info
-  File "src/a/dune", line 4, characters 8-9:
-  4 |  (dirs (b as public)))
-              ^
-  Error: Directory mappings are not supported in bootstrap info.
-  [1]
+  ocamllex -ml -q -o boot/pps.ml boot/pps.mll
+  ocaml -I +unix unix.cma $DUNEBOOT
+  Hello from wrapped a/b/x.ml
+  Hello from renamed bootstrapped binary!

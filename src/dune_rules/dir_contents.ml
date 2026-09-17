@@ -20,6 +20,7 @@ let loc_of_dune_file st_dir =
 type t =
   { kind : kind
   ; dir : Path.Build.t
+  ; dir_renames : (Filename.t list * Filename.t list) list
   ; text_files : Filename.Array.Set.t
   ; foreign_sources : Foreign_sources.t Memo.Lazy.t
   ; mlds : (Documentation.t * Doc_sources.mld list) list Memo.Lazy.t
@@ -37,6 +38,7 @@ and kind =
 let empty kind ~dir ~source_dir =
   { kind
   ; dir
+  ; dir_renames = []
   ; source_dir
   ; text_files = Filename.Array.Set.empty
   ; ocaml = Memo.Lazy.of_val Ml_sources.empty
@@ -88,6 +90,7 @@ type triage =
   | Group_part of Path.Build.t
 
 let dir t = t.dir
+let dir_renames t = t.dir_renames
 let source_dir t = t.source_dir
 let rocq t = Memo.Lazy.force t.rocq
 
@@ -300,6 +303,7 @@ end = struct
               { kind = Standalone
               ; source_dir = Some st_dir
               ; dir
+              ; dir_renames = []
               ; text_files = files
               ; ocaml = ml
               ; melange
@@ -334,6 +338,7 @@ end = struct
       -> t Memo.t
 
     val translate : t -> Filename.t list -> Filename.t list
+    val to_list : t -> (Filename.t list * Filename.t list) list
   end = struct
     type binding =
       { src : Filename.t list
@@ -447,6 +452,8 @@ end = struct
       | None -> path
       | Some (_, dst, rest) -> dst @ rest
     ;;
+
+    let to_list t = List.map t ~f:(fun { src; dst } -> src, dst)
   end
 
   let make_group_root
@@ -538,6 +545,7 @@ end = struct
                Rocq_sources.of_dir stanzas ~dir ~dirs ~include_subdirs)
            in
            let mlds = mlds ~sctx ~dir ~dune_file ~files in
+           let dir_renames = Dir_renames.to_list dir_renames in
            let subdirs =
              List.map
                subdirs
@@ -553,6 +561,7 @@ end = struct
                  { kind = Group_part
                  ; source_dir
                  ; dir
+                 ; dir_renames
                  ; text_files = files
                  ; ocaml = ml
                  ; melange
@@ -565,6 +574,7 @@ end = struct
              { kind = Group_root subdirs
              ; source_dir = Some source_dir
              ; dir
+             ; dir_renames
              ; text_files = files
              ; ocaml = ml
              ; melange

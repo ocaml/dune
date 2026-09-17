@@ -374,6 +374,50 @@ Expanded destinations must not conflict with literal mappings.
   Leaving directory 'dynamic'
   [1]
 
+Reading a mapping from a child directory in the same qualified group currently
+creates a dependency cycle, even if the file already exists in the source tree.
+The mappings must be resolved before Dune can load the group's directories.
+
+  $ printf public >dynamic/lib/internal/mapping
+  $ cat >dynamic/lib/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (internal as %{read:internal/mapping})))
+  > (library (name renamed))
+  > EOF
+  $ dune build --root=dynamic '%{cmi:lib/Public.Leaf}'
+  Entering directory 'dynamic'
+  Error: Dependency cycle between:
+     Computing directory contents of _build/default/lib
+  -> %{read:internal/mapping} at lib/dune:3
+  -> Computing directory contents of _build/default/lib
+  -> required by %{cmi:lib/Public.Leaf} at command line:1
+  Leaving directory 'dynamic'
+  [1]
+
+Generating the mapping file in a child directory has the same limitation.
+
+  $ cat >dynamic/lib/internal/dune <<EOF
+  > (rule
+  >  (target generated-mapping)
+  >  (action (write-file %{target} public)))
+  > EOF
+  $ cat >dynamic/lib/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (internal as %{read:internal/generated-mapping})))
+  > (library (name renamed))
+  > EOF
+  $ dune build --root=dynamic '%{cmi:lib/Public.Leaf}'
+  Entering directory 'dynamic'
+  Error: Dependency cycle between:
+     Computing directory contents of _build/default/lib
+  -> %{read:internal/generated-mapping} at lib/dune:3
+  -> Computing directory contents of _build/default/lib
+  -> required by %{cmi:lib/Public.Leaf} at command line:1
+  Leaving directory 'dynamic'
+  [1]
+
 A lexer-generated implementation can use a handwritten interface, including
 when their physical basenames differ after renaming.
 

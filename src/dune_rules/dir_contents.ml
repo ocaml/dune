@@ -322,6 +322,130 @@ end = struct
     }
   ;;
 
+  module Dir_renames : sig
+    type t
+
+    val empty : t
+    val create : dir:Path.Build.t -> File_binding.Unexpanded.t list -> t
+    val translate : t -> Filename.t list -> Filename.t list
+  end = struct
+    type binding =
+      { src : Filename.t list
+      ; dst : Filename.t list
+      }
+
+    type t = binding list
+
+    let empty : t = []
+
+    let descendant_segments ~loc ~what path ~of_ =
+      match Path.Local.descendant path ~of_ with
+      | None ->
+        User_error.raise
+          ~loc
+          [ Pp.textf
+              "%s must be a descendant of the directory containing the (include_subdirs \
+               ...) stanza."
+              what
+          ]
+      | Some path ->
+        (match Path.Local.explode path with
+         | [] ->
+           User_error.raise
+             ~loc
+             [ Pp.textf
+                 "%s must not be the directory containing the (include_subdirs ...) \
+                  stanza."
+                 what
+             ]
+         | segments -> segments)
+    ;;
+
+    let literal sw =
+      let loc = String_with_vars.loc sw in
+      match String_with_vars.text_only sw with
+      | Some text -> loc, text
+      | None ->
+        User_error.raise
+          ~loc
+          [ Pp.text "Variables are not supported in directory mappings." ]
+    ;;
+
+    let of_binding ~dir binding =
+      let src_loc, src = literal (File_binding.Unexpanded.src binding) in
+      match File_binding.Unexpanded.dst binding with
+      | None -> None
+      | Some dst ->
+        let dst_loc, dst = literal dst in
+        let root = Path.Build.local dir in
+        let src =
+          descendant_segments
+            ~loc:src_loc
+            ~what:"The source directory"
+            (Path.Build.relative dir src |> Path.Build.local)
+            ~of_:root
+        in
+        let dst =
+          descendant_segments
+            ~loc:dst_loc
+            ~what:"The destination directory"
+            (Path.Local.relative root dst)
+            ~of_:root
+        in
+        if List.length src <> List.length dst
+        then
+          User_error.raise
+            ~loc:dst_loc
+            [ Pp.text
+                "The source and destination directories must have the same number of \
+                 path components."
+            ]
+        else Some (Path.Local.of_comps src, (dst_loc, { src; dst }))
+    ;;
+
+    let create ~dir dirs =
+      List.filter_map dirs ~f:(of_binding ~dir)
+      |> Path.Local.Map.of_list_reducei
+           ~f:(fun src ((_, first) as previous) (loc, second) ->
+             if List.equal Filename.equal first.dst second.dst
+             then previous
+             else
+               User_error.raise
+                 ~loc
+                 [ Pp.textf
+                     "The directory %s is mapped to both %s and %s."
+                     (Path.Local.to_string_maybe_quoted src)
+                     (Path.Local.of_comps first.dst |> Path.Local.to_string_maybe_quoted)
+                     (Path.Local.of_comps second.dst |> Path.Local.to_string_maybe_quoted)
+                 ])
+      |> Path.Local.Map.values
+      |> List.map ~f:snd
+    ;;
+
+    let rec drop_prefix path prefix =
+      match path, prefix with
+      | path, [] -> Some path
+      | p :: path, prefix :: prefixes when Filename.equal p prefix ->
+        drop_prefix path prefixes
+      | [], _ :: _ | _ :: _, _ :: _ -> None
+    ;;
+
+    let translate (t : t) path =
+      List.fold_left t ~init:None ~f:(fun best { src; dst } ->
+        match drop_prefix path src with
+        | None -> best
+        | Some rest ->
+          let src_len = List.length src in
+          (match best with
+           | None -> Some (src_len, dst, rest)
+           | Some (best_len, _, _) when src_len > best_len -> Some (src_len, dst, rest)
+           | Some _ -> best))
+      |> function
+      | None -> path
+      | Some (_, dst, rest) -> dst @ rest
+    ;;
+  end
+
   let make_group_root
         sctx
         ~dir
@@ -330,6 +454,11 @@ end = struct
     let include_subdirs =
       let loc, qualif_mode = qualification in
       loc, Include_subdirs.Include qualif_mode
+    in
+    let dir_renames =
+      match snd qualification with
+      | Unqualified | Qualified { dirs = [] } -> Dir_renames.empty
+      | Qualified { dirs } -> Dir_renames.create ~dir dirs
     in
     let loc = loc_of_dune_file source_dir in
     let+ components = components in
@@ -355,6 +484,9 @@ end = struct
                     Memo.parallel_map
                       components
                       ~f:(fun { dir; path_to_group_root; source_dir; stanzas } ->
+                        let path_to_root =
+                          Dir_renames.translate dir_renames path_to_group_root
+                        in
                         let+ files =
                           load_text_files
                             sctx
@@ -364,7 +496,7 @@ end = struct
                             ~dir
                         in
                         { Source_file_dir.dir
-                        ; path_to_root = path_to_group_root
+                        ; path_to_root
                         ; files
                         ; source_dir = Some source_dir
                         ; stanzas

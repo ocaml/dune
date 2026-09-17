@@ -37,3 +37,25 @@ Testing the bootstrap of a wrapped include subdirs qualified.
   Hello from wrapped a/b/b.ml
   Hello from unwrapped a/x.ml
   Hello from bootstrapped binary!
+
+Bootstrap info does not support directory mappings yet.
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.25)
+  > (using dune-bootstrap-info 0.1)
+  > EOF
+  $ cat >src/a/dune <<EOF
+  > (library (name a))
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (b as public)))
+  > EOF
+  $ cat >bin/main.ml <<EOF
+  > module M = A.Public
+  > EOF
+  $ dune build bin/bootstrap-info
+  File "src/a/dune", line 4, characters 8-9:
+  4 |  (dirs (b as public)))
+              ^
+  Error: Directory mappings are not supported in bootstrap info.
+  [1]

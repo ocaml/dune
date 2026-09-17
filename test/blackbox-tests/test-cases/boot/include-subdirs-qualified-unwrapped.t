@@ -40,3 +40,27 @@ Testing the bootstrap of an unwrapped include subdirs qualified.
   Hello from unwrapped a/b/b.ml
   Hello from unwrapped a/x.ml
   Hello from bootstrapped binary!
+
+Bootstrap info does not support directory mappings in unwrapped libraries yet.
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.25)
+  > (using dune-bootstrap-info 0.1)
+  > EOF
+  $ cat >src/lib/dune <<EOF
+  > (library
+  >  (name lib)
+  >  (wrapped false))
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (b as public)))
+  > EOF
+  $ cat >bin/main.ml <<EOF
+  > module M = Public
+  > EOF
+  $ dune build bin/bootstrap-info
+  File "src/lib/dune", line 6, characters 8-9:
+  6 |  (dirs (b as public)))
+              ^
+  Error: Directory mappings are not supported in bootstrap info.
+  [1]

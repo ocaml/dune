@@ -53,12 +53,15 @@ let for_ = Compilation_mode.Ocaml
 
 let include_subdirs dir_contents =
   let open Memo.O in
-  Dir_contents.ml dir_contents ~for_
-  >>| Ml_sources.include_subdirs
-  >>| function
+  let+ ml = Dir_contents.ml dir_contents ~for_ in
+  match Ml_sources.include_subdirs ml with
   | Import.Include_subdirs.No -> Include_subdirs.No
-  | Include Qualified -> Qualified
-  | Include Unqualified -> Unqualified
+  | Include Unqualified -> Include_subdirs.Unqualified
+  | Include (Qualified { dirs = [] }) -> Include_subdirs.Qualified
+  | Include (Qualified { dirs = binding :: _ }) ->
+    User_error.raise
+      ~loc:(File_binding.Unexpanded.loc binding)
+      [ Pp.text "Directory mappings are not supported in bootstrap info." ]
 ;;
 
 let make_root_module sctx ~name compile_info =

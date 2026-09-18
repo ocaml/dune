@@ -1,68 +1,59 @@
 open Stdune
-module Event = Dune_scheduler__Event
-module Signal_watcher = Dune_scheduler__Signal_watcher
-module Thread0 = Dune_scheduler__Thread0
+open Fiber.O
+open Dune_scheduler
+
+let child_count = 128
+
+let config =
+  { Scheduler.Config.concurrency = 1
+  ; print_ctrl_c_warning = false
+  ; watch_exclusions = []
+  }
+;;
 
 let spawn () =
-  Unix.create_process
-    "/bin/sh"
-    [| "/bin/sh"; "-c"; "sleep 0.01" |]
-    Unix.stdin
-    Unix.stdout
-    Unix.stderr
-;;
-
-let rec reap () =
-  match Unix.waitpid [ WNOHANG ] (-1) with
-  | 0, _ -> ()
-  | _, _ -> reap ()
-  | exception Unix.Unix_error (ECHILD, _, _) -> ()
-;;
-
-let rec wait_for_sigint events =
-  match Event.Queue.next events with
-  | Shutdown (Signal Int) -> ()
-  | Shutdown _ | Fiber_fill_ivar _ -> wait_for_sigint events
-  | Job_complete_ready ->
-    reap ();
-    wait_for_sigint events
-;;
-
-let interrupt () =
-  Thread.create
-    (fun () ->
-       Thread.delay 0.002;
-       Unix.kill (Unix.getpid ()) Sys.sigint)
+  Spawn.spawn
+    ~prog:"/bin/sleep"
+    ~argv0:"/bin/sleep"
+    ~args:(Array.Immutable.of_list [ "10" ])
     ()
 ;;
 
-let run () =
-  Thread0.interrupt_signals
-  |> List.map ~f:Signal.to_int
-  |> Unix.sigprocmask SIG_UNBLOCK
-  |> ignore;
-  let events = Event.Queue.create () in
-  let signal_watcher = Signal_watcher.init ~print_ctrl_c_warning:false events in
-  let finished = Atomic.make false in
-  let (_ : Thread.t) =
-    Thread.create
-      (fun () ->
-         Thread.delay 1.;
-         if not (Atomic.get finished) then exit 2)
-      ()
+let wait_for_process pid =
+  let+ (_ : Proc.Process_info.t) =
+    Scheduler.wait_for_process ~is_process_group_leader:false pid
   in
+  ()
+;;
+
+let rec interrupt_when_registered children =
+  if Scheduler.running_jobs_count (Scheduler.t ()) = child_count
+  then (
+    List.iter children ~f:(fun pid -> ignore (Pid.kill pid `Pid Term));
+    Pid.kill_exn (Pid.me ()) `Pid Int;
+    Fiber.return ())
+  else
+    let* () = Scheduler.sleep (Time.Span.of_secs 0.001) in
+    interrupt_when_registered children
+;;
+
+let run_once () =
+  match
+    Scheduler.Run.go config ~timeout:(Time.Span.of_secs 2.) (fun () ->
+      let children = List.init child_count ~f:(fun _ -> spawn ()) in
+      Fiber.fork_and_join_unit
+        (fun () -> Fiber.parallel_iter children ~f:wait_for_process)
+        (fun () -> interrupt_when_registered children))
+  with
+  | () -> exit 2
+  | exception Shutdown.E (Signal Int) -> ()
+  | exception Shutdown.E _ -> exit 2
+;;
+
+let run () =
   for _ = 1 to 2 do
-    let children = List.init 128 ~f:(fun _ -> spawn ()) in
-    let interrupt = interrupt () in
-    wait_for_sigint events;
-    Thread.join interrupt;
-    List.iter children ~f:(fun pid ->
-      try ignore (Unix.waitpid [] pid : int * Unix.process_status) with
-      | Unix.Unix_error (ECHILD, _, _) -> ())
-  done;
-  Unix.kill (Unix.getpid ()) (Signal.to_int Thread0.signal_watcher_interrupt);
-  Thread0.join signal_watcher;
-  Atomic.set finished true
+    run_once ()
+  done
 ;;
 
 let run_fresh () =

@@ -28,4 +28,4 @@
   (with-accepted-exit-codes
    2
    (run %{test})))
- (libraries stdune dune_scheduler unix threads.posix fiber))
+ (libraries stdune dune_scheduler unix fiber))

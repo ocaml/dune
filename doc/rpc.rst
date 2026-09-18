@@ -68,6 +68,19 @@ are two ways of doing this:
 Then ``dune rpc build .`` will connect to it, trigger a build, and report
 status.
 
+Status Line
+===========
+
+With ``progress`` display enabled, the server's status line includes
+``[rpc N]`` while RPC clients are connected, where ``N`` is the number of
+clients. A command whose build is forwarded to the server displays
+``Connected to RPC server`` in its own status line. ``dune monitor`` connects
+as an RPC client and displays the server's build-rule progress, running job
+count, and diagnostics.
+
+See :doc:`reference/config/display` for a description of all status-line
+components.
+
 .. _lwt: https://github.com/ocsigen/lwt
 .. _Dune_rpc: https://github.com/ocaml/dune/blob/main/otherlibs/dune-rpc/dune_rpc.mli
 .. _rpc_client_example: https://github.com/ocaml/dune/tree/main/otherlibs/dune-rpc-lwt/examples/rpc_client

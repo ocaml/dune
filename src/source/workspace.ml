@@ -1335,7 +1335,7 @@ let step1 ~(lang : Lang.Instance.t) clflags =
   and+ tool_groups =
     multi_field
       "tool_group"
-      (Dune_lang.Syntax.since Stanza.syntax (3, 25) >>> Tool_group.decode ~dir)
+      (Dune_lang.Unreleased.since () >>> Tool_group.decode ~dir)
   and+ pins = Pin_stanza.Workspace.decode in
   let+ contexts = multi_field "context" (lazy_ Context.decode) in
   let config =

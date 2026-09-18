@@ -33,6 +33,28 @@ module is currently accepted silently:
 
   $ dune build
 
+A missing lint reference is also silently accepted:
+
+  $ cat >dune <<'EOF'
+  > (include_subdirs qualified)
+  > (library
+  >  (name x)
+  >  (lint (per_module ((action (run true)) Missing))))
+  > EOF
+  $ dune build
+
+An existing module excluded from the stanza is silently accepted too:
+
+  $ touch foo/excluded.ml
+  $ cat >dune <<'EOF'
+  > (include_subdirs qualified)
+  > (library
+  >  (name x)
+  >  (modules Foo.Bar)
+  >  (preprocess (per_module ((action (run cat %{input-file})) Foo.Excluded))))
+  > EOF
+  $ dune build
+
 A slash-separated source path is rejected with a hint for the corresponding
 logical module reference:
 
@@ -83,6 +105,17 @@ Qualified references are only available starting with Dune 3.25:
   3.25).
   Leaving directory 'version-gate'
   [1]
+
+Older language versions continue to accept missing references:
+
+  $ cat >version-gate/dune <<'EOF'
+  > (include_subdirs qualified)
+  > (library
+  >  (name x)
+  >  (preprocess (per_module ((action (run cat %{input-file})) Missing)))
+  >  (lint (per_module ((action (run true)) Missing))))
+  > EOF
+  $ dune build --root=version-gate
 
 They are rejected when the effective `(include_subdirs)` mode is not
 `qualified`:

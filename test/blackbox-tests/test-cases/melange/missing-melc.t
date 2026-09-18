@@ -11,7 +11,7 @@ Set up some fake environment without melc
 
   $ export OCAMLLIB=$(ocamlc -where)
   $ mkdir _path
-  $ for bin in dune ocamlc ocamldep ocamlopt ocamlobjinfo sh; do
+  $ for bin in dune ocamlc ocamldep ocamlopt ocamlobjinfo sh git; do
   >   if command -v "$bin" > /dev/null; then
   >     ln -s "$(command -v "$bin")" _path/
   >   fi
@@ -135,6 +135,60 @@ supported shape that combines OCaml modes with Melange.
   mixed-byte-native: 0
   $ check_mixed_library mixed-standard "melange :standard"
   mixed-standard: 0
+
+Shared per-module settings may mention Melange-only modules even when melc is
+unavailable:
+
+  $ mkdir shared-per-module
+  $ cat >shared-per-module/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (using melange 1.0)
+  > EOF
+  $ touch shared-per-module/a.ml shared-per-module/b.melange.ml
+  $ cat >shared-per-module/dune <<'EOF'
+  > (library
+  >  (name x)
+  >  (modes byte melange)
+  >  (modules A)
+  >  (melange.modules B)
+  >  (preprocess (per_module ((action (echo "")) A B)))
+  >  (lint (per_module ((action (run sh -c true)) A B))))
+  > EOF
+  $ (unset INSIDE_DUNE; PATH=$PWD/_path dune build --root=shared-per-module @all)
+
+This also works for an implementation of an installed virtual library whose
+Melange metadata was not built:
+
+  $ mkdir vlib
+  $ cat >vlib/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (using melange 1.0)
+  > (package (name repro))
+  > EOF
+  $ cat >vlib/dune <<'EOF'
+  > (library
+  >  (name vlib)
+  >  (public_name repro.vlib)
+  >  (wrapped false)
+  >  (modes byte melange)
+  >  (virtual_modules virt))
+  > EOF
+  $ echo 'val run : unit -> int' >vlib/virt.mli
+  $ (unset INSIDE_DUNE; PATH=$PWD/_path dune build --root=vlib @install)
+  $ (unset INSIDE_DUNE; PATH=$PWD/_path \
+  >    dune install --root=vlib --prefix "$PWD/prefix")
+  $ cat >shared-per-module/dune <<'EOF'
+  > (library
+  >  (name x)
+  >  (modes byte melange)
+  >  (implements repro.vlib)
+  >  (modules Virt)
+  >  (melange.modules Virt B)
+  >  (lint (per_module ((action (run sh -c true)) B))))
+  > EOF
+  $ echo 'let run () = 42' >shared-per-module/virt.ml
+  $ (unset INSIDE_DUNE; PATH=$PWD/_path OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
+  >    dune build --root=shared-per-module x.cma)
 
 Melange-only libraries still require melc
 

@@ -8,27 +8,36 @@ subdirectories of the current directory. The syntax is as follows:
 
      (include_subdirs <mode>)
 
-Where ``<mode>`` maybe be one of:
+Where ``<mode>`` may be one of:
 
 - ``no``, the default
 - ``unqualified``
 - ``qualified``
 
+In ``unqualified`` and ``qualified`` mode, subdirectories are included
+recursively. Recursion stops at a subdirectory that contains another
+``include_subdirs`` stanza or starts a separate project with ``dune-project``.
+
 .. important::
-  It's not allowed for a subdirectory of a directory with
-  ``(include_subdirs <x>)`` (where ``<x>`` is not ``no``) to contain one of the
-  following stanzas:
+  Subdirectories included in a directory group must not contain the following
+  stanzas:
 
     - ``library``
     - ``executable(s)``
     - ``test(s)``
+    - ``melange.emit``
+
+  Add ``(include_subdirs no)`` to a subdirectory's ``dune`` file to make it
+  independent of the enclosing group.
 
 
 ``no`` (the default)
 ====================
 
-When the ``include_subdirs`` stanza isn't present or ``<mode>`` is ``no``, Dune
-considers subdirectories independent.
+By default, Dune considers subdirectories independent, unless the current
+directory belongs to a group defined by an ancestor's ``include_subdirs``
+stanza. An explicit ``(include_subdirs no)`` opts the current directory and its
+descendants out of that enclosing group.
 
 
 ``unqualified``
@@ -57,9 +66,6 @@ submodules of the :doc:`/reference/dune/library`,
 :doc:`/reference/dune/executable` or :doc:`/reference/dune/test` module group,
 mirroring the directory structure.
 
-Subdirectories are included recursively. However, recursion will stop when
-encountering a subdirectory that contains another ``include_subdirs`` stanza.
-
 .. tip::
 
    The :doc:`/reference/dune/ocamllex`, :doc:`/reference/dune/ocamlyacc` and
@@ -70,8 +76,8 @@ encountering a subdirectory that contains another ``include_subdirs`` stanza.
 Module group interfaces
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-At each level of the source tree, Dune generates the module interface with
-aliases for all its sub-modules with a capitalized name of the directory.
+By default, Dune generates a module named after each subdirectory, with its
+first letter capitalized, containing aliases for its submodules.
 
 - In ``app.ml``, ``sub/other.ml`` is accessible at ``Sub.Other``:
 
@@ -96,9 +102,8 @@ Group interfaces are configurable similarly to the
     ├── sub.ml
     └── other.ml
 
-.. warning::
+.. note::
 
-   Currently :doc:`/reference/dune/menhir` stanzas may not be used as a module
-   group interface due to a `Dune issue
-   <https://github.com/ocaml/dune/issues/8989>`_.
-
+   A :doc:`/reference/dune/menhir` stanza can provide a module group interface,
+   although type inference may emit OCaml warning 63 about an erroneous printed
+   signature; see `issue #8989 <https://github.com/ocaml/dune/issues/8989>`_.

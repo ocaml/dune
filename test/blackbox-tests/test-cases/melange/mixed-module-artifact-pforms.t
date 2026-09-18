@@ -45,6 +45,13 @@ The cmj variable always selects the Melange artifact.
     ]
   }
 
+The cmj variable does not fall back to the OCaml module set.
+
+  $ dune build '%{cmj:lib/ocaml_only}'
+  File "command line", line 1, characters 0-21:
+  Error: Module Ocaml_only does not exist.
+  [1]
+
 The Melange-only module artifacts exist in the Melange object directory.
 
   $ dune build lib/.foo.objs/melange/foo__Melange_only.{cmi,cmt}

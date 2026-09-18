@@ -72,3 +72,19 @@ Dune 3.21 project.
   > EOF
   $ dune build --root=cmj-version @artifact
   .foo.objs/melange/foo.cmj
+
+For an interface-only module, the cmj variable expands to an empty string.
+
+  $ mkdir cmj-version/interface-only
+  $ cat > cmj-version/interface-only/dune <<'EOF'
+  > (library
+  >  (name intf_only)
+  >  (modes melange)
+  >  (modules_without_implementation intf_only))
+  > (rule
+  >  (alias artifact)
+  >  (action (echo "<%{cmj:intf_only}>")))
+  > EOF
+  $ touch cmj-version/interface-only/intf_only.mli
+  $ dune build --root=cmj-version @interface-only/artifact
+  <>

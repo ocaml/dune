@@ -213,12 +213,15 @@ module Tool_group = struct
     ; shared_packages : (Loc.t * Package.Name.t) list option
     }
 
+  type source =
+    | Lock_dir of Lock_dir.t
+    | Inherit of inherit_
+
   type t =
     { loc : Loc.t
     ; name : (Loc.t * string) option
     ; tools : (Loc.t * Dune_lang.Package_dependency.t) list
-    ; lock_dir : Lock_dir.t
-    ; inherit_ : inherit_ option
+    ; source : source
     }
 
   let inherit_repr =
@@ -243,16 +246,23 @@ module Tool_group = struct
           "tools"
           (Repr.list (Repr.abstract Dune_lang.Package_dependency.to_dyn))
           ~get:(fun t -> List.map t.tools ~f:snd)
-      ; Repr.field "lock_dir" Lock_dir.repr ~get:(fun t -> t.lock_dir)
-      ; Repr.field "inherit" (Repr.option inherit_repr) ~get:(fun t -> t.inherit_)
+      ; Repr.field
+          "source"
+          (Repr.variant
+             "source"
+             [ Repr.case "Lock_dir" Lock_dir.repr ~proj:(function
+                 | Lock_dir lock_dir -> Some lock_dir
+                 | Inherit _ -> None)
+             ; Repr.case "Inherit" inherit_repr ~proj:(function
+                 | Inherit inherit_ -> Some inherit_
+                 | Lock_dir _ -> None)
+             ])
+          ~get:(fun t -> t.source)
       ]
   ;;
 
   let to_dyn = Repr.to_dyn repr
-
-  let hash { loc; name; tools; lock_dir; inherit_ } =
-    Poly.hash (loc, name, tools, lock_dir, inherit_)
-  ;;
+  let hash { loc; name; tools; source } = Poly.hash (loc, name, tools, source)
 
   let equal_inherit { context; shared_packages } t =
     Tuple.T2.equal Loc.equal Context_name.equal context t.context
@@ -262,45 +272,18 @@ module Tool_group = struct
          t.shared_packages
   ;;
 
-  let equal { loc; name; tools; lock_dir; inherit_ } t =
+  let equal { loc; name; tools; source } t =
     Loc.equal loc t.loc
     && Option.equal (Tuple.T2.equal Loc.equal String.equal) name t.name
     && List.equal
          (Tuple.T2.equal Loc.equal Dune_lang.Package_dependency.equal)
          tools
          t.tools
-    && Lock_dir.equal lock_dir t.lock_dir
-    && Option.equal equal_inherit inherit_ t.inherit_
-  ;;
-
-  (* The lock_dir block is either [(inherit ctx)] with an optional
-     [(shared_packages ...)], or ordinary lock_dir fields. The two cannot be mixed yet,
-     so the ordinary fields are collected as leftovers and handed to
-     [Lock_dir.decode] whole. *)
-  let lock_dir_block ~dir =
-    fields
-      (let+ loc = loc
-       and+ ctx = get_all
-       and+ inherit_ = field_o "inherit" (located Context_name.decode)
-       and+ shared_packages =
-         field_o "shared_packages" (located (repeat (located Package.Name.decode)))
-       and+ rest = leftover_fields in
-       let inherit_ =
-         match inherit_, shared_packages with
-         | None, None -> None
-         | None, Some (loc, _) ->
-           User_error.raise ~loc [ Pp.text "\"shared_packages\" requires \"inherit\"." ]
-         | Some context, shared_packages ->
-           (match rest with
-            | [] -> ()
-            | field :: _ ->
-              User_error.raise
-                ~loc:(Dune_lang.Ast.loc field)
-                [ Pp.text "This field cannot be combined with \"inherit\" yet." ]);
-           Some { context; shared_packages = Option.map shared_packages ~f:snd }
-       in
-       let lock_dir = parse (enter (Lock_dir.decode ~dir)) ctx (List (loc, rest)) in
-       lock_dir, inherit_)
+    &&
+    match source, t.source with
+    | Lock_dir a, Lock_dir b -> Lock_dir.equal a b
+    | Inherit a, Inherit b -> equal_inherit a b
+    | _ -> false
   ;;
 
   let decode ~dir =
@@ -317,8 +300,21 @@ module Tool_group = struct
              ~loc
              [ Pp.text "A tool group must declare at least one tool." ];
          tools
-       and+ lock_dir, inherit_ = field "lock_dir" (lock_dir_block ~dir) in
-       { loc; name; tools; lock_dir; inherit_ })
+       and+ source =
+         fields_mutually_exclusive
+           [ ( "lock_dir"
+             , let+ lock_dir = Lock_dir.decode ~dir in
+               Lock_dir lock_dir )
+           ; ( "inherit"
+             , fields
+                 (let+ context = field "context" (located Context_name.decode)
+                  and+ shared_packages =
+                    field_o "shared_packages" (repeat (located Package.Name.decode))
+                  in
+                  Inherit { context; shared_packages }) )
+           ]
+       in
+       { loc; name; tools; source })
   ;;
 end
 
@@ -1241,9 +1237,9 @@ let check_no_duplicate_tools (tool_groups : Tool_group.t list) =
   in
   let inherited, isolated =
     List.partition_map tool_groups ~f:(fun (group : Tool_group.t) ->
-      match group.inherit_ with
-      | Some { context = _, context; _ } -> Left (context, group.tools)
-      | None -> Right group.tools)
+      match group.source with
+      | Inherit { context = _, context; _ } -> Left (context, group.tools)
+      | Lock_dir _ -> Right group.tools)
   in
   check None (List.concat isolated);
   Context_name.Map.of_list_multi inherited
@@ -1253,9 +1249,9 @@ let check_no_duplicate_tools (tool_groups : Tool_group.t list) =
 
 let check_tool_groups_contexts contexts (tool_groups : Tool_group.t list) =
   List.iter tool_groups ~f:(fun (group : Tool_group.t) ->
-    match group.inherit_ with
-    | None -> ()
-    | Some { context = loc, name; _ } ->
+    match group.source with
+    | Lock_dir _ -> ()
+    | Inherit { context = loc, name; _ } ->
       (match
          List.find contexts ~f:(fun ctx -> Context_name.equal (Context.name ctx) name)
        with
@@ -1333,9 +1329,7 @@ let step1 ~(lang : Lang.Instance.t) clflags =
   and+ config_from_workspace_file = Dune_config.decode_fields_of_workspace_file
   and+ lock_dirs = multi_field "lock_dir" (Lock_dir.decode ~dir)
   and+ tool_groups =
-    multi_field
-      "tool_group"
-      (Dune_lang.Unreleased.since () >>> Tool_group.decode ~dir)
+    multi_field "tool_group" (Dune_lang.Unreleased.since () >>> Tool_group.decode ~dir)
   and+ pins = Pin_stanza.Workspace.decode in
   let+ contexts = multi_field "context" (lazy_ Context.decode) in
   let config =

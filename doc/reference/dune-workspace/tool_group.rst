@@ -10,9 +10,11 @@ Declares developer tools that are managed by Dune's package management but are
 not dependencies of the project, such as ``ocamlformat`` or
 ``ocaml-lsp-server``.
 
-.. describe:: (tool_group ...)
+The stanza is unreleased. To enable it, add ``(using unreleased 0.1)``
+:doc:`extension </reference/dune-project/using>` to your ``dune-workspace``
+file. It may change without notice.
 
-   .. versionadded:: 3.25
+.. describe:: (tool_group ...)
 
    .. describe:: (name <string>)
 
@@ -25,19 +27,26 @@ not dependencies of the project, such as ``ocamlformat`` or
       one is required. A package may be declared at most once per inherited
       context, and at most once among groups that do not inherit a context.
 
+   Exactly one of ``lock_dir`` or ``inherit`` is required.
+
    .. describe:: (lock_dir ...)
 
-      Required. Either the fields of the :doc:`lock_dir` stanza, or:
+      Solve the tools in isolation. Accepts the fields of the :doc:`lock_dir`
+      stanza.
 
-      .. describe:: (inherit <context>)
+   .. describe:: (inherit ...)
 
-         Build the tools on top of the packages of the named
-         :doc:`context`. Cannot be combined with other ``lock_dir`` fields.
+      Build the tools on top of the packages of an existing context.
+
+      .. describe:: (context <name>)
+
+         Required. The :doc:`context` whose lock directory the tools are
+         solved on top of. It must be a default context, not an opam one.
 
       .. describe:: (shared_packages <name> ...)
 
-         Reuse only these packages, and what they depend on, from the inherited
-         context. Requires ``inherit``. Defaults to all of them.
+         Optional. Reuse only these packages, and what they depend on, from
+         the inherited context. Defaults to all of them.
 
 Example:
 
@@ -49,4 +58,4 @@ Example:
 
    (tool_group
     (tools (ocaml-lsp-server (>= 1.27.0)) utop)
-    (lock_dir (inherit default)))
+    (inherit (context default)))

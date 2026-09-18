@@ -34,12 +34,15 @@ module Tool_group : sig
     ; shared_packages : (Loc.t * Package.Name.t) list option
     }
 
+  type source =
+    | Lock_dir of Lock_dir.t
+    | Inherit of inherit_
+
   type t =
     { loc : Loc.t
     ; name : (Loc.t * string) option
     ; tools : (Loc.t * Dune_lang.Package_dependency.t) list
-    ; lock_dir : Lock_dir.t
-    ; inherit_ : inherit_ option
+    ; source : source
     }
 
   val equal : t -> t -> bool

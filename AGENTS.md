@@ -5,7 +5,10 @@ the Dune codebase.
 
 ## General Rules
 
-- Every commit must be pass the following check `$ dune build @check @fmt @runtest`.
+- Every commit must pass the following check `$ dune build @check @fmt @runtest`.
+  For documentation-only changes (including `AGENTS.md`), run
+  `$ dune build @check @fmt` and skip the full test suite (`@runtest`).
+  Changes to code, tests, or build configuration still require all three checks.
   Commits that introduce a failing test should also pass this check even if the
   test introduces failure
 

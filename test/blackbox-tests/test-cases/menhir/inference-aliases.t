@@ -1,7 +1,7 @@
 Menhir inference can expose a shadowed ancestor alias, not just the parser's
 own group alias (#8989).
 
-  $ make_menhir_project 3.11 2.1
+  $ make_menhir_project 3.25 2.1
   $ cat >dune <<'EOF'
   > (include_subdirs qualified)
   > (library (name lib) (wrapped false))
@@ -19,7 +19,6 @@ own group alias (#8989).
 
   $ dune build lib.cma 2>errors
   [1]
-  $ sed -n '/val xv_main/p' _build/default/outer/inner/inner__mock.mli.inferred
-  val xv_main : (module Outer__/2.Ast.S)
-  $ sed -n '/Error: Syntax error/{p;q;}' errors
-  Error: Syntax error
+  $ sed -n '/Error (warning 63/p;/Definition of module/p' errors
+  Error (warning 63 [erroneous-printed-signature]): The printed interface
+    Definition of module Outer__/2 Beware

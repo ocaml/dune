@@ -736,6 +736,7 @@ let run_cram_test
       ~purpose:(Build_job None)
       ()
   in
+  let* script_for_sh = translate_path_for_sh sh_script.script in
   Process.run
     ~display:Quiet
     ~metadata
@@ -747,7 +748,7 @@ let run_cram_test
     ((match shell with
       | Sh -> []
       | Bash -> [ "-uo"; "pipefail" ])
-     @ [ Path.to_string sh_script.script ])
+     @ [ script_for_sh ])
   >>| function
   | Ok () ->
     let detailed_output = read_and_attach_metadata sh_script ~timed_out:false in

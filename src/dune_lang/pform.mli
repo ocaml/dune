@@ -103,9 +103,14 @@ module Var : sig
 end
 
 module Artifact : sig
+  type melange =
+    | Cm_kind of Melange.Cm_kind.t
+    | Cmt
+    | Cmti
+
   type mod_ =
     | Cm_kind of Ocaml.Cm_kind.t
-    | Melange of Melange.Cm_kind.t
+    | Melange of melange
     | Cmt
     | Cmti
 

@@ -8,12 +8,16 @@ supports both OCaml and Melange, but a module is only selected for Melange.
   > (library
   >  (name foo)
   >  (modes byte melange)
-  >  (modules common ocaml_only)
-  >  (melange.modules common melange_only))
+  >  (modules common ocaml_only mode_specific)
+  >  (melange.modules common melange_only mode_specific))
   > EOF
 
   $ cat > lib/common.ml <<'EOF'
   > let x = "common"
+  > EOF
+
+  $ cat > lib/common.mli <<'EOF'
+  > val x : string
   > EOF
 
   $ cat > lib/ocaml_only.ml <<'EOF'
@@ -24,6 +28,13 @@ supports both OCaml and Melange, but a module is only selected for Melange.
   > let x = "melange"
   > EOF
 
+  $ cat > lib/mode_specific.ml <<'EOF'
+  > let x = 1
+  > EOF
+  $ cat > lib/mode_specific.melange.mli <<'EOF'
+  > val x : int
+  > EOF
+
 When a module is selected in both modes, artifact variables prefer the OCaml
 artifact, like Merlin does.
 
@@ -32,6 +43,15 @@ artifact, like Merlin does.
   {
     "targets": [
       "_build/default/lib/.foo.objs/byte/foo__Common.cmi"
+    ]
+  }
+
+  $ dune build '%{cmt:lib/common}' '%{cmti:lib/common}'
+  $ dune trace cat | jq 'select(.name == "targets") | .args'
+  {
+    "targets": [
+      "_build/default/lib/.foo.objs/byte/foo__Common.cmt",
+      "_build/default/lib/.foo.objs/byte/foo__Common.cmti"
     ]
   }
 
@@ -50,28 +70,74 @@ It also selects modules that are only compiled with Melange.
 
   $ dune build '%{melange.cmi:lib/melange_only}'
 
-Explicit annotation variables and the qualified cmj spelling are not yet
-recognized:
+The explicit annotation variables also select Melange artifacts. The
+melange.cmj variable is an alias for cmj.
 
   $ dune build '%{melange.cmt:lib/common}'
-  Usage: dune build [--help] [OPTION]… [TARGET]…
-  dune: TARGET… arguments: Unknown macro %{melange.cmt:..}
-  [1]
+  $ dune trace cat | jq 'select(.name == "targets") | .args'
+  {
+    "targets": [
+      "_build/default/lib/.foo.objs/melange/foo__Common.cmt"
+    ]
+  }
   $ dune build '%{melange.cmti:lib/common}'
-  Usage: dune build [--help] [OPTION]… [TARGET]…
-  dune: TARGET… arguments: Unknown macro %{melange.cmti:..}
-  [1]
+  $ dune trace cat | jq 'select(.name == "targets") | .args'
+  {
+    "targets": [
+      "_build/default/lib/.foo.objs/melange/foo__Common.cmti"
+    ]
+  }
   $ dune build '%{melange.cmj:lib/common}'
-  Usage: dune build [--help] [OPTION]… [TARGET]…
-  dune: TARGET… arguments: Unknown macro %{melange.cmj:..}
-  [1]
+  $ dune trace cat | jq 'select(.name == "targets") | .args'
+  {
+    "targets": [
+      "_build/default/lib/.foo.objs/melange/foo__Common.cmj"
+    ]
+  }
 
-The explicit cmi variable does not fall back to the OCaml module set.
+The explicit variables do not fall back to the OCaml module set.
 
   $ dune build '%{melange.cmi:lib/ocaml_only}'
   File "command line", line 1, characters 0-29:
   Error: Module Ocaml_only does not exist.
   [1]
+  $ dune build '%{melange.cmt:lib/ocaml_only}'
+  File "command line", line 1, characters 0-29:
+  Error: Module Ocaml_only does not exist.
+  [1]
+  $ dune build '%{melange.cmti:lib/ocaml_only}'
+  File "command line", line 1, characters 0-30:
+  Error: Module Ocaml_only does not exist.
+  [1]
+  $ dune build '%{melange.cmj:lib/ocaml_only}'
+  File "command line", line 1, characters 0-29:
+  Error: Module Ocaml_only does not exist.
+  [1]
+
+Without an explicit interface, melange.cmti falls back to the implementation's
+annotation file, just like cmti.
+
+  $ dune build '%{melange.cmt:lib/melange_only}' '%{melange.cmti:lib/melange_only}'
+  $ dune trace cat | jq 'select(.name == "targets") | .args'
+  {
+    "targets": [
+      "_build/default/lib/.foo.objs/melange/foo__Melange_only.cmt",
+      "_build/default/lib/.foo.objs/melange/foo__Melange_only.cmt"
+    ]
+  }
+  $ dune build '%{melange.cmj:lib/melange_only}'
+
+The choice of annotation file depends on the sources selected for each mode.
+This module has a Melange-specific interface, but no OCaml interface.
+
+  $ dune build '%{cmti:lib/mode_specific}' '%{melange.cmti:lib/mode_specific}'
+  $ dune trace cat | jq 'select(.name == "targets") | .args'
+  {
+    "targets": [
+      "_build/default/lib/.foo.objs/byte/foo__Mode_specific.cmt",
+      "_build/default/lib/.foo.objs/melange/foo__Mode_specific.cmti"
+    ]
+  }
 
 The cmj variable always selects the Melange artifact.
 
@@ -111,7 +177,7 @@ OCaml-specific artifact variables do not fall back to the Melange module set.
   Error: Module Melange_only does not exist.
   [1]
 
-The melange.cmi variable is available in dune files since version 3.26 of the
+The explicit variables are available in dune files since version 3.26 of the
 Dune language.
 
   $ mkdir version-gate
@@ -119,16 +185,19 @@ Dune language.
   > (lang dune 3.25)
   > (using melange 1.0)
   > EOF
-  $ cat > version-gate/dune <<'EOF'
+  $ test_version () {
+  >   cat > version-gate/dune <<EOF
   > (library
   >  (name foo)
   >  (modes melange))
   > (alias
-  >  (name explicit-cmi)
-  >  (deps %{melange.cmi:foo}))
+  >  (name artifact)
+  >  (deps %{melange.$1:foo}))
   > EOF
-  $ touch version-gate/foo.ml
-  $ dune build --root=version-gate @explicit-cmi
+  >   dune build --root=version-gate @artifact
+  > }
+  $ touch version-gate/foo.ml version-gate/foo.mli
+  $ test_version cmi
   Entering directory 'version-gate'
   File "dune", line 6, characters 7-25:
   6 |  (deps %{melange.cmi:foo}))
@@ -137,9 +206,60 @@ Dune language.
   language. Please update your dune-project file to have (lang dune 3.26).
   Leaving directory 'version-gate'
   [1]
+  $ test_version cmt
+  Entering directory 'version-gate'
+  File "dune", line 6, characters 7-25:
+  6 |  (deps %{melange.cmt:foo}))
+             ^^^^^^^^^^^^^^^^^^
+  Error: %{melange.cmt:..} is only available since version 3.26 of the dune
+  language. Please update your dune-project file to have (lang dune 3.26).
+  Leaving directory 'version-gate'
+  [1]
+  $ test_version cmti
+  Entering directory 'version-gate'
+  File "dune", line 6, characters 7-26:
+  6 |  (deps %{melange.cmti:foo}))
+             ^^^^^^^^^^^^^^^^^^^
+  Error: %{melange.cmti:..} is only available since version 3.26 of the dune
+  language. Please update your dune-project file to have (lang dune 3.26).
+  Leaving directory 'version-gate'
+  [1]
+  $ test_version cmj
+  Entering directory 'version-gate'
+  File "dune", line 6, characters 7-25:
+  6 |  (deps %{melange.cmj:foo}))
+             ^^^^^^^^^^^^^^^^^^
+  Error: %{melange.cmj:..} is only available since version 3.26 of the dune
+  language. Please update your dune-project file to have (lang dune 3.26).
+  Leaving directory 'version-gate'
+  [1]
 
   $ cat > version-gate/dune-project <<'EOF'
   > (lang dune 3.26)
   > (using melange 1.0)
   > EOF
-  $ dune build --root=version-gate @explicit-cmi
+  $ test_version cmi
+  $ test_version cmt
+  $ test_version cmti
+  $ test_version cmj
+
+For an interface-only module, melange.cmt and melange.cmj expand to an empty
+string, whereas melange.cmti selects the interface's annotation file.
+
+  $ mkdir version-gate/interface-only
+  $ cat > version-gate/interface-only/dune <<'EOF'
+  > (library
+  >  (name intf_only)
+  >  (modes melange)
+  >  (modules_without_implementation intf_only))
+  > (rule
+  >  (alias artifact)
+  >  (action
+  >   (progn
+  >    (echo "<%{melange.cmt:intf_only}> <%{melange.cmj:intf_only}>\n")
+  >    (echo %{melange.cmti:intf_only}))))
+  > EOF
+  $ touch version-gate/interface-only/intf_only.mli
+  $ dune build --root=version-gate @interface-only/artifact
+  <> <>
+  .intf_only.objs/melange/intf_only.cmti

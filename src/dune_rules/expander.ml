@@ -247,9 +247,12 @@ let expand_artifact =
             match kind with
             | Cm_kind Cmi -> Obj_dir.Module.cm_file obj_dir m ~kind:cmi_kind
             | Cm_kind kind -> Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml kind)
-            | Melange kind -> Obj_dir.Module.cm_file obj_dir m ~kind:(Melange kind)
-            | Cmt -> Obj_dir.Module.cmt_file obj_dir m ~cm_kind:cmi_kind ~ml_kind:Impl
-            | Cmti -> Some (Obj_dir.Module.cmti_file obj_dir m ~cm_kind:cmi_kind)
+            | Melange (Cm_kind kind) ->
+              Obj_dir.Module.cm_file obj_dir m ~kind:(Melange kind)
+            | Cmt | Melange Cmt ->
+              Obj_dir.Module.cmt_file obj_dir m ~cm_kind:cmi_kind ~ml_kind:Impl
+            | Cmti | Melange Cmti ->
+              Some (Obj_dir.Module.cmti_file obj_dir m ~cm_kind:cmi_kind)
           with
           | None -> Action_builder.return [ Value.String "" ]
           | Some path -> dep (Path.build path)))

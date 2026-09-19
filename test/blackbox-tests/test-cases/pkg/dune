@@ -43,6 +43,10 @@
  (deps %{bin:strace}))
 
 (cram
+ (applies_to relocatable-compiler-sandbox)
+ (deps %{bin:menhir}))
+
+(cram
  (deps %{bin:awk} %{bin:cmp})
  (applies_to git-repo.t))
 

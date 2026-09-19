@@ -24,6 +24,31 @@ module Lock_dir : sig
   val to_dyn : t -> Dyn.t
 end
 
+module Tool_group : sig
+  (** A group that inherits from a context is solved on top of that context's
+      lock directory and is only usable from that context. [shared_packages]
+      restricts which of the context's packages (with their dependencies) are
+      reused; [None] means all of them. *)
+  type inherit_ =
+    { context : Loc.t * Context_name.t
+    ; shared_packages : (Loc.t * Package.Name.t) list option
+    }
+
+  type source =
+    | Lock_dir of Lock_dir.t
+    | Inherit of inherit_
+
+  type t =
+    { loc : Loc.t
+    ; name : (Loc.t * string) option
+    ; tools : (Loc.t * Dune_lang.Package_dependency.t) list
+    ; source : source
+    }
+
+  val equal : t -> t -> bool
+  val to_dyn : t -> Dyn.t
+end
+
 module Lock_dir_selection : sig
   (** A DSL for selecting a lockdir either by literally naming it or using a
       cond expression to select a lockdir based on blangs *)
@@ -140,6 +165,7 @@ type t = private
   ; lock_dirs : Lock_dir.t list
   ; dir : Path.Source.t
   ; pins : Pin_stanza.Workspace.t
+  ; tool_groups : Tool_group.t list
   }
 
 val equal : t -> t -> bool

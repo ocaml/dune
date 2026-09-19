@@ -1,7 +1,7 @@
 Menhir inference supports library parameters, but prints invalid syntax for
 an instantiated library's abstract result type.
 
-  $ make_menhir_project 3.25 2.1
+  $ make_menhir_project 3.25 3.0
   $ echo '(using oxcaml 0.1)' >> dune-project
   $ mkdir param impl lib app
   $ echo '(library_parameter (name param))' >param/dune

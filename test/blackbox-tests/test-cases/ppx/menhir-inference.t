@@ -3,7 +3,10 @@ Menhir inference with ordinary and staged PPX exposes shadowed aliases (#8989).
   $ make_menhir_project 3.25 3.0
   $ mkdir -p ppx lib/group
   $ cat >ppx/dune <<'EOF'
-  > (library (name packed_ppx) (kind ppx_rewriter) (libraries ppxlib))
+  > (library
+  >  (name packed_ppx)
+  >  (kind ppx_rewriter)
+  >  (libraries ppxlib))
   > EOF
   $ cat >ppx/packed_ppx.ml <<'EOF'
   > open Ppxlib
@@ -18,7 +21,10 @@ Menhir inference with ordinary and staged PPX exposes shadowed aliases (#8989).
   >   Driver.register_transformation "packed"
   >     ~rules:[ Context_free.Rule.extension packed ]
   > EOF
-  $ echo '(menhir (modules group))' >lib/group/dune
+  $ cat >lib/group/dune <<'EOF'
+  > (menhir
+  >  (modules group))
+  > EOF
   $ cat >lib/group/m.ml <<'EOF'
   > module type S = sig end
   > let packed = (module struct end : S)
@@ -30,12 +36,13 @@ Menhir inference with ordinary and staged PPX exposes shadowed aliases (#8989).
   > main: EOF { [%packed] }
   > EOF
 
-Ordinary PPX produces a binary AST; staged PPX runs inside the compiler.
-
   $ build () {
   >   cat >lib/dune <<EOF
   > (include_subdirs qualified)
-  > (library (name foo) (wrapped false) (preprocess ($1 packed_ppx)))
+  > (library
+  >  (name foo)
+  >  (wrapped false)
+  >  (preprocess ($1 packed_ppx)))
   > EOF
   >   dune build lib/foo.cma
   > }

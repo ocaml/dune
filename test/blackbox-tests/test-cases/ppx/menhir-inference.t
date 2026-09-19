@@ -37,15 +37,25 @@ Ordinary PPX produces a binary AST; staged PPX runs inside the compiler.
   > (include_subdirs qualified)
   > (library (name foo) (wrapped false) (preprocess ($1 packed_ppx)))
   > EOF
-  >   dune build lib/foo.cma 2>errors
+  >   dune build lib/foo.cma
   > }
   $ build pps
-  [1]
-  $ sed -n '/Error (warning 63/p;/Definition of module/p' errors
+  File "lib/group/group__mock.ml.pp.mock", line 1:
   Error (warning 63 [erroneous-printed-signature]): The printed interface
+    differs from the inferred interface. The inferred interface contained items
+    which could not be printed properly due to name collisions between
+    identifiers. File "_none_", line 1:
     Definition of module Group__/2 Beware
+    that this warning is purely informational and will not catch all instances
+    of erroneous printed interface.
+  [1]
   $ build staged_pps
-  [1]
-  $ sed -n '/Error (warning 63/p;/Definition of module/p' errors
+  File "lib/group/group__mock.ml.mock", line 1:
   Error (warning 63 [erroneous-printed-signature]): The printed interface
+    differs from the inferred interface. The inferred interface contained items
+    which could not be printed properly due to name collisions between
+    identifiers. File "_none_", line 1:
     Definition of module Group__/2 Beware
+    that this warning is purely informational and will not catch all instances
+    of erroneous printed interface.
+  [1]

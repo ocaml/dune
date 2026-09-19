@@ -76,11 +76,11 @@ The metadata reader reports a missing file as not found.
   $TESTCASE_ROOT/missing-metadata
   [1]
 
-An existing directory is not a missing file. BUG: the text-mode read error is
-also treated as not found, hiding the actual IO error.
+An existing directory is not a missing file. Report the actual IO error.
+Populate it to avoid the binary reader's empty-file fast path.
 
   $ mkdir metadata-directory
+  $ touch metadata-directory/entry
   $ dune internal cache-metadata metadata-directory
-  Error: cache metadata not found:
-  $TESTCASE_ROOT/metadata-directory
+  Error: Unix.Unix_error(Unix.EISDIR, "read", "")
   [1]

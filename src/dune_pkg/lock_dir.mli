@@ -73,6 +73,12 @@ module Pkg : sig
 
   val remove_locs : t -> t
   val equal : t -> t -> bool
+
+  (** Compare package behavior on a platform, ignoring source locations, choices
+      for other platforms, and availability on other platforms. Packages disabled
+      on the platform compare equal if both are disabled. *)
+  val equal_on_platform : t -> t -> platform:Solver_env.t -> bool
+
   val hash : t -> int
   val digest_feed : t Dune_digest.Feed.t
   val to_dyn : t -> Dyn.t

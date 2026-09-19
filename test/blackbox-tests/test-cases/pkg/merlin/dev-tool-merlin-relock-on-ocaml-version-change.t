@@ -29,14 +29,6 @@ Initially merlin will depend on ocaml-base-compiler.5.2.0 to match the project.
 
 We can re-run "dune tools exec ocamlmerlin" without relocking or rebuilding.
   $ dune tools exec ocamlmerlin
-  The version of the compiler package ("ocaml-base-compiler") in this project's
-  lockdir has changed to 5.2.0 (formerly the compiler version was 5.2.0). The
-  dev-tool "merlin" will be re-locked and rebuilt with this version of the
-  compiler.
-  Solution for _build/.dev-tools.locks/merlin:
-  - merlin.0.0.1
-  - ocaml-base-compiler.5.2.0
-  - ocaml-compiler.5.2.0
        Running 'ocamlmerlin'
   hello from fake ocamlmerlin
 

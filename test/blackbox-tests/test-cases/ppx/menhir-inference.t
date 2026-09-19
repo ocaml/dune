@@ -1,6 +1,6 @@
 Menhir inference with ordinary and staged PPX exposes shadowed aliases (#8989).
 
-  $ make_menhir_project 3.25 2.1
+  $ make_menhir_project 3.25 3.0
   $ mkdir -p ppx lib/group
   $ cat >ppx/dune <<'EOF'
   > (library (name packed_ppx) (kind ppx_rewriter) (libraries ppxlib))

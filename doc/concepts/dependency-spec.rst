@@ -38,11 +38,22 @@ Dependencies in ``dune`` files can be specified using one of the following:
   universe. In any case, this is only for dependencies in the
   :term:`installed world`. You must still specify all dependencies that come
   from the workspace.
-- ``(package <pkg>)`` builds the files installed by ``<package>`` and adds
-  them to the action's environment: bin entries on ``PATH``, libraries on
-  ``OCAMLPATH``, stublibs on ``CAML_LD_LIBRARY_PATH``, and so on. Only the
-  named package is added; transitive package dependencies must be listed
-  separately.
+- ``(package <pkg>)`` builds the files installed by ``<pkg>`` and adds them to
+  the action's environment: bin entries on ``PATH``, libraries on ``OCAMLPATH``,
+  stublibs on ``CAML_LD_LIBRARY_PATH``, and so on.
+
+  For workspace packages and packages installed outside Dune's package
+  management, Dune also follows the transitive dependencies of their libraries
+  and includes the installed files from their owning packages. Unrelated
+  libraries in these additional packages do not become new roots for expansion.
+  This library-based expansion does not follow dependencies declared only in
+  package metadata.
+
+  For packages built by Dune's package management, Dune instead uses the full
+  transitive package dependency closure from the lock directory, including
+  dependencies unrelated to their libraries. This applies both to explicitly
+  requested packages and to managed providers reached through library
+  dependencies.
 - ``(env_var <var>)`` depends on the value of the environment variable ``<var>``.
   If this variable becomes set, becomes unset, or changes value, the target
   will be rebuilt.

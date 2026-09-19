@@ -41,6 +41,7 @@ The parser inside the parameterized library uses the parameter directly.
 
 The executable's parser uses an instance alias from its generated alias
 module. Its inferred result must retain the instance's abstract type identity.
+Currently, inference prints an instance name that is not valid OCaml syntax.
 
   $ mkdir -p app/group
   $ cat > app/dune <<'EOF'
@@ -66,4 +67,8 @@ module. Its inferred result must retain the instance's abstract type identity.
   > EOF
 
   $ dune exec ./app/main.exe
-  42
+  File "app/group/group.mli", line 13, characters 59-60:
+  13 | val main: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Lib[Param:Impl].t)
+                                                                  ^
+  Error: Syntax error
+  [1]

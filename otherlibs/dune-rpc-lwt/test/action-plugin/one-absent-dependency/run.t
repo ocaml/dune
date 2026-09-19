@@ -22,7 +22,7 @@ and requires dependency that can not be build fails.
   No rule found for some_absent_dependency
   [1]
 
-Catching a failed dependency request currently allows a successful cached result
+Catching a failed dependency request must not create a successful cached result
 without recording the input whose absence caused the fallback.
 
   $ cat >> dune <<'EOF'
@@ -31,34 +31,35 @@ without recording the input whose absence caused the fallback.
   >  (action (dynamic-run ./foo.exe recover)))
   > EOF
   $ dune build result > build.output 2>&1; echo $?
-  0
+  1
+  $ grep 'No rule found for' build.output
+  Error: No rule found for some_absent_dependency
   $ cat _build/default/result
   fallback
   $ printf available > some_absent_dependency
   $ dune build result
   $ cat _build/default/result
-  fallback
+  available
 
-A fresh build reads the newly available input instead of using the fallback.
+A fresh build also reads the newly available input.
 
   $ dune build --build-dir _build-fresh result
   $ cat _build-fresh/default/result
   available
 
-A client that catches a failed dependency request can currently make another
-request and cause its producer to run.
+After a required dependency fails, further requests are rejected without running
+their producers.
 
   $ cat >> dune <<'EOF'
   > (rule (target after-failure) (action (write-file after-failure built)))
   > (rule (alias retry) (action (dynamic-run ./foo.exe retry)))
   > EOF
   $ dune build @retry > retry.output 2>&1; echo $?
-  0
+  1
   $ grep '^request ' retry.output
   request missing-first: rejected
-  request after-failure: built
+  request after-failure: rejected
   $ test ! -e _build/default/after-failure
-  [1]
 
 The requested dependency has a working producer.
 

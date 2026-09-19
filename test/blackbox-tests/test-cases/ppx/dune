@@ -7,3 +7,9 @@
 (cram
  (applies_to ppx-rewriter.t)
  (deps %{bin:ocamlfind}))
+
+(cram
+ (applies_to menhir-inference.t)
+ (deps
+  (package ppxlib)
+  %{bin:menhir}))

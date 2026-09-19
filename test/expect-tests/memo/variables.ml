@@ -42,6 +42,39 @@ let%expect_test "cutoff" =
   [%expect {| var: 202 |}]
 ;;
 
+let%expect_test "dependencies requested from a separate fiber" =
+  let var = Memo.Var.create ~name:"requested" 200 in
+  let pool = Fiber.Pool.create () in
+  let node =
+    Memo.lazy_ ~name:"requester" (fun () ->
+      Memo.of_reproducible_fiber
+        (let open Fiber.O in
+         let result = Fiber.Ivar.create () in
+         let* () =
+           Fiber.Pool.task pool ~f:(fun () ->
+             let* value = Memo.run (Memo.Var.read var) in
+             Fiber.Ivar.fill result value)
+         in
+         Fiber.Ivar.read result))
+  in
+  Scheduler.run
+    (let open Fiber.O in
+     Fiber.fork_and_join_unit
+       (fun () -> Fiber.Pool.run pool)
+       (fun () ->
+          let* first = Memo.run (Memo.Lazy.force node) in
+          printfn "first: %d" first;
+          Memo.reset (Memo.Var.set var 400);
+          let* second = Memo.run (Memo.Lazy.force node) in
+          printfn "second: %d" second;
+          Fiber.Pool.close pool));
+  [%expect
+    {|
+    first: 200
+    second: 200
+    |}]
+;;
+
 let%expect_test "unit variable" =
   let var = Memo.Var.Unit.create () in
   let runs = ref 0 in

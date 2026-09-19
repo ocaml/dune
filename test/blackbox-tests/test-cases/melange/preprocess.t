@@ -88,3 +88,96 @@ Qualified module references work in a `melange.emit` stanza too:
   > EOF
   $ dune build @mel
   $ cd ..
+
+Mixed libraries can select disjoint module sets for OCaml and Melange. Shared
+lint settings may refer to modules from either set, including `.melange.ml`
+sources:
+
+  $ mkdir mixed
+  $ cat >mixed/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (using melange 1.0)
+  > EOF
+  $ touch mixed/a.ml mixed/b.melange.ml mixed/excluded.ml
+  $ cat >mixed/dune <<'EOF'
+  > (library
+  >  (name x)
+  >  (modes byte melange)
+  >  (modules A)
+  >  (melange.modules B)
+  >  (lint (per_module ((action (run true)) A B))))
+  > EOF
+  $ dune build --root=mixed @all
+
+The same holds for preprocessing inherited by Melange:
+
+  $ cat >mixed/dune <<'EOF'
+  > (library
+  >  (name x)
+  >  (modes byte melange)
+  >  (modules A)
+  >  (melange.modules B)
+  >  (preprocess (per_module ((action (run cat %{input-file})) A B))))
+  > EOF
+  $ dune build --root=mixed @all
+
+Explicit mode-specific preprocessors may also mention modules owned by the
+other mode; those mappings are simply unused in this mode:
+
+  $ cat >mixed/dune <<'EOF'
+  > (library
+  >  (name x)
+  >  (modes byte melange)
+  >  (modules A)
+  >  (melange.modules B)
+  >  (preprocess (per_module ((action (run cat %{input-file})) A B)))
+  >  (melange.preprocess (per_module ((action (run cat %{input-file})) A B))))
+  > EOF
+  $ dune build --root=mixed @all
+
+A reference missing from both modes is currently accepted silently:
+
+  $ cat >mixed/dune <<'EOF'
+  > (library
+  >  (name x)
+  >  (modes byte melange)
+  >  (modules A)
+  >  (melange.modules B)
+  >  (preprocess (per_module ((action (run cat %{input-file})) Missing))))
+  > EOF
+  $ dune build --root=mixed @all
+
+A module excluded from both modes is also silently accepted:
+
+  $ cat >mixed/dune <<'EOF'
+  > (library
+  >  (name x)
+  >  (modes byte melange)
+  >  (modules A)
+  >  (melange.modules B)
+  >  (lint (per_module ((action (run true)) Excluded))))
+  > EOF
+  $ dune build --root=mixed @all
+
+Modules selected only by a disabled mode should not count as library members,
+but their references are currently accepted:
+
+  $ cat >mixed/dune <<'EOF'
+  > (library
+  >  (name x)
+  >  (modes byte)
+  >  (modules A)
+  >  (melange.modules B)
+  >  (preprocess (per_module ((action (run cat %{input-file})) B))))
+  > EOF
+  $ dune build --root=mixed @all
+
+  $ cat >mixed/dune <<'EOF'
+  > (library
+  >  (name x)
+  >  (modes melange)
+  >  (modules A)
+  >  (melange.modules B)
+  >  (preprocess (per_module ((action (run cat %{input-file})) A))))
+  > EOF
+  $ dune build --root=mixed @all

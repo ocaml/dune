@@ -8,8 +8,27 @@ include struct
 end
 
 let to_dune_dep_set =
-  let of_action_plugin_dep ~loc ~root : Dune_rpc.Dep.t -> Dep.t =
-    let to_dune_path = Path.relative root in
+  let of_action_plugin_dep ~loc ~root ~build_dir : Dune_rpc.Dep.t -> Dep.t =
+    let to_dune_path path =
+      let rec resolve root path =
+        match String.drop_prefix path ~prefix:"../" with
+        | Some path -> resolve (Filename.dirname root) path
+        | None ->
+          if String.equal path ".."
+          then Filename.dirname root
+          else Filename.concat root path
+      in
+      let path = resolve root path in
+      let path =
+        if String.equal path build_dir
+        then Path.build Path.Build.root
+        else (
+          match String.drop_prefix path ~prefix:(Filename.concat build_dir "") with
+          | Some path -> Path.build (Path.Build.of_string path)
+          | None -> Path.of_string path |> Path.Expert.try_localize_external)
+      in
+      Path.drop_optional_sandbox_root path
+    in
     function
     | File fn -> Dep.file (to_dune_path fn)
     | Directory dir ->
@@ -26,9 +45,8 @@ let to_dune_dep_set =
       in
       Dep.file_selector selector
   in
-  fun set ~loc ~root ->
-    let root = Path.drop_optional_sandbox_root root in
-    Dune_rpc.Dep.Set.to_list_map set ~f:(of_action_plugin_dep ~loc ~root)
+  fun set ~loc ~root ~build_dir ->
+    Dune_rpc.Dep.Set.to_list_map set ~f:(of_action_plugin_dep ~loc ~root ~build_dir)
     |> Dep.Set.of_list
 ;;
 
@@ -44,7 +62,8 @@ module Server = struct
   type active =
     { build_deps : Dep.Set.t -> unit Fiber.t
     ; rule_loc : Loc.t
-    ; root : Path.t
+    ; root : string
+    ; build_dir : string
     ; mutable initialized : bool
     ; mutable pending : unit Fiber.Ivar.t list
     }
@@ -70,7 +89,13 @@ module Server = struct
     let { Action.Ext.Exec.build_deps; rule_loc; root; _ } = ectx in
     let action_id = Action_id.gen () in
     let active_action =
-      { build_deps; rule_loc; root; initialized = false; pending = [] }
+      { build_deps
+      ; rule_loc
+      ; root = Unix.realpath (Path.to_absolute_filename root)
+      ; build_dir = Unix.realpath (Path.to_absolute_filename (Path.build Path.Build.root))
+      ; initialized = false
+      ; pending = []
+      }
     in
     Action_id.Table.add_exn active action_id active_action;
     Fiber.finalize
@@ -92,8 +117,8 @@ module Server = struct
       | { Exn_with_backtrace.exn; _ } :: _ -> exception_message exn
     in
     fun _session { Build_deps.action_id; deps } ->
-      let ({ rule_loc; root; _ } as active) = find_active action_id in
-      let deps_to_build = to_dune_dep_set deps ~loc:rule_loc ~root in
+      let ({ rule_loc; root; build_dir; _ } as active) = find_active action_id in
+      let deps_to_build = to_dune_dep_set deps ~loc:rule_loc ~root ~build_dir in
       let open Fiber.O in
       let completed = Fiber.Ivar.create () in
       active.pending <- completed :: active.pending;
@@ -109,8 +134,6 @@ module Server = struct
   let initialize _session action_id =
     let ({ root; _ } as active) = find_active action_id in
     active.initialized <- true;
-    (* Match Sys.getcwd even when the build directory is a symlink. *)
-    let root = Unix.realpath (Path.to_absolute_filename root) in
     Fiber.return { Initialize_response.root }
   ;;
 

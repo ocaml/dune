@@ -45,7 +45,16 @@ val ocaml : t -> Ocaml_toolchain.t Memo.t
 val build_context : t -> Build_context.t
 val kind : t -> Kind.t
 val findlib_paths : t -> Path.t list Memo.t
+
+(** The environment for this context, including the [PATH] of every package in
+    the lock directory. Consumers that resolve binaries per directory should use
+    [Super_context.context_env_by_dir] instead, which narrows that [PATH] to the
+    directory's owning package. *)
 val installed_env : t -> Env.t Memo.t
+
+(** [installed_env] without any lock directory [PATH]. *)
+val base_env : t -> Env.t Memo.t
+
 val default_ocamlpath : t -> Path.t list Memo.t
 val findlib_toolchain : t -> Context_name.t option
 val instrument_with : t -> Lib_name.t list
@@ -58,6 +67,15 @@ val to_dyn : t -> Dyn.t
 val to_dyn_concise : t -> Dyn.t
 val name : t -> Context_name.t
 val which : t -> Filename.t -> Path.t option Memo.t
+
+(** Like [which], but in a context with a lock directory only the binaries
+    installed by the dependency closure of [packages] are considered. The
+    ambient [PATH] is still searched if none of them provide the program. *)
+val which_narrowed_to_packages
+  :  t
+  -> packages:Package.Name.Set.t
+  -> Filename.t
+  -> Path.t option Memo.t
 
 (** By default Dune builds and installs dynamically linked foreign
     archives (usually named [dll*.so]). It is possible to disable this by

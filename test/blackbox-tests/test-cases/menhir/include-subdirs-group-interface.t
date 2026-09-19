@@ -1,7 +1,7 @@
 Menhir group interfaces should have valid inferred interfaces (#8989), even
 when their result type is an abstract type from a sibling module.
 
-  $ make_menhir_project 3.11 2.1
+  $ make_menhir_project 3.13 3.0
 
   $ cat >dune <<EOF
   > (include_subdirs qualified)
@@ -103,7 +103,7 @@ building.
   $ mkdir -p nested/outer/group
   $ cat >nested/dune-project <<'EOF'
   > (lang dune 3.25)
-  > (using menhir 2.1)
+  > (using menhir 3.0)
   > EOF
   $ cat >nested/dune <<'EOF'
   > (include_subdirs

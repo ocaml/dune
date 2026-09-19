@@ -1,7 +1,7 @@
 Menhir inference can expose a shadowed ancestor alias, not just the parser's
 own group alias (#8989).
 
-  $ make_menhir_project 3.25 2.1
+  $ make_menhir_project 3.25 3.0
   $ cat >dune <<'EOF'
   > (include_subdirs qualified)
   > (library (name lib) (wrapped false))

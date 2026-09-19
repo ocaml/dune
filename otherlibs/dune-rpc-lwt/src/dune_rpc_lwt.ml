@@ -177,11 +177,14 @@ module V1 = struct
     ;;
 
     let run f =
-      match Core.run_context () with
-      | Outside_of_dune -> f outside_of_dune
-      | Under_dune { action_id; where } ->
-        let* chan = connect where in
-        Plugin.run chan ~action_id ~f
+      Lwt.catch
+        (fun () ->
+           match Core.run_context () with
+           | Outside_of_dune -> f outside_of_dune
+           | Under_dune { action_id; where } ->
+             let* chan = connect where in
+             Plugin.run chan ~action_id ~f)
+        Lwt.fail
     ;;
   end
 end

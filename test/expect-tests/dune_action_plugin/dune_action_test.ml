@@ -67,7 +67,11 @@ let%expect_test "run captures synchronous failures" =
      Lwt_main.run promise
    with
    | Failure message -> print_endline message);
-  [%expect {| callback failed |}]
+  [%expect
+    {|
+    promise returned
+    callback failed
+    |}]
 ;;
 
 let run_action_expect_throws action =

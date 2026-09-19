@@ -58,6 +58,18 @@ let%expect_test "standalone reads use the current directory" =
     |}]
 ;;
 
+let%expect_test "run captures synchronous failures" =
+  (try
+     let promise =
+       Dune_rpc_lwt.V1.Action_plugin.run (fun _ -> failwith "callback failed")
+     in
+     print_endline "promise returned";
+     Lwt_main.run promise
+   with
+   | Failure message -> print_endline message);
+  [%expect {| callback failed |}]
+;;
+
 let run_action_expect_throws action =
   try
     run action;

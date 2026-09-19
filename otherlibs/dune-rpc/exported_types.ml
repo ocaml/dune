@@ -11,26 +11,27 @@ module Loc = struct
 
   let pos_sexp =
     let open Conv in
-    let to_ (pos_fname, pos_lnum, pos_bol, pos_cnum) =
-      { Lexing.pos_fname; pos_lnum; pos_bol; pos_cnum }
-    in
-    let from { Lexing.pos_fname; pos_lnum; pos_bol; pos_cnum } =
-      pos_fname, pos_lnum, pos_bol, pos_cnum
-    in
-    let pos_fname = field "pos_fname" (required string) in
-    let pos_lnum = field "pos_lnum" (required int) in
-    let pos_bol = field "pos_bol" (required int) in
-    let pos_cnum = field "pos_cnum" (required int) in
-    iso (record (four pos_fname pos_lnum pos_bol pos_cnum)) to_ from
+    record
+      (Record.make (fun pos_fname pos_lnum pos_bol pos_cnum ->
+         { Lexing.pos_fname; pos_lnum; pos_bol; pos_cnum })
+       |> Record.field "pos_fname" (required string) ~get:(fun { Lexing.pos_fname; _ } ->
+         pos_fname)
+       |> Record.field "pos_lnum" (required int) ~get:(fun { Lexing.pos_lnum; _ } ->
+         pos_lnum)
+       |> Record.field "pos_bol" (required int) ~get:(fun { Lexing.pos_bol; _ } ->
+         pos_bol)
+       |> Record.field "pos_cnum" (required int) ~get:(fun { Lexing.pos_cnum; _ } ->
+         pos_cnum)
+       |> Record.finish)
   ;;
 
   let sexp =
     let open Conv in
-    let to_ (start, stop) = { start; stop } in
-    let from { start; stop } = start, stop in
-    let start = field "start" (required pos_sexp) in
-    let stop = field "stop" (required pos_sexp) in
-    iso (record (both start stop)) to_ from
+    record
+      (Record.make (fun start stop -> { start; stop })
+       |> Record.field "start" (required pos_sexp) ~get:start
+       |> Record.field "stop" (required pos_sexp) ~get:stop
+       |> Record.finish)
   ;;
 end
 
@@ -462,11 +463,11 @@ module Diagnostic = struct
 
     let sexp =
       let open Conv in
-      let from { in_build; in_source } = in_build, in_source in
-      let to_ (in_build, in_source) = { in_build; in_source } in
-      let in_build = field "in_build" (required string) in
-      let in_source = field "in_source" (required string) in
-      iso (record (both in_build in_source)) to_ from
+      record
+        (Record.make (fun in_build in_source -> { in_build; in_source })
+         |> Record.field "in_build" (required string) ~get:in_build
+         |> Record.field "in_source" (required string) ~get:in_source
+         |> Record.finish)
     ;;
   end
 
@@ -491,11 +492,14 @@ module Diagnostic = struct
 
     let sexp =
       let open Conv in
-      let loc = field "loc" (required Loc.sexp) in
-      let message = field "message" (required (Pp.sexp User_message.Style.sexp)) in
-      let to_ (loc, message) = { loc; message } in
-      let from { loc; message } = loc, message in
-      iso (record (both loc message)) to_ from
+      record
+        (Record.make (fun loc message -> { loc; message })
+         |> Record.field "loc" (required Loc.sexp) ~get:loc
+         |> Record.field
+              "message"
+              (required (Pp.sexp User_message.Style.sexp))
+              ~get:message_with_style
+         |> Record.finish)
     ;;
   end
 
@@ -532,24 +536,21 @@ module Diagnostic = struct
 
   let sexp =
     let open Conv in
-    let from { targets; message; loc; severity; promotion; directory; id; related } =
-      targets, message, loc, severity, promotion, directory, id, related
-    in
-    let to_ (targets, message, loc, severity, promotion, directory, id, related) =
-      { targets; message; loc; severity; promotion; directory; id; related }
-    in
-    let loc = field "loc" (optional Loc.sexp) in
-    let message = field "message" (required (Pp.sexp User_message.Style.sexp)) in
-    let targets = field "targets" (required (list Target.sexp)) in
-    let severity = field "severity" (optional sexp_severity) in
-    let directory = field "directory" (optional string) in
-    let promotion = field "promotion" (required (list Promotion.sexp)) in
-    let id = field "id" (required Id.sexp) in
-    let related = field "related" (required (list Related.sexp)) in
-    iso
-      (record (eight targets message loc severity promotion directory id related))
-      to_
-      from
+    record
+      (Record.make (fun targets message loc severity promotion directory id related ->
+         { targets; message; loc; severity; promotion; directory; id; related })
+       |> Record.field "targets" (required (list Target.sexp)) ~get:targets
+       |> Record.field
+            "message"
+            (required (Pp.sexp User_message.Style.sexp))
+            ~get:message_with_style
+       |> Record.field "loc" (optional Loc.sexp) ~get:loc
+       |> Record.field "severity" (optional sexp_severity) ~get:severity
+       |> Record.field "promotion" (required (list Promotion.sexp)) ~get:promotion
+       |> Record.field "directory" (optional string) ~get:directory
+       |> Record.field "id" (required Id.sexp) ~get:id
+       |> Record.field "related" (required (list Related.sexp)) ~get:related
+       |> Record.finish)
   ;;
 
   let to_dyn t = Sexp.to_dyn (Conv.to_sexp sexp t)
@@ -634,11 +635,11 @@ module Message = struct
 
   let sexp =
     let open Conv in
-    let from { payload; message } = payload, message in
-    let to_ (payload, message) = { payload; message } in
-    let payload = field "payload" (optional sexp) in
-    let message = field "message" (required string) in
-    iso (record (both payload message)) to_ from
+    record
+      (Record.make (fun payload message -> { payload; message })
+       |> Record.field "payload" (optional sexp) ~get:payload
+       |> Record.field "message" (required string) ~get:message
+       |> Record.finish)
   ;;
 
   let to_sexp_unversioned = Conv.to_sexp sexp
@@ -661,13 +662,14 @@ module Job = struct
 
   let sexp =
     let open Conv in
-    let from { id; pid; description; started_at } = id, pid, description, started_at in
-    let to_ (id, pid, description, started_at) = { id; pid; description; started_at } in
-    let id = field "id" (required Id.sexp) in
-    let started_at = field "started_at" (required float) in
-    let pid = field "pid" (required int) in
-    let description = field "description" (required sexp_pp_unit) in
-    iso (record (four id pid description started_at)) to_ from
+    record
+      (Record.make (fun id pid description started_at ->
+         { id; pid; description; started_at })
+       |> Record.field "id" (required Id.sexp) ~get:id
+       |> Record.field "pid" (required int) ~get:pid
+       |> Record.field "description" (required sexp_pp_unit) ~get:description
+       |> Record.field "started_at" (required float) ~get:started_at
+       |> Record.finish)
   ;;
 
   module Event = struct
@@ -842,10 +844,12 @@ module Promote_targets = struct
 
   let sexp =
     let open Conv in
-    let files = field "files" (required Files_to_promote.sexp) in
-    let matching = field "matching" (required Matching.sexp) in
-    let to_ (files, matching) = { files; matching } in
-    let from { files; matching } = files, matching in
-    iso (record (both files matching)) to_ from
+    record
+      (Record.make (fun files matching -> { files; matching })
+       |> Record.field "files" (required Files_to_promote.sexp) ~get:(fun { files; _ } ->
+         files)
+       |> Record.field "matching" (required Matching.sexp) ~get:(fun { matching; _ } ->
+         matching)
+       |> Record.finish)
   ;;
 end

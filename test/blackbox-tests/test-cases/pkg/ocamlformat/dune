@@ -4,7 +4,10 @@
 
 (cram
  (deps %{bin:curl})
- (applies_to ocamlformat-e2e.t))
+ (applies_to
+  ocamlformat-dune-tools-install.t
+  ocamlformat-e2e.t
+  ocamlformat-version-change.t))
 
 (cram
  (deps %{bin:md5sum})

@@ -102,11 +102,13 @@ Group interfaces are configurable similarly to the
     ├── sub.ml
     └── other.ml
 
+A :doc:`/reference/dune/menhir` stanza can generate a module group interface.
+
 .. warning::
 
-   Using a :doc:`/reference/dune/menhir` parser as a module group interface can
-   produce an invalid inferred interface due to module-name collisions. OCaml
-   may report warning 63 (``erroneous-printed-signature``); see
+   Type inference can still produce invalid module paths when a parser refers
+   to modules from an enclosing group with a handwritten interface. OCaml may
+   report warning 63 (``erroneous-printed-signature``); see
    `issue #8989 <https://github.com/ocaml/dune/issues/8989>`_.
 
 Renaming Directories

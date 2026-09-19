@@ -675,7 +675,7 @@ module Alias_module = struct
       String_builder.build_exact_exn builder
   ;;
 
-  let of_modules project modules group instances =
+  let of_modules modules group instances ~shadowed =
     let aliases =
       Modules.Group.for_alias group
       |> List.map ~f:(fun (local_name, m) ->
@@ -683,31 +683,40 @@ module Alias_module = struct
         let obj_name = Module.obj_name m in
         { Alias.local_name; canonical_path; obj_name })
     in
-    let shadowed =
-      if Dune_project.dune_version project < (3, 5)
-      then []
-      else (
-        let lib_interface = Modules.Group.lib_interface group in
-        match Module.kind lib_interface with
-        | Alias _ -> []
-        | _ -> [ Module.name (Modules.Group.alias group) ])
-    in
     { aliases; shadowed; instances }
   ;;
 end
 
 let build_alias_module cctx group =
+  let sctx = Compilation_context.super_context cctx in
+  let dir = Compilation_context.dir cctx in
   let alias_module = Modules.Group.alias group in
+  let* shadowed =
+    let project = Compilation_context.scope cctx |> Scope.project in
+    if Dune_project.dune_version project < (3, 5)
+    then Memo.return []
+    else (
+      let lib_interface = Modules.Group.lib_interface group in
+      match Module.kind lib_interface with
+      | Alias _ -> Memo.return []
+      | _ ->
+        let for_ = Compilation_context.for_ cctx in
+        let+ ml_sources = Dir_contents.get sctx ~dir >>= Dir_contents.ml ~for_ in
+        let origins = Ml_sources.parser_gen_origins ml_sources in
+        (match Module_name.Path.Map.find origins (Module.path lib_interface) with
+         | Some Menhir ->
+           (* Menhir reuses inferred types in generated code. Shadowing the
+              alias can make OCaml print invalid paths such as [Foo__/2.M]. *)
+           []
+         | None | Some (Ocamllex | Ocamlyacc) -> [ Module.name alias_module ]))
+  in
   let* () =
     let alias_file =
       let open Action_builder.O in
       let+ instances = Compilation_context.instances cctx in
-      let project = Compilation_context.scope cctx |> Scope.project in
       let modules = Compilation_context.modules cctx in
-      Alias_module.of_modules project modules group instances |> Alias_module.to_ml
+      Alias_module.of_modules modules group instances ~shadowed |> Alias_module.to_ml
     in
-    let dir = Compilation_context.dir cctx in
-    let sctx = Compilation_context.super_context cctx in
     Super_context.add_rule
       ~loc:Loc.none
       sctx

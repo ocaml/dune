@@ -50,7 +50,23 @@ It also selects modules that are only compiled with Melange.
 
   $ dune build '%{melange.cmi:lib/melange_only}'
 
-It does not fall back to the OCaml module set.
+Explicit annotation variables and the qualified cmj spelling are not yet
+recognized:
+
+  $ dune build '%{melange.cmt:lib/common}'
+  Usage: dune build [--help] [OPTION]… [TARGET]…
+  dune: TARGET… arguments: Unknown macro %{melange.cmt:..}
+  [1]
+  $ dune build '%{melange.cmti:lib/common}'
+  Usage: dune build [--help] [OPTION]… [TARGET]…
+  dune: TARGET… arguments: Unknown macro %{melange.cmti:..}
+  [1]
+  $ dune build '%{melange.cmj:lib/common}'
+  Usage: dune build [--help] [OPTION]… [TARGET]…
+  dune: TARGET… arguments: Unknown macro %{melange.cmj:..}
+  [1]
+
+The explicit cmi variable does not fall back to the OCaml module set.
 
   $ dune build '%{melange.cmi:lib/ocaml_only}'
   File "command line", line 1, characters 0-29:

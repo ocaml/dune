@@ -93,6 +93,13 @@ let bash_exn =
 
 let zero = Predicate_lang.element 0
 
+let copy_file ~src ~dst =
+  Path.parent dst |> Option.iter ~f:Path.mkdir_p;
+  Io.copy_file ~src ~dst ()
+;;
+
+let mkdir ~src:_ ~dst = Path.mkdir_p dst
+
 let rec exec t ~ectx ~eenv : unit Fiber.t =
   match (t : Action.t) with
   | Run { prog = Error e; args = _; can_run_in_action_runner = _ } ->
@@ -146,11 +153,6 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
     Fiber.return ()
   | Copy (src, dst) ->
     let dst = Path.build dst in
-    let copy_file ~src ~dst =
-      Path.parent dst |> Option.iter ~f:Path.mkdir_p;
-      Io.copy_file ~src ~dst ()
-    in
-    let mkdir ~src:_ ~dst = Path.mkdir_p dst in
     let on_unsupported ~src kind =
       User_error.raise
         [ Pp.textf
@@ -172,7 +174,25 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
     in
     Fiber.return ()
   | Symlink (src, dst) ->
-    Io.portable_symlink ~src ~dst:(Path.build dst);
+    let dst = Path.build dst in
+    let is_dir_target =
+      match ectx.targets with
+      | Some { dirs; _ } -> Filename.Set.mem dirs (Path.basename dst)
+      | None -> false
+    in
+    if Stdlib.Sys.win32 && is_dir_target
+    then (
+      let on_unsupported ~src kind =
+        User_error.raise
+          [ Pp.textf
+              "Failed to copy %s of kind %S while copying a directory target in place of \
+               a symlink"
+              (Path.to_string_maybe_quoted src)
+              (File_kind.to_string_hum kind)
+          ]
+      in
+      Tree_copy.copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ())
+    else Io.portable_symlink ~src ~dst;
     Fiber.return ()
   | Hardlink (src, dst) ->
     Io.portable_hardlink ~src ~dst:(Path.build dst);

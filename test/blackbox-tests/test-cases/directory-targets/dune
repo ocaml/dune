@@ -1,3 +1,7 @@
 (cram
  (applies_to remove-write-permissions.t)
  (deps %{bin:bash}))
+
+(cram
+ (applies_to install-dir-target-copy-windows.t)
+ (alias runtest-windows))

@@ -5,6 +5,11 @@
  (deps %{bin:ps}))
 
 (cram
+ (applies_to sandbox-cleanup-on-signal.t)
+ (enabled_if
+  (= %{system} linux)))
+
+(cram
  (applies_to error.t subprocess.t)
  (enabled_if false))
 

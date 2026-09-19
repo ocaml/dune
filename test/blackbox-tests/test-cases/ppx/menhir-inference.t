@@ -1,6 +1,6 @@
 Menhir inference with ordinary and staged PPX exposes shadowed aliases (#8989).
 
-  $ make_menhir_project 3.11 2.1
+  $ make_menhir_project 3.25 2.1
   $ mkdir -p ppx lib/group
   $ cat >ppx/dune <<'EOF'
   > (library (name packed_ppx) (kind ppx_rewriter) (libraries ppxlib))
@@ -41,13 +41,11 @@ Ordinary PPX produces a binary AST; staged PPX runs inside the compiler.
   > }
   $ build pps
   [1]
-  $ sed -n '/val xv_main/p;/Error: Syntax error/{p;q;}' \
-  >   _build/default/lib/group/group__mock.mli.inferred errors
-  val xv_main : (module Group__/2.M.S)
-  Error: Syntax error
+  $ sed -n '/Error (warning 63/p;/Definition of module/p' errors
+  Error (warning 63 [erroneous-printed-signature]): The printed interface
+    Definition of module Group__/2 Beware
   $ build staged_pps
   [1]
-  $ sed -n '/val xv_main/p;/Error: Syntax error/{p;q;}' \
-  >   _build/default/lib/group/group__mock.mli.inferred errors
-  val xv_main : (module Group__/2.M.S)
-  Error: Syntax error
+  $ sed -n '/Error (warning 63/p;/Definition of module/p' errors
+  Error (warning 63 [erroneous-printed-signature]): The printed interface
+    Definition of module Group__/2 Beware

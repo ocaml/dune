@@ -75,11 +75,11 @@ module Call = struct
 
   let fields =
     let open Conv in
-    let to_ (method_, params) = { method_; params } in
-    let from { method_; params } = method_, params in
-    let method_ = field "method" (required Method.Name.sexp) in
-    let params = field "params" (required sexp) in
-    iso (both method_ params) to_ from
+    Record.make (fun method_ params -> { method_; params })
+    |> Record.field "method" (required Method.Name.sexp) ~get:(fun { method_; _ } ->
+      method_)
+    |> Record.field "params" (required sexp) ~get:(fun { params; _ } -> params)
+    |> Record.finish
   ;;
 end
 
@@ -131,19 +131,16 @@ module Response = struct
 
     let sexp =
       let open Conv in
-      let id = field "payload" (optional sexp) in
-      let message = field "message" (required string) in
-      let kind =
-        field
-          "kind"
-          (required
-             (enum [ "Invalid_request", Invalid_request; "Code_error", Code_error ]))
-      in
       record
-        (iso
-           (three id message kind)
-           (fun (payload, message, kind) -> { payload; message; kind })
-           (fun { payload; message; kind } -> payload, message, kind))
+        (Record.make (fun payload message kind -> { payload; message; kind })
+         |> Record.field "payload" (optional sexp) ~get:payload
+         |> Record.field "message" (required string) ~get:message
+         |> Record.field
+              "kind"
+              (required
+                 (enum [ "Invalid_request", Invalid_request; "Code_error", Code_error ]))
+              ~get:kind
+         |> Record.finish)
     ;;
 
     let to_dyn { payload; message; kind } =
@@ -214,16 +211,13 @@ module Initialize = struct
 
     let sexp =
       let open Conv in
-      let dune_version = field "dune_version" (required Version.sexp) in
-      let protocol_version = field "protocol_version" (required Protocol.sexp) in
-      let id = Id.required_field in
-      let to_ (dune_version, protocol_version, id) =
-        { dune_version; protocol_version; id }
-      in
-      let from { dune_version; protocol_version; id } =
-        dune_version, protocol_version, id
-      in
-      record (iso (three dune_version protocol_version id) to_ from)
+      record
+        (Record.make (fun dune_version protocol_version id ->
+           { dune_version; protocol_version; id })
+         |> Record.field "dune_version" (required Version.sexp) ~get:dune_version
+         |> Record.field "protocol_version" (required Protocol.sexp) ~get:protocol_version
+         |> Record.add Id.required_field ~get:id
+         |> Record.finish)
     ;;
 
     let of_call { Call.method_; params } ~version =

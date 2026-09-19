@@ -9,11 +9,12 @@ module Related = struct
 
   let sexp =
     let open Conv in
-    let loc = field "loc" (required Loc.sexp) in
-    let message = field "message" (required sexp_pp_unit) in
-    let to_ (loc, message) = { loc; message } in
-    let from { loc; message } = loc, message in
-    iso (record (both loc message)) to_ from
+    record
+      (Record.make (fun loc message -> { loc; message })
+       |> Record.field "loc" (required Loc.sexp) ~get:(fun { loc; _ } -> loc)
+       |> Record.field "message" (required sexp_pp_unit) ~get:(fun { message; _ } ->
+         message)
+       |> Record.finish)
   ;;
 
   let to_diagnostic_related t : Diagnostic.Related.t =
@@ -45,24 +46,30 @@ let sexp_severity =
 
 let sexp =
   let open Conv in
-  let from { targets; message; loc; severity; promotion; directory; id; related } =
-    targets, message, loc, severity, promotion, directory, id, related
-  in
-  let to_ (targets, message, loc, severity, promotion, directory, id, related) =
-    { targets; message; loc; severity; promotion; directory; id; related }
-  in
-  let loc = field "loc" (optional Loc.sexp) in
-  let message = field "message" (required sexp_pp_unit) in
-  let targets = field "targets" (required (list Target.sexp)) in
-  let severity = field "severity" (optional sexp_severity) in
-  let directory = field "directory" (optional string) in
-  let promotion = field "promotion" (required (list Diagnostic.Promotion.sexp)) in
-  let id = field "id" (required Diagnostic.Id.sexp) in
-  let related = field "related" (required (list Related.sexp)) in
-  iso
-    (record (eight targets message loc severity promotion directory id related))
-    to_
-    from
+  record
+    (Record.make (fun targets message loc severity promotion directory id related ->
+       { targets; message; loc; severity; promotion; directory; id; related })
+     |> Record.field
+          "targets"
+          (required (list Target.sexp))
+          ~get:(fun { targets; _ } -> targets)
+     |> Record.field "message" (required sexp_pp_unit) ~get:(fun { message; _ } ->
+       message)
+     |> Record.field "loc" (optional Loc.sexp) ~get:(fun { loc; _ } -> loc)
+     |> Record.field "severity" (optional sexp_severity) ~get:(fun { severity; _ } ->
+       severity)
+     |> Record.field
+          "promotion"
+          (required (list Diagnostic.Promotion.sexp))
+          ~get:(fun { promotion; _ } -> promotion)
+     |> Record.field "directory" (optional string) ~get:(fun { directory; _ } ->
+       directory)
+     |> Record.field "id" (required Diagnostic.Id.sexp) ~get:(fun { id; _ } -> id)
+     |> Record.field
+          "related"
+          (required (list Related.sexp))
+          ~get:(fun { related; _ } -> related)
+     |> Record.finish)
 ;;
 
 let to_diagnostic t : Diagnostic.t =

@@ -14,3 +14,8 @@
  (enabled_if %{bin-available:odoc})
  (deps %{bin:odoc})
  (applies_to parameterised-doc.t))
+
+(cram
+ (enabled_if %{bin-available:menhir})
+ (deps %{bin:menhir})
+ (applies_to menhir-inference.t))

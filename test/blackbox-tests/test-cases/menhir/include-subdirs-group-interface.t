@@ -84,7 +84,19 @@ generated parser itself, so this is not only an informational warning.
   > main: v=value EOF { ignore v }
   > value: { (module M.Impl : M.S) }
   > EOF
-  $ dune build 2>errors
+  $ dune build
+  File "group/group__mock.ml.mock", line 1:
+  Warning 63 [erroneous-printed-signature]: The printed interface differs from
+    the inferred interface. The inferred interface contained items which could
+    not be printed properly due to name collisions between identifiers.
+    File "_none_", line 1:
+    Definition of module Dune__exe__Group__/2 Beware
+    that this warning is purely informational and will not catch all instances
+    of erroneous printed interface.
+  File "group/group.ml", line 36, characters 34-35:
+  36 |      : ((module Dune__exe__Group__/2.M.S)))
+                                         ^
+  Error: Syntax error
   [1]
   $ cat _build/default/group/group__mock.mli.inferred
   type token = EOF
@@ -92,8 +104,6 @@ generated parser itself, so this is not only an informational warning.
   val xv_value : (module Dune__exe__Group__/2.M.S)
   val xv_main : unit
   val menhir_end_marker : int
-  $ sed -n '/Error: Syntax error/{p;q;}' errors
-  Error: Syntax error
 
 Nested group interfaces should also work when the directory is renamed. Use
 `merge_into` so the group interface is not named after the grammar file. With

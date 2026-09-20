@@ -108,6 +108,14 @@ code. The dependency is missing:
     "_build/default/parser.mly"
   ]
 
+The dependency is also missing transitively from modules using the parser:
+
+  $ echo 'let parse = Parser.main' > consumer.ml
+  $ dune describe rules --format=json %{cmi:consumer} \
+  > | jq_dune '[ .[] | ruleDepFilePathsOfKind("In_build_dir")
+  >              | select(endswith("mylib__Ast.cmi")) ]'
+  []
+
 The missing dependency tracking introduces a race, which happens to generally
 succeed due to happy scheduling. To make it reproducible in CI, we first force
 the build of `ast.cmi` such that the compilation of `parser.cmi` can secretly
@@ -115,6 +123,19 @@ access it (without a race):
 
   $ dune build %{cmi:ast}
   $ dune build
+  $ cp _build/default/parser.mli parser.mli.before
+
+The incremental rebuild must also work with a fallback rule whose outputs
+are absent from the source tree:
+
+  $ cat > dune <<'EOF'
+  > (menhir
+  >  (modules parser)
+  >  (mode fallback)
+  >  (explain false))
+  > (library
+  >  (name mylib))
+  > EOF
 
 But if we later update the untracked dependency, then `parser.cmi` will not
 be rebuilt and the linker will fail:
@@ -126,3 +147,4 @@ be rebuilt and the linker will fail:
          and .mylib.objs/byte/mylib__Parser.cmi make inconsistent assumptions
          over interface Mylib__Ast
   [1]
+  $ diff parser.mli.before _build/default/parser.mli

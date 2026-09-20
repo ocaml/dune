@@ -311,6 +311,49 @@ module Run (P : PARAMS) = struct
         mock_module
         ~output:(inferred_mli base)
     in
+    let* () =
+      let source =
+        let base = Filename.of_string_unchecked base in
+        let filename = Filename.add_extension base Filename.Extension.ml in
+        Path.Build.relative_fname dir filename
+      in
+      let* deps =
+        match stanza.mode with
+        | Standard | Promote _ | Ignore_source_files ->
+          Memo.return (Ml_kind.Dict.get deps Impl)
+        | Fallback ->
+          let source = Path.Build.drop_build_context_exn source in
+          let+ files = Source_tree.files_of (Path.Source.parent_exn source) in
+          if Path.Source.Set.mem files source
+          then Action_builder.return []
+          else Ml_kind.Dict.get deps Impl
+      in
+      let* path =
+        let+ { Ml_sources.Parser_generators.targets; deps = _ } =
+          Dir_contents.get sctx ~dir
+          >>= Dir_contents.ml ~for_
+          >>| Ml_sources.Parser_generators.modules ~for_:(Menhir stanza.loc)
+        in
+        let target =
+          List.find (Module_trie.to_list targets) ~f:(fun (_, m) ->
+            List.exists (Module.Source.files m) ~f:(fun file ->
+              Path.equal (Module.File.path file) (Path.build source)))
+        in
+        match target with
+        | Some (_, m) -> Module.Source.path m
+        | None ->
+          Code_error.raise
+            "Menhir generated module not found"
+            [ "source", Path.Build.to_dyn source ]
+      in
+      let obj_dir = Compilation_context.obj_dir cctx in
+      (* Keep inference metadata separate from the parser targets: it must not
+         be promoted, or cause an otherwise unused fallback rule to run. *)
+      Dep_rules.write_inferred_deps
+        (Ml_sources.Parser_generators.menhir_inference_deps_file ~obj_dir path)
+        deps
+      |> rule ~mode:Standard
+    in
     let* explain_flags = explain_flags base stanza
     and* mode = expand_rule_mode stanza.mode in
     (* 3. A second invocation of Menhir reads the inferred [.mli] file. *)

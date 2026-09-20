@@ -549,6 +549,20 @@ module Parser_generators = struct
         [ "keys", Dyn.list Loc.to_dyn (Loc.Map.keys modules); "for_", dyn_of_for_ for_ ]
   ;;
 
+  let menhir_inference_deps_file ~obj_dir path =
+    Path.Build.relative
+      (Obj_dir.obj_dir obj_dir)
+      (Module_name.Path.to_string path ^ ".menhir-deps")
+  ;;
+
+  let menhir_inference_deps t ~obj_dir =
+    Loc.Map.fold t.modules.menhirs ~init:Path.Map.empty ~f:(fun dep_info acc ->
+      Module_trie.fold dep_info.targets ~init:acc ~f:(fun (_, m) acc ->
+        let deps = menhir_inference_deps_file ~obj_dir (Module.Source.path m) in
+        List.fold_left (Module.Source.files m) ~init:acc ~f:(fun acc file ->
+          Path.Map.set acc (Module.File.original_path file) deps)))
+  ;;
+
   module Targets = struct
     type for_ =
       | Ocamllex of Parser_generators.t

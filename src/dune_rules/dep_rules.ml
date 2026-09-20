@@ -9,6 +9,12 @@ module Transitive_deps_output : sig
   val equal : t -> t -> bool
   val of_modules : Module.t list -> t
   val parse : modules:Modules.With_vlib.t -> t -> Module.t list
+  val read : Path.t -> t Action_builder.t
+
+  val write
+    :  Path.Build.t
+    -> t Action_builder.t
+    -> Action.Full.t Action_builder.With_targets.t
 
   val merge
     :  dir:Path.Build.t
@@ -85,6 +91,8 @@ end = struct
 
   let empty = ""
   let equal = String.equal
+  let read = Action_builder.contents
+  let write path contents = Action_builder.write_file_dyn path contents
 
   let of_modules modules =
     List.map modules ~f:(fun m -> Module.obj_name m |> Module_name.Unique.to_string)
@@ -113,6 +121,11 @@ end = struct
     Build_system.execute_action_stdout anon |> Action_builder.of_memo
   ;;
 end
+
+let write_inferred_deps path deps =
+  Action_builder.map deps ~f:Transitive_deps_output.of_modules
+  |> Transitive_deps_output.write path
+;;
 
 module Dep_key = struct
   type t = Module_name.Unique.t * Ml_kind.t
@@ -298,11 +311,29 @@ type transitive_deps =
   ; obj_dir : Path.Build.t Obj_dir.t
   ; obj_map : Modules.Sourced_module.t Module_name.Unique.Map.t
   ; imported_vlib_deps : imported_vlib_deps option
+  ; menhir_inference_deps : Path.Build.t Path.Map.t Memo.Lazy.t option
   ; memo : (Dep_key.t, memoized_transitive_deps) Action_builder.memo Lazy.t
   }
 
-let rec create_transitive_deps ~sandbox ~modules ~sctx ~dir ~obj_dir ~imported_vlib_deps =
+let rec create_transitive_deps
+          ~sandbox
+          ~modules
+          ~sctx
+          ~dir
+          ~obj_dir
+          ~imported_vlib_deps
+          ~for_
+  =
   let obj_map = Modules.With_vlib.obj_map modules in
+  let menhir_inference_deps =
+    match for_ with
+    | Compilation_mode.Melange -> None
+    | Ocaml ->
+      Some
+        (Memo.lazy_ ~name:"menhir-inference-dependencies" (fun () ->
+           let+ sources = Dir_contents.get sctx ~dir >>= Dir_contents.ml ~for_ in
+           Ml_sources.Parser_generators.menhir_inference_deps sources ~obj_dir))
+  in
   let rec t =
     { sandbox
     ; modules
@@ -311,6 +342,7 @@ let rec create_transitive_deps ~sandbox ~modules ~sctx ~dir ~obj_dir ~imported_v
     ; obj_dir
     ; obj_map
     ; imported_vlib_deps
+    ; menhir_inference_deps
     ; memo =
         lazy
           (Action_builder.create_memo
@@ -346,11 +378,29 @@ and transitive_deps_output_uncached t unit ~ml_kind =
       ~ml_kind
       unit
   in
-  let transitive =
-    List.filter_map immediate_deps ~f:transitive_dep
-    |> List.map ~f:(fun dep ->
-      Action_builder.exec_memo (Lazy.force t.memo) dep
-      |> Action_builder.map ~f:(fun memoized -> memoized.output))
+  let* transitive =
+    let transitive =
+      List.filter_map immediate_deps ~f:transitive_dep
+      |> List.map ~f:(fun dep ->
+        Action_builder.exec_memo (Lazy.force t.memo) dep
+        |> Action_builder.map ~f:(fun memoized -> memoized.output))
+    in
+    match t.menhir_inference_deps, Module.source unit ~ml_kind with
+    | None, _ | _, None -> Action_builder.return transitive
+    | Some files, Some source ->
+      let+ files = Action_builder.of_memo (Memo.Lazy.force files) in
+      (match Path.Map.find files (Module.File.original_path source) with
+       | None -> transitive
+       | Some path ->
+         let path = Path.build path in
+         (* These are the already-resolved dependencies used for inference, not
+            additional source names to resolve. Keep them in the transitive graph
+            so users of the generated parser inherit them too. *)
+         Action_builder.if_file_exists
+           path
+           ~then_:(Transitive_deps_output.read path)
+           ~else_:(Action_builder.return Transitive_deps_output.empty)
+         :: transitive)
   in
   let immediate = List.map immediate_deps ~f:Module.obj_name in
   Transitive_deps_output.merge ~dir:t.dir ~transitive ~immediate
@@ -564,7 +614,8 @@ let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported
           ~sctx
           ~dir:(Obj_dir.dir vlib_obj_dir)
           ~obj_dir:vlib_obj_dir
-          ~imported_vlib_deps:None)
+          ~imported_vlib_deps:None
+          ~for_)
     in
     let deps_of sourced_module ~ml_kind =
       let* transitive_deps = Memo.Lazy.force transitive_deps in
@@ -590,7 +641,7 @@ let make_transitive_deps ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~for_ =
            ~sandbox
            ~for_)
   in
-  ( create_transitive_deps ~sandbox ~modules ~sctx ~dir ~obj_dir ~imported_vlib_deps
+  ( create_transitive_deps ~sandbox ~modules ~sctx ~dir ~obj_dir ~imported_vlib_deps ~for_
   , imported_vlib_deps )
 ;;
 

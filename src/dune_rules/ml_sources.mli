@@ -52,6 +52,16 @@ module Parser_generators : sig
     }
 
   val modules : t -> for_:for_ -> dep_info
+
+  val menhir_inference_deps_file
+    :  obj_dir:Path.Build.t Obj_dir.t
+    -> Module_name.Path.t
+    -> Path.Build.t
+
+  val menhir_inference_deps
+    :  t
+    -> obj_dir:Path.Build.t Obj_dir.t
+    -> Path.Build.t Path.Map.t
 end
 
 (** Find out the origin of the stanza for a given logical module path. *)

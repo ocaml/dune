@@ -96,62 +96,60 @@ However, in this setup, it instead produces a reference to the hidden
   $ grep Mylib _build/default/parser.mli
   val main: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Mylib__Ast.Int_list.t)
 
-While `ocamldep` detects the dependency on `Mylib__Ast`, dune ignores it as
-references to hidden module names can normally not be used in hand-written
-code. The dependency is missing:
+While ordinary module lookup ignores the physical name `Mylib__Ast`, Dune
+retains the dependencies used for Menhir's type inference:
 
   $ dune describe rules --format=json %{cmi:parser} \
   > | jq_dune '[ .[] | ruleDepFilePathsOfKind("In_build_dir") ]'
   [
     "_build/default/.mylib.objs/byte/mylib.cmi",
+    "_build/default/.mylib.objs/byte/mylib__Ast.cmi",
+    "_build/default/.mylib.objs/byte/mylib__Util.cmi",
     "_build/default/parser.mli",
     "_build/default/parser.mly"
   ]
 
-The dependency is also missing transitively from modules using the parser:
+These dependencies also propagate to modules using the parser:
 
   $ echo 'let parse = Parser.main' > consumer.ml
   $ dune describe rules --format=json %{cmi:consumer} \
   > | jq_dune '[ .[] | ruleDepFilePathsOfKind("In_build_dir")
   >              | select(endswith("mylib__Ast.cmi")) ]'
-  []
+  [
+    "_build/default/.mylib.objs/byte/mylib__Ast.cmi"
+  ]
 
-The missing dependency tracking introduces a race, which happens to generally
-succeed due to happy scheduling. To make it reproducible in CI, we first force
-the build of `ast.cmi` such that the compilation of `parser.cmi` can secretly
-access it (without a race):
+Build `ast.cmi` first so the original missing-dependency bug does not fail
+because of a race before the incremental rebuild:
 
   $ dune build %{cmi:ast}
   $ dune build
   $ cp _build/default/parser.mli parser.mli.before
 
-The incremental rebuild must also work with a fallback rule whose outputs
-are absent from the source tree:
+The incremental rebuild must also work with a fallback rule using `merge_into`
+whose outputs are absent from the source tree:
 
   $ cat > dune <<'EOF'
   > (menhir
   >  (modules parser)
+  >  (merge_into parser)
   >  (mode fallback)
   >  (explain false))
   > (library
   >  (name mylib))
   > EOF
+  $ dune build
 
-But if we later update the untracked dependency, then `parser.cmi` will not
-be rebuilt and the linker will fail:
+Updating `Ast` must rebuild the parser and its consumer, even though the
+generated parser interface has not changed:
 
   $ echo 'let dummy = 42' >> ast.ml
   $ dune build
-  File "parser.ml", line 1:
-  Error: The files .mylib.objs/byte/mylib__Ast.cmi
-         and .mylib.objs/byte/mylib__Parser.cmi make inconsistent assumptions
-         over interface Mylib__Ast
-  [1]
   $ diff parser.mli.before _build/default/parser.mli
 
 An unmerged stanza can generate several parsers with different inference
-dependencies. The required Ast dependency is still missing for Parser.
-Other_parser also uses Other_ast during inference, although its generated
+dependencies. The required Ast dependency is tracked for Parser.
+Other_parser also retains Other_ast from inference, although its generated
 interface only mentions unit.
 
   $ cat > dune <<'EOF'
@@ -170,8 +168,12 @@ interface only mentions unit.
   $ dune describe rules --format=json %{cmi:parser} \
   > | jq_dune '[ .[] | ruleDepFilePathsOfKind("In_build_dir")
   >              | select(endswith("__Ast.cmi") or endswith("__Other_ast.cmi")) ]'
-  []
+  [
+    "_build/default/.mylib.objs/byte/mylib__Ast.cmi"
+  ]
   $ dune describe rules --format=json %{cmi:other_parser} \
   > | jq_dune '[ .[] | ruleDepFilePathsOfKind("In_build_dir")
   >              | select(endswith("__Ast.cmi") or endswith("__Other_ast.cmi")) ]'
-  []
+  [
+    "_build/default/.mylib.objs/byte/mylib__Other_ast.cmi"
+  ]

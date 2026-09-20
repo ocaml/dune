@@ -2,6 +2,11 @@
 
 open Import
 
+val write_inferred_deps
+  :  Path.Build.t
+  -> Module.t list Action_builder.t
+  -> Action.Full.t Action_builder.With_targets.t
+
 val for_module
   :  obj_dir:Path.Build.t Obj_dir.t
   -> modules:Modules.With_vlib.t

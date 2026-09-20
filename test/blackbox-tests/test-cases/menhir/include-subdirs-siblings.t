@@ -1,25 +1,27 @@
+Menhir inference must track dependencies on sibling modules whose names match
+the library's generated alias module. Here, Foo refers to lang/foo.ml.
 
   $ make_menhir_project 3.21 3.0
 
   $ cat >dune <<EOF
   > (include_subdirs qualified)
-  > (executable
+  > (library
   >  (name foo))
   > EOF
 
-  $ cat >foo.ml <<EOF
+  $ cat >consumer.ml <<EOF
   > let () =
   >   assert
   >     (Lang.Parser.expr
   >       (fun _ -> Lang.Parser.EOF)
   >       (Lexing.from_string "")
   >       =
-  >       Lang.Ast.Unit)
+  >       Lang.Foo.Unit)
   > EOF
 
   $ mkdir -p lang
 
-  $ cat >lang/ast.ml <<EOF
+  $ cat >lang/foo.ml <<EOF
   > type expr =
   >   | Unit
   > EOF
@@ -30,12 +32,10 @@
 
   $ cat >lang/parser.mly <<EOF
   > %token EOF
-  > %start <Ast.expr> expr
+  > %start <Foo.expr> expr
   > %%
   > expr:
-  > | EOF { Ast.Unit }
+  > | EOF { Foo.Unit }
   > EOF
-
-Menhir parsers in qualified subdirectories should be able to refer to sibling modules:
 
   $ dune build

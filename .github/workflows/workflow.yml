@@ -185,14 +185,14 @@ jobs:
             cache-prefix: 5.5.x
             os: macos-26-intel
           ## MSVC
-          - ocaml-compiler: ocaml-compiler.5.5.0,system-msvc
+          - ocaml-compiler: ocaml-compiler.5.5.1,system-msvc
             os: windows-latest
-            cache-prefix: ocaml-compiler.5.5.0-system-msvc
+            cache-prefix: ocaml-compiler.5.5.1-system-msvc
             run_tests: true
           ## mingw
-          - ocaml-compiler: ocaml-base-compiler.5.5.0,system-mingw
+          - ocaml-compiler: ocaml-base-compiler.5.5.1,system-mingw
             os: windows-latest
-            cache-prefix: ocaml-compiler.5.5.0-system-mingw
+            cache-prefix: ocaml-compiler.5.5.1-system-mingw
             run_tests: true
           # OCaml 4:
           ## ubuntu (x86)

@@ -483,7 +483,8 @@ let build_inference_alias cctx ~name ~aliases =
       ~dir:(Path.build (Context.build_dir (Super_context.context sctx)))
       ~sandbox:Sandbox_config.needs_sandboxing
       ~forbid_action_runner:true
-      [ Command.Args.As [ "-no-alias-deps"; "-opaque"; "-c" ]
+      [ Command.Args.As [ "-no-alias-deps"; "-c" ]
+      ; (if Ocaml.Version.supports_opaque_for_mli ocaml.version then A "-opaque" else S [])
       ; parameters cctx
       ; A "-I"
       ; Path (Path.build (Obj_dir.byte_dir obj_dir))

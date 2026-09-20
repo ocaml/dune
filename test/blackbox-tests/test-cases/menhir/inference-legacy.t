@@ -50,15 +50,45 @@ still allow first-class module unpacking and generative functor applications.
   > EOF
 
   $ dune build lib.cma
-  File "outer/inner/inner__mock.ml.mock", line 1:
-  Error (warning 63 [erroneous-printed-signature]): The printed interface
-    differs from the inferred interface. The inferred interface contained items
-    which could not be printed properly due to name collisions between
-    identifiers.
-    File "_none_", line 1:
-    Definition of module Lib__Outer__/2
-  File "_none_", line 1:
-    Definition of module Lib__Outer__Inner__/2
-    Beware that this warning is purely informational and will not catch all
-    instances of erroneous printed interface.
-  [1]
+
+The query opens the private alias interface through an anonymous functor
+argument. The unit functor permits unpacking and generative applications.
+
+  $ sed -n '1,/^module M = M$/p' _build/default/outer/inner/inner__mock.ml.mock
+  include (functor
+    (Dune__menhir__edcd073bac44eed37a6c3e073dd9ef1d : module type of struct
+      include Dune__menhir__edcd073bac44eed37a6c3e073dd9ef1d
+    end) ->
+    functor () -> struct
+    open! Dune__menhir__edcd073bac44eed37a6c3e073dd9ef1d
+  
+  type token = 
+    | EOF
+  
+  # 1 "outer/inner/inner.mly"
+    
+  module M = M
+  $ tail -n 2 _build/default/outer/inner/inner__mock.ml.mock
+  
+  end) (struct include Dune__menhir__edcd073bac44eed37a6c3e073dd9ef1d end) ()
+
+The private interface includes the enclosing aliases in their original order.
+
+  $ cat _build/default/.lib.objs/dune__menhir__*.mli
+  include module type of struct
+    include Lib
+    include Lib__Outer__
+    include Lib__Outer__Inner__
+  end
+
+The inferred interface refers to the original modules, not the functor argument.
+
+  $ cat _build/default/outer/inner/inner__mock.mli.inferred
+  type token = EOF
+  module M = Lib__Outer__Inner__M
+  module Unpacked : Lib__Outer__Ast.S
+  module Make : () -> sig type t val x : t end
+  module Fresh : sig type t val x : t end
+  val menhir_begin_marker : int
+  val xv_main : M.t * (module Lib__Outer__Ast.S)
+  val menhir_end_marker : int

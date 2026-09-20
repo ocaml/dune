@@ -192,22 +192,27 @@ module Run (P : PARAMS) = struct
   (* The current concrete name for [base] clauses is [merge_into], but I would
      like to change it in the future. *)
 
-  let stanzas : (stanza * Path.Set.t) list Memo.Lazy.t =
+  let stanzas : (stanza * Path.Set.t * Module.Source.t) list Memo.Lazy.t =
     Memo.lazy_ ~name:"menhir-stanzas" (fun () ->
       let open Memo.O in
-      let+ { Ml_sources.Parser_generators.deps; targets = _ } =
+      let+ { Ml_sources.Parser_generators.deps; targets } =
         Dir_contents.get sctx ~dir
         >>= Dir_contents.ml ~for_
         >>| Ml_sources.Parser_generators.modules ~for_:(Menhir stanza.loc)
       in
-      match stanza.merge_into with
-      | None ->
-        Path.Set.fold deps ~init:[] ~f:(fun p acc ->
-          let merge_into =
-            Path.basename p |> Filename.remove_extension |> Filename.to_string
-          in
-          ({ stanza with merge_into = Some merge_into }, Path.Set.singleton p) :: acc)
-      | Some _ -> [ stanza, deps ])
+      Module_trie.to_list_map targets ~f:(fun (_, target) ->
+        let stanza, deps =
+          match stanza.merge_into with
+          | Some _ -> stanza, deps
+          | None ->
+            let { Ml_kind.Dict.impl; intf = _ } = Module.Source.files_by_ml_kind target in
+            let source = Module.File.original_path (Option.value_exn impl) in
+            let merge_into =
+              Path.basename source |> Filename.remove_extension |> Filename.to_string
+            in
+            { stanza with merge_into = Some merge_into }, Path.Set.singleton source
+        in
+        stanza, deps, target))
   ;;
 
   (* ------------------------------------------------------------------------ *)
@@ -219,7 +224,7 @@ module Run (P : PARAMS) = struct
     Memo.lazy_ ~name:"check-menhir-flags" (fun () ->
       let open Memo.O in
       Memo.Lazy.force stanzas
-      >>| List.iter ~f:(fun ((stanza, _) : stanza * Path.Set.t) ->
+      >>| List.iter ~f:(fun ((stanza, _, _) : stanza * Path.Set.t * Module.Source.t) ->
         Ordered_set_lang.Unexpanded.fold_strings
           stanza.flags
           ~init:()
@@ -259,7 +264,7 @@ module Run (P : PARAMS) = struct
      is the three-step process where Menhir is invoked twice and OCaml type
      inference is performed in between. *)
 
-  let process3 base ~cmly ((stanza, deps) : stanza * Path.Set.t) : unit Memo.t =
+  let process3 base ~cmly ~target ((stanza, deps) : stanza * Path.Set.t) : unit Memo.t =
     let open Memo.O in
     let* expanded_flags = expand_flags stanza.flags in
     (* 1. A first invocation of Menhir creates a mock [.ml] file. *)
@@ -312,40 +317,22 @@ module Run (P : PARAMS) = struct
         ~output:(inferred_mli base)
     in
     let* () =
-      let source =
-        let base = Filename.of_string_unchecked base in
-        let filename = Filename.add_extension base Filename.Extension.ml in
-        Path.Build.relative_fname dir filename
-      in
       let* deps =
         match stanza.mode with
         | Standard | Promote _ | Ignore_source_files ->
           Memo.return (Ml_kind.Dict.get deps Impl)
         | Fallback ->
-          let source = Path.Build.drop_build_context_exn source in
+          let { Ml_kind.Dict.impl; intf = _ } = Module.Source.files_by_ml_kind target in
+          let source =
+            Module.File.path (Option.value_exn impl)
+            |> Path.drop_optional_build_context_src_exn
+          in
           let+ files = Source_tree.files_of (Path.Source.parent_exn source) in
           if Path.Source.Set.mem files source
           then Action_builder.return []
           else Ml_kind.Dict.get deps Impl
       in
-      let* path =
-        let+ { Ml_sources.Parser_generators.targets; deps = _ } =
-          Dir_contents.get sctx ~dir
-          >>= Dir_contents.ml ~for_
-          >>| Ml_sources.Parser_generators.modules ~for_:(Menhir stanza.loc)
-        in
-        let target =
-          List.find (Module_trie.to_list targets) ~f:(fun (_, m) ->
-            List.exists (Module.Source.files m) ~f:(fun file ->
-              Path.equal (Module.File.path file) (Path.build source)))
-        in
-        match target with
-        | Some (_, m) -> Module.Source.path m
-        | None ->
-          Code_error.raise
-            "Menhir generated module not found"
-            [ "source", Path.Build.to_dyn source ]
-      in
+      let path = Module.Source.path target in
       let obj_dir = Compilation_context.obj_dir cctx in
       (* Keep inference metadata separate from the parser targets: it must not
          be promoted, or cause an otherwise unused fallback rule to run. *)
@@ -399,7 +386,9 @@ module Run (P : PARAMS) = struct
   (* Because Menhir processes [--only-tokens] before the [--infer-*] commands,
      when [--only-tokens] is present, no [--infer-*] command should be used. *)
 
-  let process ((stanza, sources) : stanza * Path.Set.t) : unit Memo.t =
+  let process ((stanza, sources, target) : stanza * Path.Set.t * Module.Source.t)
+    : unit Memo.t
+    =
     let base = Option.value_exn stanza.merge_into in
     let ocaml_type_inference_disabled, cmly =
       Ordered_set_lang.Unexpanded.fold_strings
@@ -416,7 +405,7 @@ module Run (P : PARAMS) = struct
     in
     if ocaml_type_inference_disabled || not stanza.infer
     then process1 base (stanza, sources) ~cmly
-    else process3 base (stanza, sources) ~cmly
+    else process3 base (stanza, sources) ~cmly ~target
   ;;
 
   (* ------------------------------------------------------------------------ *)

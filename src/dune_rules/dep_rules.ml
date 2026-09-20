@@ -311,7 +311,7 @@ type transitive_deps =
   ; obj_dir : Path.Build.t Obj_dir.t
   ; obj_map : Modules.Sourced_module.t Module_name.Unique.Map.t
   ; imported_vlib_deps : imported_vlib_deps option
-  ; menhir_inference_deps : Path.Build.t Path.Map.t Memo.Lazy.t option
+  ; menhir_inference_deps : Path.Build.t Path.Map.t Memo.Lazy.t
   ; memo : (Dep_key.t, memoized_transitive_deps) Action_builder.memo Lazy.t
   }
 
@@ -326,13 +326,12 @@ let rec create_transitive_deps
   =
   let obj_map = Modules.With_vlib.obj_map modules in
   let menhir_inference_deps =
-    match for_ with
-    | Compilation_mode.Melange -> None
-    | Ocaml ->
-      Some
-        (Memo.lazy_ ~name:"menhir-inference-dependencies" (fun () ->
-           let+ sources = Dir_contents.get sctx ~dir >>= Dir_contents.ml ~for_ in
-           Ml_sources.Parser_generators.menhir_inference_deps sources ~obj_dir))
+    Memo.lazy_ ~name:"menhir-inference-dependencies" (fun () ->
+      match for_ with
+      | Compilation_mode.Melange -> Memo.return Path.Map.empty
+      | Ocaml ->
+        let+ sources = Dir_contents.get sctx ~dir >>= Dir_contents.ml ~for_ in
+        Ml_sources.Parser_generators.menhir_inference_deps sources ~obj_dir)
   in
   let rec t =
     { sandbox
@@ -385,10 +384,10 @@ and transitive_deps_output_uncached t unit ~ml_kind =
         Action_builder.exec_memo (Lazy.force t.memo) dep
         |> Action_builder.map ~f:(fun memoized -> memoized.output))
     in
-    match t.menhir_inference_deps, Module.source unit ~ml_kind with
-    | None, _ | _, None -> Action_builder.return transitive
-    | Some files, Some source ->
-      let+ files = Action_builder.of_memo (Memo.Lazy.force files) in
+    match Module.source unit ~ml_kind with
+    | None -> Action_builder.return transitive
+    | Some source ->
+      let+ files = Action_builder.of_memo (Memo.Lazy.force t.menhir_inference_deps) in
       (match Path.Map.find files (Module.File.original_path source) with
        | None -> transitive
        | Some path ->

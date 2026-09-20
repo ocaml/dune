@@ -148,3 +148,30 @@ be rebuilt and the linker will fail:
          over interface Mylib__Ast
   [1]
   $ diff parser.mli.before _build/default/parser.mli
+
+An unmerged stanza can generate several parsers with different inference
+dependencies. The required Ast dependency is still missing for Parser.
+Other_parser also uses Other_ast during inference, although its generated
+interface only mentions unit.
+
+  $ cat > dune <<'EOF'
+  > (menhir
+  >  (modules parser other_parser))
+  > (library
+  >  (name mylib))
+  > EOF
+  $ echo 'let value = ()' > other_ast.ml
+  $ cat > other_parser.mly <<'EOF'
+  > %token EOF
+  > %start <_> main
+  > %%
+  > main: EOF { Other_ast.value }
+  > EOF
+  $ dune describe rules --format=json %{cmi:parser} \
+  > | jq_dune '[ .[] | ruleDepFilePathsOfKind("In_build_dir")
+  >              | select(endswith("__Ast.cmi") or endswith("__Other_ast.cmi")) ]'
+  []
+  $ dune describe rules --format=json %{cmi:other_parser} \
+  > | jq_dune '[ .[] | ruleDepFilePathsOfKind("In_build_dir")
+  >              | select(endswith("__Ast.cmi") or endswith("__Other_ast.cmi")) ]'
+  []

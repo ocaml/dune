@@ -48,6 +48,17 @@ when their result type is an abstract type from a sibling module.
     that this warning is purely informational and will not catch all instances
     of erroneous printed interface.
 
+Show the generated inference query through the grammar's header.
+
+  $ sed -n '1,/^module M = M$/p' _build/default/group/group__mock.ml.mock
+  
+  type token = 
+    | EOF
+  
+  # 1 "group/group.mly"
+    
+  module M = M
+
 The parser builds, but the inferred interface contains an invalid module alias.
 Menhir only consumes the semantic-action types, so a successful build alone
 does not demonstrate that inference produced valid OCaml.

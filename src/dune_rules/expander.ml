@@ -293,7 +293,7 @@ let expand_melange_emit ~source t arg =
 let foreign_flags = Fdecl.create Dyn.opaque
 
 let cc t =
-  let make (language : Foreign_language.t) =
+  let make language =
     let+ cc =
       let* cc = Action_builder.of_memo @@ Fdecl.get foreign_flags ~dir:t.dir in
       Foreign_language.Dict.get cc language

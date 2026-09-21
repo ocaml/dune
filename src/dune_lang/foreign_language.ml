@@ -3,16 +3,20 @@ open Import
 type t =
   | C
   | Cxx
+  | Asm
 
 let repr =
   Repr.variant
     "foreign-language"
     [ Repr.case0 "C" ~test:(function
         | C -> true
-        | Cxx -> false)
+        | Cxx | Asm -> false)
     ; Repr.case0 "Cxx" ~test:(function
         | Cxx -> true
-        | C -> false)
+        | C | Asm -> false)
+    ; Repr.case0 "Asm" ~test:(function
+        | Asm -> true
+        | C | Cxx -> false)
     ]
 ;;
 
@@ -27,9 +31,14 @@ let to_dyn = Repr.to_dyn repr
 let proper_name = function
   | C -> "C"
   | Cxx -> "C++"
+  | Asm -> "Assembly"
 ;;
 
 module Dict = struct
+  type language =
+    | C
+    | Cxx
+
   type 'a t =
     { c : 'a
     ; cxx : 'a
@@ -49,7 +58,14 @@ let header_extension = Filename.Extension.h
 
 let source_extensions =
   String.Map.of_list_exn
-    [ "c", (C, (1, 0)); "cpp", (Cxx, (1, 0)); "cxx", (Cxx, (1, 8)); "cc", (Cxx, (1, 10)) ]
+    [ "c", (C, (1, 0))
+    ; "cpp", (Cxx, (1, 0))
+    ; "cxx", (Cxx, (1, 8))
+    ; "cc", (Cxx, (1, 10))
+    ; "S", (Asm, (3, 26))
+    ; "s", (Asm, (3, 26))
+    ; "asm", (Asm, (3, 26))
+    ]
 ;;
 
 let has_foreign_extension ~fn =

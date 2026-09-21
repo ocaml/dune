@@ -260,6 +260,8 @@ val create
   -> 'a t
 
 val package : _ t -> Package.Name.t option
+val package_owner : _ t -> Package.Name.t option
+val set_installed_package : external_ -> Package.Name.t option -> external_
 val to_dyn : 'path Dyn.builder -> 'path t Dyn.builder
 
 val for_instance

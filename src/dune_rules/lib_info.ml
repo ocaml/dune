@@ -303,6 +303,7 @@ type 'path t =
   ; lib_id : Lib_id.t
   ; kind : Lib_kind.t
   ; status : Status.t
+  ; installed_package : Package.Name.t option
   ; src_dir : 'path
   ; orig_src_dir : 'path option
   ; obj_dir : 'path Obj_dir.t
@@ -467,6 +468,7 @@ let create
   ; lib_id
   ; kind
   ; status
+  ; installed_package = None
   ; src_dir
   ; orig_src_dir
   ; obj_dir
@@ -566,6 +568,7 @@ let to_dyn
       ; lib_id
       ; kind
       ; status
+      ; installed_package
       ; src_dir
       ; orig_src_dir
       ; obj_dir
@@ -612,6 +615,7 @@ let to_dyn
     ; "lib_id", Lib_id.to_dyn lib_id
     ; "kind", Lib_kind.to_dyn kind
     ; "status", Status.to_dyn status
+    ; "installed_package", option Package.Name.to_dyn installed_package
     ; "src_dir", path src_dir
     ; "orig_src_dir", option path orig_src_dir
     ; "obj_dir", Obj_dir.to_dyn obj_dir
@@ -664,6 +668,14 @@ let package t =
   | Public (_, p) -> Some (Package.name p)
   | Private (_, p) -> Option.map p ~f:Package.name
 ;;
+
+let package_owner t =
+  match t.status with
+  | Installed_private | Installed -> t.installed_package
+  | Public _ | Private _ -> package t
+;;
+
+let set_installed_package t installed_package = { t with installed_package }
 
 let for_dune_package
       t

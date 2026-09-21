@@ -1,4 +1,5 @@
 Menhir inference with ordinary and staged PPX exposes shadowed aliases (#8989).
+The dependency introduced by PPX also shares its name with the root alias Foo.
 
   $ make_menhir_project 3.25 3.0
   $ mkdir -p ppx lib/group
@@ -16,7 +17,7 @@ Menhir inference with ordinary and staged PPX exposes shadowed aliases (#8989).
   >     (fun ~ctxt ->
   >       let loc = Expansion_context.Extension.extension_point_loc ctxt in
   >       Ast_builder.Default.pexp_ident ~loc
-  >         { txt = Longident.Ldot (Longident.Lident "M", "packed"); loc })
+  >         { txt = Longident.Ldot (Longident.Lident "Foo", "packed"); loc })
   > let () =
   >   Driver.register_transformation "packed"
   >     ~rules:[ Context_free.Rule.extension packed ]
@@ -25,7 +26,7 @@ Menhir inference with ordinary and staged PPX exposes shadowed aliases (#8989).
   > (menhir
   >  (modules group))
   > EOF
-  $ cat >lib/group/m.ml <<'EOF'
+  $ cat >lib/group/foo.ml <<'EOF'
   > module type S = sig end
   > let packed = (module struct end : S)
   > EOF
@@ -41,7 +42,6 @@ Menhir inference with ordinary and staged PPX exposes shadowed aliases (#8989).
   > (include_subdirs qualified)
   > (library
   >  (name foo)
-  >  (wrapped false)
   >  (preprocess ($1 packed_ppx)))
   > EOF
   >   dune build lib/foo.cma
@@ -52,9 +52,9 @@ Menhir inference with ordinary and staged PPX exposes shadowed aliases (#8989).
     differs from the inferred interface. The inferred interface contained items
     which could not be printed properly due to name collisions between
     identifiers. File "_none_", line 1:
-    Definition of module Group__/2 Beware
-    that this warning is purely informational and will not catch all instances
-    of erroneous printed interface.
+    Definition of module Foo__Group__/2
+    Beware that this warning is purely informational and will not catch all
+    instances of erroneous printed interface.
   [1]
   $ build staged_pps
   File "lib/group/group__mock.ml.mock", line 1:
@@ -62,7 +62,7 @@ Menhir inference with ordinary and staged PPX exposes shadowed aliases (#8989).
     differs from the inferred interface. The inferred interface contained items
     which could not be printed properly due to name collisions between
     identifiers. File "_none_", line 1:
-    Definition of module Group__/2 Beware
-    that this warning is purely informational and will not catch all instances
-    of erroneous printed interface.
+    Definition of module Foo__Group__/2
+    Beware that this warning is purely informational and will not catch all
+    instances of erroneous printed interface.
   [1]

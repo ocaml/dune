@@ -1,7 +1,3 @@
-First, build silently to avoid some noise
-
-  $ dune build
-
 See that `test1/runtest`, which uses `fake_backend_1, only runs one inline test runner
 
   $ dune build @test1/runtest

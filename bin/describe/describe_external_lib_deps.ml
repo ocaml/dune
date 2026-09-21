@@ -90,8 +90,8 @@ let is_external db name =
   | None -> true
   | Some t ->
     (match Dune_rules.Lib_info.status (Dune_rules.Lib.info t) with
-     | Installed_private | Public _ | Private _ -> false
-     | Installed -> true)
+     | Installed_private _ | Public _ | Private _ -> false
+     | Installed _ -> true)
 ;;
 
 let resolve_lib db name kind =

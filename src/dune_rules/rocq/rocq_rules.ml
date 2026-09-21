@@ -398,8 +398,8 @@ let ml_flags_and_plugin_ocamlpath
     let plugin_loc = List.hd_opt buildable.plugins |> Option.map ~f:fst in
     List.iter all_libs ~f:(fun lib ->
       match Lib_info.status (Lib.info lib) with
-      | Public _ | Installed -> ()
-      | Installed_private | Private _ ->
+      | Public _ | Installed _ -> ()
+      | Installed_private _ | Private _ ->
         let name = Lib.name lib |> Lib_name.to_string in
         User_error.raise
           ?loc:plugin_loc

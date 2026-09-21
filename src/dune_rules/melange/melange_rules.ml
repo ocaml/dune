@@ -90,7 +90,7 @@ let output_of_lib =
         ~info
         ~target_dir
         (Lib_name.mangled (Package.name pkg) (Lib_name.to_local_exn (Lib.name lib)))
-    | Installed | Installed_private | Public _ ->
+    | Installed _ | Installed_private _ | Public _ ->
       public_lib ~info ~target_dir (Lib_info.name info)
 ;;
 

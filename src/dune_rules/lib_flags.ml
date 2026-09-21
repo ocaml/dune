@@ -193,7 +193,7 @@ module L = struct
           in
           fun lib ->
             (match Lib_info.status (Lib.info lib) with
-             | Private (_, Some _) | Installed_private -> check_project lib
+             | Private (_, Some _) | Installed_private _ -> check_project lib
              | _ -> true)
       in
       let dirs =

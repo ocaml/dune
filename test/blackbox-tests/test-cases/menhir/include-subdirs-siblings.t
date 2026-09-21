@@ -75,6 +75,19 @@ The unused header alias also refers to a sibling supplied by the inner scope.
   > EOF
   $ dune build --sandbox=copy
 
+The inference helper must not collide with a logical module used by the parser.
+
+  $ echo 'let value = Foo.Unit' >lang/dune__menhir__Lang__Parser__mock.ml
+  $ cat >lang/parser.mly <<'EOF'
+  > %token EOF
+  > %start <Foo.expr> expr
+  > %%
+  > expr: EOF { Dune__menhir__Lang__Parser__mock.value }
+  > EOF
+  $ dune build --sandbox=copy
+  $ head -n 1 _build/default/lang/parser__mock.ml.mock
+  open! struct include Dune__menhir__Lang__Parser__mock_ end
+
 An unused alias for a missing module in the user's header must report warning
 49, even with -no-alias-deps. Check inference alone so the final parser
 compilation cannot mask this distinction.

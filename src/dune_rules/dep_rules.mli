@@ -7,7 +7,7 @@ val write_inferred_deps
   -> Module.t list Action_builder.t
   -> Action.Full.t Action_builder.With_targets.t
 
-val for_module
+val for_module_impl
   :  obj_dir:Path.Build.t Obj_dir.t
   -> modules:Modules.With_vlib.t
   -> sandbox:Sandbox_config.t

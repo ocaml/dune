@@ -767,7 +767,7 @@ let read_deps_of ~sandbox ~sctx ~obj_dir ~modules ~impl ~dir ~for_ ~ml_kind m =
   else Action_builder.return []
 ;;
 
-let for_module ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~for_ module_ =
+let for_module_impl ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~for_ module_ =
   let transitive_deps, imported_vlib_deps =
     make_transitive_deps ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~for_
   in

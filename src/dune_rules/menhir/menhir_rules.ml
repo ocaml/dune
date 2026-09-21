@@ -307,7 +307,15 @@ module Run (P : PARAMS) = struct
       let modules = Compilation_context.modules inference_cctx in
       let impl = Compilation_context.implements inference_cctx in
       let dir = Obj_dir.dir obj_dir in
-      Dep_rules.for_module ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx mock_module ~for_
+      Dep_rules.for_module_impl
+        ~obj_dir
+        ~modules
+        ~sandbox
+        ~impl
+        ~dir
+        ~sctx
+        mock_module
+        ~for_
     in
     let* () =
       Module_compilation.ocamlc_i

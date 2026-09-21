@@ -377,7 +377,6 @@ end
 module T = struct
   type t =
     { info : Lib_info.external_
-    ; package : Package.Name.t option
     ; name : Lib_name.t
     ; unique_id : Id.t
     ; re_exports : t list Resolve.t Compilation_mode.Per_mode.t
@@ -443,8 +442,7 @@ module Hidden = struct
     Error.hidden ~loc ~name ~dir:path ~reason
   ;;
 
-  let unsatisfied_exists_if pkg =
-    let info = Dune_package.Lib.info pkg in
+  let unsatisfied_exists_if info =
     let path = Lib_info.src_dir info in
     { lib = info; reason = "unsatisfied 'exists_if'"; path }
   ;;
@@ -475,20 +473,15 @@ type db =
   ; resolve : Lib_name.t -> resolve_result list Memo.t
   ; resolve_lib_id : Lib_id.t -> resolve_result Memo.t
   ; instantiate :
-      (Lib_name.t
-       -> Path.t Lib_info.t
-       -> package:Package.Name.t option
-       -> hidden:string option
-       -> Status.t Memo.t)
-        Lazy.t
+      (Lib_name.t -> Path.t Lib_info.t -> hidden:string option -> Status.t Memo.t) Lazy.t
   ; all : Lib_name.t list Memo.Lazy.t
   ; instrument_with : Lib_name.t list
   }
 
 and resolve_result =
   | Not_found
-  | Found of Lib_info.external_ * Package.Name.t option
-  | Hidden of Lib_info.external_ Hidden.t * Package.Name.t option
+  | Found of Lib_info.external_
+  | Hidden of Lib_info.external_ Hidden.t
   | Invalid of User_message.t
   | Ignore
   | Redirect_in_the_same_db of (Loc.t * Lib_name.t)
@@ -497,7 +490,6 @@ and resolve_result =
 
 let name t = t.name
 let info t = t.info
-let package t = t.package
 let project t = t.project
 let implements t = Option.map ~f:Memo.return t.implements
 let parameters t = Resolve.Memo.lift (Resolve.map ~f:(List.map ~f:snd) t.parameters)
@@ -1207,11 +1199,7 @@ module Resolve_names : sig
 
   val make_instantiate
     :  db Lazy.t
-    -> (Lib_name.t
-        -> Path.t Lib_info.t
-        -> package:Package.Name.t option
-        -> hidden:string option
-        -> Status.t Memo.t)
+    -> (Lib_name.t -> Path.t Lib_info.t -> hidden:string option -> Status.t Memo.t)
          Staged.t
 end = struct
   let projects_by_package =
@@ -1318,17 +1306,20 @@ end = struct
   end
 
   module Input = struct
-    type t = Lib_name.t * Path.t Lib_info.t * Package.Name.t option * string option
+    type t = Lib_name.t * Path.t Lib_info.t * string option
 
-    let equal (lib_name, info, package, _) (lib_name', info', package', _) =
+    let equal (lib_name, info, _) (lib_name', info', _) =
       let lib_id = Lib_info.lib_id info
       and lib_id' = Lib_info.lib_id info' in
       Lib_name.equal lib_name lib_name'
       && Lib_id.equal lib_id lib_id'
-      && Option.equal Package.Name.equal package package'
+      && Option.equal
+           Package.Name.equal
+           (Lib_info.package_owner info)
+           (Lib_info.package_owner info')
     ;;
 
-    let hash (x, _, _, _) = Lib_name.hash x
+    let hash (x, _, _) = Lib_name.hash x
     let to_dyn = Dyn.opaque
   end
 
@@ -1438,7 +1429,7 @@ end = struct
     let+ () = check_duplicates parameters in
     List.map parameters ~f:(fun (loc, _, param) -> loc, param)
 
-  and instantiate_impl db (name, info, package, hidden) =
+  and instantiate_impl db (name, info, hidden) =
     let db = Lazy.force db in
     let open Memo.O in
     let unique_id = Id.make ~name ~path:(Lib_info.src_dir info) in
@@ -1652,7 +1643,6 @@ end = struct
              resolved >>| Compilation_mode.Per_mode.get ~for_ >>= fun r -> r.re_exports)
          in
          { T.info
-         ; package
          ; name
          ; unique_id
          ; requires
@@ -1713,16 +1703,14 @@ end = struct
         "db-instantiate"
         ~input:(module Input)
         (instantiate_impl db)
-        ~human_readable_description:(fun (name, info, _package, _hidden) ->
+        ~human_readable_description:(fun (name, info, _hidden) ->
           Dep_path.Entry.Lib.pp { name; path = Lib_info.src_dir info } |> Option.some)
     in
-    Staged.stage (fun name info ~package ~hidden ->
-      Memo.exec memo (name, info, package, hidden))
+    Staged.stage (fun name info ~hidden -> Memo.exec memo (name, info, hidden))
 
-  and instantiate db name info ~package ~hidden =
-    (Lazy.force db.instantiate) name info ~package ~hidden
+  and instantiate db name info ~hidden = (Lazy.force db.instantiate) name info ~hidden
 
-  and resolve_hidden db ~info ~package hidden =
+  and resolve_hidden db ~info hidden =
     let open Memo.O in
     (match db.parent with
      | None -> Memo.return Status.Not_found
@@ -1733,23 +1721,22 @@ end = struct
     | Status.Found _ as x -> Memo.return x
     | _ ->
       let name = Lib_info.name info in
-      instantiate db name info ~package ~hidden:(Some hidden)
+      instantiate db name info ~hidden:(Some hidden)
 
   and handle_resolve_result db ~super = function
     | Ignore -> Memo.return Status.Ignore
     | Redirect_in_the_same_db (_, name') -> find_internal db name'
     | Redirect_by_name (db', (_, name')) -> find_internal db' name'
     | Redirect_by_id (db', lib_id) -> resolve_lib_id db' lib_id
-    | Found (info, package) ->
+    | Found info ->
       let name = Lib_info.name info in
-      instantiate db name info ~package ~hidden:None
+      instantiate db name info ~hidden:None
     | Invalid e -> Memo.return (Status.Invalid e)
     | Not_found ->
       (match db.parent with
        | None -> Memo.return Status.Not_found
        | Some db -> super db)
-    | Hidden ({ lib = info; reason = hidden; path = _ }, package) ->
-      resolve_hidden db ~info ~package hidden
+    | Hidden { lib = info; reason = hidden; path = _ } -> resolve_hidden db ~info hidden
 
   and handle_resolve_result_with_multiple_results db ~super = function
     | [] -> handle_resolve_result ~super db Not_found
@@ -1761,17 +1748,17 @@ end = struct
         | Redirect_in_the_same_db (_, name') -> find_internal db name' >>| Option.some
         | Redirect_by_name (db', (_, name')) -> find_internal db' name' >>| Option.some
         | Redirect_by_id (db', lib_id) -> resolve_lib_id db' lib_id >>| Option.some
-        | Found (info, package) ->
+        | Found info ->
           Lib_info.enabled info
           >>= (function
            | Disabled_because_of_enabled_if -> Memo.return None
            | Normal | Optional ->
              let name = Lib_info.name info in
-             instantiate db name info ~package ~hidden:None >>| Option.some)
+             instantiate db name info ~hidden:None >>| Option.some)
         | Invalid e -> Memo.return (Some (Status.Invalid e))
         | Not_found -> handle_resolve_result ~super db Not_found >>| Option.some
-        | Hidden ({ lib = info; reason = hidden; path = _ }, package) ->
-          resolve_hidden db ~info ~package hidden >>| Option.some)
+        | Hidden { lib = info; reason = hidden; path = _ } ->
+          resolve_hidden db ~info hidden >>| Option.some)
       >>| List.filter_opt
       >>| (function
        | [] -> Status.Not_found
@@ -2346,15 +2333,15 @@ module DB = struct
   module Resolve_result = struct
     type t = resolve_result =
       | Not_found
-      | Found of Lib_info.external_ * Package.Name.t option
-      | Hidden of Lib_info.external_ Hidden.t * Package.Name.t option
+      | Found of Lib_info.external_
+      | Hidden of Lib_info.external_ Hidden.t
       | Invalid of User_message.t
       | Ignore
       | Redirect_in_the_same_db of (Loc.t * Lib_name.t)
       | Redirect_by_name of db * (Loc.t * Lib_name.t)
       | Redirect_by_id of db * Lib_id.t
 
-    let found info = Found (info, Lib_info.package info)
+    let found info = Found info
     let not_found = Not_found
     let redirect_by_name db lib = Redirect_by_name (db, lib)
     let redirect_by_id db lib_id = Redirect_by_id (db, lib_id)
@@ -2365,9 +2352,8 @@ module DB = struct
       match x with
       | Not_found -> variant "Not_found" []
       | Invalid e -> variant "Invalid" [ Dyn.string (User_message.to_string e) ]
-      | Found (lib, _) -> variant "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
-      | Hidden (h, _) ->
-        variant "Hidden" [ Hidden.to_dyn (Lib_info.to_dyn Path.to_dyn) h ]
+      | Found lib -> variant "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
+      | Hidden h -> variant "Hidden" [ Hidden.to_dyn (Lib_info.to_dyn Path.to_dyn) h ]
       | Ignore -> variant "Ignore" []
       | Redirect_by_name (_, (_, name)) ->
         variant "Redirect_by_name" [ Lib_name.to_dyn name ]
@@ -2408,10 +2394,15 @@ module DB = struct
             else Memo.return (Some package_name)
           in
           [ (match entry with
-             | Library lib -> Found (Dune_package.Lib.info lib, package)
+             | Library lib ->
+               Found (Lib_info.set_installed_package (Dune_package.Lib.info lib) package)
              | Deprecated_library_name d ->
                Redirect_in_the_same_db (d.loc, d.new_public_name)
-             | Hidden_library lib -> Hidden (Hidden.unsatisfied_exists_if lib, package))
+             | Hidden_library lib ->
+               let info =
+                 Lib_info.set_installed_package (Dune_package.Lib.info lib) package
+               in
+               Hidden (Hidden.unsatisfied_exists_if info))
           ]
         | Error e ->
           Memo.return

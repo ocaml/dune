@@ -22,6 +22,11 @@ type cc_vendor =
 (** [cc_vendor ctx] returns the C/C++ compiler vendor. *)
 val cc_vendor : Build_context.t -> cc_vendor Action_builder.t
 
+val add_unguarded_availability_error
+  :  Build_context.t
+  -> string list
+  -> string list Action_builder.t
+
 (** [parse_cc_vendor s] maps the vendor word emitted by the detection probe to a
     {!cc_vendor}. Exposed for testing. *)
 val parse_cc_vendor : string -> cc_vendor

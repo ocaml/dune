@@ -107,6 +107,11 @@ let check_runtime_deps_relative_path local_path ~loc ~lib_info =
 ;;
 
 module Stanzas_to_entries : sig
+  val package_entries
+    :  Super_context.t
+    -> Package.Name.t
+    -> Install.Entry.Sourced.Unexpanded.t list Memo.t
+
   val stanzas_to_entries
     :  Super_context.t
     -> Install.Entry.Sourced.Unexpanded.t list Package.Name.Map.t Memo.t
@@ -603,43 +608,55 @@ end = struct
   ;;
 
   let stanza_to_entries ~package_db ~sctx ~dir ~scope ~expander stanza =
-    (let+ stanza = keep_if expander stanza ~scope in
-     let open Option.O in
-     let* stanza = stanza in
-     let+ package = Stanzas.stanza_package stanza in
-     stanza, package)
+    keep_if expander stanza ~scope
     >>= function
-    | None -> Memo.return None
-    | Some (stanza, package) ->
-      let+ entries =
-        match Stanza.repr stanza with
-        | Install_conf.T i | Executables.T { install_conf = Some i; _ } ->
-          entries_of_install_stanza ~dir ~expander ~package_db i
-        | Library.T lib ->
-          let sub_dir = Library.sub_dir lib in
-          let* dir_contents = Dir_contents.get sctx ~dir in
-          lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
-        | Rocq_stanza.Theory.T theory -> Rocq_rules.install_rules ~sctx ~dir theory
-        | Documentation.T stanza ->
-          let* dir_contents = Dir_contents.get sctx ~dir in
-          let+ mld_contents = Dir_contents.mlds ~stanza dir_contents in
-          doc_install_files ~loc:stanza.loc mld_contents
-        | Plugin.T t -> Plugin_rules.install_rules ~sctx ~package_db ~dir t
-        | _ -> Memo.return []
-      in
-      let name = Package.Id.name package in
-      Some (name, entries)
+    | None -> Memo.return []
+    | Some stanza ->
+      (match Stanza.repr stanza with
+       | Install_conf.T i | Executables.T { install_conf = Some i; _ } ->
+         entries_of_install_stanza ~dir ~expander ~package_db i
+       | Library.T lib ->
+         let sub_dir = Library.sub_dir lib in
+         let* dir_contents = Dir_contents.get sctx ~dir in
+         lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
+       | Rocq_stanza.Theory.T theory -> Rocq_rules.install_rules ~sctx ~dir theory
+       | Documentation.T stanza ->
+         let* dir_contents = Dir_contents.get sctx ~dir in
+         let+ mld_contents = Dir_contents.mlds ~stanza dir_contents in
+         doc_install_files ~loc:stanza.loc mld_contents
+       | Plugin.T t -> Plugin_rules.install_rules ~sctx ~package_db ~dir t
+       | _ -> Memo.return [])
+  ;;
+
+  let stanzas_by_package =
+    Per_context.create_by_name ~name:"install-stanzas-by-package" (fun context ->
+      Memo.lazy_ ~name:"install-stanzas-by-package" (fun () ->
+        let+ stanzas = Dune_load.dune_files context in
+        Dune_file.fold_static_stanzas
+          stanzas
+          ~init:Package.Name.Map.empty
+          ~f:(fun dune_file stanza acc ->
+            match Stanzas.stanza_package stanza with
+            | None -> acc
+            | Some package ->
+              Package.Name.Map.add_multi
+                acc
+                (Package.Id.name package)
+                (Dune_file.dir dune_file, stanza)))
+      |> Memo.Lazy.force)
+    |> Staged.unstage
   ;;
 
   module Package_map_traversals = Memo.Map (Package.Name.Map)
 
-  let stanzas_to_entries sctx =
+  let package_entries (sctx, package_name) =
     let context = Super_context.context sctx in
     let ctx = Context.build_context context in
-    let* stanzas = Dune_load.dune_files ctx.name in
     let* packages = Dune_load.packages () in
-    let+ init =
-      Package_map_traversals.parallel_map packages ~f:(fun _name (pkg : Package.t) ->
+    match Package.Name.Map.find packages package_name with
+    | None -> Memo.return []
+    | Some pkg ->
+      let+ init =
         let* opam_file = Package_paths.opam_file context pkg in
         let init =
           let file section local_file dst =
@@ -698,46 +715,45 @@ end = struct
                   odig_file
               in
               Install.Entry.Sourced.Unexpanded.create entry :: acc)
-            else acc))
-    and+ entries =
-      let* package_db = Package_db.create ctx.name in
-      Dune_file.fold_static_stanzas stanzas ~init:[] ~f:(fun dune_file stanza acc ->
-        let dir = Path.Build.append_source ctx.build_dir (Dune_file.dir dune_file) in
-        let named_entries =
+            else acc)
+      and+ entries =
+        let* stanzas = stanzas_by_package ctx.name
+        and* package_db = Package_db.create ctx.name in
+        Package.Name.Map.Multi.find stanzas package_name
+        |> Memo.parallel_map ~f:(fun (src_dir, stanza) ->
+          let dir = Path.Build.append_source ctx.build_dir src_dir in
           let* expander = Super_context.expander sctx ~dir
           and* scope = Scope.DB.find_by_dir dir in
-          stanza_to_entries ~package_db ~sctx ~dir ~scope ~expander stanza
-        in
-        named_entries :: acc)
-      |> Memo.all_concurrently
-    in
-    List.fold_left entries ~init ~f:(fun acc named_entries ->
-      match named_entries with
-      | None -> acc
-      | Some (name, entries) -> Package.Name.Map.Multi.add_all acc name entries)
-    |> Package.Name.Map.map ~f:(fun entries ->
+          stanza_to_entries ~package_db ~sctx ~dir ~scope ~expander stanza)
+      in
+      List.concat (init :: entries)
       (* Sort entries so that the ordering in [dune-package] is independent
          of Dune's current implementation. *)
       (* jeremiedimino: later on, we group this list by section and sort
          each section. It feels like we should just do this here once and
          for all. *)
-      List.sort
-        entries
-        ~compare:
-          (fun
-            (a : Install.Entry.Sourced.Unexpanded.t)
-            (b : Install.Entry.Sourced.Unexpanded.t)
-          -> Install.Entry.Unexpanded.compare a.entry b.entry))
+      |> List.sort
+           ~compare:
+             (fun
+               (a : Install.Entry.Sourced.Unexpanded.t)
+               (b : Install.Entry.Sourced.Unexpanded.t)
+             -> Install.Entry.Unexpanded.compare a.entry b.entry)
   ;;
 
-  let stanzas_to_entries =
+  let package_entries =
     let memo =
       Memo.create
-        ~input:(module Super_context.As_memo_key)
-        "stanzas-to-entries"
-        stanzas_to_entries
+        ~input:(module Super_context.As_memo_key.And_package_name)
+        "package-install-entries"
+        package_entries
     in
-    Memo.exec memo
+    fun sctx name -> Memo.exec memo (sctx, name)
+  ;;
+
+  let stanzas_to_entries sctx =
+    let* packages = Dune_load.packages () in
+    Package_map_traversals.parallel_map packages ~f:(fun name _ ->
+      package_entries sctx name)
   ;;
 end
 
@@ -867,9 +883,8 @@ end = struct
         Lib_name.Map.add_exn acc name x)
     in
     let+ files =
-      let+ map = Stanzas_to_entries.stanzas_to_entries sctx in
-      Package.Name.Map.Multi.find map pkg_name
-      |> List.map ~f:(fun (e : Install.Entry.Sourced.Unexpanded.t) ->
+      let+ entries = Stanzas_to_entries.package_entries sctx pkg_name in
+      List.map entries ~f:(fun (e : Install.Entry.Sourced.Unexpanded.t) ->
         let kind =
           match e.entry.kind with
           | File -> Install.Entry.Expanded.File
@@ -1194,10 +1209,7 @@ let promote_install_file (ctx : Context.t) =
   | Opam _ -> false
 ;;
 
-let install_entries sctx package =
-  let+ packages = Stanzas_to_entries.stanzas_to_entries sctx in
-  Package.Name.Map.Multi.find packages package
-;;
+let install_entries = Stanzas_to_entries.package_entries
 
 let () =
   Install_layout.set_entry_resolver (fun context_name package ->
@@ -1579,13 +1591,13 @@ let gen_install_alias sctx (package : Package.t) =
 let stanzas_to_entries = Stanzas_to_entries.stanzas_to_entries
 
 let resolve_package_install_file ~loc sctx ~pkg ~section ~file =
-  let+ entries = Stanzas_to_entries.stanzas_to_entries sctx in
-  match Package.Name.Map.find entries pkg with
-  | None ->
+  let+ entries = Stanzas_to_entries.package_entries sctx pkg in
+  match entries with
+  | [] ->
     User_error.raise
       ~loc
       [ Pp.textf "Package %s has no install entries." (Package.Name.to_string pkg) ]
-  | Some entries ->
+  | entries ->
     let in_section =
       List.filter_map entries ~f:(fun (e : Install.Entry.Sourced.Unexpanded.t) ->
         if Section.equal e.entry.section section

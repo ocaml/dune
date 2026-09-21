@@ -259,8 +259,14 @@ val create
   -> root_module:Module_name.t option
   -> 'a t
 
+(** The package to depend on, if known. For managed installed libraries,
+    this is the owning lock package, which can differ from the findlib root. *)
 val package : _ t -> Package.Name.t option
-val package_owner : _ t -> Package.Name.t option
+
+(** The root findlib namespace, derived independently of installed ownership.
+    Local private libraries without a package have no findlib namespace. *)
+val findlib_package : _ t -> Package.Name.t option
+
 val set_installed_package : external_ -> Package.Name.t option -> external_
 val to_dyn : 'path Dyn.builder -> 'path t Dyn.builder
 

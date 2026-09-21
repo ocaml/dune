@@ -68,7 +68,7 @@ let lib_unique_name lib =
 ;;
 
 let pkg_or_lnu lib =
-  match Lib_info.package (Lib.info lib) with
+  match Lib_info.findlib_package (Lib.info lib) with
   | Some p -> Package.Name.to_string p
   | None -> lib_unique_name lib
 ;;
@@ -497,7 +497,7 @@ let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
   let modules = Compilation_context.modules cctx in
   let* includes =
     let+ requires = Compilation_context.requires_compile cctx in
-    let package = Lib_info.package info in
+    let package = Lib_info.findlib_package info in
     let odoc_include_flags =
       Command.Args.memo (odoc_include_flags ctx package requires)
     in
@@ -900,7 +900,7 @@ let setup_lib_odocl_rules_def =
   in
   let f (sctx, lib, requires) =
     let* odocs = odoc_artefacts sctx (Lib lib) in
-    let pkg = Lib_info.package (Lib.Local.info lib) in
+    let pkg = Lib_info.findlib_package (Lib.Local.info lib) in
     Memo.parallel_iter odocs ~f:(fun odoc -> link_odoc_rules sctx ~pkg ~requires odoc)
   in
   Memo.With_implicit_output.create
@@ -1065,7 +1065,7 @@ let setup_pkg_html_rules sctx ~pkg ~for_ : unit Memo.t =
 let setup_lib_markdown_rules sctx lib =
   let target = Lib lib in
   let* () =
-    match Lib_info.package (Lib.Local.info lib) with
+    match Lib_info.findlib_package (Lib.Local.info lib) with
     | Some _ -> Memo.return ()
     | None ->
       odoc_artefacts sctx target
@@ -1340,7 +1340,7 @@ let gen_rules sctx ~dir rest =
          match lib with
          | None -> Memo.return ()
          | Some lib ->
-           (match Lib_info.package (Lib.Local.info lib) with
+           (match Lib_info.findlib_package (Lib.Local.info lib) with
             | None ->
               let* requires = Lib.closure [ Lib.Local.to_lib lib ] ~linking:false ~for_ in
               setup_lib_odocl_rules sctx lib ~requires
@@ -1380,7 +1380,7 @@ let gen_rules sctx ~dir rest =
          match lib with
          | None -> Memo.return ()
          | Some lib ->
-           (match Lib_info.package (Lib.Local.info lib) with
+           (match Lib_info.findlib_package (Lib.Local.info lib) with
             | None ->
               (* lib with no package above it *)
               let* search_db = search_db_for_lib sctx lib in

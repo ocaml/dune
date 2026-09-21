@@ -664,14 +664,14 @@ let to_dyn
 
 let package t =
   match t.status with
-  | Installed_private | Installed -> Some (Lib_name.package_name t.name)
+  | Installed_private | Installed -> t.installed_package
   | Public (_, p) -> Some (Package.name p)
   | Private (_, p) -> Option.map p ~f:Package.name
 ;;
 
-let package_owner t =
+let findlib_package t =
   match t.status with
-  | Installed_private | Installed -> t.installed_package
+  | Installed_private | Installed -> Some (Lib_name.package_name t.name)
   | Public _ | Private _ -> package t
 ;;
 

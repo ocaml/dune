@@ -407,7 +407,7 @@ let ml_flags_and_plugin_ocamlpath
     let findlib_plugin_flags = Util.include_flags all_libs in
     let ml_flags = Command.Args.S [ findlib_plugin_flags ] in
     let plugin_packages =
-      List.filter_map all_libs ~f:(fun lib -> Lib.info lib |> Lib_info.package)
+      List.filter_map all_libs ~f:(fun lib -> Lib.info lib |> Lib_info.findlib_package)
       |> Package.Name.Set.of_list
     in
     ml_flags, plugin_packages

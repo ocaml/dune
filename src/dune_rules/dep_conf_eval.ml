@@ -257,7 +257,7 @@ let expand_package_set context package_names =
           Memo.return []
       in
       Lib.descriptive_closure libs ~with_pps:false ~for_:Compilation_mode.Ocaml
-      >>| List.filter_map ~f:(fun lib -> Lib_info.package_owner (Lib.info lib))
+      >>| List.filter_map ~f:(fun lib -> Lib_info.package (Lib.info lib))
       >>| Package.Name.Set.of_list)
 ;;
 

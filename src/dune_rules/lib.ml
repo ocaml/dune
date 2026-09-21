@@ -1313,10 +1313,7 @@ end = struct
       and lib_id' = Lib_info.lib_id info' in
       Lib_name.equal lib_name lib_name'
       && Lib_id.equal lib_id lib_id'
-      && Option.equal
-           Package.Name.equal
-           (Lib_info.package_owner info)
-           (Lib_info.package_owner info')
+      && Option.equal Package.Name.equal (Lib_info.package info) (Lib_info.package info')
     ;;
 
     let hash (x, _, _) = Lib_name.hash x
@@ -1525,11 +1522,11 @@ end = struct
         Memo.lazy_ ~name:"default-library-implementation" (fun () ->
           let open Resolve.Memo.O in
           let* impl = resolve_impl l in
-          match Lib_info.package impl.info with
+          match Lib_info.findlib_package impl.info with
           | None -> Resolve.Memo.return impl
           | Some p ->
             let loc = fst l in
-            (match Lib_info.package info with
+            (match Lib_info.findlib_package info with
              | None ->
                (* We don't need to verify that impl is private if this
                   virtual library is private. Every implementation already
@@ -1621,8 +1618,7 @@ end = struct
       | Some _ as project -> Memo.return project
       | None ->
         let+ projects_by_package = Memo.Lazy.force projects_by_package in
-        let open Option.O in
-        let* package = Lib_info.package info in
+        let package = Lib_name.package_name (Lib_info.name info) in
         Package.Name.Map.find projects_by_package package
     in
     let rec t =
@@ -2389,6 +2385,9 @@ module DB = struct
         | Ok ({ Dune_package.dir; name = package_name; _ }, entry) ->
           let+ package =
             let* lock_dir_active = Pkg_rules.lock_dir_active context_name in
+            (* Findlib names can differ from their owning lock packages:
+               [ocamlfind] provides [findlib]. Use the installation prefix to
+               recover the lock-package name. *)
             if lock_dir_active
             then Pkg_rules.find_package_by_installed_path context_name dir
             else Memo.return (Some package_name)

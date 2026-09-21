@@ -451,7 +451,57 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
     Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir) deps
 ;;
 
-let ocamlc_i_action ~impl_deps cctx (m : Module.t) =
+let build_inference_alias cctx ~name ~aliases =
+  let sctx = Compilation_context.super_context cctx in
+  let dir = Compilation_context.dir cctx in
+  let obj_dir = Compilation_context.obj_dir cctx in
+  let name = Module_name.Unique.of_name_assuming_needs_no_mangling name in
+  let file ext =
+    Path.Build.relative_fname
+      (Obj_dir.obj_dir obj_dir)
+      (Module_name.Unique.artifact_filename name ~ext)
+  in
+  let source = file Filename.Extension.mli in
+  let cmi = file (Lib_mode.Cm_kind.ext (Ocaml Cmi)) in
+  let contents =
+    List.map aliases ~f:(fun m ->
+      let name = Module.obj_name m |> Module_name.Unique.to_name ~loc:Loc.none in
+      sprintf "  include %s\n" (Module_name.to_string name))
+    |> String.concat ~sep:""
+  in
+  let* () =
+    (* The structure preserves type equalities for instantiated libraries. *)
+    Action_builder.write_file
+      source
+      ("include module type of struct\n" ^ contents ^ "end\n")
+    |> Super_context.add_rule sctx ~dir
+  in
+  let ocaml = Compilation_context.ocaml cctx in
+  let+ () =
+    Command.run
+      (Ok ocaml.ocamlc)
+      ~dir:(Path.build (Context.build_dir (Super_context.context sctx)))
+      ~sandbox:Sandbox_config.needs_sandboxing
+      ~forbid_action_runner:true
+      [ Command.Args.As [ "-no-alias-deps"; "-opaque"; "-c" ]
+      ; parameters cctx
+      ; A "-I"
+      ; Path (Path.build (Obj_dir.byte_dir obj_dir))
+      ; Command.Args.as_any
+          (Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) (Ocaml Cmi))
+      ; Hidden_deps
+          (Dep.Set.of_files (Obj_dir.Module.L.cm_files obj_dir aliases ~kind:(Ocaml Cmi)))
+      ; A "-o"
+      ; Target cmi
+      ; Command.Ml_kind.flag Intf
+      ; Dep (Path.build source)
+      ]
+    |> Super_context.add_rule sctx ~dir
+  in
+  cmi
+;;
+
+let ocamlc_i_action ~impl_deps ~alias cctx (m : Module.t) =
   let obj_dir = Compilation_context.obj_dir cctx in
   let ctx = Compilation_context.super_context cctx |> Super_context.context in
   let src = Option.value_exn (Module.file m ~ml_kind:Impl) in
@@ -476,6 +526,17 @@ let ocamlc_i_action ~impl_deps cctx (m : Module.t) =
   in
   let ocaml_flags = Ocaml_flags.get (Compilation_context.flags cctx) (Ocaml Byte) in
   let modules = Compilation_context.modules cctx in
+  let opens =
+    match alias with
+    | None -> opens modules m
+    | Some cmi ->
+      Command.Args.S
+        [ A "-no-alias-deps"
+        ; A "-I"
+        ; Path (Path.build (Path.Build.parent_exn cmi))
+        ; Hidden_deps (Dep.Set.of_files [ Path.build cmi ])
+        ]
+  in
   let ocaml = Compilation_context.ocaml cctx in
   let open Action_builder.O in
   cm_deps
@@ -492,7 +553,7 @@ let ocamlc_i_action ~impl_deps cctx (m : Module.t) =
         ; as_parameter_arg m
         ; as_argument_for cctx m
         ; parameters cctx
-        ; opens modules m
+        ; opens
         ; A "-short-paths"
         ; A "-i"
         ; Command.Ml_kind.flag Impl
@@ -502,10 +563,10 @@ let ocamlc_i_action ~impl_deps cctx (m : Module.t) =
         ]
 ;;
 
-let ocamlc_i ~impl_deps cctx m ~output =
+let ocamlc_i ~impl_deps ~alias cctx m ~output =
   let sctx = Compilation_context.super_context cctx in
   let dir = Compilation_context.dir cctx in
-  ocamlc_i_action ~impl_deps cctx m
+  ocamlc_i_action ~impl_deps ~alias cctx m
   |> Action_builder.with_stdout_to output
   |> Super_context.add_rule sctx ~dir
 ;;
@@ -530,7 +591,7 @@ let infer_interface cctx m =
         let dep_graphs = Compilation_context.dep_graphs cctx in
         Dep_graph.deps_of (Ml_kind.Dict.get dep_graphs Impl) m
       in
-      ocamlc_i_action ~impl_deps cctx m
+      ocamlc_i_action ~impl_deps ~alias:None cctx m
     and+ () = Action_builder.paths_existing [ source_path ] in
     Action.Full.map action ~f:(fun action ->
       let correction_file =

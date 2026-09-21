@@ -10,8 +10,16 @@ val build_module
   -> Module.t
   -> unit Memo.t
 
+(** Build a private signature re-exporting the aliases used during inference. *)
+val build_inference_alias
+  :  Compilation_context.t
+  -> name:Module_name.t
+  -> aliases:Module.t list
+  -> Path.Build.t Memo.t
+
 val ocamlc_i
   :  impl_deps:Module.t list Action_builder.t
+  -> alias:Path.Build.t option
   -> Compilation_context.t
   -> Module.t
   -> output:Path.Build.t

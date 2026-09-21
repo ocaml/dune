@@ -140,7 +140,7 @@ module Index = struct
   let of_local_lib lib =
     match
       let info = Lib.Local.info lib in
-      Lib_info.package info
+      Lib_info.findlib_package info
     with
     | None -> [ Private_lib (Odoc.lib_unique_name (lib :> Lib.t)) ]
     | Some _pkg ->
@@ -267,7 +267,7 @@ let libs_maps_def =
          | Some location ->
            let info = Dune_package.Lib.info l in
            let name = Lib_info.name info in
-           let pkg = Lib_info.package info in
+           let pkg = Lib_name.package_name name in
            Lib.DB.find_lib_id db (Lib_info.lib_id info)
            >>| (function
             | None -> maps
@@ -283,14 +283,11 @@ let libs_maps_def =
                   maps.loc_of_lib
               in
               let loc_of_pkg =
-                match pkg with
-                | None -> maps.loc_of_pkg
-                | Some pkg_name ->
-                  (match Package.Name.Map.add maps.loc_of_pkg pkg_name location with
-                   | Ok l -> l
-                   | Error _ ->
-                     (* There will be lots of repeated packages, no problem here *)
-                     maps.loc_of_pkg)
+                match Package.Name.Map.add maps.loc_of_pkg pkg location with
+                | Ok l -> l
+                | Error _ ->
+                  (* There will be lots of repeated packages, no problem here *)
+                  maps.loc_of_pkg
               in
               let update_fn = function
                 | None -> Some (Lib_name.Map.singleton name (l, lib))
@@ -417,7 +414,7 @@ module Valid = struct
                   else
                     Lib.Set.filter libs ~f:(fun lib ->
                       let info = Lib.info lib in
-                      match Lib_info.package info with
+                      match Lib_info.findlib_package info with
                       | Some p -> Only_packages.mem mask p
                       | None -> false)
                 in
@@ -629,7 +626,9 @@ end = struct
              Dep.Set.singleton (Dep.alias (alias ~dir:(Index.odoc_dir ctx ~all index)))
            in
            let pkg_libs =
-             List.filter ~f:(fun l -> Lib.info l |> Lib_info.package = pkg) valid_libs
+             List.filter
+               ~f:(fun l -> Lib.info l |> Lib_info.findlib_package = pkg)
+               valid_libs
            in
            List.rev_append pkg_libs libs, init
        in
@@ -1522,7 +1521,7 @@ let index_info_of_lib_def =
       in
       Lib.Map.singleton lib entry_modules
     in
-    let package = Lib_info.package info in
+    let package = Lib_info.findlib_package info in
     let lib_index_info =
       ( index
       , { Index_tree.libs

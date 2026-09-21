@@ -319,8 +319,7 @@ module Run (P : PARAMS) = struct
     let* () =
       let* deps =
         match stanza.mode with
-        | Standard | Promote _ | Ignore_source_files ->
-          Memo.return (Ml_kind.Dict.get deps Impl)
+        | Standard | Promote _ | Ignore_source_files -> Memo.return deps
         | Fallback ->
           let { Ml_kind.Dict.impl; intf = _ } = Module.Source.files_by_ml_kind target in
           let source =
@@ -328,9 +327,7 @@ module Run (P : PARAMS) = struct
             |> Path.drop_optional_build_context_src_exn
           in
           let+ files = Source_tree.files_of (Path.Source.parent_exn source) in
-          if Path.Source.Set.mem files source
-          then Action_builder.return []
-          else Ml_kind.Dict.get deps Impl
+          if Path.Source.Set.mem files source then Action_builder.return [] else deps
       in
       let path = Module.Source.path target in
       let obj_dir = Compilation_context.obj_dir cctx in

@@ -470,7 +470,7 @@ let ocamlc_i_action ~deps cctx (m : Module.t) =
   let cm_deps =
     Action_builder.dyn_paths_unit
       (let open Action_builder.O in
-       Ml_kind.Dict.get deps Impl
+       deps
        >>| List.concat_map ~f:(fun m ->
          [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml Cmi)) ]))
   in
@@ -527,8 +527,7 @@ let infer_interface cctx m =
     let+ action =
       let deps =
         let dep_graphs = Compilation_context.dep_graphs cctx in
-        Ml_kind.Dict.of_func (fun ~ml_kind ->
-          Dep_graph.deps_of (Ml_kind.Dict.get dep_graphs ml_kind) m)
+        Dep_graph.deps_of (Ml_kind.Dict.get dep_graphs Impl) m
       in
       ocamlc_i_action ~deps cctx m
     and+ () = Action_builder.paths_existing [ source_path ] in

@@ -545,7 +545,7 @@ module L = struct
         let status = Lib_info.status lib.info in
         match status with
         | Private (scope_name, _) -> Some scope_name
-        | Installed_private | Public _ | Installed -> None
+        | Installed_private _ | Public _ | Installed _ -> None
       in
       Option.merge acc scope ~f:(fun a b ->
         assert (Dune_project.equal a b);
@@ -1436,7 +1436,7 @@ end = struct
       (* [Allow_all] is used for libraries that are installed because we don't
          have to check it again. It has been checked when compiling the
          libraries before their installation *)
-      | Installed_private | Private (_, None) | Installed -> Allow_all
+      | Installed_private _ | Private (_, None) | Installed _ -> Allow_all
       | Private (_, Some _) -> From_same_project `Private_package
       | Public (_, _) -> From_same_project `Public
     in

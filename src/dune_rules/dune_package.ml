@@ -304,8 +304,8 @@ module Lib = struct
          let enabled = Memo.return Lib_info.Enabled_status.Normal in
          let status =
            match Lib_name.analyze name with
-           | Private (_, _) -> Lib_info.Status.Installed_private
-           | Public (_, _) -> Lib_info.Status.Installed
+           | Private (_, _) -> Lib_info.Status.Installed_private None
+           | Public (_, _) -> Lib_info.Status.Installed None
          in
          let version = None in
          let local_main_module_name = main_module_name in

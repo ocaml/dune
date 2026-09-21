@@ -22,8 +22,8 @@ let lib_equal l1 l2 = Lib.compare l1 l2 |> Ordering.is_eq
 
 let is_public lib =
   match Lib.Local.to_lib lib |> Lib.info |> Lib_info.status with
-  | Installed_private -> false
-  | Installed -> true
+  | Installed_private _ -> false
+  | Installed _ -> true
   | Public _ -> true
   | Private (_project, _) -> false
 ;;

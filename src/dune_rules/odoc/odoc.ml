@@ -62,7 +62,7 @@ let lib_unique_name lib =
   let info = Lib.info lib in
   let status = Lib_info.status info in
   match status with
-  | Installed_private | Installed -> assert false
+  | Installed_private _ | Installed _ -> assert false
   | Public _ -> Lib_name.to_string name
   | Private (project, _) -> Scope_key.to_string name project
 ;;

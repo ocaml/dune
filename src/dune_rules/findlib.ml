@@ -113,8 +113,8 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
     let synopsis = Findlib.Package.description t in
     let status =
       match Lib_name.analyze t.name with
-      | Private (_, _) -> Lib_info.Status.Installed_private
-      | Public (_, _) -> Lib_info.Status.Installed
+      | Private (_, _) -> Lib_info.Status.Installed_private None
+      | Public (_, _) -> Lib_info.Status.Installed None
     in
     let src_dir = Obj_dir.dir obj_dir in
     let version =

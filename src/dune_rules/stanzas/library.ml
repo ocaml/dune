@@ -606,7 +606,7 @@ let to_lib_info
   let version =
     match status with
     | Public (_, pkg) -> Package.version pkg
-    | Installed_private | Installed | Private _ -> None
+    | Installed_private _ | Installed _ | Private _ -> None
   in
   let loc = conf.buildable.loc in
   let requires = library_deps ~modes conf.buildable in

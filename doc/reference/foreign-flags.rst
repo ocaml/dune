@@ -5,6 +5,16 @@ Depending on the :doc:`dune-project/use_standard_c_and_cxx_flags` option,
 the base ``:standard`` set of flags for C will contain only ``ocamlc_cflags`` or
 both ``ocamlc_cflags`` and ``ocamlc_cppflags``.
 
+When ``use_standard_c_and_cxx_flags`` is enabled, Dune adds
+``-Werror=unguarded-availability-new`` to C and C++ ``:standard`` flags when
+supported, in all profiles. Warnings in this group become errors, helping catch
+calls to APIs unavailable on the deployment target. To opt out for particular
+foreign stubs:
+
+.. code:: dune
+
+   (flags (:standard \ -Werror=unguarded-availability-new))
+
 There are multiple levels where one can declare custom flags (using the
 :doc:`ordered-set-language`), and each level inherits the flags of the previous
 one in its `:standard` set:

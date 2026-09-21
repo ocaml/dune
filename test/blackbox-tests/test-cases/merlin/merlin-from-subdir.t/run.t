@@ -21,6 +21,7 @@ Verify that merlin configuration was generated...
   ["S","$TESTCASE_ROOT/411"]
   ["FLG",["-w","@1..3@5..28@30..39@43@46..47@49..57@61..62-40","-strict-sequence","-strict-formats","-short-paths","-keep-locs","-g"]]
   ["UNIT_NAME","dune__exe__Test"]
+  ["USE_PPX_CACHE"]
   Test: _build/default/test.ml
   ["INDEX","$TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index"]
   ["INDEX","$TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index"]
@@ -33,6 +34,7 @@ Verify that merlin configuration was generated...
   ["S","$TESTCASE_ROOT/411"]
   ["FLG",["-w","@1..3@5..28@30..39@43@46..47@49..57@61..62-40","-strict-sequence","-strict-formats","-short-paths","-keep-locs","-g"]]
   ["UNIT_NAME","dune__exe__Test"]
+  ["USE_PPX_CACHE"]
   Foo: _build/default/foo
   ["INDEX","$TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index"]
   ["INDEX","$TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index"]
@@ -44,6 +46,7 @@ Verify that merlin configuration was generated...
   ["S","$TESTCASE_ROOT/411"]
   ["FLG",["-w","@1..3@5..28@30..39@43@46..47@49..57@61..62-40","-strict-sequence","-strict-formats","-short-paths","-keep-locs","-g"]]
   ["UNIT_NAME","foo"]
+  ["USE_PPX_CACHE"]
   Foo: _build/default/foo.ml
   ["INDEX","$TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index"]
   ["INDEX","$TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index"]
@@ -55,6 +58,7 @@ Verify that merlin configuration was generated...
   ["S","$TESTCASE_ROOT/411"]
   ["FLG",["-w","@1..3@5..28@30..39@43@46..47@49..57@61..62-40","-strict-sequence","-strict-formats","-short-paths","-keep-locs","-g"]]
   ["UNIT_NAME","foo"]
+  ["USE_PPX_CACHE"]
 
 ...but not in the sub-folder whose content was copied
   $ dune ocaml merlin dump-config --format=json $PWD/411 | jq_dune -r '
@@ -82,7 +86,8 @@ Now we check that both querying from the root and the subfolder works
      -short-paths
      -keep-locs
      -g))
-   (UNIT_NAME foo))
+   (UNIT_NAME foo)
+   (USE_PPX_CACHE))
 
   $ query_ocaml_merlin_pp "$FILE411"
   ((INDEX $TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index)
@@ -102,4 +107,5 @@ Now we check that both querying from the root and the subfolder works
      -short-paths
      -keep-locs
      -g))
-   (UNIT_NAME dune__exe__Test))
+   (UNIT_NAME dune__exe__Test)
+   (USE_PPX_CACHE))

@@ -302,25 +302,32 @@ module Run (P : PARAMS) = struct
       Compilation_context.set_sandbox cctx Sandbox_config.needs_sandboxing
       |> Compilation_context.without_bin_annot
     in
-    let* deps =
+    let* impl_deps =
       let obj_dir = Compilation_context.obj_dir inference_cctx in
       let modules = Compilation_context.modules inference_cctx in
       let impl = Compilation_context.implements inference_cctx in
       let dir = Obj_dir.dir obj_dir in
-      Dep_rules.for_module ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx mock_module ~for_
+      Dep_rules.for_module_impl
+        ~obj_dir
+        ~modules
+        ~sandbox
+        ~impl
+        ~dir
+        ~sctx
+        mock_module
+        ~for_
     in
     let* () =
       Module_compilation.ocamlc_i
-        ~deps
+        ~impl_deps
         inference_cctx
         mock_module
         ~output:(inferred_mli base)
     in
     let* () =
-      let* deps =
+      let* impl_deps =
         match stanza.mode with
-        | Standard | Promote _ | Ignore_source_files ->
-          Memo.return (Ml_kind.Dict.get deps Impl)
+        | Standard | Promote _ | Ignore_source_files -> Memo.return impl_deps
         | Fallback ->
           let { Ml_kind.Dict.impl; intf = _ } = Module.Source.files_by_ml_kind target in
           let source =
@@ -328,9 +335,7 @@ module Run (P : PARAMS) = struct
             |> Path.drop_optional_build_context_src_exn
           in
           let+ files = Source_tree.files_of (Path.Source.parent_exn source) in
-          if Path.Source.Set.mem files source
-          then Action_builder.return []
-          else Ml_kind.Dict.get deps Impl
+          if Path.Source.Set.mem files source then Action_builder.return [] else impl_deps
       in
       let path = Module.Source.path target in
       let obj_dir = Compilation_context.obj_dir cctx in
@@ -338,7 +343,7 @@ module Run (P : PARAMS) = struct
          be promoted, or cause an otherwise unused fallback rule to run. *)
       Dep_rules.write_inferred_deps
         (Ml_sources.Parser_generators.menhir_inference_deps_file ~obj_dir path)
-        deps
+        impl_deps
       |> rule ~mode:Standard
     in
     let* explain_flags = explain_flags base stanza

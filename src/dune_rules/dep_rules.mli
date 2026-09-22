@@ -7,7 +7,7 @@ val write_inferred_deps
   -> Module.t list Action_builder.t
   -> Action.Full.t Action_builder.With_targets.t
 
-val for_module
+val for_module_impl
   :  obj_dir:Path.Build.t Obj_dir.t
   -> modules:Modules.With_vlib.t
   -> sandbox:Sandbox_config.t
@@ -16,7 +16,7 @@ val for_module
   -> sctx:Super_context.t
   -> for_:Compilation_mode.t
   -> Module.t
-  -> Module.t list Action_builder.t Ml_kind.Dict.t Memo.t
+  -> Module.t list Action_builder.t Memo.t
 
 val rules
   :  obj_dir:Path.Build.t Obj_dir.t

@@ -767,18 +767,11 @@ let read_deps_of ~sandbox ~sctx ~obj_dir ~modules ~impl ~dir ~for_ ~ml_kind m =
   else Action_builder.return []
 ;;
 
-let dict_of_func_concurrently f =
-  let+ impl = f ~ml_kind:Ml_kind.Impl
-  and+ intf = f ~ml_kind:Ml_kind.Intf in
-  Ml_kind.Dict.make ~impl ~intf
-;;
-
-let for_module ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~for_ module_ =
+let for_module_impl ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~for_ module_ =
   let transitive_deps, imported_vlib_deps =
     make_transitive_deps ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~for_
   in
-  dict_of_func_concurrently
-    (deps_of ~modules ~transitive_deps ~imported_vlib_deps (Normal module_))
+  deps_of ~modules ~transitive_deps ~imported_vlib_deps ~ml_kind:Impl (Normal module_)
 ;;
 
 let rules ~obj_dir ~modules ~sandbox ~impl ~sctx ~dir ~for_ =
@@ -788,12 +781,15 @@ let rules ~obj_dir ~modules ~sandbox ~impl ~sctx ~dir ~for_ =
     let transitive_deps, imported_vlib_deps =
       make_transitive_deps ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~for_
     in
-    dict_of_func_concurrently (fun ~ml_kind ->
+    let deps ~ml_kind =
       let+ per_module =
         Modules.With_vlib.obj_map modules
         |> Parallel_map.parallel_map ~f:(fun _obj_name m ->
           deps_of ~modules ~transitive_deps ~imported_vlib_deps ~ml_kind m)
       in
-      Dep_graph.make ~dir ~per_module)
-    |> Memo.map ~f:(Dep_graph.Ml_kind.for_module_compilation ~modules)
+      Dep_graph.make ~dir ~per_module
+    in
+    let+ impl = deps ~ml_kind:Ml_kind.Impl
+    and+ intf = deps ~ml_kind:Ml_kind.Intf in
+    Ml_kind.Dict.make ~impl ~intf |> Dep_graph.Ml_kind.for_module_compilation ~modules
 ;;

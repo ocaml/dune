@@ -451,7 +451,7 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
     Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir) deps
 ;;
 
-let ocamlc_i_action ~deps cctx (m : Module.t) =
+let ocamlc_i_action ~impl_deps cctx (m : Module.t) =
   let obj_dir = Compilation_context.obj_dir cctx in
   let ctx = Compilation_context.super_context cctx |> Super_context.context in
   let src = Option.value_exn (Module.file m ~ml_kind:Impl) in
@@ -470,7 +470,7 @@ let ocamlc_i_action ~deps cctx (m : Module.t) =
   let cm_deps =
     Action_builder.dyn_paths_unit
       (let open Action_builder.O in
-       Ml_kind.Dict.get deps Impl
+       impl_deps
        >>| List.concat_map ~f:(fun m ->
          [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml Cmi)) ]))
   in
@@ -501,10 +501,10 @@ let ocamlc_i_action ~deps cctx (m : Module.t) =
         ]
 ;;
 
-let ocamlc_i ~deps cctx m ~output =
+let ocamlc_i ~impl_deps cctx m ~output =
   let sctx = Compilation_context.super_context cctx in
   let dir = Compilation_context.dir cctx in
-  ocamlc_i_action ~deps cctx m
+  ocamlc_i_action ~impl_deps cctx m
   |> Action_builder.with_stdout_to output
   |> Super_context.add_rule sctx ~dir
 ;;
@@ -525,12 +525,11 @@ let infer_interface cctx m =
     let source_path = Path.build source_file in
     let open Action_builder.O in
     let+ action =
-      let deps =
+      let impl_deps =
         let dep_graphs = Compilation_context.dep_graphs cctx in
-        Ml_kind.Dict.of_func (fun ~ml_kind ->
-          Dep_graph.deps_of (Ml_kind.Dict.get dep_graphs ml_kind) m)
+        Dep_graph.deps_of (Ml_kind.Dict.get dep_graphs Impl) m
       in
-      ocamlc_i_action ~deps cctx m
+      ocamlc_i_action ~impl_deps cctx m
     and+ () = Action_builder.paths_existing [ source_path ] in
     Action.Full.map action ~f:(fun action ->
       let correction_file =

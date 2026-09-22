@@ -4,6 +4,7 @@
   :standard
   \
   appendable_list_quick_tests
+  fd_tests
   path_external_build_tests
   path_tests
   proc_linux_tests
@@ -94,6 +95,27 @@
   ppx_inline_test.config)
  (preprocess
   (pps ppx_expect)))
+
+(library
+ (name stdune_fd_tests)
+ (modules fd_tests)
+ (inline_tests)
+ (libraries
+  stdune
+  unix
+  ppx_expect.config
+  ppx_expect.config_types
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))
+
+(alias
+ (name runtest-windows)
+ (enabled_if
+  (= %{os_type} Win32))
+ (deps
+  (alias runtest-stdune_fd_tests)))
 
 (alias
  (name runtest-windows)

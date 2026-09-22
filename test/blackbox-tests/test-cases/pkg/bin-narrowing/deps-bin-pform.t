@@ -101,14 +101,14 @@ sibling [sibling]:
 
   $ dune build consumer/via-pform consumer/via-path
 
-[sibling] is not in [consumer]'s dependency closure, so its [dup] is narrowed
+[sibling] is not listed in [consumer]'s dependencies, so its [dup] is narrowed
 out of [local_bins] and the lookup falls through to the declared lockdir copy.
 Nothing is staged, since only workspace binaries are, and [(system dup)] finds
 that same copy through [provider]'s bin directory on $PATH.
 
 In [workspace-shadows-lockdir.t] the workspace binary does shadow the lockdir
-one: there it belongs to the directory's own owning package, which is always in
-its own closure.
+one: there it belongs to the directory's own owning package, whose binaries are
+always visible to it.
 
   $ cat _build/default/consumer/via-pform
   from lockdir
@@ -153,8 +153,8 @@ A name installed by two workspace packages
   > (package (name pkg-c) (allow_empty) (dir c) (depends pkg-a))
   > EOF
 
-The ordinary narrowed pform lookup selects [pkg-a], the only provider in
-[pkg-c]'s dependency closure:
+The ordinary narrowed pform lookup selects [pkg-a], the only provider
+among the packages listed in [pkg-c]'s dependencies:
 
   $ dune build c/via-pform
   $ cat _build/default/c/via-pform

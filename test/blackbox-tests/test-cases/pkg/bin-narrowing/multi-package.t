@@ -62,7 +62,7 @@ pkg-b (depends tool-b) sees bin-b, but not bin-a:
   $ cat _build/default/b/b-sees-a
   false
 
-Only the bin directories of the dependency closure are on $PATH:
+Only the bin directories of the listed dependencies are on $PATH:
 
   $ env_added "$(cat _build/default/a/a-path)" "$PATH" | censor
   $PWD/_build/_private/default/.pkg/tool-a.0.0.1-$DIGEST/target/bin
@@ -71,8 +71,8 @@ Only the bin directories of the dependency closure are on $PATH:
 
 The narrowing is ultimately about the build-dependency set, not just the
 visibility and PATH shown above. Previously, a lookup forced every lockdir
-package's cookie. With the current narrowing, only the packages in the
-transitive dependency closure of [pkg-a] get built:
+package's cookie. With the current narrowing, only the packages listed in
+[pkg-a]'s dependencies get built:
 
   $ dune clean
   $ dune build a/a-sees-a

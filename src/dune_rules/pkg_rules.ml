@@ -2568,12 +2568,12 @@ let all_deps universe =
 
 let all_project_deps context = all_deps (Dependencies context)
 
-(* The packages of the lock directory reachable from [packages], or just
-   [packages] themselves when [direct_only], or all of them when [packages] is
-   [None]. [packages] holds the names visible to a directory, which include the
-   workspace packages; those are absent from the lock directory and so drop out
-   of the filter. *)
-let project_deps ~(packages : Package.Name.Set.t option) ~(direct_only : bool) context =
+(* The lock directory packages named by [packages], or all of them when
+   [packages] is [None]. Only the named packages are included: a dependency of
+   one of them is not, unless it is named too. [packages] holds the names
+   visible to a directory, which include the workspace packages; those are
+   absent from the lock directory and so drop out of the filter. *)
+let project_deps ~(packages : Package.Name.Set.t option) context =
   let+ all_project_deps = all_project_deps context in
   match packages with
   | None -> all_project_deps
@@ -2582,7 +2582,7 @@ let project_deps ~(packages : Package.Name.Set.t option) ~(direct_only : bool) c
       List.filter all_project_deps ~f:(fun (pkg : Pkg.t) ->
         Package.Name.Set.mem packages pkg.info.name)
     in
-    if direct_only then filtered else Pkg.top_closure filtered
+    filtered
 ;;
 
 let describe_packages = function
@@ -2621,8 +2621,7 @@ let lock_dir_binaries =
            (Context_name.to_string context)))
     (fun (context, packages) ->
        let+ { binaries; dep_info = _ } =
-         project_deps ~direct_only:false ~packages context
-         >>= Action_expander.Artifacts_and_deps.of_closure
+         project_deps ~packages context >>= Action_expander.Artifacts_and_deps.of_closure
        in
        binaries)
 ;;
@@ -2669,8 +2668,7 @@ let exported_env context =
   Env.extend Env.empty ~vars
 ;;
 
-let env_for_packages ~(packages : Package.Name.Set.t option) ~(direct_only : bool) context
-  =
+let env_for_packages ~(packages : Package.Name.Set.t option) context =
   Memo.push_stack_frame ~human_readable_description:(fun () ->
     Pp.textf
       "lock directory environment of %s for context %S"
@@ -2681,7 +2679,7 @@ let env_for_packages ~(packages : Package.Name.Set.t option) ~(direct_only : boo
   >>= function
   | false -> Memo.return Env.empty
   | true ->
-    let+ deps = project_deps ~packages ~direct_only context in
+    let+ deps = project_deps ~packages context in
     let vars =
       Pkg.build_env_of_deps deps |> Env.Map.map ~f:Value_list_env.string_of_env_values
     in
@@ -2689,7 +2687,7 @@ let env_for_packages ~(packages : Package.Name.Set.t option) ~(direct_only : boo
 ;;
 
 let bin_path_env ~packages context =
-  let+ env = env_for_packages ~packages ~direct_only:false context in
+  let+ env = env_for_packages ~packages context in
   match Env.get env Env_path.var with
   | None -> Env.empty
   | Some value -> Env.add Env.empty ~var:Env_path.var ~value

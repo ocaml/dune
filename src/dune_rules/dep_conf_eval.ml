@@ -363,10 +363,7 @@ and combined_package_deps_builder expander pkgs =
     else
       let+ lockdir_env =
         Action_builder.of_memo
-          (Pkg_rules.env_for_packages
-             ~packages:(Some lockdir_package_names)
-             ~direct_only:true
-             context.name)
+          (Pkg_rules.env_for_packages ~packages:(Some lockdir_package_names) context.name)
       in
       Install.Roots.extend_env_concat_path_vars lockdir_env local_env
   in

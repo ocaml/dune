@@ -31,21 +31,18 @@ val which
   -> Filename.t
   -> Path.t option Memo.t
 
-(** [env_for_packages ~packages ~direct_only context] is an env holding
-    environment variables constructed from the [packages] in the lock
-    directory. If [direct_only] is [false], the full closure of [packages] is
-    included. [None] means the whole lock directory. Empty when the context has
-    no lock directory. *)
+(** [env_for_packages ~packages context] is an env holding environment
+    variables constructed from the [packages] in the lock directory. Only those
+    packages are included, not their dependencies. [None] means the whole lock
+    directory. Empty when the context has no lock directory. *)
 val env_for_packages
   :  packages:Package.Name.Set.t option
-  -> direct_only:bool
   -> Context_name.t
   -> Env.t Memo.t
 
 (** [bin_path_env ~packages context] is an env holding only a PATH made of the
-    bin directories of the dependency closure of [packages] in the lock
-    directory. [None] means the whole lock directory. Empty when the context
-    has no lock directory. *)
+    bin directories of [packages] in the lock directory. [None] means the whole
+    lock directory. Empty when the context has no lock directory. *)
 val bin_path_env : packages:Package.Name.Set.t option -> Context_name.t -> Env.t Memo.t
 
 val exported_env : Context_name.t -> Env.t Memo.t

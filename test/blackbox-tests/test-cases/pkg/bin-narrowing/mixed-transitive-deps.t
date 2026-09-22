@@ -1,6 +1,6 @@
 A "mixed" transitive dependency chain [p] -> [q] -> [r] has one edge crossing
-the workspace/lockdir boundary, but the narrowing of lockdir packages correctly
-handles these edges.
+the workspace/lockdir boundary. We require packages whose binaries we depend
+upon, to be explicitly declared.
 
 [p] (workspace) -> [q] (workspace) -> [r] (lockdir). The [q] -> [r] edge is
 allowed, so this builds and [r-tool] resolves from [p]'s stanza.
@@ -32,10 +32,10 @@ A lockdir package [r] that installs [r-tool]:
 
   $ dune build p/r-avail
 
-[r] is reachable transitively through the workspace package [q]:
+[r] is not reachable transitively through the workspace package [q]:
 
   $ cat _build/default/p/r-avail
-  true
+  false
 
 Declaring [r] directly on [p] works too:
 

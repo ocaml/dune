@@ -841,24 +841,39 @@ let visible_packages t =
     match Dune_project.exclusive_package t.project ~dir:src_dir with
     | None -> Memo.return Package.Name.Selection.All
     | Some pkg_id ->
-      let+ packages = Dune_load.packages () in
-      (* A name that is not a workspace package is a lock directory package. It
-         is a leaf of this walk; its own dependencies are added by
-         [Pkg.top_closure] over the lock directory's graph. *)
-      let rec loop acc name =
-        if Package.Name.Set.mem acc name
-        then acc
-        else (
-          let acc = Package.Name.Set.add acc name in
-          match Package.Name.Map.find packages name with
-          | None -> acc
-          | Some pkg ->
-            List.fold_left
-              (Package.depends pkg @ Package.depopts pkg)
-              ~init:acc
-              ~f:(fun acc (dep : Package_dependency.t) -> loop acc dep.name))
+      let+ packages = Dune_load.packages ()
+      and+ locked_packages =
+        Lock_dir.get_exn context
+        >>| fun lock_dir ->
+        Dune_pkg.Lock_dir.Packages.to_pkg_list lock_dir.packages
+        |> List.map ~f:(fun (pkg : Lock_dir.Pkg.t) -> pkg.info.name)
+        |> Package.Name.Set.of_list
       in
-      Package.Name.Selection.Only (loop Package.Name.Set.empty (Package.Id.name pkg_id)))
+      let name = Package.Id.name pkg_id in
+      let visible = Package.Name.Set.singleton name in
+      (match Package.Name.Map.find packages name with
+       | None -> Package.Name.Selection.Only visible
+       | Some pkg ->
+         let visible =
+           List.fold_left
+             (Package.depends pkg)
+             ~init:visible
+             ~f:(fun acc (dep : Package_dependency.t) ->
+               Package.Name.Set.add acc dep.name)
+         in
+         (* An effective depopt is one that was actually solved: either a
+            workspace package (always present) or a package the solver put in
+            the lock directory. *)
+         let is_present dep_name =
+           Package.Name.Map.mem packages dep_name
+           || Package.Name.Set.mem locked_packages dep_name
+         in
+         Only
+           (List.fold_left
+              (Package.depopts pkg)
+              ~init:visible
+              ~f:(fun acc (dep : Package_dependency.t) ->
+                if is_present dep.name then Package.Name.Set.add acc dep.name else acc))))
 ;;
 
 let expand_pform_macro

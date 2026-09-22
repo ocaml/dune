@@ -1,8 +1,6 @@
-%{bin:X} and %{bin-available:X} lookups are narrowed to the dependency closure
-of the packages declared in the (depends ...) and (depopts ...) fields. All the
-binaries, including those of transitive deps, can be resolved. Binaries
-provided by packages not in the dependency closure are not resolved.
-
+%{bin:X} and %{bin-available:X} lookups are narrowed to the packages declared
+in the (depends ...) and (depopts ...) fields. Binaries provided by packages
+not in the dependency list are not resolved.
 
   $ make_lockdir
 
@@ -87,10 +85,10 @@ narrowing kicks in):
   $ cat _build/default/direct-out
   true
 
-[transitive-bin] is available:
+[transitive-bin] is not available:
 
   $ cat _build/default/transitive-out
-  true
+  false
 
 [other-bin] (package not in the deps closure) is not available:
 
@@ -103,11 +101,10 @@ The package [other] was *not* built:
   "_build/_private/default/.pkg/direct.0.0.1-$DIGEST1/target"
   "_build/_private/default/.pkg/transitive.0.0.1-$DIGEST2/target"
 
-Only the bin directories of the transitive dependency closure are added to $PATH:
+Only the bin directories of the declared dependencies are added to $PATH:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/direct.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/transitive.0.0.1-$DIGEST2/target/bin
+  $PWD/_build/_private/default/.pkg/direct.0.0.1-$DIGEST/target/bin
 
 Narrowing shrinks the build-dependency set, not just the visibility and PATH
 shown above. Previously, expanding a %{bin:X}/%{bin-available:X} pform forced

@@ -27,3 +27,24 @@ own group alias (#8989).
     that this warning is purely informational and will not catch all instances
     of erroneous printed interface.
   [1]
+
+A reference through a generated subgroup interface also needs its child CMIs.
+
+  $ mkdir outer/sub
+  $ cat >outer/sub/m.mli <<'EOF'
+  > type t
+  > val x : t
+  > EOF
+  $ echo 'type t = T let x = T' >outer/sub/m.ml
+  $ cat >outer/inner/inner.mly <<'EOF'
+  > %token EOF
+  > %start <_> main
+  > %%
+  > main: EOF { Sub.M.x }
+  > EOF
+  $ dune build --sandbox=copy lib.cma
+
+The dependency must also work when the subgroup has a handwritten interface.
+
+  $ echo 'module M = M' >outer/sub/sub.ml
+  $ dune build --sandbox=copy lib.cma

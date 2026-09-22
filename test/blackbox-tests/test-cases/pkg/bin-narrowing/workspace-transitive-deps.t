@@ -1,7 +1,7 @@
 Workspace-installed binaries (the local_bins in [Artifacts]) are narrowed when
 dune package management is enabled: a package's stanzas resolve any workspace
-package's binary present in its closure. The narrowing is only enabled when
-dune pkg management is enabled.
+package's binary listed in its dependencies. The narrowing is only enabled
+when dune pkg management is enabled.
 
 Enable dune package management in the workspace file. We configure a mock opam
 repository to avoid trying to connect to the upstream repository:
@@ -12,7 +12,7 @@ repository to avoid trying to connect to the upstream repository:
 
 Three workspace packages forming a chain [p] -> [q] -> [r]. [q] installs
 [q-tool] and [r] installs [r-tool]. A sibling [s] installs [s-tool] and is not
-in [p]'s dependency closure.
+listed in [p]'s dependencies.
 
   $ mkdir -p p q r s
   $ cat >q/q-tool.sh <<'EOF'
@@ -52,17 +52,18 @@ in [p]'s dependency closure.
   > EOF
 
   $ dune build @all
+
 [q-tool] (direct dep p -> q) is available:
 
   $ cat _build/default/p/q-avail
   true
 
-[r-tool] (transitive dep p -> q -> r) is available:
+[r-tool] (transitive dep p -> q -> r) is NOT available:
 
   $ cat _build/default/p/r-avail
-  true
+  false
 
-[s-tool] (sibling not in p's closure) is NOT available:
+[s-tool] (sibling not listed in p's dependencies) is NOT available:
 
   $ cat _build/default/p/s-avail
   false
@@ -75,13 +76,13 @@ The [s-tool] becomes available when pkg management is not enabled:
   $ cat _build/default/p/s-avail
   true
 
-Transitive closure across Dune projects
----------------------------------------
+Dependency chain across Dune projects
+-------------------------------------
 
-The same dependency chain should remain transitive when each package belongs to
-its own Dune project. Cross-project package dependencies are supported, so
-moving [q] and [r] below their own [dune-project] files should not change which
-binaries [p] can see.
+The same dependency chain, with each package in its own Dune project.
+Cross-project package dependencies are supported, so moving [q] and [r] below
+their own [dune-project] files makes the packages' binaries visible to [p] as
+before. This section runs without dune package management enabled.
 
   $ mkdir -p cross-project/p cross-project/q cross-project/r
   $ cd cross-project
@@ -124,7 +125,8 @@ The direct cross-project dependency is visible:
   $ cat _build/default/p/q-avail
   true
 
-[r-tool] is available too, since workspace binaries are not narrowed yet:
+[r-tool] is available too, since workspace binaries are not narrowed when dune
+package management is not enabled:
 
   $ cat _build/default/p/r-avail
   true

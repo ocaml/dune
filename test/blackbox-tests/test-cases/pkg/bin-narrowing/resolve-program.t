@@ -4,9 +4,9 @@ Several stanzas resolve their tool binaries via [Super_context.resolve_program]
 [(cinaps ...)], [(mdx ...)], etc.
 
 [Artifacts.binary]'s default [Context.which] step falls through to
-[Pkg_rules.which], which scans the narrowed lockdir dependency closure's binary
-index. So a binary installed by any package in the dependency closure of a
-stanza's owning package is discoverable from it.
+[Pkg_rules.which], which scans the binary index of the lockdir packages visible
+to the directory. So a binary installed by a package listed in the dependencies
+of a stanza's owning package is discoverable from it.
 
   $ make_lockdir
 

@@ -1,6 +1,6 @@
 In a context with a lock directory, [%{bin:X}] and [%{bin-available:X}] used to
 search every package in the lock directory, which meant building all of them.
-They now search only the transitive closure of the owning package's
+They now search only the packages listed in the owning package's
 [(depends ...)] and [(depopts ...)] fields, so only those packages are built.
 
   $ make_lockdir

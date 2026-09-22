@@ -1,39 +1,33 @@
 open Import
 
-module T = struct
-  type t =
-    | C
-    | Cxx
+type t =
+  | C
+  | Cxx
 
-  let repr =
-    Repr.variant
-      "foreign-language"
-      [ Repr.case0 "C" ~test:(function
-          | C -> true
-          | Cxx -> false)
-      ; Repr.case0 "Cxx" ~test:(function
-          | Cxx -> true
-          | C -> false)
-      ]
-  ;;
+let repr =
+  Repr.variant
+    "foreign-language"
+    [ Repr.case0 "C" ~test:(function
+        | C -> true
+        | Cxx -> false)
+    ; Repr.case0 "Cxx" ~test:(function
+        | Cxx -> true
+        | C -> false)
+    ]
+;;
 
-  include Repr.Poly (struct
-      type nonrec t = t
+include Repr.Poly (struct
+    type nonrec t = t
 
-      let repr = repr
-    end)
+    let repr = repr
+  end)
 
-  let to_dyn = Repr.to_dyn repr
-end
-
-include T
+let to_dyn = Repr.to_dyn repr
 
 let proper_name = function
   | C -> "C"
   | Cxx -> "C++"
 ;;
-
-include Comparable.Make (T)
 
 module Dict = struct
   type 'a t =
@@ -42,10 +36,6 @@ module Dict = struct
     }
 
   let equal f { c; cxx } t = f c t.c && f cxx t.cxx
-  let c t = t.c
-  let cxx t = t.cxx
-  let map { c; cxx } ~f = { c = f c; cxx = f cxx }
-  let mapi { c; cxx } ~f = { c = f ~language:C c; cxx = f ~language:Cxx cxx }
   let make_both a = { c = a; cxx = a }
   let make ~c ~cxx = { c; cxx }
 
@@ -53,19 +43,6 @@ module Dict = struct
     | C -> c
     | Cxx -> cxx
   ;;
-
-  let add t k v =
-    match k with
-    | C -> { t with c = v }
-    | Cxx -> { t with cxx = v }
-  ;;
-
-  let update t k ~f =
-    let v = get t k in
-    add t k (f v)
-  ;;
-
-  let merge t1 t2 ~f = { c = f t1.c t2.c; cxx = f t1.cxx t2.cxx }
 end
 
 let header_extension = Filename.Extension.h

@@ -644,8 +644,8 @@ let library_rules
     let flags = Compilation_context.flags cctx in
     let preprocess =
       match for_ with
-      | Ocaml -> lib.buildable.preprocess.config
-      | Melange -> lib.buildable.melange_preprocess.config
+      | Ocaml -> lib.buildable.preprocess
+      | Melange -> lib.buildable.melange_preprocess
     in
     Merlin.make
       ~requires_compile
@@ -653,8 +653,8 @@ let library_rules
       ~stdlib_dir:lib_config.stdlib_dir
       ~flags
       ~modules
-      ~preprocess:(Preprocess.Per_module.without_instrumentation preprocess)
-      ~preprocessor_deps:lib.buildable.preprocess.preprocessor_deps
+      ~preprocess:(Preprocess.Per_module.without_instrumentation preprocess.config)
+      ~preprocessor_deps:preprocess.preprocessor_deps
       ~libname:(Some (snd lib.name))
       ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))

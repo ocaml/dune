@@ -65,12 +65,30 @@ module Dir_rules = struct
   let union_map a b ~f = Id.Map.union a b ~f:(fun _key a b -> Some (f a b))
 
   let union a b =
-    if a == b
-    then a
-    else
-      union_map a b ~f:(fun a b ->
-        assert (a == b);
-        a)
+    match phys_equal a b with
+    | true -> a
+    | false ->
+      (match Id.Map.is_empty a with
+       | true -> b
+       | false ->
+         (* Most emissions are singletons. [Map.union] would split and rebuild
+            that singleton at each level of the accumulated map. *)
+         let singleton =
+           match Id.Map.is_singleton b with
+           | false -> None
+           | true -> Id.Map.choose b
+         in
+         (match singleton with
+          | Some (id, data) ->
+            Id.Map.update a id ~f:(function
+              | None -> Some data
+              | Some previous as result ->
+                assert (phys_equal previous data);
+                result)
+          | None ->
+            union_map a b ~f:(fun a b ->
+              assert (phys_equal a b);
+              a)))
   ;;
 
   let singleton (data : data) =

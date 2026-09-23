@@ -53,6 +53,61 @@ let%expect_test "array of reversed list" =
     |}]
 ;;
 
+let%expect_test "immutable array access" =
+  let check values to_dyn =
+    let values = Array.Immutable.of_list values in
+    print_dyn (int (Array.Immutable.length values));
+    for index = 0 to Array.Immutable.length values - 1 do
+      print_dyn (to_dyn (Array.Immutable.get values index))
+    done
+  in
+  check [] int;
+  check [ 1; 2; 3 ] int;
+  check [ "first"; "last" ] string;
+  check [ 1.5; 2.5 ] float;
+  [%expect
+    {|
+    0
+    3
+    1
+    2
+    3
+    2
+    "first"
+    "last"
+    2
+    1.5
+    2.5
+    |}]
+;;
+
+let%expect_test "immutable array bounds checks" =
+  let check values index =
+    let values = Array.Immutable.of_list values in
+    match Array.Immutable.get values index with
+    | _ -> print_endline "unexpected success"
+    | exception Invalid_argument message -> print_endline message
+  in
+  check ([] : int list) 0;
+  check ([] : float list) 0;
+  List.iter [ -1; 2; min_int; max_int ] ~f:(fun index ->
+    check [ 1; 2 ] index;
+    check [ 1.5; 2.5 ] index);
+  [%expect
+    {|
+    index out of bounds
+    index out of bounds
+    index out of bounds
+    index out of bounds
+    index out of bounds
+    index out of bounds
+    index out of bounds
+    index out of bounds
+    index out of bounds
+    index out of bounds
+    |}]
+;;
+
 let%expect_test "array-backed map" =
   let map = Map.empty in
   print_bool (Map.is_empty map);

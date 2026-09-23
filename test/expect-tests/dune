@@ -12,6 +12,7 @@
   ocaml_config
   dune_tests_common
   stdune
+  targets
   dune_util
   dune_engine
   dune_scheduler

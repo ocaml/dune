@@ -571,13 +571,13 @@ module Component = struct
     (** A binary, which, as per convention, is defined in a ./bin subdirectory *)
     val bin : Options.Executable.t Options.t -> target list
 
-    (** A library, which, as per convention, is defined in a ./src subdirectory *)
-    val src : Options.Library.t Options.t -> target list
+    (** A library, which, as per convention, is defined in a ./lib subdirectory *)
+    val lib : Options.Library.t Options.t -> target list
 
     (** A test suite, which, as per convention, is defined in a ./test subdirectory *)
     val test : Options.Test.t Options.t -> target list
 
-    (** A project, which, as per convention, includes a ./src and ./test and optionally a ./bin *)
+    (** A project, which, as per convention, includes a ./lib and ./test and optionally a ./bin *)
     val proj : Options.Project.t Options.t -> target list
   end = struct
     let bin ({ context; common; options } : Options.Executable.t Options.t) =
@@ -595,7 +595,7 @@ module Component = struct
       [ { dir; files } ]
     ;;
 
-    let src ({ context; common; options } : Options.Library.t Options.t) =
+    let lib ({ context; common; options } : Options.Library.t Options.t) =
       let dir = context.dir in
       let lib_dune =
         Stanza_cst.library common options
@@ -665,7 +665,7 @@ module Component = struct
 
     let proj_exec dir ({ context; common; options } : Options.Project.t Options.t) =
       let lib_target =
-        src
+        lib
           { context = { context with dir = Path.Source.relative dir "lib" }
           ; options = { inline_tests = options.inline_tests }
           ; common = { common with public = None }
@@ -686,7 +686,7 @@ module Component = struct
 
     let proj_lib dir ({ context; common; options } : Options.Project.t Options.t) =
       let lib_target =
-        src
+        lib
           { context = { context with dir = Path.Source.relative dir "lib" }
           ; options = { inline_tests = options.inline_tests }
           ; common
@@ -751,7 +751,7 @@ module Component = struct
     let target =
       match t with
       | Executable params -> Make.bin params
-      | Library params -> Make.src params
+      | Library params -> Make.lib params
       | Project params -> Make.proj params
       | Test params -> Make.test params
     in

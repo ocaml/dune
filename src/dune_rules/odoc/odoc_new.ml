@@ -11,6 +11,7 @@ type ext_loc_maps =
   ; loc_of_pkg : Dune_package.External_location.t Package.Name.Map.t
   ; loc_of_lib : Dune_package.External_location.t Lib_name.Map.t
   ; libs_of_loc : (Dune_package.Lib.t * Lib.t) Lib_name.Map.t Ext_loc_map.t
+  ; libs_of_pkg : Lib.t list Package.Name.Map.t
   }
 
 let stdlib_lib ctx =
@@ -138,12 +139,9 @@ module Index = struct
   let mld_path ctx ~all index = obj_dir ctx ~all index ++ mld_filename index
 
   let of_local_lib lib =
-    match
-      let info = Lib.Local.info lib in
-      Lib_info.findlib_package info
-    with
-    | None -> [ Private_lib (Odoc.lib_unique_name (lib :> Lib.t)) ]
-    | Some _pkg ->
+    match Lib_info.status (Lib.Local.info lib) with
+    | Private (_, None) -> [ Private_lib (Odoc.lib_unique_name (lib :> Lib.t)) ]
+    | Public _ | Private (_, Some _) | Installed _ | Installed_private _ ->
       (match Lib_name.analyze (Lib.name (lib :> Lib.t)) with
        | Private (_, _) -> [ Private_lib (Odoc.lib_unique_name (lib :> Lib.t)) ]
        | Public (pkg, rest) ->
@@ -249,6 +247,7 @@ let libs_maps_def =
       ; loc_of_pkg = Package.Name.Map.empty
       ; loc_of_lib = Lib_name.Map.empty
       ; libs_of_loc = Ext_loc_map.empty
+      ; libs_of_pkg = Package.Name.Map.empty
       }
     in
     Memo.List.fold_left all_packages_entries ~init ~f:(fun maps entry ->
@@ -303,7 +302,8 @@ let libs_maps_def =
               let libs_of_loc =
                 Ext_loc_map.update maps.libs_of_loc location ~f:update_fn
               in
-              { maps with loc_of_lib; loc_of_pkg; libs_of_loc })))
+              let libs_of_pkg = Package.Name.Map.add_multi maps.libs_of_pkg pkg lib in
+              { maps with loc_of_lib; loc_of_pkg; libs_of_loc; libs_of_pkg })))
   in
   let module Input = struct
     type t = Context.t * Lib_name.t list
@@ -414,7 +414,7 @@ module Valid = struct
                   else
                     Lib.Set.filter libs ~f:(fun lib ->
                       let info = Lib.info lib in
-                      match Lib_info.findlib_package info with
+                      match Lib_info.package info with
                       | Some p -> Only_packages.mem mask p
                       | None -> false)
                 in
@@ -501,12 +501,15 @@ module Valid = struct
 
   let libs_maps ctx ~all =
     let* libs, _packages = get ctx ~all in
-    let libs =
-      List.filter_map
-        ~f:(fun l -> if Lib.is_local l then None else Some (Lib.name l))
-        libs
+    let local, external_ = List.partition libs ~f:Lib.is_local in
+    let+ maps = libs_maps_general ctx (List.map external_ ~f:Lib.name) in
+    let libs_of_pkg =
+      List.fold_left local ~init:maps.libs_of_pkg ~f:(fun acc lib ->
+        match Lib_info.package (Lib.info lib) with
+        | None -> acc
+        | Some pkg -> Package.Name.Map.add_multi acc pkg lib)
     in
-    libs_maps_general ctx libs
+    { maps with libs_of_pkg }
   ;;
 
   (* It's handy for the toplevel index generation to be able to construct
@@ -626,9 +629,7 @@ end = struct
              Dep.Set.singleton (Dep.alias (alias ~dir:(Index.odoc_dir ctx ~all index)))
            in
            let pkg_libs =
-             List.filter
-               ~f:(fun l -> Lib.info l |> Lib_info.findlib_package = pkg)
-               valid_libs
+             Package.Name.Map.find maps.libs_of_pkg p |> Option.value ~default:[]
            in
            List.rev_append pkg_libs libs, init
        in
@@ -1477,18 +1478,33 @@ let index_info_of_lib_def =
   let module Input = struct
     module Super_context = Super_context.As_memo_key
 
-    type t = Super_context.t * bool * Lib.t
+    type t = Super_context.t * bool * Lib.t * Package.Name.t option
 
-    let equal (c1, b1, l1) (c2, b2, l2) =
-      Super_context.equal c1 c2 && b1 = b2 && Lib.equal l1 l2
+    let equal (c1, b1, l1, p1) (c2, b2, l2, p2) =
+      Super_context.equal c1 c2
+      && b1 = b2
+      && Lib.equal l1 l2
+      && Option.equal Package.Name.equal p1 p2
     ;;
 
-    let hash (c, b, l) = Poly.hash (Super_context.hash c, b, Lib.hash l)
-    let to_dyn (c, b, l) = Dyn.Tuple [ Super_context.to_dyn c; Dyn.Bool b; Lib.to_dyn l ]
+    let hash (c, b, l, p) =
+      Poly.hash (Super_context.hash c, b, Lib.hash l, Option.map p ~f:Package.Name.hash)
+    ;;
+
+    let repr =
+      Repr.view
+        Repr.(
+          pair
+            (abstract Super_context.to_dyn)
+            (triple bool (abstract Lib.to_dyn) (option (abstract Package.Name.to_dyn))))
+        ~to_:(fun (c, b, l, p) -> c, (b, l, p))
+    ;;
+
+    let to_dyn = Repr.to_dyn repr
   end
   in
   let f : Input.t -> _ =
-    fun (sctx, all, lib) ->
+    fun (sctx, all, lib, package) ->
     let ctx = Super_context.context sctx in
     let* maps = Valid.libs_maps ctx ~all in
     let index =
@@ -1521,7 +1537,6 @@ let index_info_of_lib_def =
       in
       Lib.Map.singleton lib entry_modules
     in
-    let package = Lib_info.findlib_package info in
     let lib_index_info =
       ( index
       , { Index_tree.libs
@@ -1549,7 +1564,9 @@ let index_info_of_lib_def =
   Memo.create "index_info_of_lib" ~input:(module Input) f
 ;;
 
-let index_info_of_lib sctx all lib = Memo.exec index_info_of_lib_def (sctx, all, lib)
+let index_info_of_lib sctx all ~package lib =
+  Memo.exec index_info_of_lib_def (sctx, all, lib, package)
+;;
 
 let index_info_of_external_fallback_def =
   let f (ctx, location, (fallback : Classify.fallback)) =
@@ -1774,14 +1791,15 @@ let full_tree sctx ~all =
     in
     Lib_name.Map.fold ~init:indexes categorized.local ~f:(fun lib acc ->
       let* acc = acc in
-      let+ ii = index_info_of_lib sctx all (lib :> Lib.t) in
+      let package = Lib_info.package (Lib.Local.info lib) in
+      let+ ii = index_info_of_lib sctx all ~package (lib :> Lib.t) in
       List.rev_append ii acc)
   in
   Ext_loc_map.foldi ~init:indexes categorized.externals ~f:(fun loc ty acc ->
     let* acc = acc in
     match ty with
-    | Dune_with_modules (_, lib) ->
-      let+ ii = index_info_of_lib sctx all lib in
+    | Dune_with_modules (pkg, lib) ->
+      let+ ii = index_info_of_lib sctx all ~package:(Some pkg) lib in
       List.rev_append ii acc
     | Fallback fallback ->
       let+ ii =

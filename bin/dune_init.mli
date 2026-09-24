@@ -93,13 +93,12 @@ module Component : sig
   end
 
   (** All the supported types of components *)
-  type 'options t =
-    | Executable : Options.Executable.t Options.t -> Options.Executable.t t
-    | Library : Options.Library.t Options.t -> Options.Library.t t
-    | Project : Options.Project.t Options.t -> Options.Project.t t
-    | Test : Options.Test.t Options.t -> Options.Test.t t
+  type t =
+    | Executable of Options.Executable.t Options.t
+    | Library of Options.Library.t Options.t
+    | Project of Options.Project.t Options.t
+    | Test of Options.Test.t Options.t
 
-  (** Create or update the component specified by the ['options t], where
-      ['options] is *)
-  val init : 'options t -> unit
+  (** Create or update the given component *)
+  val init : t -> unit
 end

@@ -52,3 +52,17 @@ already built the `foo` dependency when calling `@pkg-install`:
 
   $ dune build ./bar.exe
   let _ = 42
+
+Loading a subdirectory still contributes its own rules. Re-requesting the root
+package-install alias does not rebuild the installed dependency.
+
+  $ mkdir sub
+  $ cat > sub/dune <<EOF
+  > (rule
+  >  (target generated)
+  >  (action (with-stdout-to %{target} (echo "nested\n"))))
+  > EOF
+  $ dune build sub/generated
+  $ cat _build/default/sub/generated
+  nested
+  $ dune build @pkg-install

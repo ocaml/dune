@@ -332,13 +332,19 @@ end = struct
           ( add_targets by_file_targets ~targets:rule.targets.files rule
           , add_targets by_directory_targets ~targets:rule.targets.dirs rule ))
     in
-    Path.Build.Map.iter2
-      by_file_targets
-      by_directory_targets
-      ~f:(fun target rule1 rule2 ->
-        match rule1, rule2 with
-        | None, _ | _, None -> ()
-        | Some rule1, Some rule2 -> report_rule_conflict target rule1 rule2);
+    (match
+       ( Path.Build.Map.is_empty by_file_targets
+       , Path.Build.Map.is_empty by_directory_targets )
+     with
+     | true, _ | _, true -> ()
+     | false, false ->
+       Path.Build.Map.iter2
+         by_file_targets
+         by_directory_targets
+         ~f:(fun target rule1 rule2 ->
+           match rule1, rule2 with
+           | None, _ | _, None -> ()
+           | Some rule1, Some rule2 -> report_rule_conflict target rule1 rule2));
     { Loaded.by_file_targets; by_directory_targets }
   ;;
 

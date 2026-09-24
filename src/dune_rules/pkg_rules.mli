@@ -27,12 +27,11 @@ val project_ocamlpath : Context_name.t -> Path.t list Memo.t
 val dev_tool_ocamlpath : Dune_pkg.Dev_tool.t -> Path.t list Memo.t
 val find_package : Context_name.t -> Package.Name.t -> unit Action_builder.t option Memo.t
 
-(* CR-someday Alizter: This is really [Path.Build.t] but the "toolchain"
-   mechanism prevents us from typing it as such for the moment. *)
-val find_package_by_installed_path
-  :  Context_name.t
-  -> Path.t
-  -> Package.Name.t option Memo.t
+(* CR-someday Alizter: These prefixes would be [Path.Build.t] if not for
+   the "toolchain" mechanism, which installs outside the build directory. *)
+
+(** Installation prefixes and owning packages from the context's lock directory. *)
+val package_prefixes : Context_name.t -> (Path.t * Package.Name.t) list Memo.t
 
 val resolve_installed_file
   :  loc:Loc.t

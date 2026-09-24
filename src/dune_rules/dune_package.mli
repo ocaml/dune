@@ -102,7 +102,13 @@ module Or_meta : sig
     -> unit
 
   val pp_use_meta : dune_version:Dune_lang.Syntax.Version.t -> Format.formatter -> unit
-  val parse : Path.t -> Lexbuf.t -> (t, User_message.t) result
-  val load : Path.t -> (t, User_message.t) result Memo.t
+
+  val parse
+    :  package:Package.Name.t option
+    -> Path.t
+    -> Lexbuf.t
+    -> (t, User_message.t) result
+
+  val load : package:Package.Name.t option -> Path.t -> (t, User_message.t) result Memo.t
   val to_dyn : t Dyn.builder
 end

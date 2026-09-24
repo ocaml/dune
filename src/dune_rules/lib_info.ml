@@ -672,16 +672,6 @@ let findlib_package t =
   | Public _ | Private _ -> package t
 ;;
 
-let set_installed_package t package =
-  match t.status with
-  | Installed_private _ -> { t with status = Installed_private package }
-  | Installed _ -> { t with status = Installed package }
-  | Public _ | Private _ ->
-    Code_error.raise
-      "Lib_info.set_installed_package: expected an installed library"
-      [ "name", Lib_name.to_dyn t.name ]
-;;
-
 let for_dune_package
       t
       ~name

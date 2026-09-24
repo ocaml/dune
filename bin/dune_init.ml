@@ -649,7 +649,7 @@ module Component = struct
       |> Dune_lang.Atom.of_string
     ;;
 
-    let project_test dir context (common : Options.Common.t) =
+    let proj_test dir context (common : Options.Common.t) =
       let test_name = "test_" ^ Dune_lang.Atom.to_string common.name in
       let libraries =
         match common.public with
@@ -671,7 +671,7 @@ module Component = struct
           ; common = { common with public = None }
           }
       in
-      let test_target = project_test dir context common in
+      let test_target = proj_test dir context common in
       let bin_target =
         (* Add the lib_target as a library to the executable*)
         let libraries = Stanza_cst.add_to_list_set common.name common.libraries in
@@ -692,7 +692,7 @@ module Component = struct
           ; common
           }
       in
-      let test_target = project_test dir context common in
+      let test_target = proj_test dir context common in
       lib_target @ test_target
     ;;
 

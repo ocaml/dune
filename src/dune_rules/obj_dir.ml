@@ -435,11 +435,11 @@ let all_obj_dirs (type path) (t : path t) ~mode : path list =
   | Local_as_path e -> Local.all_obj_dirs e ~mode |> List.map ~f:Path.build
 ;;
 
-let cm_dir t cm_kind visibility =
-  get_path
-    t
-    ~l:(fun l -> Local.cm_dir l cm_kind visibility)
-    ~e:(fun e -> External.cm_dir e cm_kind visibility)
+let cm_dir (type path) (t : path t) cm_kind visibility : path =
+  match t with
+  | External e -> External.cm_dir e cm_kind visibility
+  | Local l -> Local.cm_dir l cm_kind visibility
+  | Local_as_path l -> Path.build (Local.cm_dir l cm_kind visibility)
 ;;
 
 let cm_public_dir t cm_kind =

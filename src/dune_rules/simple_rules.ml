@@ -77,6 +77,24 @@ let interpret_and_add_locks ~expander locks action =
   | locks -> Action_builder.map action ~f:(Action.Full.add_locks locks)
 ;;
 
+let interpret_and_add_job_slots ~expander job_slots action =
+  match job_slots with
+  | None -> action
+  | Some (loc, job_slots) ->
+    let open Action_builder.O in
+    let+ { Action.Full.action = job_slots; _ } =
+      Action_unexpanded.expand_no_targets
+        job_slots
+        Sandbox_config.no_special_requirements
+        ~loc
+        ~chdir:(Expander.dir expander)
+        ~deps:Bindings.empty
+        ~expander
+        ~what:"job_slots commands"
+    and+ action in
+    Action.Full.add_job_slots job_slots action
+;;
+
 let add_user_rule
       sctx
       ~dir
@@ -85,7 +103,10 @@ let add_user_rule
       ~expander
   =
   let action =
-    let build = interpret_and_add_locks ~expander rule.locks action.build in
+    let build =
+      interpret_and_add_locks ~expander rule.locks action.build
+      |> interpret_and_add_job_slots ~expander rule.job_slots
+    in
     { action with Action_builder.With_targets.build }
   in
   let* mode = Rule_mode_expand.expand_path ~expander ~dir rule.mode in
@@ -209,6 +230,7 @@ let user_rule sctx ~dir ~expander (rule : Rule_conf.t) =
          | [] -> Code_error.raise "empty list of aliases" []
          | aliases ->
            interpret_and_add_locks ~expander rule.locks action.build
+           |> interpret_and_add_job_slots ~expander rule.job_slots
            |> Alias_rules.add sctx ~aliases ~loc:rule.loc
        in
        None)

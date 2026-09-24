@@ -15,6 +15,7 @@ type t =
   ; corrections : Corrections.t option
   ; mode : Rule_mode.t
   ; locks : Locks.t
+  ; job_slots : (Loc.t * Dune_lang.Action.t) option
   ; loc : Loc.t
   ; enabled_if : Blang.t
   ; aliases : Alias.Name.t list
@@ -61,6 +62,7 @@ let atom_table =
     ; "action", Field
     ; "corrections", Field
     ; "locks", Field
+    ; "job_slots", Field
     ; "fallback", Field
     ; "mode", Field
     ; "aliases", Field
@@ -79,6 +81,7 @@ let short_form ~loc =
   ; corrections = None
   ; mode = Standard
   ; locks = []
+  ; job_slots = None
   ; loc
   ; enabled_if = Blang.true_
   ; aliases = []
@@ -111,6 +114,11 @@ let long_form ~loc =
     (let+ action_o = field_o "action" (located Dune_lang.Action.decode_dune_file)
      and+ targets = Targets_spec.field ~allow_directory_targets
      and+ locks = Locks.field ()
+     and+ job_slots =
+       field_o
+         "job_slots"
+         (Dune_lang.Syntax.since Stanza.syntax (3, 25)
+          >>> located Dune_lang.Action.decode_dune_file)
      and+ corrections =
        field_o "corrections" (Dune_lang.Syntax.since Stanza.syntax (3, 23) >>> corrections)
      and+ () =
@@ -161,6 +169,7 @@ let long_form ~loc =
      ; corrections
      ; mode
      ; locks
+     ; job_slots
      ; loc
      ; enabled_if
      ; aliases

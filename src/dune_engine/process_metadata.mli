@@ -13,6 +13,9 @@ type t =
   ; purpose : purpose
   ; has_embedded_location : bool
   ; promotion : User_message.Diff_annot.t option
+  ; job_slots : int
+    (** The number of job slots that the process takes. A process that runs
+        its own parallel work takes more than one slot. *)
   }
 
 val default : t

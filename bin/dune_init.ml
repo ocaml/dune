@@ -327,13 +327,12 @@ module Component = struct
       }
   end
 
-  (* Options *)
-
-  type 'options t =
-    | Executable : Options.Executable.t Options.t -> Options.Executable.t t
-    | Library : Options.Library.t Options.t -> Options.Library.t t
-    | Project : Options.Project.t Options.t -> Options.Project.t t
-    | Test : Options.Test.t Options.t -> Options.Test.t t
+  (** The type of components, specified by the kind of options appropriate to them *)
+  type t =
+    | Executable of Options.Executable.t Options.t
+    | Library of Options.Library.t Options.t
+    | Project of Options.Project.t Options.t
+    | Test of Options.Test.t Options.t
 
   (** Internal representation of the files comprising a component *)
   type target =
@@ -662,7 +661,7 @@ module Component = struct
     List.map ~f:File.write target.files
   ;;
 
-  let init (type options) (t : options t) =
+  let init (t : t) =
     let target =
       match t with
       | Executable params -> Make.bin params

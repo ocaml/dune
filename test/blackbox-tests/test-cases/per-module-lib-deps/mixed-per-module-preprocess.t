@@ -10,7 +10,23 @@ A no-op staged ppx, modelled on
 `test/blackbox-tests/test-cases/staged-pps-relative-directory-gh8158.t`.
 The driver copies its input verbatim.
 
-  $ make_noop_ppx_rewriter
+  $ mkdir ppx
+  $ cat > ppx/dune <<EOF
+  > (library
+  >  (name ppx_noop)
+  >  (kind ppx_rewriter)
+  >  (ppx.driver (main Ppx_noop.main)))
+  > EOF
+  $ cat > ppx/ppx_noop.ml <<EOF
+  > let main () =
+  >   let n = Array.length Sys.argv in
+  >   if n < 4 || Sys.argv.(1) <> "--as-ppx" then assert false;
+  >   let input = Sys.argv.(n - 2) in
+  >   let output = Sys.argv.(n - 1) in
+  >   Filename.quote_command "cp" [input; output]
+  >   |> Sys.command
+  >   |> exit
+  > EOF
 
 `mylib` is `(wrapped false)` with `a` default-pp and `b` staged-pps.
 `a`'s interface mentions `B.t`, so the consumer's call to
@@ -57,7 +73,7 @@ objdir — both `a.cmi` (referenced) and `b.cmi` (needed for the
 type of `A.identity`).
 
   $ dune rules --root . --format=json --deps '%{cmo:consumer/consumer}' > deps.json
-  $ jq_dune -r '.[] | depsGlobs
+  $ jq -r 'include "dune"; .[] | depsGlobs
   >   | select(.dir | endswith("mylib/.mylib.objs/byte"))
   >   | .dir + " " + .predicate' < deps.json
   _build/default/mylib/.mylib.objs/byte *.cmi

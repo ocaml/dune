@@ -69,7 +69,7 @@ a change to either module's interface fails to invalidate `main`.
 Glob coverage on `main.cmi`'s compile rule:
 
   $ dune rules --root . --format=json --deps '%{cmi:consumer/main}' |
-  > jq_dune -r '.[] | depsGlobs | "\(.dir_kind) \(.dir) \(.predicate)"'
+  > jq -r 'include "dune"; .[] | depsGlobs | "\(.dir_kind) \(.dir) \(.predicate)"'
   In_build_dir _build/default/impl/.impl.objs/byte *.cmi
 
 Case 1 (soundness): edit `helper`'s interface to expose `z`. `main`
@@ -81,7 +81,7 @@ must cover `vlib__Helper.cmi`, so `main` rebuilds:
   > val z : int
   > EOF
   $ dune build @check
-  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer/\\.main\\.eobjs/byte/"))]'
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer/\\.main\\.eobjs/byte/"))]'
   [
     {
       "target_files": [
@@ -106,7 +106,7 @@ rule deps must cover `vlib__Virt_iface.cmi`, so `main` rebuilds:
   > val z : int
   > EOF
   $ dune build @check
-  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer/\\.main\\.eobjs/byte/"))]'
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer/\\.main\\.eobjs/byte/"))]'
   [
     {
       "target_files": [
@@ -135,7 +135,7 @@ a library lands.
   > val w : string
   > EOF
   $ dune build @check
-  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer/\\.main\\.eobjs/byte/"))]'
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer/\\.main\\.eobjs/byte/"))]'
   [
     {
       "target_files": [

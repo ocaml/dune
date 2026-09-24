@@ -2425,14 +2425,14 @@ let setup_pkg_install_alias =
     |> Action_builder.paths
   in
   fun ~dir ctx_name ->
-    let rule =
-      (* We only need to build when the build_dir is the root of the context *)
-      match
-        let build_dir = Context_name.build_dir ctx_name in
-        Path.Build.equal dir build_dir
-      with
-      | false -> Memo.return Rules.empty
-      | true ->
+    (* We only need to build when the build_dir is the root of the context *)
+    match
+      let build_dir = Context_name.build_dir ctx_name in
+      Path.Build.equal dir build_dir
+    with
+    | false -> Gen_rules.no_rules
+    | true ->
+      let rule =
         let* active = Lock_dir.lock_dir_active ctx_name in
         let alias = Alias.make ~dir Alias0.pkg_install in
         Rules.collect_unit (fun () ->
@@ -2442,9 +2442,9 @@ let setup_pkg_install_alias =
             | false -> pkg_alias_disabled
           in
           Rules.Produce.Alias.add_deps alias deps)
-    in
-    Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
-    |> Gen_rules.rules_here
+      in
+      Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
+      |> Gen_rules.rules_here
 ;;
 
 let setup_package_rules db ~package_universe ~dir ~pkg_digest : Gen_rules.result Memo.t =

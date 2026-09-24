@@ -10,4 +10,7 @@ In this test we want to check the output of the rule reporting.
   15 |  (action
   16 |   (run idontexist)))
   Error: No rule found for idontexist
+  Hint: If this is a source file or directory, make sure it exists in the
+  source tree. If it is generated, add or fix the rule that produces
+  idontexist.
   [1]

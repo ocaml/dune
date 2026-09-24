@@ -81,18 +81,18 @@ end
 
 module Sorted = struct
   module Make (Key : Map_intf.Key) = struct
-    let binary_search keys key =
-      let rec loop low high =
+    let binary_search =
+      let rec loop keys key low high =
         if low > high
         then -1
         else (
           let mid = (low + high) / 2 in
           match Key.compare key (Stdlib.Array.unsafe_get keys mid) with
           | Eq -> mid
-          | Lt -> loop low (mid - 1)
-          | Gt -> loop (mid + 1) high)
+          | Lt -> loop keys key low (mid - 1)
+          | Gt -> loop keys key (mid + 1) high)
       in
-      loop 0 (Stdlib.Array.length keys - 1)
+      fun keys key -> loop keys key 0 (Stdlib.Array.length keys - 1)
     ;;
 
     module Set = struct

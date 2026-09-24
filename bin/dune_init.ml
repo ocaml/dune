@@ -31,9 +31,8 @@ module File : sig
 
   (** {2 Transformers: change the properties of file representations} *)
   module Stanza : sig
-    (** [add project ~dir stanzas f] appends the [stanzas] to the dune file
-        located at the path [${dir}/dune] *)
-    val add : Dune_project.t -> dir:Path.Source.t -> Cst.t list -> t -> t
+    (** [add project stanzas f] appends the [stanzas] to the dune file [f] *)
+    val add : Dune_project.t -> Cst.t list -> t -> t
   end
 
   (** {2 Eliminators: materialize the representation of files (or directories)} *)
@@ -118,10 +117,10 @@ end = struct
       List.find_map ~f:conflicting_stanza new_stanzas
     ;;
 
-    let add (project : Dune_project.t) ~dir stanzas = function
+    let add (project : Dune_project.t) stanzas = function
       | Text f -> Text f (* Adding a stanza to a text file isn't meaningful *)
       | Dune f ->
-        (match find_conflicting project ~dir stanzas f.content with
+        (match find_conflicting project ~dir:f.dir stanzas f.content with
          | None -> Dune { f with content = f.content @ stanzas }
          | Some (a, b) ->
            User_error.raise
@@ -563,7 +562,7 @@ module Component = struct
 
   (* TODO Support for merging in changes to an existing stanza *)
   let add_stanza_to_dune_file ~(project : Dune_project.t) ~dir stanza =
-    File.load_dune_file ~dir |> File.Stanza.add ~dir project stanza
+    File.load_dune_file ~dir |> File.Stanza.add project stanza
   ;;
 
   (** Functions to make the various components, represented as lists of targets *)

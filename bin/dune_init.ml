@@ -411,9 +411,9 @@ module Component = struct
       -> string
 
     val add_to_list_set
-      :  Dune_sexp.Atom.t
-      -> Dune_sexp.Atom.t list
-      -> Dune_sexp.Atom.t list
+      :  Dune_lang.Atom.t
+      -> Dune_lang.Atom.t list
+      -> Dune_lang.Atom.t list
   end = struct
     open Dune_lang
 

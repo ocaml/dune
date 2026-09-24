@@ -391,6 +391,10 @@ module Component = struct
     ; files : File.t list
     }
 
+  let add_to_list_set elem set =
+    if List.mem ~equal:Dune_lang.Atom.equal set elem then set else elem :: set
+  ;;
+
   (** Creates Dune language CST stanzas describing components *)
   module Stanza_cst : sig
     val executable : Options.Common.t -> Options.Executable.t -> Cst.t list
@@ -409,11 +413,6 @@ module Component = struct
       -> Path.Source.t
       -> Options.Common.t
       -> string
-
-    val add_to_list_set
-      :  Dune_lang.Atom.t
-      -> Dune_lang.Atom.t list
-      -> Dune_lang.Atom.t list
   end = struct
     open Dune_lang
 
@@ -444,10 +443,6 @@ module Component = struct
       |> Dune_lang.Ast.add_loc ~loc:Loc.none
       |> Cst.concrete
       (* Package as a list CSTs *) |> List.singleton
-    ;;
-
-    let add_to_list_set elem set =
-      if List.mem ~equal:Dune_lang.Atom.equal set elem then set else elem :: set
     ;;
 
     let public_name_field = Encoder.field_o "public_name" Public_name.encode
@@ -673,7 +668,7 @@ module Component = struct
       let test_target = proj_test dir context common in
       let bin_target =
         (* Add the lib_target as a library to the executable*)
-        let libraries = Stanza_cst.add_to_list_set common.name common.libraries in
+        let libraries = add_to_list_set common.name common.libraries in
         bin
           { context = { context with dir = Path.Source.relative dir "bin" }
           ; options = ()

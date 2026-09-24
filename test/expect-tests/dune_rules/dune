@@ -3,6 +3,7 @@
  (inline_tests)
  (libraries
   stdune
+  dune_engine
   dune_rules
   dune_tests_common
   fiber

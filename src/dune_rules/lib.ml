@@ -2377,45 +2377,31 @@ module DB = struct
 
   let create_from_findlib =
     let bigarray = Lib_name.of_string "bigarray" in
-    fun context_name findlib ~has_bigarray_library ->
+    fun findlib ~has_bigarray_library ->
       let resolve name =
         let open Memo.O in
-        Findlib.find_with_package findlib name
-        >>= function
-        | Ok ({ Dune_package.dir; name = package_name; _ }, entry) ->
-          let+ package =
-            let* lock_dir_active = Pkg_rules.lock_dir_active context_name in
-            (* Findlib names can differ from their owning lock packages:
-               [ocamlfind] provides [findlib]. Use the installation prefix to
-               recover the lock-package name. *)
-            if lock_dir_active
-            then Pkg_rules.find_package_by_installed_path context_name dir
-            else Memo.return (Some package_name)
-          in
+        Findlib.find findlib name
+        >>| function
+        | Ok entry ->
           [ (match entry with
-             | Library lib ->
-               Found (Lib_info.set_installed_package (Dune_package.Lib.info lib) package)
+             | Library lib -> Found (Dune_package.Lib.info lib)
              | Deprecated_library_name d ->
                Redirect_in_the_same_db (d.loc, d.new_public_name)
              | Hidden_library lib ->
-               let info =
-                 Lib_info.set_installed_package (Dune_package.Lib.info lib) package
-               in
-               Hidden (Hidden.unsatisfied_exists_if info))
+               Hidden (Hidden.unsatisfied_exists_if (Dune_package.Lib.info lib)))
           ]
         | Error e ->
-          Memo.return
-            [ (match e with
-               | Invalid_dune_package why -> Invalid why
-               | Not_found when (not has_bigarray_library) && Lib_name.equal name bigarray
-                 ->
-                 (* Recent versions of OCaml already include a [bigrray] library,
-                    so we just silently ignore dependencies on it. The more
-                    correct thing to do would be to redirect it to the stdlib,
-                    but the stdlib isn't first class. *)
-                 Ignore
-               | Not_found -> Not_found)
-            ]
+          [ (match e with
+             | Invalid_dune_package why -> Invalid why
+             | Not_found when (not has_bigarray_library) && Lib_name.equal name bigarray
+               ->
+               (* Recent versions of OCaml already include a [bigrray] library,
+                  so we just silently ignore dependencies on it. The more
+                  correct thing to do would be to redirect it to the stdlib,
+                  but the stdlib isn't first class. *)
+               Ignore
+             | Not_found -> Not_found)
+          ]
       in
       create
         ()
@@ -2436,7 +2422,6 @@ module DB = struct
     let+ ocaml = Context.ocaml context
     and+ findlib = findlib in
     create_from_findlib
-      (Context.name context)
       findlib
       ~has_bigarray_library:(Ocaml.Version.has_bigarray_library ocaml.version)
       ~instrument_with:(Context.instrument_with context)

@@ -1,4 +1,5 @@
-(** Findlib database *)
+(** Findlib database. Returned library descriptions include their resolved
+    package ownership. *)
 
 open Import
 
@@ -23,11 +24,6 @@ val find_root_package
   -> (Dune_package.t, Unavailable_reason.t) result Memo.t
 
 val find : t -> Lib_name.t -> (Dune_package.Entry.t, Unavailable_reason.t) result Memo.t
-
-val find_with_package
-  :  t
-  -> Lib_name.t
-  -> (Dune_package.t * Dune_package.Entry.t, Unavailable_reason.t) result Memo.t
 
 (** List all the packages available in this Database *)
 val all_packages : t -> Dune_package.Entry.t list Memo.t

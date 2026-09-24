@@ -2633,17 +2633,14 @@ let find_package ctx pkg =
     Some (Action_builder.deps (Dep.Set.add (Pkg.package_deps pkg) (Pkg.dep pkg)))
 ;;
 
-let find_package_by_installed_path ctx path =
+let package_prefixes ctx =
   lock_dir_active ctx
   >>= function
-  | false -> Memo.return None
+  | false -> Memo.return []
   | true ->
     all_project_deps ctx
-    >>| List.find_map
-          ~f:(fun { Pkg.info = { name; _ }; paths = { Paths.prefix; _ }; _ } ->
-            match Path.drop_prefix path ~prefix with
-            | None -> None
-            | Some _ -> Some name)
+    >>| List.map ~f:(fun { Pkg.info = { name; _ }; paths = { Paths.prefix; _ }; _ } ->
+      prefix, name)
 ;;
 
 let resolve_installed_file ~loc ~context_name ~pkg_name ~section ~file =

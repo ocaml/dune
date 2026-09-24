@@ -215,7 +215,7 @@ module Lib = struct
       | _ -> assert false)
   ;;
 
-  let decode ~(lang : Vfile.Lang.Instance.t) ~base =
+  let decode ~(lang : Vfile.Lang.Instance.t) ~base ~package =
     let open Dune_lang.Decoder in
     let path = Dune_lang.Path.Local.decode ~dir:base in
     let field_l s x = field ~default:[] s (repeat x) in
@@ -304,8 +304,8 @@ module Lib = struct
          let enabled = Memo.return Lib_info.Enabled_status.Normal in
          let status =
            match Lib_name.analyze name with
-           | Private (_, _) -> Lib_info.Status.Installed_private None
-           | Public (_, _) -> Lib_info.Status.Installed None
+           | Private (_, _) -> Lib_info.Status.Installed_private package
+           | Public (_, _) -> Lib_info.Status.Installed package
          in
          let version = None in
          let local_main_module_name = main_module_name in
@@ -491,10 +491,10 @@ module Entry = struct
     | Deprecated_library_name d -> d.loc
   ;;
 
-  let cstrs ~lang ~dir =
+  let cstrs ~lang ~dir ~package =
     let open Dune_lang.Decoder in
     [ ( "library"
-      , let+ lib = Lib.decode ~lang ~base:dir in
+      , let+ lib = Lib.decode ~lang ~base:dir ~package in
         Library lib )
     ; ( "deprecated_library_name"
       , let+ x = Deprecated_library_name.decode in
@@ -553,7 +553,7 @@ type t =
   ; files : (Section.t * path list) list
   }
 
-let decode ~lang ~dir =
+let decode ~lang ~dir ~package =
   let open Dune_lang.Decoder in
   let+ name = field "name" Package.Name.decode
   and+ version = field_o "version" Package_version.decode
@@ -566,7 +566,7 @@ let decode ~lang ~dir =
     field ~default:[] "sites" (repeat (pair (located Site.decode) Section.decode))
   and+ files =
     field ~default:[] "files" (repeat (pair Section.decode (enter (repeat decode_path))))
-  and+ entries = leftover_fields_as_sums (Entry.cstrs ~lang ~dir) in
+  and+ entries = leftover_fields_as_sums (Entry.cstrs ~lang ~dir ~package) in
   let entries =
     List.map entries ~f:(fun e ->
       let e =
@@ -697,18 +697,18 @@ module Or_meta = struct
     | Dune_package p -> encode ~encoding ~dune_version p
   ;;
 
-  let decode ~lang ~dir =
+  let decode ~lang ~dir ~package =
     let open Dune_lang.Decoder in
     fields
       (let* use_meta = field_b "use_meta" in
        if use_meta
        then return Use_meta
        else
-         let+ package = decode ~lang ~dir in
+         let+ package = decode ~lang ~dir ~package in
          Dune_package package)
   ;;
 
-  let parse file lexbuf =
+  let parse ~package file lexbuf =
     let dir = Path.parent_exn file in
     let extensions = [ Dune_lang.Oxcaml.(syntax, latest_version) ] in
     let with_extensions decoder =
@@ -719,7 +719,7 @@ module Or_meta = struct
       Vfile.parse_contents lexbuf ~f:(fun lang ->
         String_with_vars.set_decoding_env
           (Pform.Env.initial ~stanza:lang.version ~extensions)
-          (with_extensions (decode ~lang ~dir)))
+          (with_extensions (decode ~lang ~dir ~package)))
     with
     | contents -> Ok contents
     | exception User_error.E message -> Error message
@@ -738,7 +738,7 @@ module Or_meta = struct
            ])
   ;;
 
-  let load file = Fs.with_lexbuf_from_file file ~f:(parse file)
+  let load ~package file = Fs.with_lexbuf_from_file file ~f:(parse ~package file)
 
   let pp_encoded ppf t =
     Format.fprintf

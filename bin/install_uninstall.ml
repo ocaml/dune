@@ -296,7 +296,7 @@ module File_ops_real (W : sig
   let process_dune_package ~get_version ~get_location ic ~src oc =
     let lb = Lexing.from_channel ic in
     let dune_version = Dune_lang.Syntax.greatest_supported_version_exn Stanza.syntax in
-    match Dune_package.Or_meta.parse src lb |> User_error.ok_exn with
+    match Dune_package.Or_meta.parse ~package:None src lb |> User_error.ok_exn with
     | Use_meta ->
       with_ppf oc ~f:(Dune_package.Or_meta.pp_use_meta ~dune_version);
       Fiber.return Done

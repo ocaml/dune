@@ -24,7 +24,7 @@ let dyn_memo_deps deps =
   a
 ;;
 
-let deps d = dyn_memo_deps (Memo.return (d, ()))
+let deps d = Build_system.record_deps d
 let dep d = deps (Dep.Set.singleton d)
 
 let dyn_deps t =

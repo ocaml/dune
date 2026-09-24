@@ -13,6 +13,7 @@ type t =
   ; purpose : purpose
   ; has_embedded_location : bool
   ; promotion : User_message.Diff_annot.t option
+  ; job_slots : int
   }
 
 let default =
@@ -24,6 +25,7 @@ let default =
   ; can_run_in_action_runner = false
   ; has_embedded_location = false
   ; promotion = None
+  ; job_slots = 1
   }
 ;;
 
@@ -46,5 +48,6 @@ let create
   ; purpose
   ; has_embedded_location
   ; promotion
+  ; job_slots = default.job_slots
   }
 ;;

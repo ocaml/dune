@@ -15,10 +15,11 @@ The field is available since dune 3.25:
   > EOF
 
   $ dune build ./half
-  File "dune", line 3, characters 2-11:
+  File "dune", line 3, characters 1-45:
   3 |  (job_slots (bash "echo $((DUNE_JOBS / 2))"))
-        ^^^^^^^^^
-  Error: Unknown field "job_slots"
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'job_slots' is only available since version 3.25 of the dune language.
+  Please update your dune-project file to have (lang dune 3.25).
   [1]
 
   $ make_dune_project 3.25
@@ -49,31 +50,32 @@ prints to the range 1 to the total number of job slots:
   > EOF
 
   $ dune build -j 4 ./default ./half ./run ./too-many ./too-few
-  File "dune", line 6, characters 2-11:
-  6 |  (job_slots (bash "echo $((DUNE_JOBS / 2))"))
-        ^^^^^^^^^
-  Error: Unknown field "job_slots"
-  [1]
   $ cat _build/default/default _build/default/half _build/default/run \
   >   _build/default/too-many _build/default/too-few
-  cat: _build/default/default: No such file or directory
-  cat: _build/default/half: No such file or directory
-  cat: _build/default/run: No such file or directory
-  cat: _build/default/too-many: No such file or directory
-  cat: _build/default/too-few: No such file or directory
-  [1]
+  1
+  2
+  3
+  4
+  1
 
 A change of the total number of job slots does not cause a rebuild:
 
   $ dune build -j 8 ./half
-  File "dune", line 6, characters 2-11:
-  6 |  (job_slots (bash "echo $((DUNE_JOBS / 2))"))
-        ^^^^^^^^^
-  Error: Unknown field "job_slots"
-  [1]
   $ cat _build/default/half
-  cat: _build/default/half: No such file or directory
-  [1]
+  2
+
+A change of the job_slots command does not cause a rebuild:
+
+  $ cat >dune <<'EOF'
+  > (rule
+  >  (target half)
+  >  (job_slots (bash "echo 1"))
+  >  (action (with-stdout-to %{target} (bash "echo $DUNE_JOB_SLOTS"))))
+  > EOF
+
+  $ dune build -j 4 ./half
+  $ cat _build/default/half
+  2
 
 The command must print an integer:
 
@@ -85,15 +87,19 @@ The command must print an integer:
   > EOF
 
   $ dune build -j 4 ./bad
-  File "dune", line 3, characters 2-11:
+  File "dune", lines 1-4, characters 0-118:
+  1 | (rule
+  2 |  (target bad)
   3 |  (job_slots (bash "echo foo"))
-        ^^^^^^^^^
-  Error: Unknown field "job_slots"
+  4 |  (action (with-stdout-to %{target} (bash "echo $DUNE_JOB_SLOTS"))))
+  Error: The job_slots command must print an integer, but it printed "foo".
   [1]
 
 Two rules that each reserve half of the job slots run at the same time. Each
-action waits until the other action starts:
+action waits until the other action starts. The actions share a directory
+outside of the sandbox, so we disable landlock:
 
+  $ export DUNE_CONFIG__LANDLOCK=disabled
   $ export SYNC=$PWD/sync
   $ mkdir sync
 
@@ -113,11 +119,8 @@ action waits until the other action starts:
   > EOF
 
   $ dune build -j 4 @both 2>&1 | sort
-        ^^^^^^^^^
-  3 |  (job_slots (bash "echo $((DUNE_JOBS / 2))"))
-  Error: Unknown field "job_slots"
-  File "dune", line 3, characters 2-11:
-  [1]
+  a met b
+  b met a
 
 A rule that reserves all of the job slots does not run at the same time as
 another rule:
@@ -128,17 +131,12 @@ another rule:
   >  (job_slots (bash "echo $DUNE_JOBS"))
   >  (action
   >   (bash
-  >    "if mkdir $SYNC/busy 2>/dev/null; then sleep 1; rmdir $SYNC/busy; else echo overlap; fi")))
+  >    "if mkdir $SYNC/busy 2>/dev/null; then sleep 1; rmdir $SYNC/busy; else echo x overlaps; fi")))
   > (rule
   >  (alias exclusive)
   >  (action
   >   (bash
-  >    "if mkdir $SYNC/busy 2>/dev/null; then sleep 1; rmdir $SYNC/busy; else echo overlap; fi")))
+  >    "if mkdir $SYNC/busy 2>/dev/null; then sleep 1; rmdir $SYNC/busy; else echo y overlaps; fi")))
   > EOF
 
   $ dune build -j 2 @exclusive
-  File "dune", line 3, characters 2-11:
-  3 |  (job_slots (bash "echo $DUNE_JOBS"))
-        ^^^^^^^^^
-  Error: Unknown field "job_slots"
-  [1]

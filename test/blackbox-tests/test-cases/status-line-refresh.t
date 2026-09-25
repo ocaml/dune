@@ -33,7 +33,7 @@ the action is blocked.
   >   sleep 0.1
   > done
   $ if [ "$COUNT" -ge 2 ]; then echo "periodic updates"; else echo "no periodic updates"; fi
-  no periodic updates
+  periodic updates
 
   $ touch "$RELEASE"
   $ wait_for_pid_to_exit_with_timeout "$BUILD_PID" 200 || (cat build-output; false)

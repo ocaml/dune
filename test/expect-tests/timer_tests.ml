@@ -21,6 +21,28 @@ let%expect_test "create and wait for timer" =
   [%expect {| timer finished successfully |}]
 ;;
 
+let%expect_test "cancellable sleep" =
+  Scheduler.Run.go config (fun () ->
+    let cancellation = Fiber.Cancel.create () in
+    let* elapsed = Scheduler.sleep_or_cancel Time.Span.zero cancellation in
+    let+ cancelled, () =
+      Fiber.fork_and_join
+        (fun () -> Scheduler.sleep_or_cancel (Time.Span.of_secs 10.) cancellation)
+        (fun () -> Fiber.Cancel.fire cancellation)
+    in
+    (match elapsed with
+     | `Elapsed -> print_endline "elapsed"
+     | `Cancelled -> print_endline "unexpected cancellation");
+    match cancelled with
+    | `Elapsed -> print_endline "unexpected elapsed"
+    | `Cancelled -> print_endline "cancelled");
+  [%expect
+    {|
+    elapsed
+    cancelled
+    |}]
+;;
+
 let%expect_test "multiple timers" =
   Scheduler.Run.go config (fun () ->
     [ 0.3; 0.2; 0.1 ]

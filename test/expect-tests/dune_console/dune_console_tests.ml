@@ -84,6 +84,26 @@ let test_status_line_section (module Console : New_console) =
   Status_line.clear ()
 ;;
 
+let%expect_test "status line support follows the selected backend" =
+  let module Console = New () in
+  Console.Backend.set Console.Backend.dumb;
+  Printf.printf "%b\n" (Console.Backend.supports_status_line ());
+  Console.Backend.set Console.Backend.progress;
+  Printf.printf "%b\n" (Console.Backend.supports_status_line ());
+  Console.Backend.set
+    (Console.Backend.compose Console.Backend.dumb Console.Backend.progress);
+  Printf.printf "%b\n" (Console.Backend.supports_status_line ());
+  Console.Backend.set Console.Backend.dumb;
+  Printf.printf "%b\n" (Console.Backend.supports_status_line ());
+  [%expect
+    {|
+false
+true
+true
+false
+  |}]
+;;
+
 (* Dumb backend *)
 
 let%expect_test "dumb backend: basic usage" =

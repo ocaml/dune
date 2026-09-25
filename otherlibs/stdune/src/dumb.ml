@@ -9,6 +9,7 @@ module No_flush : Backend_intf.S = struct
   ;;
 
   let set_status_line _ = ()
+  let supports_status_line = false
 
   let print_if_no_status_line msg =
     (* [Pp.cut] seems to be enough to force the terminating newline to

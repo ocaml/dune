@@ -659,3 +659,17 @@ let sleep dur =
     assert false
   | Error (`Exn _) -> assert false
 ;;
+
+let sleep_or_cancel dur cancellation =
+  let* () = Fiber.return () in
+  let task = Async_io.sleep (t ()).async_io dur in
+  Fiber.Cancel.with_handler
+    cancellation
+    (fun () -> Async_io.Task.await task)
+    ~on_cancel:(fun () -> Async_io.Task.cancel task)
+  >>| function
+  | Ok (), Fiber.Cancel.Not_cancelled -> `Elapsed
+  | _, Fiber.Cancel.Cancelled () | Error `Cancelled, _ -> `Cancelled
+  | Error (`Exn exn), _ ->
+    Code_error.raise "cancellable sleep failed" [ "exn", Exn.to_dyn exn ]
+;;

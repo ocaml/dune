@@ -60,15 +60,15 @@ same:
   $ cat _build/default/mybin-out
   from workspace
 
-The lockdir [provider]'s bin layout is still on $PATH:
+The lockdir [provider]'s bin directory is NOT on $PATH:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target/bin
+  
+  [1]
 
 When the workspace binary is DISABLED via [(enabled_if false)], its
 [local_bins] origin is filtered out and resolution falls through to the lockdir
-package. Currently that lookup isn't narrowed, so mybin resolves regardless of
-(depends).
+lookup.
 
   $ cat >dune <<'EOF'
   > (install
@@ -100,12 +100,13 @@ to the lockdir binary:
   $ cat _build/default/mybin-out
   from lockdir
 
-The lockdir [provider]'s bin layout is on $PATH:
+The lockdir [provider]'s bin directory is on $PATH:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target/bin
 
-Without declaring [provider], the lookup still resolves to the lockdir binary:
+Without declaring [provider], the lockdir package is narrowed out and the
+lookup fails to resolve:
 
   $ make_dune_project 3.25
   $ cat >> dune-project << 'EOF'
@@ -115,13 +116,10 @@ Without declaring [provider], the lookup still resolves to the lockdir binary:
   $ dune clean
   $ dune build @all
   $ cat _build/default/mybin-avail
-  true
+  false
 
-The lockdir [provider]'s bin layout is on $PATH:
+The lockdir [provider]'s bin directory is NOT on $PATH:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target/bin
-
-Both blocks above print [true] with [provider] on $PATH today, so the
-without-provider block looks redundant. It earns its place only once narrowing
-lands.
+  
+  [1]

@@ -829,6 +829,32 @@ let expand_pkg_macro ~loc { context; _ } macro_invocation =
   [ Value.Path path ]
 ;;
 
+(* CR-someday punchagan: Dependency filters such as [{with-test}] are not
+   interpreted here, so a dependency is visible whatever its filter says. *)
+let visible_packages t =
+  let open Memo.O in
+  let* lock_dir_active = Pkg_rules.lock_dir_active (Context.name t.context) in
+  if not lock_dir_active
+  then Memo.return None
+  else (
+    let src_dir = Path.Build.drop_build_context_exn t.dir in
+    match Dune_project.exclusive_package t.project ~dir:src_dir with
+    | None -> Memo.return None
+    | Some pkg_id ->
+      let+ packages = Dune_load.packages () in
+      let name = Package.Id.name pkg_id in
+      let visible = Package.Name.Set.singleton name in
+      Some
+        (match Package.Name.Map.find packages name with
+         | None -> visible
+         | Some pkg ->
+           List.fold_left
+             (Package.depends pkg @ Package.depopts pkg)
+             ~init:visible
+             ~f:(fun acc (dep : Package_dependency.t) ->
+               Package.Name.Set.add acc dep.name)))
+;;
+
 let expand_pform_macro
       (context : Context.t)
       ~dir

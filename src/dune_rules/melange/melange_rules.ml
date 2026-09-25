@@ -857,7 +857,7 @@ let setup_js_rules_libraries =
         let build_js =
           let loc = Lib_info.loc info in
           let obj_dir = Lib_info.obj_dir info in
-          let pkg_name = Lib_info.findlib_package info in
+          let pkg_name = Lib_info.package info in
           build_js ~loc ~promote_in_source ~pkg_name ~obj_dir
         in
         let output = output_of_lib ~target_dir lib in

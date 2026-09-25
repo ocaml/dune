@@ -174,10 +174,6 @@ module Context = struct
     }
   ;;
 
-  (* Compute the full platform-specific env by extending the base env with the
-     platform's own (platform-specific) env. *)
-  let platform_env t platform = Solver_env.extend t.solver_env platform
-
   let pp_rejection = function
     | Unavailable -> Pp.paragraph "Availability condition not satisfied"
     | Refuted_by pkg ->
@@ -208,7 +204,8 @@ module Context = struct
         Table.create (module Solver_env) 1)
     in
     Table.find_or_add available_by_platform platform ~f:(fun platform ->
-      is_opam_available_in_env t ~solver_env:(platform_env t platform) opam)
+      let solver_env = Solver_env.extend t.solver_env platform in
+      is_opam_available_in_env t ~solver_env opam)
   ;;
 
   let pinned_candidate resolved_package =
@@ -222,8 +219,8 @@ module Context = struct
     }
   ;;
 
-  (* Filter deps using a specific solver_env *)
-  let filter_deps_with_env t ~solver_env package filtered_formula =
+  (* Filter deps for a specific platform *)
+  let filter_deps t ~platform package filtered_formula =
     (* Add additional constraints to the formula. This works in two steps.
        First identify all the additional constraints applied to packages which
        appear in the current package's dependency formula. Then each additional
@@ -246,17 +243,12 @@ module Context = struct
       |> Package_name.of_opam_package_name
       |> Package_name.Map.mem (Lazy.force t.local_packages)
     in
+    let solver_env = Solver_env.extend t.solver_env platform in
     let with_test = package_is_local && with_test solver_env in
     Solver_env.to_env solver_env
     |> Solver_stats.Updater.wrap_env t.stats_updater
     |> Lock_pkg.add_self_to_filter_env package
     |> Resolve_opam_formula.apply_filter ~with_test ~formula:filtered_formula
-  ;;
-
-  (* Filter deps for a specific platform *)
-  let filter_deps t ~platform package filtered_formula =
-    let solver_env = platform_env t platform in
-    filter_deps_with_env t ~solver_env package filtered_formula
   ;;
 
   let filtered_local_formulas t ~platform local_package =
@@ -269,9 +261,8 @@ module Context = struct
             (OpamFile.OPAM.name local_package.opam_file)
             local_package.version
         in
-        let solver_env = platform_env t platform in
-        ( filter_deps_with_env t ~solver_env package local_package.depends
-        , filter_deps_with_env t ~solver_env package local_package.conflicts ))
+        ( filter_deps t ~platform package local_package.depends
+        , filter_deps t ~platform package local_package.conflicts ))
   ;;
 
   exception Found of Package_name.t

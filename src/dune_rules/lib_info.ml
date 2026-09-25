@@ -666,12 +666,6 @@ let package t =
   | Private (_, p) -> Option.map p ~f:Package.name
 ;;
 
-let findlib_package t =
-  match t.status with
-  | Installed_private _ | Installed _ -> Some (Lib_name.package_name t.name)
-  | Public _ | Private _ -> package t
-;;
-
 let for_dune_package
       t
       ~name

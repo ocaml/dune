@@ -101,6 +101,9 @@ val preserve_child_process : Pid.t -> unit
 (** [sleep duration] waits for [duration] to elapse. *)
 val sleep : Time.Span.t -> unit Fiber.t
 
+(** Wait for the duration to elapse or for cancellation, whichever comes first. *)
+val sleep_or_cancel : Time.Span.t -> Fiber.Cancel.t -> unit Fiber.t
+
 val spawn_thread : name:string -> (unit -> unit) -> Thread.t
 val flush_file_watcher : unit -> unit Fiber.t
 val file_watcher : unit -> File_watcher.t option

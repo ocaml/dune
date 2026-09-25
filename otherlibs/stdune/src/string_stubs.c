@@ -13,6 +13,18 @@ CAMLprim value dune_string_index_from(value v_string, value v_position, value v_
   return Val_long(result == NULL ? -1 : result - string);
 }
 
+CAMLprim value dune_string_rindex_from(value v_string, value v_position, value v_char)
+{
+  const unsigned char *string = (const unsigned char *)String_val(v_string);
+  intnat position = Long_val(v_position);
+  unsigned char chr = Int_val(v_char);
+  while (position >= 0) {
+    if (string[position] == chr) return Val_long(position);
+    --position;
+  }
+  return Val_long(-1);
+}
+
 CAMLprim value dune_bytes_index_in_range(
   value v_bytes, value v_position, value v_length, value v_char)
 {

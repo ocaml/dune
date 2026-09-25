@@ -79,12 +79,8 @@ include Stdlib.StringLabels
 external index_from_unchecked : t -> int -> char -> int = "dune_string_index_from"
 [@@noalloc]
 
-let rindex_from_unchecked s i c =
-  let rec loop i =
-    if i = -1 then -1 else if Char.equal (unsafe_get s i) c then i else loop (i - 1)
-  in
-  loop i
-;;
+external rindex_from_unchecked : t -> int -> char -> int = "dune_string_rindex_from"
+[@@noalloc]
 
 let index_from s i c =
   let length = length s in

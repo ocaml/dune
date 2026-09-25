@@ -40,3 +40,19 @@ Demonstrate sandbox events:
       "dir": "_build/.sandbox/$DIGEST"
     }
   }
+
+A second execution of the same rule currently reuses its sandbox path.
+
+  $ cat >>dune <<'EOF'
+  > (rule
+  >  (target bar)
+  >  (deps (sandbox always) (universe))
+  >  (action (with-stdout-to bar (echo bar))))
+  > EOF
+  $ jq_filter='select(.cat == "sandbox" and .name == "create") | .args.dir'
+  $ dune build bar
+  $ first=$(dune trace cat | jq_dune -r "$jq_filter")
+  $ dune build bar
+  $ second=$(dune trace cat | jq_dune -r "$jq_filter")
+  $ test -n "$first" && test -n "$second"
+  $ test "${first##*/}" = "${second##*/}"

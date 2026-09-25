@@ -1,18 +1,6 @@
 open Import
 open Memo.O
 
-let rec subdirs_until_root dir =
-  match Path.parent dir with
-  | None -> [ dir ]
-  | Some d -> dir :: subdirs_until_root d
-;;
-
-let depend_on_files ~named dir =
-  subdirs_until_root dir
-  |> List.concat_map ~f:(fun dir -> List.map named ~f:(Path.relative dir))
-  |> Action_builder.paths_existing
-;;
-
 let formatter_diff_action =
   let dep_on_alias_action alias ~loc action =
     let anon = Rule.Anonymous_action.make ~loc ~dir:(Alias.dir alias) action in
@@ -39,35 +27,6 @@ let formatter_diff_action =
 ;;
 
 module Ocamlformat = struct
-  let dev_tool_lock_dir_exists () =
-    (* we assume that if lock_dev_tools is set, then the lock dir was created
-       via locking and can expect it to exist. If it doesn't, it's a bug
-    *)
-    match Config.get Compile_time.lock_dev_tools with
-    | `Enabled -> Memo.return true
-    | `Disabled ->
-      (* even if lock_dev_tools might be disabled, there might be a lock dir
-         created by `dune tools install` *)
-      let path = Lock_dir.dev_tool_external_lock_dir Ocamlformat in
-      Fs_memo.dir_exists (Path.Outside_build_dir.External path)
-  ;;
-
-  (* Config files for ocamlformat. When these are changed, running
-     `dune fmt` should cause ocamlformat to re-format the ocaml files
-     in the project. *)
-  let config_files = [ ".ocamlformat"; ".ocamlformat-ignore"; ".ocamlformat-enable" ]
-
-  let extra_deps dir =
-    (* Set up the dependency on ocamlformat config files so changing
-       these files triggers ocamlformat to run again. *)
-    depend_on_files ~named:config_files (Path.build dir)
-  ;;
-
-  let flag_of_kind = function
-    | Ml_kind.Impl -> "--impl"
-    | Intf -> "--intf"
-  ;;
-
   let action_when_ocamlformat_is_locked ~input kind =
     let open Action_builder.O in
     let dir = Path.Build.parent_exn input in
@@ -83,23 +42,28 @@ module Ocamlformat = struct
         (Path.build dir)
         (Action.run
            (Ok path)
-           [ flag_of_kind kind; Path.Build.basename input |> Filename.to_string ])
+           [ Format_generated.ocamlformat_flag kind
+           ; Path.Build.basename input |> Filename.to_string
+           ])
       |> Action.Full.make
     in
-    (* Depend on [extra_deps] so if the ocamlformat config file
-       changes then ocamlformat will run again. *)
-    extra_deps dir >>> action >>| Action.Full.add_sandbox Sandbox_config.needs_sandboxing
+    (* Re-run OCamlFormat when its configuration changes. *)
+    Format_generated.ocamlformat_config_deps ~dir
+    >>> action
+    >>| Action.Full.add_sandbox Sandbox_config.needs_sandboxing
   ;;
 
   let action_when_ocamlformat_isn't_locked ~input kind =
     let open Action_builder.O in
     let module S = String_with_vars in
-    let+ () = Path.Build.parent_exn input |> extra_deps in
+    let+ () =
+      Format_generated.ocamlformat_config_deps ~dir:(Path.Build.parent_exn input)
+    in
     Dune_lang.Action.chdir
       (S.make_pform Loc.none (Var Workspace_root))
       (Dune_lang.Action.run
          (S.make_text Loc.none (Pkg_dev_tool.exe_name Ocamlformat))
-         [ S.make_text Loc.none (flag_of_kind kind)
+         [ S.make_text Loc.none (Format_generated.ocamlformat_flag kind)
          ; S.make_pform Loc.none (Var Input_file)
          ])
   ;;
@@ -222,7 +186,7 @@ let gen_format_alias sctx (config : Format_config.t) ~version ~dialects ~expande
   | None -> Action_builder.return ()
   | Some source_dir ->
     let* ocamlformat_is_locked =
-      Action_builder.of_memo (Ocamlformat.dev_tool_lock_dir_exists ())
+      Action_builder.of_memo (Format_generated.ocamlformat_dev_tool_lock_dir_exists ())
     in
     let alias = Alias.make Alias0.fmt ~dir in
     let+ () =
@@ -239,22 +203,8 @@ let gen_format_alias sctx (config : Format_config.t) ~version ~dialects ~expande
     ()
 ;;
 
-let format_config ~dir =
-  let+ value =
-    Env_stanza_db.value_opt ~dir ~f:(fun (t : Dune_env.config) ->
-      Memo.return t.format_config)
-  and+ default =
-    (* we always force the default for error checking *)
-    Path.Build.drop_build_context_exn dir
-    |> Source_tree.nearest_dir
-    >>| Source_tree.Dir.project
-    >>| Dune_project.format_config
-  in
-  Option.value value ~default
-;;
-
 let with_config ~dir f =
-  let* config = format_config ~dir in
+  let* config = Format_generated.format_config ~dir in
   if Format_config.is_empty config
   then
     (* CR-someday rgrinberg: this [is_empty] check is weird. We should use [None]

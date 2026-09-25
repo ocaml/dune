@@ -172,7 +172,8 @@ let user_rule sctx ~dir ~expander (rule : Rule_conf.t) =
     let () = validate_corrections ~rule in
     let* action =
       let chdir = Expander.dir expander in
-      Action_unexpanded.expand
+      Action_unexpanded.expand_with_formatted_diffs
+        sctx
         (snd rule.action)
         sandbox
         ~loc:(fst rule.action)
@@ -356,7 +357,8 @@ let alias sctx ~dir ~expander (alias_conf : Alias_conf.t) =
      | Some (action_loc, action) ->
        let action =
          let chdir = Expander.dir expander in
-         Action_unexpanded.expand_no_targets
+         Action_unexpanded.expand_no_targets_with_formatted_diffs
+           sctx
            action
            Sandbox_config.no_special_requirements
            ~loc:action_loc

@@ -230,7 +230,7 @@ module Sorted = struct
 
       let to_list = Stdlib.Array.to_list
 
-      let of_sorted_list l =
+      let of_sorted_list =
         let rec loop l acc =
           match l with
           | [] -> of_rev_list acc
@@ -246,7 +246,7 @@ module Sorted = struct
                     [ "previous", Key.to_dyn y; "current", Key.to_dyn x ])
              | _ -> loop rest (x :: acc))
         in
-        loop l []
+        fun l -> loop l []
       ;;
 
       let of_list l =

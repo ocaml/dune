@@ -263,10 +263,6 @@ val create
     this is the owning lock package, which can differ from the findlib root. *)
 val package : _ t -> Package.Name.t option
 
-(** The root findlib namespace, derived independently of installed ownership.
-    Local private libraries without a package have no findlib namespace. *)
-val findlib_package : _ t -> Package.Name.t option
-
 val to_dyn : 'path Dyn.builder -> 'path t Dyn.builder
 
 val for_instance

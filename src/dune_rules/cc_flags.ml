@@ -11,6 +11,11 @@ type cc_vendor =
   | Sun
   | Other of string
 
+type t =
+  { vendor : cc_vendor
+  ; supports_unguarded_availability : bool
+  }
+
 type phase =
   | Compile of Ocaml.Version.t
   | Link
@@ -59,6 +64,11 @@ sunc
 #else
 unknown
 #endif
+#ifdef __has_warning
+# if __has_warning("-Wunguarded-availability-new")
+unguarded_availability
+# endif
+#endif
 |}
 ;;
 
@@ -70,7 +80,7 @@ module Detect = struct
       }
 
     let name = "detect-cc-vendor"
-    let version = 1
+    let version = 2
     let bimap t f _ = { t with c_compiler = f t.c_compiler }
     let is_useful_to ~memoize:_ = true
     let runs_process = true
@@ -129,6 +139,18 @@ let parse_cc_vendor cc_vendor =
   | s -> Other s
 ;;
 
+let parse output =
+  let lines = String.split_lines output in
+  let words = List.concat_map lines ~f:String.extract_blank_separated_words in
+  let vendor, supports_unguarded_availability =
+    match words with
+    | [ vendor ] -> vendor, false
+    | [ vendor; "unguarded_availability" ] -> vendor, true
+    | _ -> String.trim output, false
+  in
+  { vendor = parse_cc_vendor vendor; supports_unguarded_availability }
+;;
+
 let resolve_c_compiler context ~dir program =
   match Filename.analyze_program_name program with
   | Absolute -> Memo.return (Ok (Path.of_filename_relative_to_initial_cwd program))
@@ -182,17 +204,27 @@ let check_warn = function
   | _ -> ()
 ;;
 
-let cc_vendor (ctx : Build_context.t) =
+let get (ctx : Build_context.t) =
+  cc_vendor_action ctx
+  >>= Build_system.execute_action_stdout
+  >>| parse
+  |> Action_builder.of_memo
+;;
+
+let cc_vendor ctx =
   let open Action_builder.O in
-  let+ cc_vendor =
-    let open Memo.O in
-    cc_vendor_action ctx
-    >>= Build_system.execute_action_stdout
-    >>| parse_cc_vendor
-    |> Action_builder.of_memo
-  in
-  check_warn cc_vendor;
-  cc_vendor
+  let+ { vendor; _ } = get ctx in
+  check_warn vendor;
+  vendor
+;;
+
+let add_unguarded_availability_error ctx inherited =
+  let open Action_builder.O in
+  let+ { supports_unguarded_availability; _ } = get ctx in
+  let flag = "-Werror=unguarded-availability-new" in
+  if supports_unguarded_availability && not (List.mem inherited flag ~equal:String.equal)
+  then inherited @ [ flag ]
+  else inherited
 ;;
 
 let get_flags ~for_ ctx =

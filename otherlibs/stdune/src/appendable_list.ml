@@ -41,7 +41,12 @@ let to_list_rev =
   fun t -> loop1 [] t []
 ;;
 
-let to_list xs = List.rev (to_list_rev xs)
+let to_list = function
+  | Empty -> []
+  | Singleton x -> [ x ]
+  | List xs -> xs
+  | (Cons _ | Append _ | Concat _) as xs -> List.rev (to_list_rev xs)
+;;
 
 let length =
   let rec loop1 len t rest stack =

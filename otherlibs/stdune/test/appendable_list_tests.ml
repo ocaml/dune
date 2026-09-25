@@ -62,6 +62,8 @@ let%expect_test "concat" =
 
 let check_traversal xs expected =
   assert (Al.length xs = List.length expected);
+  assert (Al.to_list xs = expected);
+  assert (Al.to_list_rev xs = List.rev expected);
   let remaining = ref expected in
   Al.iter xs ~f:(fun x ->
     match !remaining with
@@ -71,6 +73,13 @@ let check_traversal xs expected =
       remaining := rest);
   assert (List.is_empty !remaining);
   assert (Array.Immutable.to_list (Al.to_immutable_array xs) = expected)
+;;
+
+let%expect_test "traverse flat lists" =
+  List.iter
+    [ []; [ 0 ]; [ 0; 1 ]; List.init 10_000 ~f:Fun.id ]
+    ~f:(fun xs -> check_traversal (Al.of_list xs) xs);
+  [%expect {||}]
 ;;
 
 let%expect_test "traverse mixed appends and concats in order" =

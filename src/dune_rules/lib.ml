@@ -1522,16 +1522,15 @@ end = struct
         Memo.lazy_ ~name:"default-library-implementation" (fun () ->
           let open Resolve.Memo.O in
           let* impl = resolve_impl l in
-          match Lib_info.findlib_package impl.info with
+          match Lib_info.package impl.info with
           | None -> Resolve.Memo.return impl
           | Some p ->
             let loc = fst l in
-            (match Lib_info.findlib_package info with
+            (match Lib_info.package info with
              | None ->
-               (* We don't need to verify that impl is private if this
-                  virtual library is private. Every implementation already
-                  depends on the virtual library, so the check will be
-                  done there. *)
+               (* An installed library's package may be unknown. For an
+                  unpackaged private virtual library, the implementation's
+                  dependency already enforces visibility. *)
                Resolve.Memo.return impl
              | Some p' ->
                (* It's not good to rely on package names for equality like

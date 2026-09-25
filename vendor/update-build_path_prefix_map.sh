@@ -21,5 +21,10 @@ SRC=$TMP/build_path_prefix_map
 
 cp -v $SRC/build_path_prefix_map.{ml,mli} build_path_prefix_map/src
 
+# The vendored .ml carries local modifications (the decoder leniency for
+# Windows drive letters, marked by a NOTE at the top of the file); re-apply
+# them on top of the fresh upstream copy.
+git apply build_path_prefix_map.patch
+
 git checkout build_path_prefix_map/src/dune
 git add -A .

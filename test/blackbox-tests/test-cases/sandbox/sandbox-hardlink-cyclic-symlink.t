@@ -85,3 +85,10 @@ Finally, we get to see the error message printed out at sandbox creation.
   "_build/default/link".
   Reason: Too many indirections; is this a cyclic symbolic link?
   [1]
+
+The failed setup currently leaves the partially created sandbox behind.
+
+  $ ls -A _build/.sandbox | censor
+  .git
+  .hg
+  $DIGEST

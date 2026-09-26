@@ -272,20 +272,7 @@ module Run (P : PARAMS) = struct
       let modules = Compilation_context.modules cctx in
       let aliases = Modules.With_vlib.alias_for modules mock_module in
       let has_guarded_alias =
-        Modules.With_vlib.fold_no_vlib_with_aliases
-          modules
-          ~init:false
-          ~normal:(fun _ found -> found)
-          ~alias:(fun group found ->
-            found
-            ||
-            match Module.kind (Modules.Group.lib_interface group) with
-            | Alias _ -> false
-            | _ ->
-              List.exists aliases ~f:(fun alias ->
-                Module_name.Unique.equal
-                  (Module.obj_name alias)
-                  (Module.obj_name (Modules.Group.alias group))))
+        List.exists aliases ~f:(Modules.With_vlib.is_guarded_alias modules)
       in
       if not has_guarded_alias
       then Memo.return None
@@ -298,12 +285,10 @@ module Run (P : PARAMS) = struct
             | Ok [] when not (Module_name.Unique.Map.mem obj_map obj_name) -> name
             | Ok _ | Error _ -> fresh (Module_name.add_suffix name "_")
           in
-          Module.path mock_module
-          |> Module_name.Path.wrap
+          Module_name.wrap
+            (Module_name.of_checked_string "Dune__menhir")
+            ~with_:(Module.path mock_module)
           |> Module_name.Unique.to_name ~loc:Loc.none
-          |> Module_name.to_string
-          |> sprintf "Dune__menhir__%s"
-          |> Module_name.of_checked_string
           |> fresh
         in
         let+ cmi = Module_compilation.build_inference_alias cctx ~name ~aliases in

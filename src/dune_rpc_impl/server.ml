@@ -119,7 +119,13 @@ let diff_map_entry ~on_add ~on_remove last now =
 let submit_build_request t session request_id kind =
   match t.build with
   | Disabled ->
-    Code_error.raise "RPC build request received by a server without build handling" []
+    let error =
+      Dune_rpc.Response.Error.create
+        ~kind:Invalid_request
+        ~message:"Build requests require a watch-mode server."
+        ()
+    in
+    raise (Dune_rpc.Response.Error.E error)
   | Enabled { build_loop; build_action } ->
     Build_loop.submit_rpc_request
       build_loop

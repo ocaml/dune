@@ -1,7 +1,5 @@
-A build request made while a batch build holds the global lock should report
-that another Dune instance is running. Currently it is forwarded to the batch
-RPC server, which does not support build requests, and returns an RPC code
-error instead.
+A build request made while a batch build holds the global lock should explain
+that only watch-mode servers can accept build requests.
 
 Use marker files to ensure that the first build is blocked in its action before
 starting the second build.
@@ -29,7 +27,7 @@ starting the second build.
 
   $ with_timeout dune build fast-target
   Error: Server returned error: 
-  server error (error kind: Code_error)
+  Build requests require a watch-mode server. (error kind: Invalid_request)
   [1]
 
   $ touch "$RELEASE"

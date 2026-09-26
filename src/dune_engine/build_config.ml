@@ -43,9 +43,9 @@ module Gen_rules = struct
     ;;
 
     let combine_exn r ({ build_dir_only_sub_dirs; directory_targets; rules } as other) =
-      if r == empty
+      if phys_equal r empty
       then other
-      else if other == empty
+      else if phys_equal other empty
       then r
       else
         { build_dir_only_sub_dirs =

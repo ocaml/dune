@@ -264,35 +264,33 @@ module Run (P : PARAMS) = struct
     let open Memo.O in
     let ocaml = Compilation_context.ocaml cctx in
     let project = Compilation_context.scope cctx |> Scope.project in
-    if
-      (not (Ocaml.Version.supports_generalized_open ocaml.version))
-      || Dune_project.dune_version project < (3, 5)
-    then Memo.return None
-    else (
+    match
+      ( Ocaml.Version.supports_generalized_open ocaml.version
+      , Dune_project.dune_version project < (3, 5) )
+    with
+    | false, _ | _, true -> Memo.return None
+    | true, false ->
       let modules = Compilation_context.modules cctx in
       let aliases = Modules.With_vlib.alias_for modules mock_module in
-      let has_guarded_alias =
-        List.exists aliases ~f:(Modules.With_vlib.is_guarded_alias modules)
-      in
-      if not has_guarded_alias
-      then Memo.return None
-      else (
-        let name =
-          let obj_map = Modules.With_vlib.obj_map modules in
-          let rec fresh name =
-            let obj_name = Module_name.Unique.of_name_assuming_needs_no_mangling name in
-            match Modules.With_vlib.find_deps modules ~of_:mock_module [ name ] with
-            | Ok [] when not (Module_name.Unique.Map.mem obj_map obj_name) -> name
-            | Ok _ | Error _ -> fresh (Module_name.add_suffix name "_")
-          in
-          Module_name.wrap
-            (Module_name.of_checked_string "Dune__menhir")
-            ~with_:(Module.path mock_module)
-          |> Module_name.Unique.to_name ~loc:Loc.none
-          |> fresh
-        in
-        let+ cmi = Module_compilation.build_inference_alias cctx ~name ~aliases in
-        Some (name, cmi)))
+      (match List.exists aliases ~f:(Modules.With_vlib.is_guarded_alias modules) with
+       | false -> Memo.return None
+       | true ->
+         let name =
+           let obj_map = Modules.With_vlib.obj_map modules in
+           let rec fresh name =
+             let obj_name = Module_name.Unique.of_name_assuming_needs_no_mangling name in
+             match Modules.With_vlib.find_deps modules ~of_:mock_module [ name ] with
+             | Ok [] when not (Module_name.Unique.Map.mem obj_map obj_name) -> name
+             | Ok _ | Error _ -> fresh (Module_name.add_suffix name "_")
+           in
+           Module_name.wrap
+             (Module_name.of_checked_string "Dune__menhir")
+             ~with_:(Module.path mock_module)
+           |> Module_name.Unique.to_name ~loc:Loc.none
+           |> fresh
+         in
+         let+ cmi = Module_compilation.build_inference_alias cctx ~name ~aliases in
+         Some (name, cmi))
   ;;
 
   (* [process3 stanza] converts a Menhir stanza into a set of build rules. This

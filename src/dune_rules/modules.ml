@@ -1308,14 +1308,14 @@ module With_vlib = struct
     | Impl { vlib = _; impl; _ } -> impl
   ;;
 
-  let fold_no_vlib_with_aliases =
+  let group_of_alias =
     let group_of_alias t m =
       match t.modules with
       | Wrapped w -> Some (Wrapped.group_of_alias w m)
       | Unwrapped w -> Some (Unwrapped.group_of_alias w m)
       | _ -> None
     in
-    let group_of_alias t m =
+    fun t m ->
       match t with
       | Modules t -> group_of_alias t m
       | Impl { vlib; impl; _ } ->
@@ -1341,20 +1341,30 @@ module With_vlib = struct
                  |> Option.map ~f:(fun m -> Group.Module m))
            in
            Some { impl with Group.modules })
-    in
-    fun t ~init ~normal ~alias ->
-      t
-      |> drop_vlib
-      |> fold ~init ~f:(fun m acc ->
-        match Module.kind m with
-        | Alias _ ->
-          (match group_of_alias t m with
-           | None ->
-             Code_error.raise
-               "alias module for group without alias"
-               [ "t", to_dyn t; "m", Module.to_dyn m ]
-           | Some group -> alias group acc)
-        | _ -> normal m acc)
+  ;;
+
+  let is_guarded_alias t m =
+    match group_of_alias t m with
+    | None -> false
+    | Some group ->
+      (match Module.kind (Group.lib_interface group) with
+       | Alias _ -> false
+       | _ -> true)
+  ;;
+
+  let fold_no_vlib_with_aliases t ~init ~normal ~alias =
+    t
+    |> drop_vlib
+    |> fold ~init ~f:(fun m acc ->
+      match Module.kind m with
+      | Alias _ ->
+        (match group_of_alias t m with
+         | None ->
+           Code_error.raise
+             "alias module for group without alias"
+             [ "t", to_dyn t; "m", Module.to_dyn m ]
+         | Some group -> alias group acc)
+      | _ -> normal m acc)
   ;;
 
   let map t ~f =

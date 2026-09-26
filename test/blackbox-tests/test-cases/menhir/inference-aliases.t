@@ -1,5 +1,5 @@
-Menhir inference can expose a shadowed ancestor alias, not just the parser's
-own group alias (#8989).
+Menhir inference must avoid shadowed aliases from ancestor groups as well as
+the parser's own group (#8989).
 
   $ make_menhir_project 3.25 3.0
   $ cat >dune <<'EOF'
@@ -18,15 +18,6 @@ own group alias (#8989).
   > EOF
 
   $ dune build lib.cma
-  File "outer/inner/inner__mock.ml.mock", line 1:
-  Error (warning 63 [erroneous-printed-signature]): The printed interface
-    differs from the inferred interface. The inferred interface contained items
-    which could not be printed properly due to name collisions between
-    identifiers. File "_none_", line 1:
-    Definition of module Outer__/2 Beware
-    that this warning is purely informational and will not catch all instances
-    of erroneous printed interface.
-  [1]
 
 A reference through a generated subgroup interface also needs its child CMIs.
 

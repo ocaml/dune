@@ -260,6 +260,39 @@ module Run (P : PARAMS) = struct
 
   (* ------------------------------------------------------------------------ *)
 
+  let inference_alias mock_module =
+    let open Memo.O in
+    let ocaml = Compilation_context.ocaml cctx in
+    let project = Compilation_context.scope cctx |> Scope.project in
+    match
+      ( Ocaml.Version.supports_generalized_open ocaml.version
+      , Dune_project.dune_version project < (3, 5) )
+    with
+    | false, _ | _, true -> Memo.return None
+    | true, false ->
+      let modules = Compilation_context.modules cctx in
+      let aliases = Modules.With_vlib.alias_for modules mock_module in
+      (match List.exists aliases ~f:(Modules.With_vlib.is_guarded_alias modules) with
+       | false -> Memo.return None
+       | true ->
+         let name =
+           let obj_map = Modules.With_vlib.obj_map modules in
+           let rec fresh name =
+             let obj_name = Module_name.Unique.of_name_assuming_needs_no_mangling name in
+             match Modules.With_vlib.find_deps modules ~of_:mock_module [ name ] with
+             | Ok [] when not (Module_name.Unique.Map.mem obj_map obj_name) -> name
+             | Ok _ | Error _ -> fresh (Module_name.add_suffix name "_")
+           in
+           Module_name.wrap
+             (Module_name.of_checked_string "Dune__menhir")
+             ~with_:(Module.path mock_module)
+           |> Module_name.Unique.to_name ~loc:Loc.none
+           |> fresh
+         in
+         let+ cmi = Module_compilation.build_inference_alias cctx ~name ~aliases in
+         Some (name, cmi))
+  ;;
+
   (* [process3 stanza] converts a Menhir stanza into a set of build rules. This
      is the three-step process where Menhir is invoked twice and OCaml type
      inference is performed in between. *)
@@ -267,20 +300,6 @@ module Run (P : PARAMS) = struct
   let process3 base ~cmly ~target ((stanza, deps) : stanza * Path.Set.t) : unit Memo.t =
     let open Memo.O in
     let* expanded_flags = expand_flags stanza.flags in
-    (* 1. A first invocation of Menhir creates a mock [.ml] file. *)
-    let source_deps = Path.Set.to_list deps in
-    let* () =
-      menhir
-        [ Command.Args.dyn expanded_flags
-        ; Deps source_deps
-        ; A "--base"
-        ; Path (Path.relative (Path.build dir) base)
-        ; A "--infer-write-query"
-        ; Target (mock_ml base)
-        ]
-      |> rule ~mode:Standard
-    in
-    (* 2. The OCaml compiler performs type inference. *)
     let name =
       Module_name.of_string_allow_invalid (stanza.loc, mock base)
       |> Module_name.Unchecked.allow_invalid
@@ -295,6 +314,50 @@ module Run (P : PARAMS) = struct
       in
       Module.of_source ~visibility:Public ~kind:Impl source
     in
+    let* alias = inference_alias mock_module in
+    (* 1. A first invocation of Menhir creates a mock [.ml] file. *)
+    let source_deps = Path.Set.to_list deps in
+    let* () =
+      let query =
+        match alias with
+        | None -> mock_ml base
+        | Some _ ->
+          Path.Build.extend_basename
+            (mock_ml base)
+            ~suffix:(Filename.of_string_exn ".raw")
+      in
+      let action =
+        menhir
+          [ Command.Args.dyn expanded_flags
+          ; Deps source_deps
+          ; A "--base"
+          ; Path (Path.relative (Path.build dir) base)
+          ; A "--infer-write-query"
+          ; Target query
+          ]
+      in
+      let action =
+        match alias with
+        | None -> action
+        | Some (name, _) ->
+          (* Keep the alias definitions in a private CMI: [ocamldep] then sees
+             logical references, while the anonymous open makes inference
+             eliminate hidden alias paths. Preprocess the same query for both. *)
+          let prefix =
+            Action.progn
+              [ Action.echo
+                  [ sprintf "open! struct include %s end\n" (Module_name.to_string name) ]
+              ; Action.cat [ Path.build query ]
+              ]
+            |> Action.Full.make
+            |> Action_builder.return
+          in
+          Action_builder.progn
+            [ action; Action_builder.with_stdout_to (mock_ml base) prefix ]
+      in
+      rule ~mode:Standard action
+    in
+    (* 2. The OCaml compiler performs type inference. *)
     let* mock_module =
       Pp_spec.pp_module (Compilation_context.preprocessing cctx) mock_module ~lint:false
     in
@@ -320,6 +383,7 @@ module Run (P : PARAMS) = struct
     let* () =
       Module_compilation.ocamlc_i
         ~impl_deps
+        ~alias:(Option.map alias ~f:snd)
         inference_cctx
         mock_module
         ~output:(inferred_mli base)

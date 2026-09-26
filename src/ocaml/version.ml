@@ -10,6 +10,7 @@ let stdlib_includes_bigarray version = version >= (4, 07, 0)
 let ooi_supports_no_approx version = version >= (4, 05, 0)
 let ooi_supports_no_code version = version >= (4, 05, 0)
 let supports_let_syntax version = version >= (4, 08, 0)
+let supports_generalized_open version = version >= (4, 08, 0)
 let supports_output_complete_exe version = version >= (4, 10, 1)
 
 let custom_or_output_complete_exe version =

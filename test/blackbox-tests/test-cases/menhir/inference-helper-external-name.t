@@ -1,6 +1,9 @@
 The private inference helper proposed in #16464 must not shadow a module with
 the same name from another library.
 
+Currently, inference opens the external module instead of the helper, so the
+aliases needed by the parser are missing.
+
   $ make_menhir_project 3.25 3.0
 
   $ mkdir -p ext lib/lang
@@ -31,3 +34,6 @@ the same name from another library.
   > EOF
 
   $ dune build lib/foo.cma
+  File "lib/lang/parser.mly", line 4, characters 12-16:
+  Error: Unbound module Atom
+  [1]

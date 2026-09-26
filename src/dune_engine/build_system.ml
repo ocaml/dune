@@ -1173,6 +1173,19 @@ let handle_final_exns exns =
        List.iter exns ~f:Dune_util.Report_error.report)
 ;;
 
+let status_line_refresh_interval = Time.Span.of_secs 0.1
+
+let rec wake_for_status_line_refresh cancellation =
+  let open Fiber.O in
+  let* () = Scheduler.sleep_or_cancel status_line_refresh_interval cancellation in
+  if Fiber.Cancel.fired cancellation
+  then Fiber.return ()
+  else
+    (* The scheduler refreshes the status line when it resumes waiting for an
+       event, so waking it is sufficient. *)
+    wake_for_status_line_refresh cancellation
+;;
+
 let run_with_error_collection ?restart_started_at ~build_started_at ~build collect_errors =
   let build =
     match build with
@@ -1295,7 +1308,15 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
         Option.iter timing_section ~f:Console.Status_line.remove_section;
         Fiber.return ())
   in
-  Fiber.Mutex.with_lock State.build_mutex ~f:(fun () -> Process.Build.with_ build f)
+  Fiber.Mutex.with_lock State.build_mutex ~f:(fun () ->
+    Process.Build.with_ build (fun () ->
+      if not !Clflags.show_status_line
+      then f ()
+      else (
+        let cancellation = Fiber.Cancel.create () in
+        Fiber.fork_and_join_unit
+          (fun () -> wake_for_status_line_refresh cancellation)
+          (fun () -> Fiber.finalize f ~finally:(fun () -> Fiber.Cancel.fire cancellation)))))
 ;;
 
 let evaluate_action_builder request =

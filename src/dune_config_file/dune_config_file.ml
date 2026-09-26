@@ -755,10 +755,13 @@ module Dune_config = struct
         Log.info "Auto-detected concurrency" [ "concurrency", Dyn.int n ];
         n
     in
-    (Stdune.Clflags.display
-     := match t.display with
-        | Tui -> Stdune.Display.Quiet
-        | Simple { verbosity; _ } -> verbosity);
+    let display, show_status_line =
+      match t.display with
+      | Tui -> Stdune.Display.Quiet, true
+      | Simple { verbosity; status_line } -> verbosity, status_line
+    in
+    Stdune.Clflags.display := display;
+    Stdune.Clflags.show_status_line := show_status_line;
     { Dune_scheduler.Scheduler.Config.concurrency
     ; print_ctrl_c_warning
     ; watch_exclusions

@@ -43,21 +43,22 @@ module Gen_rules = struct
     ;;
 
     let combine_exn r ({ build_dir_only_sub_dirs; directory_targets; rules } as other) =
-      if phys_equal r empty
-      then other
-      else if phys_equal other empty
-      then r
-      else
-        { build_dir_only_sub_dirs =
-            Build_only_sub_dirs.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
-        ; directory_targets =
-            Path.Build.Map.union_exn r.directory_targets directory_targets
-        ; rules =
-            (let open Memo.O in
-             let+ r = r.rules
-             and+ r' = rules in
-             Rules.union r r')
-        }
+      match phys_equal r empty with
+      | true -> other
+      | false ->
+        (match phys_equal other empty with
+         | true -> r
+         | false ->
+           { build_dir_only_sub_dirs =
+               Build_only_sub_dirs.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
+           ; directory_targets =
+               Path.Build.Map.union_exn r.directory_targets directory_targets
+           ; rules =
+               (let open Memo.O in
+                let+ r = r.rules
+                and+ r' = rules in
+                Rules.union r r')
+           })
     ;;
   end
 

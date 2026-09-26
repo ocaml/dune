@@ -38,10 +38,16 @@ type t
 (** Get the instance of the scheduler that runs the current fiber. *)
 val t : unit -> t
 
-(** [with_job_slot f] waits for one job slot (as per [-j <jobs] to become
-    available and then calls [f]. If [cancellation] is fired before the job
-    starts, the job is cancelled. *)
-val with_job_slot : ?cancellation:Fiber.Cancel.t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+(** [with_job_slot ~job_slots f] waits for [job_slots] job slots (as per
+    [-j <jobs>]) to become available and then calls [f]. A job that runs its
+    own parallel work takes more than one slot, so that the machine is not
+    oversubscribed. If [cancellation] is fired before the job starts, the job
+    is cancelled. *)
+val with_job_slot
+  :  ?cancellation:Fiber.Cancel.t
+  -> job_slots:int
+  -> (unit -> 'a Fiber.t)
+  -> 'a Fiber.t
 
 (** Wait for the following process to terminate. If [is_process_group_leader] is
     true, kill the entire process group instead of just the process in case of

@@ -311,10 +311,52 @@ type input =
   ; execution_parameters : Execution_parameters.t
   ; sandbox : Process.Sandbox.t option
   ; action : Action.t
+  ; job_slots : Action.t option
   }
 
+(* The command runs with one job slot, before the action reserves its own job
+   slots. Its standard output goes to a temporary file, like the stages of a
+   pipe. *)
+let eval_job_slots job_slots ~ectx ~(eenv : env) =
+  match job_slots with
+  | None -> Fiber.return 1
+  | Some t ->
+    let jobs = !Clflags.concurrency in
+    let eenv =
+      { eenv with
+        env =
+          Env.add
+            eenv.env
+            ~var:(Env.Var.of_string "DUNE_JOBS")
+            ~value:(Int.to_string jobs)
+      }
+    in
+    let out = Dtemp.file ~prefix:"dune-job-slots-" ~suffix:".stdout" in
+    let+ () = redirect_out t ~ectx ~eenv ~perm:Normal Stdout out in
+    let stdout = String.trim (Io.read_file_exn out) in
+    Dtemp.destroy File out;
+    (match Int.of_string stdout with
+     | Some n -> max 1 (min n jobs)
+     | None ->
+       User_error.raise
+         ~loc:ectx.rule_loc
+         [ Pp.textf
+             "The job_slots command must print an integer, but it printed %S."
+             stdout
+         ])
+;;
+
 let exec
-      { targets; root; context; env; rule_loc; execution_parameters; sandbox; action = t }
+      { targets
+      ; root
+      ; context
+      ; env
+      ; rule_loc
+      ; execution_parameters
+      ; sandbox
+      ; action = t
+      ; job_slots
+      }
       ~build_deps
   =
   let dynamic_deps_stages = ref [] in
@@ -368,7 +410,19 @@ let exec
     }
   in
   let open Fiber.O in
-  Fiber.collect_errors (fun () -> exec t ~ectx ~eenv)
+  Fiber.collect_errors (fun () ->
+    let* job_slots = eval_job_slots job_slots ~ectx ~eenv in
+    let ectx = { ectx with metadata = { ectx.metadata with job_slots } } in
+    let eenv =
+      { eenv with
+        env =
+          Env.add
+            eenv.env
+            ~var:(Env.Var.of_string "DUNE_JOB_SLOTS")
+            ~value:(Int.to_string job_slots)
+      }
+    in
+    exec t ~ectx ~eenv)
   >>| function
   | Ok () -> Ok { Exec_result.dynamic_deps_stages = List.rev !dynamic_deps_stages }
   | Error exns ->

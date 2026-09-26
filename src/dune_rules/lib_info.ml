@@ -193,16 +193,17 @@ end
 
 module Status = struct
   type t =
-    | Installed_private
-    | Installed
+    | Installed_private of Package.Name.t option
+    | Installed of Package.Name.t option
     | Public of Dune_project.t * Package.t
     | Private of Dune_project.t * Package.t option
 
   let to_dyn x =
     let open Dyn in
     match x with
-    | Installed_private -> variant "Installed_private" []
-    | Installed -> variant "Installed" []
+    | Installed_private package ->
+      variant "Installed_private" [ option Package.Name.to_dyn package ]
+    | Installed package -> variant "Installed" [ option Package.Name.to_dyn package ]
     | Public (project, package) ->
       variant "Public" [ Dune_project.to_dyn project; Package.to_dyn package ]
     | Private (proj, package) ->
@@ -210,12 +211,12 @@ module Status = struct
   ;;
 
   let is_private = function
-    | Installed_private | Private _ -> true
-    | Installed | Public _ -> false
+    | Installed_private _ | Private _ -> true
+    | Installed _ | Public _ -> false
   ;;
 
   let project = function
-    | Installed_private | Installed -> None
+    | Installed_private _ | Installed _ -> None
     | Private (project, _) | Public (project, _) -> Some project
   ;;
 
@@ -660,7 +661,7 @@ let to_dyn
 
 let package t =
   match t.status with
-  | Installed_private | Installed -> Some (Lib_name.package_name t.name)
+  | Installed_private package | Installed package -> package
   | Public (_, p) -> Some (Package.name p)
   | Private (_, p) -> Option.map p ~f:Package.name
 ;;

@@ -1,4 +1,5 @@
-(** Findlib database *)
+(** Findlib database. Returned library descriptions include their resolved
+    package ownership. *)
 
 open Import
 

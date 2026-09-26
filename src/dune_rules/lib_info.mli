@@ -10,8 +10,8 @@ open Import
 
 module Status : sig
   type t =
-    | Installed_private
-    | Installed
+    | Installed_private of Package.Name.t option
+    | Installed of Package.Name.t option
     | Public of Dune_project.t * Package.t
     | Private of Dune_project.t * Package.t option
 
@@ -259,7 +259,10 @@ val create
   -> root_module:Module_name.t option
   -> 'a t
 
+(** The package to depend on, if known. For managed installed libraries,
+    this is the owning lock package, which can differ from the findlib root. *)
 val package : _ t -> Package.Name.t option
+
 val to_dyn : 'path Dyn.builder -> 'path t Dyn.builder
 
 val for_instance

@@ -691,8 +691,8 @@ module Crawl = struct
       let name = Lib_id.name (Lib_info.lib_id info) in
       let public_name =
         match Lib_info.status info with
-        | Public _ | Installed -> Some (Lib.name lib)
-        | Private _ | Installed_private -> None
+        | Public _ | Installed _ -> Some (Lib.name lib)
+        | Private _ | Installed_private _ -> None
       in
       let src_dir = Lib_info.src_dir info in
       let obj_dir = Lib_info.obj_dir info in

@@ -442,8 +442,7 @@ module Hidden = struct
     Error.hidden ~loc ~name ~dir:path ~reason
   ;;
 
-  let unsatisfied_exists_if pkg =
-    let info = Dune_package.Lib.info pkg in
+  let unsatisfied_exists_if info =
     let path = Lib_info.src_dir info in
     { lib = info; reason = "unsatisfied 'exists_if'"; path }
   ;;
@@ -546,7 +545,7 @@ module L = struct
         let status = Lib_info.status lib.info in
         match status with
         | Private (scope_name, _) -> Some scope_name
-        | Installed_private | Public _ | Installed -> None
+        | Installed_private _ | Public _ | Installed _ -> None
       in
       Option.merge acc scope ~f:(fun a b ->
         assert (Dune_project.equal a b);
@@ -1312,7 +1311,9 @@ end = struct
     let equal (lib_name, info, _) (lib_name', info', _) =
       let lib_id = Lib_info.lib_id info
       and lib_id' = Lib_info.lib_id info' in
-      Lib_name.equal lib_name lib_name' && Lib_id.equal lib_id lib_id'
+      Lib_name.equal lib_name lib_name'
+      && Lib_id.equal lib_id lib_id'
+      && Option.equal Package.Name.equal (Lib_info.package info) (Lib_info.package info')
     ;;
 
     let hash (x, _, _) = Lib_name.hash x
@@ -1435,7 +1436,7 @@ end = struct
       (* [Allow_all] is used for libraries that are installed because we don't
          have to check it again. It has been checked when compiling the
          libraries before their installation *)
-      | Installed_private | Private (_, None) | Installed -> Allow_all
+      | Installed_private _ | Private (_, None) | Installed _ -> Allow_all
       | Private (_, Some _) -> From_same_project `Private_package
       | Public (_, _) -> From_same_project `Public
     in
@@ -1527,10 +1528,9 @@ end = struct
             let loc = fst l in
             (match Lib_info.package info with
              | None ->
-               (* We don't need to verify that impl is private if this
-                  virtual library is private. Every implementation already
-                  depends on the virtual library, so the check will be
-                  done there. *)
+               (* An installed library's package may be unknown. For an
+                  unpackaged private virtual library, the implementation's
+                  dependency already enforces visibility. *)
                Resolve.Memo.return impl
              | Some p' ->
                (* It's not good to rely on package names for equality like
@@ -1617,8 +1617,7 @@ end = struct
       | Some _ as project -> Memo.return project
       | None ->
         let+ projects_by_package = Memo.Lazy.force projects_by_package in
-        let open Option.O in
-        let* package = Lib_info.package info in
+        let package = Lib_name.package_name (Lib_info.name info) in
         Package.Name.Map.find projects_by_package package
     in
     let rec t =
@@ -1638,7 +1637,7 @@ end = struct
              let open Resolve.O in
              resolved >>| Compilation_mode.Per_mode.get ~for_ >>= fun r -> r.re_exports)
          in
-         { info
+         { T.info
          ; name
          ; unique_id
          ; requires
@@ -2337,7 +2336,7 @@ module DB = struct
       | Redirect_by_name of db * (Loc.t * Lib_name.t)
       | Redirect_by_id of db * Lib_id.t
 
-    let found f = Found f
+    let found info = Found info
     let not_found = Not_found
     let redirect_by_name db lib = Redirect_by_name (db, lib)
     let redirect_by_id db lib_id = Redirect_by_id (db, lib_id)
@@ -2382,10 +2381,14 @@ module DB = struct
         let open Memo.O in
         Findlib.find findlib name
         >>| function
-        | Ok (Library pkg) -> [ Found (Dune_package.Lib.info pkg) ]
-        | Ok (Deprecated_library_name d) ->
-          [ Redirect_in_the_same_db (d.loc, d.new_public_name) ]
-        | Ok (Hidden_library pkg) -> [ Hidden (Hidden.unsatisfied_exists_if pkg) ]
+        | Ok entry ->
+          [ (match entry with
+             | Library lib -> Found (Dune_package.Lib.info lib)
+             | Deprecated_library_name d ->
+               Redirect_in_the_same_db (d.loc, d.new_public_name)
+             | Hidden_library lib ->
+               Hidden (Hidden.unsatisfied_exists_if (Dune_package.Lib.info lib)))
+          ]
         | Error e ->
           [ (match e with
              | Invalid_dune_package why -> Invalid why

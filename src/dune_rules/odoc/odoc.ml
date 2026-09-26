@@ -62,7 +62,7 @@ let lib_unique_name lib =
   let info = Lib.info lib in
   let status = Lib_info.status info in
   match status with
-  | Installed_private | Installed -> assert false
+  | Installed_private _ | Installed _ -> assert false
   | Public _ -> Lib_name.to_string name
   | Private (project, _) -> Scope_key.to_string name project
 ;;
@@ -1340,11 +1340,13 @@ let gen_rules sctx ~dir rest =
          match lib with
          | None -> Memo.return ()
          | Some lib ->
-           (match Lib_info.package (Lib.Local.info lib) with
-            | None ->
+           (match Lib_info.status (Lib.Local.info lib) with
+            | Installed _ | Installed_private _ -> Memo.return ()
+            | Private (_, None) ->
               let* requires = Lib.closure [ Lib.Local.to_lib lib ] ~linking:false ~for_ in
               setup_lib_odocl_rules sctx lib ~requires
-            | Some pkg -> setup_pkg_odocl_rules sctx ~pkg ~for_)
+            | Public (_, pkg) | Private (_, Some pkg) ->
+              setup_pkg_odocl_rules sctx ~pkg:(Package.name pkg) ~for_)
        and+ () =
          let* packages = Dune_load.packages () in
          match
@@ -1380,12 +1382,14 @@ let gen_rules sctx ~dir rest =
          match lib with
          | None -> Memo.return ()
          | Some lib ->
-           (match Lib_info.package (Lib.Local.info lib) with
-            | None ->
+           (match Lib_info.status (Lib.Local.info lib) with
+            | Installed _ | Installed_private _ -> Memo.return ()
+            | Private (_, None) ->
               (* lib with no package above it *)
               let* search_db = search_db_for_lib sctx lib in
               setup_lib_html_rules sctx ~search_db lib
-            | Some pkg -> setup_pkg_html_rules sctx ~pkg ~for_)
+            | Public (_, pkg) | Private (_, Some pkg) ->
+              setup_pkg_html_rules sctx ~pkg:(Package.name pkg) ~for_)
        and+ () =
          let* packages = Dune_load.packages () in
          match

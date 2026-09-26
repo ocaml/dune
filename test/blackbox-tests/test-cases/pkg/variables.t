@@ -68,3 +68,35 @@ Now we demonstrate we get a proper error from invalid .config files:
   -> required by
      _build/_private/default/.pkg/test.0.0.1-$DIGEST/target
   [1]
+
+Configuration paths must survive the producer sandbox. Currently the configured
+path is missing even though the installed file exists.
+
+  $ make_lockpkg producer <<'EOF'
+  > (version 1.0)
+  > (build
+  >  (progn
+  >   (write-file data "payload\n")
+  >   (run sh -c
+  >    "\| printf 'opam-version: "2.0"\n' > producer.config
+  >    "\| printf 'variables { data_path: "%s/share/producer/data" }\n' \
+  >    "\|   "$1" >> producer.config
+  >    -- %{prefix})
+  >   (write-file producer.install "share: [ \"data\" ]")))
+  > EOF
+  $ make_lockpkg consumer <<'EOF'
+  > (version 1.0)
+  > (depends producer)
+  > (build
+  >  (run sh -c
+  >   "\| if test -f "$1"; then
+  >   "\|   cat "$1"
+  >   "\| else
+  >   "\|   echo missing-configured-file
+  >   "\| fi
+  >   -- %{pkg:producer:data_path}))
+  > EOF
+  $ build_pkg consumer
+  missing-configured-file
+  $ cat "$(get_build_pkg_dir producer)/target/share/producer/data"
+  payload

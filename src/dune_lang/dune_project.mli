@@ -15,11 +15,11 @@ type t
 
 val to_dyn : t -> Dyn.t
 val packages : t -> Package.t Package.Name.Map.t
-val exclusive_package : t -> dir:Path.Source.t -> Package_id.t option
+val exclusive_package : t -> dir:Source_path.t -> Package_id.t option
 val name : t -> Dune_project_name.t
 val version : t -> Package_version.t option
-val root : t -> Path.Source.t
-val stanza_parser : t -> dir:Path.Source.t -> Stanza.t list Decoder.t
+val root : t -> Source_path.t
+val stanza_parser : t -> dir:Source_path.t -> Stanza.t list Decoder.t
 val generate_opam_files : t -> bool
 val set_generate_opam_files : bool -> t -> t
 
@@ -37,7 +37,7 @@ val equal : t -> t -> bool
 val hash : t -> int
 
 (** Return the path of the project file. *)
-val file : t -> Path.Source.t option
+val file : t -> Source_path.t option
 
 module Lang : sig
   (** [register id stanzas_parser] register a new language. Users will select
@@ -110,7 +110,7 @@ val interpret_lang_and_extensions
 
     - [info] defaults to the empty package info
     - [package] defaults to the empty map of packages *)
-val anonymous : dir:Path.Source.t -> Package_info.t -> Package.t Package.Name.Map.t -> t
+val anonymous : dir:Source_path.t -> Package_info.t -> Package.t Package.Name.Map.t -> t
 
 (** "dune-project" *)
 val filename : Filename.t
@@ -163,7 +163,16 @@ val load
   -> files:Filename.Array.Set.t
   -> infer_from_opam_files:bool
   -> load_opam_file_with_contents:
-       (contents:string -> Path.Source.t -> Package_name.t -> Package.t)
+       (contents:string -> Source_path.t -> Package_name.t -> Package.t)
+  -> t option Memo.t
+
+val gen_load_source
+  :  read:(Source_path.t -> string Memo.t)
+  -> dir:Source_path.t
+  -> files:Filename.Array.Set.t
+  -> infer_from_opam_files:bool
+  -> load_opam_file_with_contents:
+       (contents:string -> Source_path.t -> Package_name.t -> Package.t)
   -> t option Memo.t
 
 val gen_load
@@ -172,5 +181,5 @@ val gen_load
   -> files:Filename.Array.Set.t
   -> infer_from_opam_files:bool
   -> load_opam_file_with_contents:
-       (contents:string -> Path.Source.t -> Package_name.t -> Package.t)
+       (contents:string -> Source_path.t -> Package_name.t -> Package.t)
   -> t option Memo.t

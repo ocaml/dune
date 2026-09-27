@@ -19,7 +19,7 @@ let term =
   let+ project = Source_tree.root () >>| Source_tree.Dir.project in
   let packages = Dune_project.packages project |> Package.Name.Map.values in
   let opam_file_to_dyn pkg =
-    let opam_file = Path.source (Package.opam_file pkg) in
+    let opam_file = Package.opam_file pkg |> Dune_lang.Source_path.to_path in
     let contents =
       if Dune_project.generate_opam_files project
       then (
@@ -39,7 +39,7 @@ let term =
     Console.print
       [ Pp.vbox
           (Pp.concat_map ~sep:Pp.cut packages ~f:(fun pkg ->
-             Package.opam_file pkg |> Path.source |> Path.pp))
+             Package.opam_file pkg |> Dune_lang.Source_path.to_path |> Path.pp))
       ]
   else packages |> Dyn.list opam_file_to_dyn |> Describe_format.print_dyn format
 ;;

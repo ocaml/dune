@@ -107,16 +107,17 @@ let parse_stanzas ~file ~(eval : eval) sexps =
   let warnings = Warning_emit.Bag.create () in
   let* stanzas =
     let context =
-      Include_stanza.in_src_file
-      @@
-      match file with
-      | Some f -> f
-      | None ->
-        (* TODO this is wrong *)
-        Path.Source.relative_fname eval.dir Source.Dune_file.fname
+      let file =
+        match file with
+        | Some f -> f
+        | None ->
+          (* TODO this is wrong *)
+          Path.Source.relative_fname eval.dir Source.Dune_file.fname
+      in
+      Include_stanza.in_src_file file
     in
     let stanza_parser =
-      Dune_project.stanza_parser ~dir:eval.dir eval.project
+      Dune_project.stanza_parser ~dir:(Source_path.workspace eval.dir) eval.project
       |> Warning_emit.Bag.set warnings
     in
     parse_file_includes ~stanza_parser ~context sexps
@@ -393,13 +394,21 @@ module Eval = struct
   open Memo.O
 
   let context_independent ~eval dune_file =
-    let file = Source.Dune_file.path dune_file in
+    let file =
+      match Source.Dune_file.source_path dune_file with
+      | None -> None
+      | Some (Workspace path) -> Some path
+      | Some (Build path) ->
+        Code_error.raise
+          "Rule generation from build-backed Dune files is not supported yet"
+          [ "path", Path.Build.to_dyn path ]
+    in
     let static = Source.Dune_file.get_static_sexp dune_file in
     match Source.Dune_file.kind dune_file with
     | Plain ->
       let+ dune_file, dynamic_includes = parse static ~file ~eval in
       Literal (eval, dune_file, dynamic_includes)
-    | Ocaml_script ->
+    | Ocaml_script _ ->
       Memo.return
         (Script
            { eval

@@ -53,7 +53,7 @@ let load () =
       let path = Source_tree.Dir.path dir in
       let project = Source_tree.Dir.project dir in
       let projects =
-        if Path.Source.equal path (Dune_project.root project)
+        if Source_path.equal (Source_path.workspace path) (Dune_project.root project)
         then Appendable_list.singleton (status dir, project)
         else Appendable_list.empty
       in
@@ -130,14 +130,14 @@ let load () =
   let dune_files =
     let without_ctx =
       Memo.lazy_ ~name:"dune-files-eval" (fun () ->
-        let (_ : Package.Name.t Path.Source.Map.t) =
+        let (_ : Package.Name.t Source_path.Map.t) =
           match
             Package.Name.Map.values all_packages
             |> List.filter_map ~f:(fun (pkg, _) ->
               match Package.exclusive_dir pkg with
               | None -> None
               | Some d -> Some (d, pkg))
-            |> Path.Source.Map.of_list_map ~f:(fun ((_loc, d), pkg) ->
+            |> Source_path.Map.of_list_map ~f:(fun ((_loc, d), pkg) ->
               d, Package.name pkg)
           with
           | Ok s -> s
@@ -147,7 +147,7 @@ let load () =
               ~loc
               [ Pp.textf
                   "Directory %s cannot belong to package %s"
-                  (Path.Source.to_string_maybe_quoted dir)
+                  (Source_path.to_string_maybe_quoted dir)
                   (name p1)
               ; Pp.textf "It already belongs to package %s" (name p2)
               ]
@@ -169,7 +169,7 @@ let load () =
   ; projects
   ; projects_by_root =
       Path.Source.Map.of_list_map_exn projects ~f:(fun project ->
-        Dune_project.root project, project)
+        Dune_project.root project |> Source_path.as_workspace_exn, project)
   }
 ;;
 

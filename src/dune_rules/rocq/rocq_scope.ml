@@ -62,7 +62,7 @@ let rocq_scopes_by_dir
 let rocq_stanzas_by_project_dir rocq_stanzas =
   List.map rocq_stanzas ~f:(fun (dir, (stanza : Rocq_stanza.Theory.t)) ->
     let project = stanza.project in
-    Dune_project.root project, (dir, stanza))
+    Dune_project.root project |> Source_path.as_workspace_exn, (dir, stanza))
   |> Path.Source.Map.of_list_multi
 ;;
 

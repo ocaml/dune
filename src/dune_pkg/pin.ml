@@ -45,6 +45,7 @@ module DB = struct
   ;;
 
   let of_stanza ~dir pins =
+    let dir = Dune_lang.Source_path.as_workspace_exn dir in
     let context = Project { dir } in
     { all = Pin_stanza.Project.all pins
     ; context

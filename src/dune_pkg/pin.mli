@@ -9,7 +9,7 @@ module DB : sig
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
   val hash : t -> int
-  val of_stanza : dir:Path.Source.t -> Pin_stanza.Project.t -> t
+  val of_stanza : dir:Dune_lang.Source_path.t -> Pin_stanza.Project.t -> t
   val combine_exn : t -> t -> t
   val add_opam_pins : t -> Dune_lang.Package.t Package_name.Map.t -> t
 

@@ -1102,6 +1102,31 @@ let files_of ~dir =
     Filename_set.create ~dir filenames
 ;;
 
+let directory_target_contents_opt ~dir =
+  Load_rules.load_dir ~dir:(Path.build dir)
+  >>= function
+  | Build_under_directory_target { directory_target_ancestor } ->
+    let+ produced = build_directory_targets (Path.build directory_target_ancestor) in
+    (match Targets.Produced.find_any produced dir with
+     | Some (Right { files; subdirs }) ->
+       Some (Filename.Array.Map.keys files, Filename.Array.Map.keys subdirs)
+     | Some (Left _) | None -> None)
+  | Source _ | External _ | Build _ ->
+    Code_error.raise
+      "Build_system.directory_target_contents: path is not under a directory target"
+      [ "dir", Path.Build.to_dyn dir ]
+;;
+
+let directory_target_contents ~dir =
+  directory_target_contents_opt ~dir
+  >>| function
+  | Some contents -> contents
+  | None ->
+    Code_error.raise
+      "Build_system.directory_target_contents: path is not a produced directory"
+      [ "dir", Path.Build.to_dyn dir ]
+;;
+
 let caused_by_cancellation (exn : Exn_with_backtrace.t) =
   match exn.exn with
   | Scheduler.Run.Build_cancelled -> true

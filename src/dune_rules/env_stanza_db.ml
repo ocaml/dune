@@ -35,8 +35,8 @@ module Node = struct
     let parent =
       let* project = Dune_load.find_project ~dir in
       if
-        Path.Source.equal
-          (Path.Build.drop_build_context_exn dir)
+        Source_path.equal
+          (Source_path.workspace (Path.Build.drop_build_context_exn dir))
           (Dune_project.root project)
       then by_context dir
       else (
@@ -170,7 +170,10 @@ module Inherit = struct
               | Some parent ->
                 let+ project = Dune_load.find_project ~dir:path in
                 let without_context = Path.Build.drop_build_context_exn path in
-                if Path.Source.equal (Dune_project.root project) without_context
+                if
+                  Source_path.equal
+                    (Dune_project.root project)
+                    (Source_path.workspace without_context)
                 then `Root without_context
                 else `Parent parent
             in

@@ -3,12 +3,12 @@ open Import
 module T = struct
   type t =
     { name : Package_name.t
-    ; dir : Path.Source.t
+    ; dir : Source_path.t
     }
 
   let compare { name; dir } pkg =
     match Package_name.compare name pkg.name with
-    | Eq -> Path.Source.compare dir pkg.dir
+    | Eq -> Source_path.compare dir pkg.dir
     | e -> e
   ;;
 
@@ -16,7 +16,7 @@ module T = struct
     Repr.record
       "package-id"
       [ Repr.field "name" Package_name.repr ~get:(fun t -> t.name)
-      ; Repr.field "dir" Path.Source.repr ~get:(fun t -> t.dir)
+      ; Repr.field "dir" Source_path.repr ~get:(fun t -> t.dir)
       ]
   ;;
 
@@ -26,7 +26,7 @@ end
 include T
 
 let create ~name ~dir = { name; dir }
-let hash { name; dir } = Tuple.T2.hash Package_name.hash Path.Source.hash (name, dir)
+let hash { name; dir } = Tuple.T2.hash Package_name.hash Source_path.hash (name, dir)
 let name t = t.name
 
 module C = Comparable.Make (T)

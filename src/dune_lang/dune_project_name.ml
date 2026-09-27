@@ -3,12 +3,12 @@ open Import
 module T = struct
   type t =
     | Named of string
-    | Anonymous of Path.Source.t
+    | Anonymous of Source_path.t
 
   let compare a b =
     match a, b with
     | Named x, Named y -> String.compare x y
-    | Anonymous x, Anonymous y -> Path.Source.compare x y
+    | Anonymous x, Anonymous y -> Source_path.compare x y
     | Named _, Anonymous _ -> Lt
     | Anonymous _, Named _ -> Gt
   ;;
@@ -21,7 +21,7 @@ module T = struct
       [ Repr.case "Named" String.repr ~proj:(function
           | Named n -> Some n
           | Anonymous _ -> None)
-      ; Repr.case "Anonymous" Path.Source.repr ~proj:(function
+      ; Repr.case "Anonymous" Source_path.repr ~proj:(function
           | Anonymous p -> Some p
           | Named _ -> None)
       ]
@@ -36,7 +36,7 @@ module Infix = Comparator.Operators (T)
 
 let to_string_hum = function
   | Named s -> s
-  | Anonymous p -> sprintf "<anonymous %s>" (Path.Source.to_string_maybe_quoted p)
+  | Anonymous p -> sprintf "<anonymous %s>" (Source_path.to_string_maybe_quoted p)
 ;;
 
 let validate name =

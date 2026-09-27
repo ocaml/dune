@@ -125,7 +125,7 @@ let build_info_code cctx ~libs ~api_version =
   let version_of_package placeholders (p : Package.t) =
     match Package.version p with
     | Some v -> Memo.return (sprintf "Some %S" (Package_version.to_string v), placeholders)
-    | None -> placeholder placeholders (Package.dir p)
+    | None -> placeholder placeholders (Package.dir p |> Source_path.as_workspace_exn)
   in
   let* version, placeholders =
     let placeholders = Path.Source.Map.empty in

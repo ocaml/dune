@@ -10,7 +10,7 @@ type opam_file =
 (* we need the original opam file when passing it [$ dune pkg lock] we want to
    to allow the opam library interpret the opam file directly. *)
 type original_opam_file =
-  { file : Path.Source.t
+  { file : Source_path.t
   ; contents : string
   }
 
@@ -41,7 +41,7 @@ end
 
 type t =
   { id : Id.t
-  ; opam_file : Path.Source.t
+  ; opam_file : Source_path.t
   ; loc : Loc.t
   ; synopsis : string option
   ; description : string option
@@ -57,7 +57,7 @@ type t =
   ; sites : Section.t Site.Map.t
   ; allow_empty : bool
   ; original_opam_file : original_opam_file option
-  ; exclusive_dir : (Loc.t * Path.Source.t) option
+  ; exclusive_dir : (Loc.t * Source_path.t) option
   ; duplicate_dep_warnings : User_message.t list
   }
 
@@ -80,7 +80,7 @@ let info t = t.info
 let description t = t.description
 let id t = t.id
 let original_opam_file t = t.original_opam_file
-let set_inside_opam_dir t ~dir = { t with opam_file = Name.file t.id.name ~dir }
+let set_inside_opam_dir t ~dir = { t with opam_file = Name.source_file t.id.name ~dir }
 let set_version_and_info t ~version ~info = { t with version; info }
 let exclusive_dir t = t.exclusive_dir
 let duplicate_dep_warnings t = t.duplicate_dep_warnings
@@ -131,7 +131,7 @@ let encode
         ; field_o
             "dir"
             (fun (_, dir) ->
-               Path.Source.basename dir
+               Source_path.basename dir
                |> Filename.to_string
                |> Dune_sexp.atom_or_quoted_string)
             exclusive_dir
@@ -202,7 +202,7 @@ let decode =
          field_o
            "dir"
            (let+ loc, s = Syntax.since Stanza.syntax (3, 21) >>> located string in
-            loc, Path.Source.relative ~error_loc:loc dir s)
+            loc, Source_path.relative dir s)
        and+ deprecated_package_names =
          name_map
            (Syntax.since Stanza.syntax (2, 0))
@@ -235,7 +235,7 @@ let decode =
        let conflicts = List.map ~f:snd conflicts_with_locs in
        let depopts = List.map ~f:snd depopts_with_locs in
        let id = Id.create ~name ~dir in
-       let opam_file = Name.file id.name ~dir:id.dir in
+       let opam_file = Name.source_file id.name ~dir:id.dir in
        { id
        ; loc
        ; synopsis
@@ -348,11 +348,11 @@ let create
   ; deprecated_package_names
   ; sites
   ; allow_empty
-  ; opam_file = Name.file name ~dir
+  ; opam_file = Name.source_file name ~dir
   ; original_opam_file
   ; exclusive_dir =
       Option.map contents_basename ~f:(fun (loc, s) ->
-        loc, Path.Source.relative_fname dir s)
+        loc, Source_path.relative_fname dir s)
   ; duplicate_dep_warnings = []
   ; enabled_if
   }

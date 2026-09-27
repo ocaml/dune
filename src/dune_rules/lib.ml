@@ -540,7 +540,8 @@ module L = struct
   ;;
 
   let project_root libs =
-    Option.map ~f:Dune_project.root
+    Option.map ~f:(fun project ->
+      Dune_project.root project |> Source_path.as_workspace_exn)
     @@ List.fold_left libs ~init:None ~f:(fun acc lib ->
       let scope =
         let status = Lib_info.status lib.info in

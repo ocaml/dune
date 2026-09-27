@@ -39,6 +39,7 @@ include struct
   module Site = Site
   module Warning = Warning
   module Source_kind = Source_kind
+  module Source_path = Source_path
   module Package_info = Package_info
   module Section = Section
   module Package_dependency = Package_dependency

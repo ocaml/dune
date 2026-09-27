@@ -20,12 +20,12 @@ val loc : t -> Loc.t
 val deprecated_package_names : t -> Loc.t Name.Map.t
 val sites : t -> Section.t Site.Map.t
 val name : t -> Name.t
-val dir : t -> Path.Source.t
-val exclusive_dir : t -> (Loc.t * Path.Source.t) option
-val set_inside_opam_dir : t -> dir:Path.Source.t -> t
+val dir : t -> Source_path.t
+val exclusive_dir : t -> (Loc.t * Source_path.t) option
+val set_inside_opam_dir : t -> dir:Source_path.t -> t
 val encode : Name.t -> t Encoder.t
-val decode : dir:Path.Source.t -> t Decoder.t
-val opam_file : t -> Path.Source.t
+val decode : dir:Source_path.t -> t Decoder.t
+val opam_file : t -> Source_path.t
 val to_dyn : t -> Dyn.t
 val hash : t -> int
 val set_has_opam_file : t -> opam_file -> t
@@ -51,7 +51,7 @@ val allow_empty : t -> bool
 val map_depends : t -> f:(Package_dependency.t list -> Package_dependency.t list) -> t
 
 type original_opam_file =
-  { file : Path.Source.t
+  { file : Source_path.t
   ; contents : string
   }
 
@@ -65,7 +65,7 @@ val create
   -> enabled_if:Blang.t option
   -> info:Package_info.t
   -> has_opam_file:opam_file
-  -> dir:Path.Source.t
+  -> dir:Source_path.t
   -> sites:Section.t Site.Map.t
   -> allow_empty:bool
   -> synopsis:string option

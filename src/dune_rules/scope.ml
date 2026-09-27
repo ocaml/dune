@@ -27,13 +27,17 @@ module DB = struct
   let find_by_dir t dir =
     let scope = Find_closest_source_dir.find_by_dir_exn t.by_dir ~dir in
     let src_dir = Path.Build.drop_build_context_exn dir in
-    match Dune_project.exclusive_package scope.project ~dir:src_dir with
+    match
+      Dune_project.exclusive_package scope.project ~dir:(Source_path.workspace src_dir)
+    with
     | None -> scope
     | Some package -> Package.Name.Map.find_exn t.by_package (Package.Id.name package)
   ;;
 
   let find_by_project t project =
-    Path.Source.Map.find_exn t.by_dir (Dune_project.root project)
+    Path.Source.Map.find_exn
+      t.by_dir
+      (Dune_project.root project |> Source_path.as_workspace_exn)
   ;;
 
   module Found_or_redirect : sig
@@ -160,7 +164,9 @@ module DB = struct
                   match Library.package conf with
                   | Some package -> Some (Package.name package)
                   | None ->
-                    Dune_project.exclusive_package project ~dir:src_dir
+                    Dune_project.exclusive_package
+                      project
+                      ~dir:(Source_path.workspace src_dir)
                     |> Option.map ~f:Package.Id.name
                 in
                 Some lib_id, Library.best_name conf, Found_or_redirect.found info ~owner
@@ -449,7 +455,7 @@ module DB = struct
           | Library_redirect x -> x.project
           | Deprecated_library_name x -> x.project
         in
-        Dune_project.root project, (dir, stanza))
+        Dune_project.root project |> Source_path.as_workspace_exn, (dir, stanza))
       |> Path.Source.Map.of_list_multi
     in
     let make_db_by_project_dir =
@@ -477,7 +483,11 @@ module DB = struct
     in
     let by_dir =
       Path.Source.Map.mapi db_by_project_dir ~f:(fun dir (project, db) ->
-        let root = Path.Build.append_source build_dir (Dune_project.root project) in
+        let root =
+          Path.Build.append_source
+            build_dir
+            (Dune_project.root project |> Source_path.as_workspace_exn)
+        in
         let rocq_db = Rocq_scope.find rocq_scopes ~dir in
         { project; db; public_libs; rocq_db; root })
     in

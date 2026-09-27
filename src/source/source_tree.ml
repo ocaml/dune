@@ -191,7 +191,14 @@ and contents
       ~(dir_status : Source_dir_status.t)
   =
   let files = Dir_contents.files readdir in
-  let+ dune_file = Dune_file.load ~dir:path dir_status project ~files ~parent:dune_file in
+  let+ dune_file =
+    Dune_file.load
+      ~dir:(Source_tree_file.Dir.workspace path)
+      dir_status
+      project
+      ~files
+      ~parent:dune_file
+  in
   let files =
     let predicate =
       match dune_file with
@@ -283,7 +290,11 @@ let root =
       ~load_opam_file_with_contents:Dune_pkg.Opam_file.load_opam_file_with_contents
     >>| (function
      | Some p -> p
-     | None -> Dune_project.anonymous ~dir:path Package_info.empty Package.Name.Map.empty)
+     | None ->
+       Dune_project.anonymous
+         ~dir:(Source_path.workspace path)
+         Package_info.empty
+         Package.Name.Map.empty)
     >>| Only_packages.filter_packages_in_project ~vendored:(dir_status = Vendored)
   in
   let* dirs_visited =
@@ -400,6 +411,428 @@ module Dir = struct
       in
       fun t ~traverse ~trace_event_name ~f ->
         (Lazy.force impl) t ~traverse ~trace_event_name ~f
+    ;;
+  end
+end
+
+module Workspace_dir = Dir
+
+module Rules = struct
+  module File = struct
+    include Source_tree_file.File
+
+    let include_context = Include_stanza.in_source_file
+  end
+
+  module Dir = struct
+    type loaded =
+      { logical_path : Path.Build.t
+      ; backing_path : Path.Build.t
+      ; layers : Source_tree_file.Mounted_layer.t list
+      ; relative_dir : Path.Local.t
+      ; status : Source_dir_status.t
+      ; files : Filename.Array.Set.t
+      ; sub_dirs : loaded_sub_dir Filename.Array.Map.t
+      ; dune_file : Dune_file.t option
+      ; project : Dune_project.t
+      }
+
+    and loaded_sub_dir = { dir : loaded Memo.t }
+
+    type t =
+      | Source of Workspace_dir.t
+      | Mounted of loaded
+
+    type sub_dir =
+      | Source_sub_dir of Workspace_dir.sub_dir
+      | Mounted_sub_dir of loaded_sub_dir
+
+    let source dir = Source dir
+
+    let make_loaded
+          ~logical_path
+          ~backing_path
+          ~layers
+          ~relative_dir
+          ~status
+          ~files
+          ~sub_dirs
+          ~dune_file
+          ~project
+      =
+      { logical_path
+      ; backing_path
+      ; layers
+      ; relative_dir
+      ; status
+      ; files
+      ; sub_dirs
+      ; dune_file
+      ; project
+      }
+    ;;
+
+    let source_path = function
+      | Source dir -> Source_path.workspace (Workspace_dir.path dir)
+      | Mounted { logical_path; _ } -> Source_path.build logical_path
+    ;;
+
+    let path = function
+      | Source dir -> Path.source (Workspace_dir.path dir)
+      | Mounted { logical_path; _ } -> Path.build logical_path
+    ;;
+
+    let backing_path = function
+      | Source dir -> Path.source (Workspace_dir.path dir)
+      | Mounted { backing_path; _ } -> Path.build backing_path
+    ;;
+
+    let file t filename =
+      match t with
+      | Source dir ->
+        Path.Source.relative_fname (Workspace_dir.path dir) filename |> File.workspace
+      | Mounted { logical_path; layers; _ } ->
+        File.mounted ~logical:(Path.Build.relative_fname logical_path filename) ~layers
+    ;;
+
+    let relative_dir = function
+      | Source dir -> Workspace_dir.path dir |> Path.Source.to_local
+      | Mounted { relative_dir; _ } -> relative_dir
+    ;;
+
+    let filenames = function
+      | Source dir -> Workspace_dir.filenames dir
+      | Mounted { files; _ } -> files
+    ;;
+
+    let sub_dirs = function
+      | Source dir ->
+        Workspace_dir.sub_dirs dir
+        |> Filename.Array.Map.mapi ~f:(fun _ dir -> Source_sub_dir dir)
+      | Mounted { sub_dirs; _ } ->
+        Filename.Array.Map.mapi sub_dirs ~f:(fun _ dir -> Mounted_sub_dir dir)
+    ;;
+
+    let sub_dir_names t = sub_dirs t |> Filename.Array.Map.keys
+
+    let sub_dir_as_t = function
+      | Source_sub_dir dir -> Workspace_dir.sub_dir_as_t dir >>| source
+      | Mounted_sub_dir { dir; _ } -> dir >>| fun dir -> Mounted dir
+    ;;
+
+    let rec find_dir t path =
+      match Path.Local.explode path with
+      | [] -> Memo.return (Some t)
+      | name :: rest ->
+        (match Filename.Array.Map.find (sub_dirs t) name with
+         | None -> Memo.return None
+         | Some sub_dir ->
+           let* sub_dir = sub_dir_as_t sub_dir in
+           find_dir sub_dir (Path.Local.of_comps rest))
+    ;;
+
+    let status = function
+      | Source dir -> Workspace_dir.status dir
+      | Mounted { status; _ } -> status
+    ;;
+
+    let dune_file = function
+      | Source dir -> Workspace_dir.dune_file dir
+      | Mounted { dune_file; _ } -> dune_file
+    ;;
+
+    let project = function
+      | Source dir -> Workspace_dir.project dir
+      | Mounted { project; _ } -> project
+    ;;
+
+    let to_dyn t =
+      Dyn.record
+        [ "source_path", Source_path.to_dyn (source_path t)
+        ; "backing_path", Path.to_dyn (backing_path t)
+        ; "status", Source_dir_status.to_dyn (status t)
+        ; ( "files"
+          , Dyn.Set (Filename.Array.Set.to_list_map (filenames t) ~f:Filename.to_dyn) )
+        ]
+    ;;
+
+    module Make_map_reduce (M : Memo.S) (Outcome : Monoid) = struct
+      open M.O
+
+      let rec map_reduce t ~traverse ~trace_event_name:_ ~f =
+        if not (Source_dir_status.Map.find traverse (status t))
+        then M.return Outcome.empty
+        else
+          let+ here = f t
+          and+ children =
+            Filename.Array.Map.values (sub_dirs t)
+            |> M.List.map ~f:(fun child ->
+              let* child = M.of_memo (sub_dir_as_t child) in
+              map_reduce child ~traverse ~trace_event_name:"" ~f)
+          in
+          List.fold_left children ~init:here ~f:Outcome.combine
+      ;;
+    end
+  end
+
+  module Mounted = struct
+    module Layer = Source_tree_file.Mounted_layer
+
+    type t =
+      { logical_root : Path.Build.t
+      ; root : Dir.t
+      ; projects : (Dune_project.t * Dir.t) list
+      }
+
+    let source_root t = t.logical_root
+    let root t = t.root
+    let projects t = t.projects
+
+    let read_file ~logical ~layers =
+      Source_tree_file.File.mounted ~logical ~layers
+      |> Source_tree_file.File.read_with_perm
+    ;;
+
+    let directory_contents ~logical_path layers =
+      let* entries, physical =
+        Memo.List.fold_left
+          layers
+          ~init:(Filename.Map.empty, false)
+          ~f:(fun (entries, physical) layer ->
+            match layer with
+            | Layer.Directory { logical_root; backing_root } ->
+              (match
+                 Path.drop_prefix
+                   (Path.build logical_path)
+                   ~prefix:(Path.build logical_root)
+               with
+               | None -> Memo.return (entries, physical)
+               | Some local ->
+                 let backing_path = Path.Build.append_local backing_root local in
+                 let+ contents =
+                   Build_system.directory_target_contents_opt ~dir:backing_path
+                 in
+                 (match contents with
+                  | None -> entries, physical
+                  | Some (files, sub_dirs) ->
+                    let entries =
+                      Filename.Array.Set.fold files ~init:entries ~f:(fun file entries ->
+                        Filename.Map.set entries file `File)
+                    in
+                    let entries =
+                      Filename.Array.Set.fold
+                        sub_dirs
+                        ~init:entries
+                        ~f:(fun sub_dir entries ->
+                          Filename.Map.set entries sub_dir `Directory)
+                    in
+                    entries, true))
+            | Layer.File { logical; _ } | Layer.Contents { logical; _ } ->
+              (match
+                 Path.drop_prefix (Path.build logical) ~prefix:(Path.build logical_path)
+               with
+               | None -> Memo.return (entries, physical)
+               | Some local ->
+                 (match Path.Local.split_first_component local with
+                  | None ->
+                    Code_error.raise
+                      "Mounted file layer replaces a directory"
+                      [ "path", Path.Build.to_dyn logical ]
+                  | Some (basename, rest) ->
+                    let kind = if Path.Local.is_root rest then `File else `Directory in
+                    Memo.return (Filename.Map.set entries basename kind, true)))
+            | Layer.Delete { logical } ->
+              (match
+                 Path.drop_prefix (Path.build logical) ~prefix:(Path.build logical_path)
+               with
+               | None -> Memo.return (entries, physical)
+               | Some local ->
+                 (match Path.Local.split_first_component local with
+                  | None ->
+                    Code_error.raise
+                      "Mounted file deletion targets a directory"
+                      [ "path", Path.Build.to_dyn logical ]
+                  | Some (basename, rest) ->
+                    let entries =
+                      if Path.Local.is_root rest
+                      then Filename.Map.remove entries basename
+                      else entries
+                    in
+                    Memo.return (entries, physical))))
+      in
+      let files, sub_dirs =
+        Filename.Map.foldi
+          entries
+          ~init:([], [])
+          ~f:(fun filename kind (files, sub_dirs) ->
+            match kind with
+            | `File -> filename :: files, sub_dirs
+            | `Directory -> files, filename :: sub_dirs)
+      in
+      Memo.return
+        (Filename.Array.Set.of_list files, Filename.Array.Set.of_list sub_dirs, physical)
+    ;;
+
+    let load_impl (logical_root, layers) =
+      let backing_root =
+        List.find_map layers ~f:(function
+          | Layer.Directory { logical_root = layer_root; backing_root }
+            when Path.Build.equal logical_root layer_root -> Some backing_root
+          | Directory _ | File _ | Contents _ | Delete _ -> None)
+        |> Option.value_exn
+      in
+      let rec traverse
+                ~logical_path
+                ~relative_dir
+                ~status
+                ~parent_dune_file
+                ~parent_project
+        =
+        let* files, physical_subdirs, physical =
+          directory_contents ~logical_path layers
+        in
+        let backing_path = Path.Build.append_local backing_root relative_dir in
+        let source_path = Source_path.build logical_path in
+        let* loaded_project =
+          match status, physical with
+          | Source_dir_status.Data_only, _ | _, false -> Memo.return None
+          | (Source_dir_status.Normal | Source_dir_status.Vendored), true ->
+            Dune_project.gen_load_source
+              ~read:(fun path ->
+                match Source_path.descendant path ~of_:source_path with
+                | Some local ->
+                  Source_tree_file.File.mounted
+                    ~logical:(Path.Build.append_local logical_path local)
+                    ~layers
+                  |> Source_tree_file.File.read
+                  >>| Option.value_exn
+                | None ->
+                  Code_error.raise
+                    "Mounted project requested a source outside its logical root"
+                    [ "source", Source_path.to_dyn path
+                    ; "root", Source_path.to_dyn source_path
+                    ])
+              ~dir:source_path
+              ~files
+              ~infer_from_opam_files:false
+              ~load_opam_file_with_contents:
+                Dune_pkg.Opam_file.load_opam_file_with_contents
+        in
+        let project, is_project_root =
+          match loaded_project, parent_project with
+          | Some project, _ -> project, true
+          | None, Some project -> project, false
+          | None, None ->
+            ( Dune_project.anonymous
+                ~dir:source_path
+                Package_info.empty
+                Package.Name.Map.empty
+            , true )
+        in
+        let* dune_file =
+          Dune_file.load
+            ~dir:
+              (Source_tree_file.Dir.mounted
+                 ~logical:logical_path
+                 ~backing:backing_path
+                 ~layers)
+            status
+            project
+            ~files
+            ~parent:parent_dune_file
+        in
+        let visible_files =
+          let predicate =
+            match dune_file with
+            | None -> Dune_file.Files.default
+            | Some dune_file -> Dune_file.files dune_file
+          in
+          Dune_file.Files.eval predicate ~files
+        in
+        let sub_dirs_spec =
+          match dune_file with
+          | None -> Source_dir_status.Spec.default
+          | Some dune_file -> Dune_file.sub_dir_status dune_file
+        in
+        let all_subdirs =
+          match dune_file with
+          | None -> physical_subdirs
+          | Some dune_file ->
+            Filename.Array.Set.union physical_subdirs (Dune_file.sub_dirnames dune_file)
+        in
+        let status_map = Source_dir_status.Spec.eval sub_dirs_spec ~dirs:all_subdirs in
+        let* children =
+          Filename.Array.Set.to_list all_subdirs
+          |> Memo.List.filter_map ~f:(fun basename ->
+            let open Source_dir_status.Or_ignored in
+            match Source_dir_status.Per_dir.status status_map ~dir:basename with
+            | Ignored -> Memo.return None
+            | Status child_status ->
+              let child_status =
+                if Dune_project.cram project && Cram_test.is_cram_suffix basename
+                then Source_dir_status.Data_only
+                else (
+                  match status, child_status with
+                  | Source_dir_status.Data_only, _ -> Source_dir_status.Data_only
+                  | Source_dir_status.Vendored, Source_dir_status.Normal ->
+                    Source_dir_status.Vendored
+                  | _, child_status -> child_status)
+              in
+              let+ child, child_projects =
+                traverse
+                  ~logical_path:(Path.Build.relative_fname logical_path basename)
+                  ~relative_dir:(Path.Local.relative_fname relative_dir basename)
+                  ~status:child_status
+                  ~parent_dune_file:dune_file
+                  ~parent_project:(Some project)
+              in
+              Some (basename, child, child_projects))
+        in
+        let sub_dirs =
+          List.map children ~f:(fun (name, child, _) ->
+            name, { Dir.dir = Memo.return child })
+          |> Filename.Array.Map.of_list_exn
+        in
+        let projects = List.concat_map children ~f:(fun (_, _, children) -> children) in
+        let dir =
+          Dir.make_loaded
+            ~logical_path
+            ~backing_path
+            ~layers
+            ~relative_dir
+            ~status
+            ~files:visible_files
+            ~sub_dirs
+            ~dune_file
+            ~project
+        in
+        let projects =
+          if is_project_root then (project, Dir.Mounted dir) :: projects else projects
+        in
+        Memo.return (dir, projects)
+      in
+      let+ root, projects =
+        traverse
+          ~logical_path:logical_root
+          ~relative_dir:Path.Local.root
+          ~status:Source_dir_status.Vendored
+          ~parent_dune_file:None
+          ~parent_project:None
+      in
+      { logical_root; root = Dir.Mounted root; projects }
+    ;;
+
+    let load =
+      let module Input = struct
+        type t = Path.Build.t * Layer.t list
+
+        let equal = Tuple.T2.equal Path.Build.equal (List.equal Layer.equal)
+        let hash = Tuple.T2.hash Path.Build.hash (List.hash Layer.hash)
+        let to_dyn = Tuple.T2.to_dyn Path.Build.to_dyn (Dyn.list Layer.to_dyn)
+      end
+      in
+      let memo = Memo.create "mounted-source-tree" ~input:(module Input) load_impl in
+      fun ~logical_root ~layers -> Memo.exec memo (logical_root, layers)
     ;;
   end
 end

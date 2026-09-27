@@ -8,7 +8,7 @@ val fname : Filename.t
 
 type kind =
   | Plain
-  | Ocaml_script
+  | Ocaml_script of string
 
 type t
 
@@ -19,9 +19,11 @@ val get_static_sexp : t -> Dune_lang.Ast.t list
 
 val kind : t -> kind
 
-(** The path to the dune file. If [kind = Ocaml_script], then this always
-    returns [Some p] where [p] is path to the script *)
+(** The workspace path to the dune file, if any. *)
 val path : t -> Path.Source.t option
+
+val source_path : t -> Source_path.t option
+val filename : t -> Filename.t option
 
 (** The required literal child directory of an Opam stanza. *)
 val opam_dir : Filename.t Dune_lang.Decoder.fields_parser
@@ -44,7 +46,7 @@ val files : t -> Files.t
 val sub_dirnames : t -> Filename.Array.Set.t
 
 val load
-  :  dir:Path.Source.t
+  :  dir:Source_tree_file.Dir.t
   -> Source_dir_status.t
   -> Dune_project.t
   -> files:Filename.Array.Set.t

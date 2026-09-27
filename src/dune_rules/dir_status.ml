@@ -309,8 +309,10 @@ end = struct
   ;;
 
   let build_dir_is_project_root st_dir =
-    let project_root = Source_tree.Dir.project st_dir |> Dune_project.root in
-    Source_tree.Dir.path st_dir |> Path.Source.equal project_root
+    match Source_tree.Dir.project st_dir |> Dune_project.root with
+    | Workspace project_root ->
+      Source_tree.Dir.path st_dir |> Path.Source.equal project_root
+    | Build _ -> false
   ;;
 
   let get_impl dir =

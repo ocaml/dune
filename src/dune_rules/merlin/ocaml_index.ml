@@ -185,7 +185,9 @@ let project_rule sctx project =
   Memo.when_ (Context.merlin ctx) (fun () ->
     let ocaml_index_alias =
       let dir =
-        Path.Build.append_source (Context.build_dir ctx) @@ Dune_project.root project
+        Path.Build.append_source
+          (Context.build_dir ctx)
+          (Dune_project.root project |> Source_path.as_workspace_exn)
       in
       Alias.make Alias0.ocaml_index ~dir
     in

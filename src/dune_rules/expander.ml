@@ -651,7 +651,7 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
           ([ Value.Dir
                (Path.Build.append_source
                   (Context.build_dir t.context)
-                  (Dune_project.root t.project)
+                  (Dune_project.root t.project |> Source_path.as_workspace_exn)
                 |> Path.build)
            ]
            |> Memo.return))
@@ -931,7 +931,9 @@ let visible_packages t =
   then Memo.return Package.Name.Selection.All
   else (
     let src_dir = Path.Build.drop_build_context_exn t.dir in
-    match Dune_project.exclusive_package t.project ~dir:src_dir with
+    match
+      Dune_project.exclusive_package t.project ~dir:(Source_path.workspace src_dir)
+    with
     | None -> Memo.return Package.Name.Selection.All
     | Some pkg_id ->
       let name = Package.Id.name pkg_id in

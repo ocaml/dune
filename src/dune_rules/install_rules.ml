@@ -11,7 +11,11 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
 
 (** Alias for all the files in [_build/install] that belong to a package. *)
 let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
-  let dir = Path.Build.append_source context.build_dir (Package.dir pkg) in
+  let dir =
+    Path.Build.append_source
+      context.build_dir
+      (Package.dir pkg |> Source_path.as_workspace_exn)
+  in
   let name = Package.name pkg in
   sprintf ".%s-files" (Package.Name.to_string name)
   |> Alias.Name.of_string
@@ -31,7 +35,7 @@ module Package_paths = struct
 
   let opam_file (context : Context.t) (pkg : Package.t) =
     let ctx = Context.build_context context in
-    let opam_file = Package.opam_file pkg in
+    let opam_file = Package.opam_file pkg |> Source_path.as_workspace_exn in
     let build_opam_file = Path.Build.append_source ctx.build_dir opam_file in
     match Package.has_opam_file pkg with
     | Exists false -> Memo.return None
@@ -53,7 +57,7 @@ module Package_paths = struct
       | None -> Package.dir pkg
       | Some (_, dir) -> dir
     in
-    Path.Build.append_source ctx.build_dir dir
+    Path.Build.append_source ctx.build_dir (Source_path.as_workspace_exn dir)
   ;;
 
   let deprecated_meta_file ctx pkg name =
@@ -66,7 +70,7 @@ module Package_paths = struct
   ;;
 
   let build_dir (ctx : Build_context.t) (pkg : Package.t) =
-    let dir = Package.dir pkg in
+    let dir = Package.dir pkg |> Source_path.as_workspace_exn in
     Path.Build.append_source ctx.build_dir dir
   ;;
 
@@ -690,7 +694,7 @@ end = struct
           | None -> deprecated_meta_and_dune_files
           | Some opam_file -> file Lib opam_file "opam" :: deprecated_meta_and_dune_files
         in
-        let pkg_dir = Package.dir pkg in
+        let pkg_dir = Package.dir pkg |> Source_path.as_workspace_exn in
         Source_tree.find_dir pkg_dir
         >>| function
         | None -> init

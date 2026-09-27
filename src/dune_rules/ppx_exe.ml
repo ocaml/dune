@@ -85,7 +85,12 @@ end = struct
             assert (Dune_project.equal a b);
             a))
       in
-      { pps; project_root = Option.map project ~f:Dune_project.root; opaque_packages }
+      { pps
+      ; project_root =
+          Option.map project ~f:(fun project ->
+            Dune_project.root project |> Source_path.as_workspace_exn)
+      ; opaque_packages
+      }
     ;;
   end
 

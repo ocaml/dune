@@ -165,7 +165,9 @@ let of_package (t : Dune_lang.Package.t) =
     ; command_source = Assume_defaults
     }
   | Some { file; contents } ->
-    let opam_file = Opam_file.opam_file_of_string_exn ~contents (Path.source file) in
+    let opam_file =
+      Opam_file.opam_file_of_string_exn ~contents (Dune_lang.Source_path.to_path file)
+    in
     let command_source =
       Opam_file
         { build = opam_file |> OpamFile.OPAM.build
@@ -193,7 +195,7 @@ let of_package (t : Dune_lang.Package.t) =
           let version =
             Package_version.of_opam_package_version (OpamPackage.version pkg)
           in
-          let loc = Loc.in_file (Path.source file) in
+          let loc = Loc.in_file (Dune_lang.Source_path.to_path file) in
           name, { loc; version; url = loc, url; name; origin = Opam_file })
         |> Package_name.Map.of_list
       with

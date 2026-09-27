@@ -386,12 +386,8 @@ and combined_package_deps_builder expander pkgs =
   let open Action_builder.O in
   (* Resolve packages and name the layout dir in the host context, same as
      [make_bin_env] above. *)
-  let* host_name =
-    Action_builder.of_memo
-      (let open Memo.O in
-       Expander.host_context expander >>| Context.name)
-  in
-  let context = Build_context.create ~name:host_name in
+  let* host_context = Action_builder.of_memo (Expander.host_context expander) in
+  let context = Build_context.create ~name:(Context.name host_context) in
   let* requested =
     Action_builder.List.map pkgs ~f:(fun (swv, loc) ->
       let+ pkg = expand_package_name expander swv in
@@ -442,8 +438,8 @@ and combined_package_deps_builder expander pkgs =
       if Package.Name.Set.is_empty local_package_names
       then Action_builder.return Env.empty
       else
-        let* layout = Install_layout.materialize context.name local_package_names in
-        Install_layout.env layout ~base:Env.empty
+        let* layout = Package_layout.materialize context.name local_package_names in
+        Install_layout.env layout ~path:(Context.path host_context) ~base:Env.empty
     in
     if Package.Name.Set.is_empty lockdir_package_names
     then Action_builder.return local_env

@@ -875,7 +875,7 @@ let expand_pkg_macro ~loc { context; project; _ } macro_invocation =
         resolve_local_pkg_file ~loc ~context_name ~pkg_name ~section ~file
       | Some (Opam _) ->
         let* layout =
-          Install_layout.materialize context_name (Package.Name.Set.singleton pkg_name)
+          Package_layout.materialize context_name (Package.Name.Set.singleton pkg_name)
         in
         let dependency = Install_layout.dependencies layout |> List.hd in
         let path =

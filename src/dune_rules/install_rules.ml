@@ -1236,9 +1236,28 @@ let install_entries = Stanzas_to_entries.package_entries
 
 let () =
   Install_layout.set_entry_resolver (fun context_name package ->
-    let open Memo.O in
-    let* sctx = Super_context.find_exn context_name in
-    install_entries sctx package)
+    let* opaque = Opam_package.find context_name package in
+    match opaque with
+    | None ->
+      let* sctx = Super_context.find_exn context_name in
+      install_entries sctx package
+    | Some opaque ->
+      let+ dependency, _ =
+        Action_builder.evaluate_and_collect_facts (Opam_package.dependency opaque)
+      in
+      Section.Map.to_list dependency.files
+      |> List.concat_map ~f:(fun (section, files) ->
+        let prefix =
+          Install.Paths.get (Opam_build.Paths.install_paths dependency.paths) section
+        in
+        List.map files ~f:(fun src ->
+          let dst = Path.drop_prefix_exn src ~prefix |> Path.Local.to_string in
+          Install.Entry.Unexpanded.make
+            section
+            ~dst
+            ~kind:File
+            (Path.as_in_build_dir_exn src)
+          |> Install.Entry.Sourced.Unexpanded.create ~loc:opaque.stanza.loc)))
 ;;
 
 let packages =

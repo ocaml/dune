@@ -60,9 +60,9 @@ let rule (package : Opam_package.t) =
   in
   let build =
     let open Action_builder.O in
-    let* layout = Install_layout.materialize context closure in
+    let* layout = Package_layout.materialize context closure in
     let* base = Action_builder.of_memo (Context.base_env context_value) in
-    let* env = Install_layout.env layout ~base in
+    let* env = Install_layout.env layout ~path:(Context.path context_value) ~base in
     let dependencies = Install_layout.dependencies layout in
     let env =
       Env.add

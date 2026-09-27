@@ -1,3 +1,5 @@
+(** Install-layout rules and materialization, independent of [Context] loading. *)
+
 open Import
 
 val set_entry_resolver
@@ -6,15 +8,18 @@ val set_entry_resolver
 
 type t
 
-(** Materialize outputs and register dependencies on installed files, without
-    applying exports. *)
-val materialize : Context_name.t -> Package.Name.Set.t -> t Action_builder.t
+(** Root of the materialized install layout for the package set. *)
+val root : Context_name.t -> Package.Name.Set.t -> Path.Build.t
+
+(** Materialize selected providers and register dependencies on installed files,
+    without applying exports. Preserve the supplied order for applying exports. *)
+val materialize : Context_name.t -> Opam_build.Dependency.t list -> t Action_builder.t
 
 val dependencies : t -> Opam_build.Dependency.t list
 
 (** Prepend the layout's standard paths to [base], then apply package exports
     in order and record their environment dependencies. *)
-val env : t -> base:Env.t -> Env.t Action_builder.t
+val env : t -> path:Path.t list -> base:Env.t -> Env.t Action_builder.t
 
 (** Engine dispatch for [_build/_private/<context>/.packages/<rest>]. Called
     from [Gen_rules]; the layout dir is owned by this module. Resolves to:

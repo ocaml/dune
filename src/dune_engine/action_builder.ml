@@ -267,6 +267,10 @@ let rec eval : type a m. a t -> m eval_mode -> (a * m) Memo.t =
   | Exec_memo (m, i) -> exec_memo_eval m i mode
   | Push_stack_frame (human_readable_description, f) ->
     Memo.push_stack_frame ~human_readable_description (fun () -> eval (f ()) mode)
+  | List_map ([ x ], f) ->
+    let open Memo.O in
+    let+ y, deps = eval (f x) mode in
+    [ y ], deps
   | List_map (l, f) ->
     let open Memo.O in
     let+ res = Memo.parallel_map l ~f:(fun x -> eval (f x) mode) in

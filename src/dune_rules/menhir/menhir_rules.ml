@@ -276,26 +276,11 @@ module Run (P : PARAMS) = struct
        | false -> Memo.return None
        | true ->
          let name =
-           let obj_map = Modules.With_vlib.obj_map modules in
-           let base_name =
-             Module.path mock_module
-             |> Module_name.Path.to_string
-             |> Digest.string
-             |> Digest.to_string
-             |> Module_name.add_suffix (Module_name.of_checked_string "Dune__menhir__")
-           in
-           let rec fresh attempt =
-             let name =
-               match attempt with
-               | 0 -> base_name
-               | _ -> Module_name.add_suffix base_name (sprintf "_%d" attempt)
-             in
-             let obj_name = Module_name.Unique.of_name_assuming_needs_no_mangling name in
-             match Modules.With_vlib.find_deps modules ~of_:mock_module [ name ] with
-             | Ok [] when not (Module_name.Unique.Map.mem obj_map obj_name) -> name
-             | Ok _ | Error _ -> fresh (attempt + 1)
-           in
-           fresh 0
+           Module.path mock_module
+           |> Module_name.Path.to_string
+           |> Digest.string
+           |> Digest.to_string
+           |> Module_name.add_suffix (Module_name.of_checked_string "Dune__menhir__")
          in
          let+ cmi = Module_compilation.build_inference_alias cctx ~name ~aliases in
          Some (name, cmi))

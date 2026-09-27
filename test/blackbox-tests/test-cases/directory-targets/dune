@@ -1,3 +1,9 @@
 (cram
  (applies_to remove-write-permissions.t)
  (deps %{bin:bash}))
+
+(cram
+ (enabled_if
+  (= %{os_type} "Win32"))
+ (applies_to install-dir-target-copy-windows.t)
+ (alias runtest-windows))

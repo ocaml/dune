@@ -1343,6 +1343,15 @@ module With_vlib = struct
            Some { impl with Group.modules })
   ;;
 
+  let is_guarded_alias t m =
+    match group_of_alias t m with
+    | None -> false
+    | Some group ->
+      (match Module.kind (Group.lib_interface group) with
+       | Alias _ -> false
+       | _ -> true)
+  ;;
+
   let fold_no_vlib_with_aliases t ~init ~normal ~alias =
     t
     |> drop_vlib

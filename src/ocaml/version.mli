@@ -30,6 +30,9 @@ val ooi_supports_no_code : t -> bool
 (** Whether the language supports custom let operators *)
 val supports_let_syntax : t -> bool
 
+(** Whether the language supports anonymous structure opens *)
+val supports_generalized_open : t -> bool
+
 (** Does this support [-output-complete-exe]? *)
 val supports_output_complete_exe : t -> bool
 

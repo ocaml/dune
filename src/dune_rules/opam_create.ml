@@ -363,9 +363,7 @@ let template_file = Path.extend_basename ~suffix:Filename.template
 
 let build_path ~build_dir pkg =
   let opam_path =
-    Path.Build.append_source
-      build_dir
-      (Package.opam_file pkg |> Source_path.as_workspace_exn)
+    Source_path.to_build_dir (Package.opam_file pkg) ~workspace_build_dir:build_dir
   in
   match Package.has_opam_file pkg with
   | Generated_with_diff -> Path.Build.extend_basename opam_path ~suffix:Filename.generated
@@ -412,15 +410,11 @@ let generate project pkg ~template =
 let add_alias_rule (ctx : Build_context.t) ~profile ~project ~pkg =
   let build_dir = ctx.build_dir in
   let dir =
-    Path.Build.append_source
-      build_dir
-      (Dune_project.root project |> Source_path.as_workspace_exn)
+    Source_path.to_build_dir (Dune_project.root project) ~workspace_build_dir:build_dir
   in
   let source_opam_path = Package.opam_file pkg |> Source_path.to_path in
   let opam_path =
-    Path.Build.append_source
-      build_dir
-      (Package.opam_file pkg |> Source_path.as_workspace_exn)
+    Source_path.to_build_dir (Package.opam_file pkg) ~workspace_build_dir:build_dir
   in
   let generated_opam_path = build_path ~build_dir pkg in
   let opam_alias = Alias.make Alias0.opam ~dir in
@@ -464,9 +458,7 @@ let add_alias_rule (ctx : Build_context.t) ~profile ~project ~pkg =
 let add_opam_file_rule sctx ~project ~pkg =
   let build_dir = Super_context.context sctx |> Context.build_dir in
   let opam_path =
-    Path.Build.append_source
-      build_dir
-      (Package.opam_file pkg |> Source_path.as_workspace_exn)
+    Source_path.to_build_dir (Package.opam_file pkg) ~workspace_build_dir:build_dir
   in
   let generated_opam_path = build_path ~build_dir pkg in
   let opam_rule =
@@ -476,9 +468,7 @@ let add_opam_file_rule sctx ~project ~pkg =
     |> Action_builder.write_file_dyn generated_opam_path
   in
   let dir =
-    Path.Build.append_source
-      build_dir
-      (Dune_project.root project |> Source_path.as_workspace_exn)
+    Source_path.to_build_dir (Dune_project.root project) ~workspace_build_dir:build_dir
   in
   match Package.has_opam_file pkg with
   | Generated_with_diff ->

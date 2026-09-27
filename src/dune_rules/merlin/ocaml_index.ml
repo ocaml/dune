@@ -154,10 +154,7 @@ let context_indexes =
            |> Dune_load.dune_files
            >>| Dune_file.fold_static_stanzas ~init:[] ~f:(fun dune_file stanza acc ->
              let obj =
-               let dir =
-                 let build_dir = Context.build_dir ctx in
-                 Path.Build.append_source build_dir (Dune_file.dir dune_file)
-               in
+               let dir = Dune_file.output_dir dune_file in
                match Stanza.repr stanza with
                | Executables.T exes | Tests.T { exes; _ } ->
                  Some (Executables.obj_dir ~dir exes)

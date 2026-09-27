@@ -12,9 +12,7 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
 (** Alias for all the files in [_build/install] that belong to a package. *)
 let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
   let dir =
-    Path.Build.append_source
-      context.build_dir
-      (Package.dir pkg |> Source_path.as_workspace_exn)
+    Source_path.to_build_dir (Package.dir pkg) ~workspace_build_dir:context.build_dir
   in
   let name = Package.name pkg in
   sprintf ".%s-files" (Package.Name.to_string name)
@@ -35,15 +33,17 @@ module Package_paths = struct
 
   let opam_file (context : Context.t) (pkg : Package.t) =
     let ctx = Context.build_context context in
-    let opam_file = Package.opam_file pkg |> Source_path.as_workspace_exn in
-    let build_opam_file = Path.Build.append_source ctx.build_dir opam_file in
+    let opam_file = Package.opam_file pkg in
+    let build_opam_file =
+      Source_path.to_build_dir opam_file ~workspace_build_dir:ctx.build_dir
+    in
     match Package.has_opam_file pkg with
     | Exists false -> Memo.return None
     | Exists true -> Memo.return (Some build_opam_file)
     | Generated | Generated_with_diff ->
       let+ use_source_opam =
         if Profile.is_release (Context.profile context)
-        then Build_system.file_exists (Path.source opam_file)
+        then Build_system.file_exists (Source_path.to_path opam_file)
         else Memo.return false
       in
       Some (if use_source_opam then build_opam_file else generated_opam_file ctx pkg)
@@ -57,7 +57,7 @@ module Package_paths = struct
       | None -> Package.dir pkg
       | Some (_, dir) -> dir
     in
-    Path.Build.append_source ctx.build_dir (Source_path.as_workspace_exn dir)
+    Source_path.to_build_dir dir ~workspace_build_dir:ctx.build_dir
   ;;
 
   let deprecated_meta_file ctx pkg name =
@@ -70,8 +70,8 @@ module Package_paths = struct
   ;;
 
   let build_dir (ctx : Build_context.t) (pkg : Package.t) =
-    let dir = Package.dir pkg |> Source_path.as_workspace_exn in
-    Path.Build.append_source ctx.build_dir dir
+    let dir = Package.dir pkg in
+    Source_path.to_build_dir dir ~workspace_build_dir:ctx.build_dir
   ;;
 
   let dune_package_file ctx pkg =
@@ -717,11 +717,11 @@ end = struct
         let* stanzas = Dune_load.stanzas_of_package ctx.name package_name
         and* package_db = Package_db.create ctx.name in
         List.rev stanzas
-        |> Memo.parallel_map ~f:(fun (src_dir, stanza) ->
+        |> Memo.parallel_map ~f:(fun (dune_file, stanza) ->
           match Stanza.repr stanza with
           | Deprecated_library_name.T _ -> Memo.return []
           | _ ->
-            let dir = Path.Build.append_source ctx.build_dir src_dir in
+            let dir = Dune_file.output_dir dune_file in
             let* expander = Super_context.expander sctx ~dir
             and* scope = Scope.DB.find_by_dir dir in
             stanza_to_entries ~package_db ~sctx ~dir ~scope ~expander stanza)

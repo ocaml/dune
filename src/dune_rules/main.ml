@@ -31,7 +31,8 @@ let execution_parameters ~sandbox_actions =
     | Regular (With_context (context, source))
     | Anonymous_action (With_context (context, source)) ->
       (match Install.Context.analyze_path context source with
-       | Normal (_, source) -> Some source
+       | Normal (context, source) ->
+         Some (Path.Build.append_source (Context_name.build_dir context) source)
        | Install _ | Invalid -> None)
     | Regular Root | Anonymous_action Root | Invalid _ -> None
   in
@@ -49,8 +50,17 @@ let execution_parameters ~sandbox_actions =
       match source_backed_dir path with
       | None -> Memo.return ep
       | Some path ->
-        let+ dir = Source_tree.nearest_dir path in
-        Dune_project.update_execution_parameters (Source_tree.Dir.project dir) ep)
+        let+ loaded_project = Dune_load.find_loaded_project ~dir:path in
+        let action_project_root =
+          Path.Local.descendant
+            (Path.Build.local (Loaded_project.output_root loaded_project))
+            ~of_:(Path.Build.local (Context_name.build_dir context))
+          |> Option.value_exn
+        in
+        Dune_project.update_execution_parameters
+          (Loaded_project.project loaded_project)
+          ~action_project_root
+          ep)
   in
   let memo =
     let module Input = struct

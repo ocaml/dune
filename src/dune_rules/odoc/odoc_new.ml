@@ -2014,8 +2014,8 @@ let gen_project_rules sctx project =
   |> Dune_lang.Package_name.Map.to_seq
   |> Memo.parallel_iter_seq ~f:(fun (_, (pkg : Package.t)) ->
     let dir =
-      let pkg_dir = Package.dir pkg |> Source_path.as_workspace_exn in
-      Path.Build.append_source (Context.build_dir ctx) pkg_dir
+      let pkg_dir = Package.dir pkg in
+      Source_path.to_build_dir pkg_dir ~workspace_build_dir:(Context.build_dir ctx)
     in
     let register =
       let alias = Alias.make Alias0.doc_new ~dir in

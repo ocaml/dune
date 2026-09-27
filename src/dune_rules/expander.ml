@@ -648,13 +648,8 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
     Need_full_expander
       (fun t ->
         Without
-          ([ Value.Dir
-               (Path.Build.append_source
-                  (Context.build_dir t.context)
-                  (Dune_project.root t.project |> Source_path.as_workspace_exn)
-                |> Path.build)
-           ]
-           |> Memo.return))
+          (let+ scope = t.scope in
+           [ Value.Dir (Path.build (Scope.root scope)) ]))
   | Cc -> Need_full_expander (fun t -> With (cc t).c)
   | Cxx -> Need_full_expander (fun t -> With (cc t).cxx)
   | Toolchain ->

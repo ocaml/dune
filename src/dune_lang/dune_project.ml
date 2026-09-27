@@ -781,15 +781,13 @@ let cram t = t.cram
 let info t = t.info
 let pins t = t.pins
 
-let update_execution_parameters t ep =
+let update_execution_parameters t ~action_project_root ep =
   ep
   |> Execution_parameters.set_expand_aliases_in_sandbox t.expand_aliases_in_sandbox
   |> Execution_parameters.set_workspace_root_to_build_path_prefix_map
        (if t.map_workspace_root then Set "/workspace_root" else Unset)
   |> Execution_parameters.set_action_project_root
-       (if t.dune_version >= (3, 23)
-        then Some (Source_path.as_workspace_exn t.root)
-        else None)
+       (if t.dune_version >= (3, 23) then Some action_project_root else None)
   |> Execution_parameters.set_use_sandbox_policy (t.dune_version >= (3, 25))
 ;;
 

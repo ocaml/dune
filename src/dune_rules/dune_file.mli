@@ -6,6 +6,9 @@ open Import
 type t
 
 val dir : t -> Path.Source.t
+val loaded_dir : t -> Loaded_dir.t
+val source_dir : t -> Source_path.t
+val output_dir : t -> Path.Build.t
 val stanzas : t -> Stanza.t list Memo.t
 val static_stanzas : t -> Stanza.t list
 val project : t -> Dune_project.t

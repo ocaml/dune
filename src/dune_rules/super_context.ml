@@ -66,11 +66,8 @@ let get_env_stanza ~dir =
 let get_impl t dir =
   let inherit_from =
     Memo.lazy_ ~name:"inherited-environment-node" (fun () ->
-      let* scope_root = Dune_load.find_project ~dir >>| Dune_project.root in
-      if
-        Source_path.equal
-          (Source_path.workspace (Path.Build.drop_build_context_exn dir))
-          scope_root
+      let* project = Dune_load.find_loaded_project ~dir in
+      if Path.Build.equal dir (Loaded_project.output_root project)
       then Memo.Lazy.force t.default_env
       else (
         match Path.Build.parent dir with

@@ -29,10 +29,10 @@ let available_exes ~dir (exes : Executables.t) =
   Resolve.is_ok available
 ;;
 
-let get_installed_binaries ~(context : Context.t) stanzas =
+let get_installed_binaries stanzas =
   let merge _ x y = Some (Appendable_list.( @ ) x y) in
   Memo.List.map stanzas ~f:(fun d ->
-    let dir = Path.Build.append_source (Context.build_dir context) (Dune_file.dir d) in
+    let dir = Dune_file.output_dir d in
     let* expander = Expander0.get ~dir in
     let expand_value sw =
       Expander0.expand expander ~mode:Single sw
@@ -110,7 +110,7 @@ let all =
     let artifacts =
       let local_bins =
         Memo.lazy_ ~name:"get_installed_binaries" (fun () ->
-          Context.name context |> Dune_load.dune_files >>= get_installed_binaries ~context)
+          Context.name context |> Dune_load.dune_files >>= get_installed_binaries)
       in
       Artifacts.create context ~local_bins |> Memo.return
     in

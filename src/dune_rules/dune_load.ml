@@ -2,11 +2,11 @@ open Import
 open Memo.O
 
 module Dune_file_db = struct
-  type t = Dune_file.t Path.Source.Map.t
+  type t = Dune_file.t Path.Build.Map.t
 
   let make all =
-    Path.Source.Map.of_list_map_exn all ~f:(fun dune_file ->
-      Dune_file.dir dune_file, dune_file)
+    Path.Build.Map.of_list_map_exn all ~f:(fun dune_file ->
+      Dune_file.output_dir dune_file, dune_file)
   ;;
 
   let per_context dune_files =
@@ -178,9 +178,70 @@ let load =
   fun () -> Memo.Lazy.force memo
 ;;
 
+let projects_by_output_root =
+  let by_context =
+    Per_context.create_by_name ~name:"workspace-loaded-projects" (fun context_name ->
+      Memo.lazy_ ~name:"workspace-loaded-projects-for-context" (fun () ->
+        let* { projects_by_root; _ } = load () in
+        let+ context = Context.DB.get context_name in
+        let partition = Build_partition.workspace context in
+        Path.Source.Map.to_list_map projects_by_root ~f:(fun root project ->
+          let output_root = Path.Build.append_source (Context.build_dir context) root in
+          let loaded_project =
+            Loaded_project.create
+              ~project
+              ~identity:(Loaded_project.Identity.workspace root)
+              ~source_root:(Dune_project.root project)
+              ~partition
+              ~output_root
+          in
+          output_root, loaded_project)
+        |> Path.Build.Map.of_list_exn)
+      |> Memo.Lazy.force)
+    |> Staged.unstage
+  in
+  fun context -> by_context context
+;;
+
+let context_of_dir dir =
+  match Path.Build.extract_build_context dir with
+  | Some (context, source_dir) ->
+    let context = Context_name.of_string (Filename.to_string context) in
+    if Context_name.equal context Private_context.t.name
+    then (
+      match Path.Source.explode source_dir with
+      | context :: _ -> Context_name.of_string (Filename.to_string context)
+      | [] ->
+        Code_error.raise
+          "Dune_load: private path has no resolver context"
+          [ "dir", Path.Build.to_dyn dir ])
+    else context
+  | None ->
+    Code_error.raise
+      "Dune_load: path is not in a build context"
+      [ "dir", Path.Build.to_dyn dir ]
+;;
+
+let find_loaded_project ~dir =
+  let context = context_of_dir dir in
+  let+ projects_by_output_root = projects_by_output_root context in
+  let rec loop dir =
+    match Path.Build.Map.find projects_by_output_root dir with
+    | Some project -> project
+    | None ->
+      (match Path.Build.parent dir with
+       | Some parent -> loop parent
+       | None ->
+         Code_error.raise
+           "Dune_load: no enclosing loaded project"
+           [ "dir", Path.Build.to_dyn dir ])
+  in
+  loop dir
+;;
+
 let find_project ~dir =
-  let+ { projects_by_root; _ } = load () in
-  Find_closest_source_dir.find_by_dir_exn projects_by_root ~dir
+  let+ project = find_loaded_project ~dir in
+  Loaded_project.project project
 ;;
 
 let stanzas_in_dir dir =
@@ -190,10 +251,9 @@ let stanzas_in_dir dir =
     match Install.Context.of_path dir with
     | None -> Memo.return None
     | Some ctx ->
-      let dir = Path.Build.drop_build_context_exn dir in
       let* { dune_file_by_dir; _ } = load () in
       let+ map = dune_file_by_dir ctx in
-      Path.Source.Map.find map dir)
+      Path.Build.Map.find map dir)
 ;;
 
 let mask () =
@@ -250,10 +310,7 @@ let stanzas_of_package =
              match package with
              | None -> acc
              | Some package ->
-               Package.Name.Map.add_multi
-                 acc
-                 (Package.Id.name package)
-                 (Dune_file.dir dune_file, stanza))
+               Package.Name.Map.add_multi acc (Package.Id.name package) (dune_file, stanza))
          |> Package.Name.Map.map ~f:List.rev)
   in
   fun context package ->

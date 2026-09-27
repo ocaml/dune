@@ -138,7 +138,11 @@ val pins : t -> Pin_stanza.Project.t
 
 (** Update the execution parameters according to what is written in the
     [dune-project] file. *)
-val update_execution_parameters : t -> Execution_parameters.t -> Execution_parameters.t
+val update_execution_parameters
+  :  t
+  -> action_project_root:Path.Local.t
+  -> Execution_parameters.t
+  -> Execution_parameters.t
 
 val encode : t -> Dune_sexp.t list
 val dune_site_extension : unit Extension.t

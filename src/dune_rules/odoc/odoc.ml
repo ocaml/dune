@@ -1051,8 +1051,10 @@ let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.
   let ctx = Super_context.context sctx in
   let name = Package.name pkg in
   let alias =
-    let pkg_dir = Package.dir pkg |> Source_path.as_workspace_exn in
-    let dir = Path.Build.append_source (Context.build_dir ctx) pkg_dir in
+    let pkg_dir = Package.dir pkg in
+    let dir =
+      Source_path.to_build_dir pkg_dir ~workspace_build_dir:(Context.build_dir ctx)
+    in
     Output_format.alias output ~dir
   in
   match (output : Output_format.t) with

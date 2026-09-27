@@ -18,11 +18,7 @@ let mlds_by_package_def =
            match Stanza.repr stanza with
            | Documentation.T stanza ->
              let+ mlds =
-               (let dir =
-                  Path.Build.append_source
-                    (Context.build_dir ctx)
-                    (Dune_file.dir dune_file)
-                in
+               (let dir = Dune_file.output_dir dune_file in
                 Dir_contents.get sctx ~dir)
                >>= Dir_contents.mlds ~stanza
              in

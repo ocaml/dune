@@ -114,7 +114,6 @@ let enabled_stanzas =
       (fun sctx ->
          let open Memo.O in
          let ctx = Super_context.context sctx in
-         let build_dir = Context.build_dir ctx in
          let* dune_files = Dune_load.dune_files (Context.name ctx) in
          Dune_file.fold_static_stanzas dune_files ~init:[] ~f:(fun dune_file stanza acc ->
            let enabled_if =
@@ -130,7 +129,7 @@ let enabled_stanzas =
            | None -> acc
            | Some enabled_if -> (dune_file, stanza, enabled_if) :: acc)
          |> Memo.parallel_map ~f:(fun (dune_file, stanza, enabled_if) ->
-           let dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
+           let dir = Dune_file.output_dir dune_file in
            let* expander = Super_context.expander sctx ~dir in
            let+ enabled = Expander.eval_blang expander enabled_if in
            Option.some_if enabled (dune_file, stanza))
@@ -141,12 +140,9 @@ let enabled_stanzas =
 
 (* Discover sources only when the internal database rule is built. *)
 let collect_entries sctx stanzas =
-  let ctx = Super_context.context sctx in
   let open Memo.O in
   Memo.parallel_map stanzas ~f:(fun (dune_file, stanza) ->
-    let dir =
-      Path.Build.append_source (Context.build_dir ctx) (Dune_file.dir dune_file)
-    in
+    let dir = Dune_file.output_dir dune_file in
     let* expander = Super_context.expander sctx ~dir
     and* dir_contents = Dir_contents.get sctx ~dir in
     let* foreign_sources = Dir_contents.foreign_sources dir_contents in

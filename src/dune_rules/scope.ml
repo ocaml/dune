@@ -573,24 +573,18 @@ module DB = struct
 
   let create_from_stanzas ~projects_by_root ~(context : Context_name.t) stanzas =
     let stanzas, rocq_stanzas =
-      let build_dir = Context_name.build_dir context in
       Dune_file.fold_static_stanzas
         stanzas
         ~init:([], [])
         ~f:(fun dune_file stanza (acc, rocq_acc) ->
+          let ctx_dir = Dune_file.output_dir dune_file in
           match Stanza.repr stanza with
           | Library.T lib ->
-            let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
             (ctx_dir, Library_related_stanza.Library lib) :: acc, rocq_acc
           | Deprecated_library_name.T d ->
-            let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
             (ctx_dir, Deprecated_library_name d) :: acc, rocq_acc
-          | Library_redirect.Local.T d ->
-            let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
-            (ctx_dir, Library_redirect d) :: acc, rocq_acc
-          | Rocq_stanza.Theory.T rocq_lib ->
-            let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
-            acc, (ctx_dir, rocq_lib) :: rocq_acc
+          | Library_redirect.Local.T d -> (ctx_dir, Library_redirect d) :: acc, rocq_acc
+          | Rocq_stanza.Theory.T rocq_lib -> acc, (ctx_dir, rocq_lib) :: rocq_acc
           | _ -> acc, rocq_acc)
     in
     create ~projects_by_root ~context stanzas rocq_stanzas
@@ -714,12 +708,13 @@ module DB = struct
   end
 
   let lib_entries_of_package =
-    let package_entries build_dir public_libs stanzas =
+    let package_entries public_libs stanzas =
       let+ libs =
-        Memo.List.fold_left stanzas ~init:[] ~f:(fun acc (src_dir, stanza) ->
+        Memo.List.fold_left stanzas ~init:[] ~f:(fun acc (dune_file, stanza) ->
           match Stanza.repr stanza with
           | Library.T ({ enabled_if; _ } as lib) ->
-            let lib_dir = Path.Build.append_source build_dir src_dir in
+            let src_dir = Dune_file.dir dune_file in
+            let lib_dir = Dune_file.output_dir dune_file in
             let* db =
               match lib.visibility with
               | Public _ -> Memo.return public_libs
@@ -758,7 +753,7 @@ module DB = struct
         (fun (ctx, pkg_name) ->
            let* public_libs = public_libs ctx
            and* stanzas = Dune_load.stanzas_of_package ctx pkg_name in
-           package_entries (Context_name.build_dir ctx) public_libs stanzas)
+           package_entries public_libs stanzas)
     in
     fun (ctx : Context_name.t) pkg_name ->
       let+ libs = Memo.exec entries (ctx, pkg_name) in

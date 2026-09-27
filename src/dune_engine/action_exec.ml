@@ -337,7 +337,7 @@ let exec
         (match Path.as_in_build_dir root with
          | None -> env
          | Some root ->
-           let project_root = Path.Build.append_source root project_root in
+           let project_root = Path.Build.append_local root project_root in
            Env.add env ~var ~value:(Path.to_absolute_filename (Path.build project_root)))
     in
     { working_dir = Path.root

@@ -407,6 +407,7 @@ let duplicate_deps =
 let gen_project_rules =
   let rules sctx project =
     let* sctx = sctx in
+    let dune_version = Dune_project.dune_version project in
     let+ () = Install_rules.gen_project_rules sctx project
     and+ () = Odoc.gen_project_rules sctx project
     and+ () = Odoc_new.gen_project_rules sctx project
@@ -415,7 +416,7 @@ let gen_project_rules =
       let version = 2, 8 in
       match Dune_project.allow_approximate_merlin project with
       | None -> Memo.return ()
-      | Some _ when Dune_project.dune_version project < version -> Memo.return ()
+      | Some _ when dune_version < version -> Memo.return ()
       | Some loc ->
         let+ vendored = Source_tree.is_vendored (Dune_project.root project) in
         if not vendored
@@ -432,9 +433,7 @@ let gen_project_rules =
       | Some _ -> Memo.return ()
       | None ->
         (match
-           if
-             Dune_project.dune_version project >= (2, 8)
-             && Dune_project.generate_opam_files project
+           if dune_version >= (2, 8) && Dune_project.generate_opam_files project
            then Dune_project.file project
            else None
          with

@@ -16,3 +16,4 @@ include No_io
 let () = Printexc.record_backtrace true
 let protect = Exn.protect
 let protectx = Exn.protectx
+let phys_equal x y = x == y

@@ -5,13 +5,13 @@ module Local = struct
     type t =
       { name : Lib_name.t
       ; loc : Loc.t
-      ; src_dir : Path.Source.t
+      ; src_dir : Source_path.t
       }
 
     let compare a b =
       match Lib_name.compare a.name b.name with
       | Eq ->
-        (match Path.Source.compare a.src_dir b.src_dir with
+        (match Source_path.compare a.src_dir b.src_dir with
          | Eq -> Loc.compare a.loc b.loc
          | o -> o)
       | x -> x
@@ -22,7 +22,7 @@ module Local = struct
       record
         [ "name", Lib_name.to_dyn name
         ; "loc", Loc.to_dyn_hum loc
-        ; "src_dir", Path.Source.to_dyn src_dir
+        ; "src_dir", Source_path.to_dyn src_dir
         ]
     ;;
 
@@ -35,6 +35,7 @@ module Local = struct
   let make ~loc ~src_dir name = { name; loc; src_dir }
   let name t = t.name
   let loc t = t.loc
+  let src_dir t = t.src_dir
 end
 
 module T = struct

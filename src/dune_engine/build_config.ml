@@ -3,7 +3,7 @@ open Import
 module Context_type = struct
   type t =
     | Empty
-    | With_sources
+    | With_sources of { build_only_sub_dirs : Filename.Set.t }
 end
 
 module Gen_rules = struct

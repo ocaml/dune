@@ -5,6 +5,8 @@ open Import
 type t
 
 val dir : t -> Path.Build.t
+val source_dir : t -> Source_path.t
+val source_tree_dir : t -> Source_tree.Rules.Dir.t option
 val context : t -> Context_name.t
 val project : t -> Dune_project.t
 
@@ -20,6 +22,8 @@ val visible_packages : t -> Package.Name.Selection.t Memo.t
 
 val make_root
   :  project:Dune_project.t
+  -> source_dir:Source_path.t
+  -> source_tree_dir:Source_tree.Rules.Dir.t option
   -> scope:Scope.t Memo.t
   -> scope_host:Scope.t Memo.t
   -> context:Context.t
@@ -38,6 +42,8 @@ val set_local_env_var : t -> var:Env.Var.t -> value:string Action_builder.t -> t
 val set_scope
   :  t
   -> dir:Path.Build.t
+  -> source_dir:Source_path.t
+  -> source_tree_dir:Source_tree.Rules.Dir.t option
   -> project:Dune_project.t
   -> scope:Scope.t Memo.t
   -> scope_host:Scope.t Memo.t

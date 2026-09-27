@@ -11,14 +11,14 @@ module Group_component : sig
   type t =
     { dir : Path.Build.t
     ; path_to_group_root : Filename.t list
-    ; source_dir : Source_tree.Dir.t
+    ; source_dir : Source_tree.Rules.Dir.t
     ; stanzas : Stanza.t list
     }
 end
 
 module Group_root : sig
   type t =
-    { source_dir : Source_tree.Dir.t
+    { source_dir : Source_tree.Rules.Dir.t
     ; qualification : Loc.t * Include_subdirs.qualification
     ; dune_file : Dune_file.t
     ; components : Group_component.t list Memo.t
@@ -30,7 +30,7 @@ type t =
       Source_tree.Dir.t (* XXX Will have to be modified once lock dirs are targets *)
   | Generated
   | Source_only of Source_tree.Dir.t
-  | Standalone of Source_tree.Dir.t * Dune_file.t
+  | Standalone of Source_tree.Dir.t option * Dune_file.t
   (* Directory not part of a multi-directory group. The argument is [None] for
      directory that are not from the source tree, such as generated ones. *)
   | Group_root of Group_root.t

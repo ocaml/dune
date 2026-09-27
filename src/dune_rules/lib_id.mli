@@ -7,9 +7,10 @@ module Local : sig
   module Set : Set.S with type elt = t
 
   val equal : t -> t -> bool
-  val make : loc:Loc.t -> src_dir:Path.Source.t -> Lib_name.t -> t
+  val make : loc:Loc.t -> src_dir:Source_path.t -> Lib_name.t -> t
   val name : t -> Lib_name.t
   val loc : t -> Loc.t
+  val src_dir : t -> Source_path.t
   val to_dyn : t -> Dyn.t
 end
 

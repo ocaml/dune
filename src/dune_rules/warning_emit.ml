@@ -41,8 +41,7 @@ let emit t context f =
      match
        match (context : Context.t) with
        | Source_dir_or_enable dir -> dir
-       | Project project ->
-         Some (Dune_project.root project |> Source_path.as_workspace_exn)
+       | Project project -> Source_path.as_workspace (Dune_project.root project)
      with
      | None -> Memo.return None
      | Some dir -> Source_tree.nearest_dir dir >>| Option.some
@@ -71,7 +70,7 @@ module Bag = struct
     | None -> { warning; active = `Enabled; project_root = None; produce }
     | Some project ->
       { active = check_project warning project
-      ; project_root = Some (Dune_project.root project |> Source_path.as_workspace_exn)
+      ; project_root = Source_path.as_workspace (Dune_project.root project)
       ; produce
       ; warning
       }

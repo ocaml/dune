@@ -8,21 +8,29 @@ open Memo.O
    "foo/bar/baz/qux". The descendants of a directory are that directory's
    subdirectories, and each of of their subdirectories, and so on ad infinitum. *)
 let get_descendants_of_relative_dir_relative_to_base_dir_local
-      ~base_dir
+      ~source_dir
+      ~source_tree_dir
       ~relative_dir
       ~prefix
   =
-  let base_dir = Path.Build.drop_build_context_exn base_dir in
   let rec get_descendants_rec relative_dir prefix =
-    let absolute_dir = Path.Source.relative base_dir relative_dir in
     let* children =
-      Source_tree.find_dir absolute_dir
-      >>| function
-      | None -> []
-      | Some dir ->
-        Source_tree.Dir.sub_dirs dir
-        |> Filename.Array.Map.keys
-        |> Filename.Array.Set.to_list
+      match source_tree_dir with
+      | Some source_dir ->
+        let local = Path.Local.relative Path.Local.root relative_dir in
+        Source_tree.Rules.Dir.find_dir source_dir local
+        >>| (function
+         | None -> []
+         | Some dir ->
+           Source_tree.Rules.Dir.sub_dir_names dir |> Filename.Array.Set.to_list)
+      | None ->
+        Source_path.relative source_dir relative_dir
+        |> Source_path.as_workspace
+        |> Option.value_exn
+        |> Source_tree.find_dir
+        >>| (function
+         | None -> []
+         | Some dir -> Source_tree.Dir.sub_dir_names dir |> Filename.Array.Set.to_list)
     in
     let+ rest =
       Memo.List.concat_map children ~f:(fun child ->
@@ -89,7 +97,12 @@ module Without_vars = struct
      prefixes are the paths to each directory relative to [base_dir] exactly as written in
      the glob. The relative paths are required to construct relative paths to the files
      found by expanding the glob. *)
-  let file_selectors_with_prefixes { glob; dir; prefix; recursive } ~loc =
+  let file_selectors_with_prefixes
+        { glob; dir; prefix; recursive }
+        ~loc
+        ~source_dir
+        ~source_tree_dir
+    =
     match (dir : Glob_dir.t) with
     | Relative { relative_dir; base_dir } ->
       let make_file_selector relative_dir =
@@ -99,7 +112,8 @@ module Without_vars = struct
       if recursive
       then
         get_descendants_of_relative_dir_relative_to_base_dir_local
-          ~base_dir
+          ~source_dir
+          ~source_tree_dir
           ~relative_dir
           ~prefix
         |> Memo.map
@@ -153,12 +167,16 @@ struct
     { Without_vars.glob; dir; prefix; recursive }
   ;;
 
-  let expand (t : Dep_conf.Glob_files.t) ~f ~base_dir =
+  let expand (t : Dep_conf.Glob_files.t) ~f ~base_dir ~source_dir ~source_tree_dir =
     let open M.O in
     let loc = String_with_vars.loc t.glob in
     let* without_vars = expand_vars t ~f ~base_dir in
     let+ matches =
-      Without_vars.file_selectors_with_prefixes without_vars ~loc
+      Without_vars.file_selectors_with_prefixes
+        without_vars
+        ~loc
+        ~source_dir
+        ~source_tree_dir
       |> M.of_memo
       >>= M.List.concat_map ~f:(fun (file_selector, prefix) ->
         C.collect_files ~loc file_selector

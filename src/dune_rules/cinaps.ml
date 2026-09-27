@@ -73,7 +73,7 @@ let () =
 let flags = Ocaml_flags.of_list [ "-w"; "-24" ]
 let for_ = Compilation_mode.Ocaml
 
-let gen_rules sctx t ~dir ~scope =
+let gen_rules sctx t ~dir ~scope ~source_tree_dir =
   let digest_input_repr =
     Repr.variant
       "cinaps-digest-input"
@@ -102,20 +102,38 @@ let gen_rules sctx t ~dir ~scope =
       ]
   in
   let loc = t.loc in
+  let source_dir = Scope.source_dir scope dir in
   (* Files checked by cinaps *)
   let* cinapsed_files =
-    Source_tree.files_of (Path.Build.drop_build_context_exn dir)
-    >>| Path.Source.Set.to_list
-    >>| List.filter_map ~f:(fun p ->
-      if
-        Predicate_lang.Glob.test
-          t.files
-          (Path.Source.basename p |> Filename.to_string)
-          ~standard:Predicate_lang.true_
-      then
-        Some
-          (Path.Build.append_source (Super_context.context sctx |> Context.build_dir) p)
-      else None)
+    match source_tree_dir with
+    | Some source_dir ->
+      Source_tree.Rules.Dir.filenames source_dir
+      |> Filename.Array.Set.to_list
+      |> List.filter_map ~f:(fun filename ->
+        if
+          Predicate_lang.Glob.test
+            t.files
+            (Filename.to_string filename)
+            ~standard:Predicate_lang.true_
+        then Some (Path.Build.relative_fname dir filename)
+        else None)
+      |> Memo.return
+    | None ->
+      let source_dir = Source_path.as_workspace source_dir |> Option.value_exn in
+      Source_tree.files_of source_dir
+      >>| Path.Source.Set.to_list
+      >>| List.filter_map ~f:(fun source ->
+        if
+          Predicate_lang.Glob.test
+            t.files
+            (Path.Source.basename source |> Filename.to_string)
+            ~standard:Predicate_lang.true_
+        then
+          Some
+            (Path.Build.append_source
+               (Super_context.context sctx |> Context.build_dir)
+               source)
+        else None)
   in
   let cinaps_dir =
     let stamp =

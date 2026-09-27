@@ -73,8 +73,15 @@ let build_mlds_map stanzas ~dir ~files expander =
   >>= Memo.parallel_map ~f:(fun (doc : Documentation.t) ->
     let from_mld_files = from_mld_files (Lazy.force mlds) doc dir in
     let+ from_files =
+      let loaded_project = Dune_file.loaded_dir stanzas |> Loaded_dir.project in
+      let* source_tree_dir = Loaded_project.source_tree_dir loaded_project dir in
       let expand = Expander.No_deps.expand expander ~mode:Single in
-      Install_entry.File.to_file_bindings_expanded doc.files ~expand ~dir
+      Install_entry.File.to_file_bindings_expanded
+        doc.files
+        ~expand
+        ~dir
+        ~source_dir:(Dune_file.source_dir stanzas)
+        ~source_tree_dir
       >>| of_file_bindings
     in
     let mlds = from_mld_files @ from_files in

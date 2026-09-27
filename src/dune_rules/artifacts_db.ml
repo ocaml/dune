@@ -52,7 +52,13 @@ let get_installed_binaries stanzas =
     let eval_blang = Expander0.eval_blang expander in
     let binaries_from_install ~enabled_if ~package files =
       let* unexpanded_file_bindings =
-        Install_entry.File.to_file_bindings_unexpanded files ~expand:expand_value ~dir
+        let* source_tree_dir = Dune_load.source_tree_dir ~dir in
+        Install_entry.File.to_file_bindings_unexpanded
+          files
+          ~expand:expand_value
+          ~dir
+          ~source_dir:(Dune_file.source_dir d)
+          ~source_tree_dir
       in
       Memo.List.map unexpanded_file_bindings ~f:(fun fb ->
         let+ p =

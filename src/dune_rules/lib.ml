@@ -539,19 +539,25 @@ module L = struct
     Id.Top_closure.top_closure l ~key:(fun t -> (key t).unique_id) ~deps
   ;;
 
-  let project_root libs =
-    Option.map ~f:(fun project ->
-      Dune_project.root project |> Source_path.as_workspace_exn)
-    @@ List.fold_left libs ~init:None ~f:(fun acc lib ->
+  let scope_dir libs =
+    List.fold_left libs ~init:None ~f:(fun acc lib ->
+      let info = info lib in
       let scope =
-        let status = Lib_info.status lib.info in
-        match status with
-        | Private (scope_name, _) -> Some scope_name
+        match Lib_info.status info with
+        | Private (project, _) ->
+          Some (project, Path.as_in_build_dir_exn (Lib_info.src_dir info))
         | Installed_private _ | Public _ | Installed _ -> None
       in
-      Option.merge acc scope ~f:(fun a b ->
-        assert (Dune_project.equal a b);
-        a))
+      Option.merge acc scope ~f:(fun (project_a, dir_a) (project_b, dir_b) ->
+        if not (Dune_project.equal project_a project_b)
+        then
+          Code_error.raise
+            "Private libraries in one closure belong to different projects"
+            [ "first", Dune_project.to_dyn project_a
+            ; "second", Dune_project.to_dyn project_b
+            ];
+        project_a, Ordering.min Path.Build.compare dir_a dir_b))
+    |> Option.map ~f:snd
   ;;
 end
 
@@ -702,7 +708,7 @@ module Parameterised = struct
       let args = arguments t |> List.concat_map ~f:all in
       t :: args
     in
-    L.project_root (all t) |> Parameterised_name.Scope.encode
+    L.scope_dir (all t) |> Parameterised_name.Scope.encode
   ;;
 
   let parameterised_name t =

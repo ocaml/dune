@@ -43,9 +43,16 @@ let expander_for_artifacts t ~dir =
       let* host = host in
       Scope.DB.find_by_dir (set_context host dir)
   in
-  let+ project = Dune_load.find_project ~dir in
+  let* loaded_project = Dune_load.find_loaded_project ~dir in
+  let+ source_tree_dir =
+    match Build_partition.purpose (Loaded_project.partition loaded_project) with
+    | Workspace -> Memo.return None
+    | Mounted -> Loaded_project.source_tree_dir loaded_project dir
+  in
+  let project = Loaded_project.project loaded_project in
+  let source_dir = Loaded_project.source_path loaded_project dir |> Option.value_exn in
   Expander.extend_env t.root_expander ~env:external_env
-  |> Expander.set_scope ~dir ~project ~scope ~scope_host
+  |> Expander.set_scope ~dir ~source_dir ~source_tree_dir ~project ~scope ~scope_host
 ;;
 
 let expander t ~dir = t.get_expander dir
@@ -301,8 +308,18 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
     in
     let scope = Scope.DB.find_by_dir (Context.build_dir context) in
     let scope_host = host_build_dir >>= Scope.DB.find_by_dir in
-    let+ project = Dune_load.find_project ~dir:(Context.build_dir context) in
-    Expander.make_root ~project ~scope ~scope_host ~context ~env ~artifacts_host
+    let+ loaded_project =
+      Dune_load.find_loaded_project ~dir:(Context.build_dir context)
+    in
+    Expander.make_root
+      ~project:(Loaded_project.project loaded_project)
+      ~source_dir:(Loaded_project.source_root loaded_project)
+      ~source_tree_dir:(Some (Loaded_project.source_tree_root loaded_project))
+      ~scope
+      ~scope_host
+      ~context
+      ~env
+      ~artifacts_host
   in
   (* Env node that represents the environment configured for the workspace. It
      is used as default at the root of every project in the workspace. *)

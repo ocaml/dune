@@ -82,11 +82,12 @@ val is_virtual : t -> bool
 val is_impl : t -> bool
 val obj_dir : dir:Path.Build.t -> t -> Path.Build.t Obj_dir.t
 val main_module_name : t -> Lib_info.Main_module_name.t
-val to_lib_id : src_dir:Path.Source.t -> t -> Lib_id.Local.t
+val to_lib_id : src_dir:Source_path.t -> t -> Lib_id.Local.t
 
 val to_lib_info
   :  t
   -> expander:Expander0.t Memo.t
   -> dir:Path.Build.t
+  -> src_dir:Source_path.t
   -> lib_config:Lib_config.t
   -> Lib_info.local

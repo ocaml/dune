@@ -100,7 +100,7 @@ let get_lib_requires ~dir ~scope (lib : Library.t) =
   let open Memo.O in
   Lib.DB.get_compile_info
     (Scope.libs scope)
-    (Local (Library.to_lib_id ~src_dir:(Path.Build.drop_build_context_exn dir) lib))
+    (Local (Library.to_lib_id ~src_dir:(Scope.source_dir scope dir) lib))
     ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
   >>| snd
   >>= Lib.Compile.direct_requires ~for_:Ocaml

@@ -30,7 +30,7 @@ val copy_files
   :  Super_context.t
   -> dir:Path.Build.t
   -> expander:Expander.t
-  -> src_dir:Path.Source.t
+  -> src_dir:Source_path.t
   -> Copy_files.t
   -> Path.Set.t Memo.t
 

@@ -49,6 +49,8 @@ let resolve_pkg_install_file = Fdecl.create Dyn.opaque
 
 type t =
   { dir : Path.Build.t
+  ; source_dir : Source_path.t
+  ; source_tree_dir : Source_tree.Rules.Dir.t option
   ; env : Env.t Memo.t
   ; local_env : string Action_builder.t Env.Var.Map.t
   ; artifacts_host : Artifacts.t Memo.t
@@ -62,6 +64,8 @@ type t =
 
 let artifacts t = t.artifacts_host
 let dir t = t.dir
+let source_dir t = t.source_dir
+let source_tree_dir t = t.source_tree_dir
 let project t = t.project
 let context t = Context.name t.context
 
@@ -74,8 +78,8 @@ let set_local_env_var t ~var ~value =
   { t with local_env = Env.Var.Map.set t.local_env var value }
 ;;
 
-let set_scope t ~dir ~project ~scope ~scope_host =
-  { t with dir; project; scope; scope_host }
+let set_scope t ~dir ~source_dir ~source_tree_dir ~project ~scope ~scope_host =
+  { t with dir; source_dir; source_tree_dir; project; scope; scope_host }
 ;;
 
 let for_package t = function
@@ -925,10 +929,7 @@ let visible_packages t =
   if not lock_dir_active
   then Memo.return Package.Name.Selection.All
   else (
-    let src_dir = Path.Build.drop_build_context_exn t.dir in
-    match
-      Dune_project.exclusive_package t.project ~dir:(Source_path.workspace src_dir)
-    with
+    match Dune_project.exclusive_package t.project ~dir:t.source_dir with
     | None -> Memo.return Package.Name.Selection.All
     | Some pkg_id ->
       let name = Package.Id.name pkg_id in
@@ -1133,8 +1134,19 @@ let expand_str_partial t template =
     ~f:(fun ~source pform -> expand_pform t ~source pform >>| Option.some)
 ;;
 
-let make_root ~project ~scope ~scope_host ~(context : Context.t) ~env ~artifacts_host =
+let make_root
+      ~project
+      ~source_dir
+      ~source_tree_dir
+      ~scope
+      ~scope_host
+      ~(context : Context.t)
+      ~env
+      ~artifacts_host
+  =
   { dir = Context.build_dir context
+  ; source_dir
+  ; source_tree_dir
   ; env
   ; local_env = Env.Var.Map.empty
   ; bindings = Pform.Map.empty

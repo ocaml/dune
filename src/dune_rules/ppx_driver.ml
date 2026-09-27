@@ -320,6 +320,7 @@ let ppx_driver_and_flags_internal
       ~loc
       ~expander
       ~lib_name
+      ~scope
       ~flags
       libs
   =
@@ -336,7 +337,9 @@ let ppx_driver_and_flags_internal
     let* libs = Resolve.Memo.read (Lib.closure libs ~linking:true ~for_) in
     Action_builder.of_memo
       (get_cookies ~loc ~lib_name ~expander ~compilation_mode ~dune_version libs)
-  and+ ppx_driver_exe = Action_builder.of_memo @@ Ppx_exe.ppx_driver_exe context libs in
+  and+ ppx_driver_exe =
+    Action_builder.of_memo @@ Ppx_exe.ppx_driver_exe context ~scope libs
+  in
   ppx_driver_exe, flags @ cookies
 ;;
 
@@ -363,6 +366,7 @@ let ppx_driver_and_flags
       ~expander
       ~dune_version
       ~lib_name
+      ~scope
       ~flags
       libs
   and+ driver =
@@ -384,6 +388,7 @@ let get_ppx_driver ctx ~for_ ~loc ~expander ~scope ~lib_name ~flags pps =
     ~expander
     ~dune_version
     ~lib_name
+    ~scope
     ~flags
     libs
 ;;

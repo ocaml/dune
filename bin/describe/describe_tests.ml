@@ -39,9 +39,7 @@ module Crawl = struct
     Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
       Dune_file.stanzas dune_file
       >>= fun stanzas ->
-      let dir =
-        Path.Build.append_source (Context.build_dir context) (Dune_file.dir dune_file)
-      in
+      let dir = Dune_file.output_dir dune_file in
       let* expander = Super_context.expander sctx ~dir in
       Memo.return
         (List.filter_map stanzas ~f:(fun stanza ->

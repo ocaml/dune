@@ -8,6 +8,8 @@ type t
 
 val root : t -> Path.Build.t
 val project : t -> Dune_project.t
+val loaded_project : t -> Loaded_project.t
+val source_dir : t -> Path.Build.t -> Source_path.t
 
 (** Return the library database associated to this scope *)
 val libs : t -> Lib.DB.t

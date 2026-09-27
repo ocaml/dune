@@ -45,12 +45,18 @@ let module_source_path_without_extension m =
 ;;
 
 let make ~dir ~for_ ~expander ~lib_config ~libs ~exes ~include_subdirs ~melange_emits =
+  let* scope = Scope.DB.find_by_dir dir in
   let+ lib_config = lib_config in
   let libs =
     List.map libs ~f:(fun ((lib : Library.t), modules, obj_dir) ->
       let name = Lib_name.of_local lib.name in
       let info =
-        Library.to_lib_info lib ~expander:(Memo.return expander) ~dir ~lib_config
+        Library.to_lib_info
+          lib
+          ~expander:(Memo.return expander)
+          ~dir
+          ~src_dir:(Scope.source_dir scope dir)
+          ~lib_config
       in
       name, info, modules, obj_dir)
   in

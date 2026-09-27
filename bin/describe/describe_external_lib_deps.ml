@@ -38,7 +38,7 @@ module Item = struct
 
   type t =
     { kind : Kind.t
-    ; dir : Path.Source.t
+    ; dir : Dune_lang.Source_path.t
     ; external_deps : lib_dep list
     ; internal_deps : lib_dep list
     ; names : string list (* private names *)
@@ -70,7 +70,7 @@ module Item = struct
         (name_fields
          @ [ "extensions", (list Filename.Extension.to_dyn) extensions
            ; "package", option Package.Name.to_dyn (Option.map ~f:Package.name package)
-           ; "source_dir", String (Path.Source.to_string dir)
+           ; "source_dir", String (Dune_lang.Source_path.to_string dir)
            ; "external_deps", list lib_dep_to_dyn external_deps
            ; "internal_deps", list lib_dep_to_dyn internal_deps
            ])

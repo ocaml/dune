@@ -122,18 +122,22 @@ let build_info_code cctx ~libs ~api_version =
          let placeholders = Path.Source.Map.set placeholders p var in
          var, placeholders)
   in
+  let placeholder_for_source_path placeholders = function
+    | Source_path.Workspace p -> placeholder placeholders p
+    | Build _ -> Memo.return ("None", placeholders)
+  in
   let version_of_package placeholders (p : Package.t) =
     match Package.version p with
     | Some v -> Memo.return (sprintf "Some %S" (Package_version.to_string v), placeholders)
-    | None -> placeholder placeholders (Package.dir p |> Source_path.as_workspace_exn)
+    | None -> placeholder_for_source_path placeholders (Package.dir p)
   in
   let* version, placeholders =
     let placeholders = Path.Source.Map.empty in
     match Compilation_context.package cctx with
     | Some p -> version_of_package placeholders p
     | None ->
-      let p = Path.Build.drop_build_context_exn (Compilation_context.dir cctx) in
-      placeholder placeholders p
+      Scope.source_dir (Compilation_context.scope cctx) (Compilation_context.dir cctx)
+      |> placeholder_for_source_path placeholders
   in
   let+ libs, placeholders =
     Memo.List.fold_left ~init:([], placeholders) libs ~f:(fun (libs, placeholders) lib ->
@@ -146,11 +150,10 @@ let build_info_code cctx ~libs ~api_version =
            | Installed_private _ | Installed _ -> Memo.return ("None", placeholders)
            | Public (_, p) -> version_of_package placeholders p
            | Private _ ->
-             Lib.info lib
-             |> Lib_info.obj_dir
-             |> Obj_dir.dir
-             |> Path.drop_build_context_exn
-             |> placeholder placeholders)
+             (match Lib_info.lib_id (Lib.info lib) with
+              | External _ -> Memo.return ("None", placeholders)
+              | Local local ->
+                Lib_id.Local.src_dir local |> placeholder_for_source_path placeholders))
       in
       (Lib.name lib, v) :: libs, placeholders)
   in

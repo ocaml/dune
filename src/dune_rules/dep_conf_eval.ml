@@ -349,6 +349,8 @@ let rec dep expander : Dep_conf.t -> _ = function
          glob_files
          ~f:(Expander.expand ~mode:Single expander)
          ~base_dir:dir
+         ~source_dir:(Expander.source_dir expander)
+         ~source_tree_dir:(Expander.source_tree_dir expander)
        >>| Glob_files_expand.Expanded.matches
        >>| List.map ~f:(fun path ->
          if Filename.is_relative path

@@ -2,7 +2,8 @@ open Import
 open Memo.O
 
 type t =
-  { project : Dune_project.t
+  { loaded_project : Loaded_project.t
+  ; project : Dune_project.t
   ; db : Lib.DB.t
   ; public_libs : Lib.DB.t
   ; rocq_db : Rocq_lib.DB.t Memo.t
@@ -11,6 +12,8 @@ type t =
 
 let root t = t.root
 let project t = t.project
+let loaded_project t = t.loaded_project
+let source_dir t dir = Loaded_project.source_path t.loaded_project dir |> Option.value_exn
 let libs t = t.db
 let public_libs t = t.public_libs
 let rocq_libs t = t.rocq_db
@@ -19,25 +22,33 @@ module DB = struct
   type scope = t
 
   type t =
-    { by_dir : scope Path.Source.Map.t
+    { by_dir : scope Path.Build.Map.t
     ; by_package : scope Package.Name.Map.t
     ; dependency_libs_by_package : Lib.DB.t Package.Name.Map.t
     }
 
   let find_by_dir t dir =
-    let scope = Find_closest_source_dir.find_by_dir_exn t.by_dir ~dir in
-    let src_dir = Path.Build.drop_build_context_exn dir in
-    match
-      Dune_project.exclusive_package scope.project ~dir:(Source_path.workspace src_dir)
-    with
+    let rec loop dir =
+      match Path.Build.Map.find t.by_dir dir with
+      | Some scope -> scope
+      | None ->
+        (match Path.Build.parent dir with
+         | Some parent -> loop parent
+         | None ->
+           Code_error.raise
+             "Scope: no enclosing loaded project"
+             [ "dir", Path.Build.to_dyn dir ])
+    in
+    let scope = loop dir in
+    let src_dir = source_dir scope dir in
+    match Dune_project.exclusive_package scope.project ~dir:src_dir with
     | None -> scope
     | Some package -> Package.Name.Map.find_exn t.by_package (Package.Id.name package)
   ;;
 
   let find_by_project t project =
-    Path.Source.Map.find_exn
-      t.by_dir
-      (Dune_project.root project |> Source_path.as_workspace_exn)
+    Path.Build.Map.values t.by_dir
+    |> List.find_exn ~f:(fun scope -> Dune_project.equal scope.project project)
   ;;
 
   module Found_or_redirect : sig
@@ -131,9 +142,10 @@ module DB = struct
         List.fold_left
           stanzas
           ~init:(Lib_name.Map.empty, Lib_id.Map.empty, Lib_name.Map.empty)
-          ~f:(fun (by_name, by_id, libname_conflict_map) (dir, stanza) ->
+          ~f:(fun (by_name, by_id, libname_conflict_map) (loaded_dir, stanza) ->
+            let dir = Loaded_dir.output_dir loaded_dir in
+            let src_dir = Loaded_dir.source_dir loaded_dir in
             let lib_id, name, r2 =
-              let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
               match (stanza : Library_related_stanza.t) with
               | Library_redirect s ->
                 let lib_name, redirect =
@@ -158,15 +170,14 @@ module DB = struct
               | Library (conf : Library.t) ->
                 let info =
                   let expander = Expander0.get ~dir in
-                  Library.to_lib_info conf ~expander ~dir ~lib_config |> Lib_info.of_local
+                  Library.to_lib_info conf ~expander ~dir ~src_dir ~lib_config
+                  |> Lib_info.of_local
                 and lib_id = Library.to_lib_id ~src_dir conf in
                 let owner =
                   match Library.package conf with
                   | Some package -> Some (Package.name package)
                   | None ->
-                    Dune_project.exclusive_package
-                      project
-                      ~dir:(Source_path.workspace src_dir)
+                    Dune_project.exclusive_package project ~dir:src_dir
                     |> Option.map ~f:Package.Id.name
                 in
                 Some lib_id, Library.best_name conf, Found_or_redirect.found info ~owner
@@ -316,15 +327,14 @@ module DB = struct
           ~f:
             (fun
               (by_name, by_id)
-              ((dir, stanza) : Path.Build.t * Library_related_stanza.t)
+              ((loaded_dir, stanza) : Loaded_dir.t * Library_related_stanza.t)
             ->
+            let dir = Loaded_dir.output_dir loaded_dir in
             let candidate =
               match stanza with
               | Library ({ project; visibility = Public p; _ } as conf) ->
                 let lib_id =
-                  let src_dir =
-                    Path.drop_optional_build_context_src_exn (Path.build dir)
-                  in
+                  let src_dir = Loaded_dir.source_dir loaded_dir in
                   Library.to_lib_id ~src_dir conf
                 in
                 let enabled =
@@ -431,12 +441,9 @@ module DB = struct
           ())
   ;;
 
-  module Path_source_map_traversals = Memo.Map (Path.Source.Map)
-
   let scopes_by_dir
         ~scopes
         ~package_scopes
-        ~build_dir
         ~lib_config
         ~projects_by_root
         ~public_libs
@@ -449,28 +456,24 @@ module DB = struct
     =
     let stanzas_by_project_dir =
       List.map stanzas ~f:(fun (dir, stanza) ->
-        let project =
-          match (stanza : Library_related_stanza.t) with
-          | Library lib -> lib.project
-          | Library_redirect x -> x.project
-          | Deprecated_library_name x -> x.project
-        in
-        Dune_project.root project |> Source_path.as_workspace_exn, (dir, stanza))
-      |> Path.Source.Map.of_list_multi
+        Loaded_project.output_root (Loaded_dir.project dir), (dir, stanza))
+      |> Path.Build.Map.of_list_multi
     in
     let make_db_by_project_dir =
-      Path.Source.Map.merge
+      Path.Build.Map.merge
         projects_by_root
         stanzas_by_project_dir
         ~f:(fun _dir project stanzas ->
           let project = Option.value_exn project in
           let stanzas = Option.value stanzas ~default:[] in
           Some (project, stanzas))
-      |> Path.Source.Map.map ~f:(fun (project, stanzas) ->
-        project, Staged.unstage (create_db_from_stanzas stanzas ~lib_config ~project))
+      |> Path.Build.Map.map ~f:(fun (loaded_project, stanzas) ->
+        let project = Loaded_project.project loaded_project in
+        ( loaded_project
+        , Staged.unstage (create_db_from_stanzas stanzas ~lib_config ~project) ))
     in
     let db_by_project_dir =
-      Path.Source.Map.map make_db_by_project_dir ~f:(fun (project, make_db) ->
+      Path.Build.Map.map make_db_by_project_dir ~f:(fun (project, make_db) ->
         project, make_db ~scopes ~owner:None ~public_libs ~instrument_with ~package_scopes)
     in
     let rocq_scopes =
@@ -478,24 +481,20 @@ module DB = struct
         context
         ~public_libs
         rocq_stanzas
-        ~db_by_project_dir
-        ~projects_by_root
+        ~db_by_project_output_root:db_by_project_dir
     in
     let by_dir =
-      Path.Source.Map.mapi db_by_project_dir ~f:(fun dir (project, db) ->
-        let root =
-          Path.Build.append_source
-            build_dir
-            (Dune_project.root project |> Source_path.as_workspace_exn)
-        in
-        let rocq_db = Rocq_scope.find rocq_scopes ~dir in
-        { project; db; public_libs; rocq_db; root })
+      Path.Build.Map.map db_by_project_dir ~f:(fun (loaded_project, db) ->
+        let root = Loaded_project.output_root loaded_project in
+        let project = Loaded_project.project loaded_project in
+        let rocq_db = Rocq_scope.find rocq_scopes ~project:loaded_project in
+        { loaded_project; project; db; public_libs; rocq_db; root })
     in
     let by_package =
-      Path.Source.Map.to_list make_db_by_project_dir
+      Path.Build.Map.to_list make_db_by_project_dir
       |> List.concat_map ~f:(fun (dir, (project, make_db)) ->
-        let scope = Path.Source.Map.find_exn by_dir dir in
-        Dune_project.including_hidden_packages project
+        let scope = Path.Build.Map.find_exn by_dir dir in
+        Dune_project.including_hidden_packages (Loaded_project.project project)
         |> Package.Name.Map.to_list_map ~f:(fun name _ ->
           let public_libs = Package.Name.Map.find_exn public_libs_by_package name in
           let db =
@@ -522,7 +521,6 @@ module DB = struct
            Path.build package.paths.target_dir, scope.db))
     in
     let* context = Context.DB.get context in
-    let build_dir = Context.build_dir context in
     let* lib_config =
       let+ ocaml = Context.ocaml context in
       ocaml.lib_config
@@ -540,9 +538,11 @@ module DB = struct
     in
     let public_libs = make_public_libs ~owner:None ~include_owner:true in
     let package_names =
-      Path.Source.Map.values projects_by_root
+      Path.Build.Map.values projects_by_root
       |> List.concat_map ~f:(fun project ->
-        Dune_project.including_hidden_packages project |> Package.Name.Map.keys)
+        Loaded_project.project project
+        |> Dune_project.including_hidden_packages
+        |> Package.Name.Map.keys)
     in
     let public_libs_by_package =
       Package.Name.Map.of_list_map_exn package_names ~f:(fun name ->
@@ -556,7 +556,6 @@ module DB = struct
       scopes_by_dir
         ~scopes:t
         ~package_scopes
-        ~build_dir
         ~lib_config
         ~projects_by_root
         ~public_libs
@@ -577,14 +576,18 @@ module DB = struct
         stanzas
         ~init:([], [])
         ~f:(fun dune_file stanza (acc, rocq_acc) ->
-          let ctx_dir = Dune_file.output_dir dune_file in
+          let loaded_dir = Dune_file.loaded_dir dune_file in
           match Stanza.repr stanza with
           | Library.T lib ->
-            (ctx_dir, Library_related_stanza.Library lib) :: acc, rocq_acc
+            (loaded_dir, Library_related_stanza.Library lib) :: acc, rocq_acc
           | Deprecated_library_name.T d ->
-            (ctx_dir, Deprecated_library_name d) :: acc, rocq_acc
-          | Library_redirect.Local.T d -> (ctx_dir, Library_redirect d) :: acc, rocq_acc
-          | Rocq_stanza.Theory.T rocq_lib -> acc, (ctx_dir, rocq_lib) :: rocq_acc
+            (loaded_dir, Deprecated_library_name d) :: acc, rocq_acc
+          | Library_redirect.Local.T d ->
+            (loaded_dir, Library_redirect d) :: acc, rocq_acc
+          | Rocq_stanza.Theory.T rocq_lib ->
+            ( acc
+            , (Loaded_dir.project loaded_dir, Loaded_dir.output_dir loaded_dir, rocq_lib)
+              :: rocq_acc )
           | _ -> acc, rocq_acc)
     in
     create ~projects_by_root ~context stanzas rocq_stanzas
@@ -593,7 +596,7 @@ module DB = struct
   let all =
     Per_context.create_by_name ~name:"scope" (fun context ->
       Memo.Lazy.create ~name:"scope" (fun () ->
-        let* projects_by_root = Dune_load.projects_by_root ()
+        let* projects_by_root = Dune_load.projects_by_output_root context
         and* stanzas = Dune_load.dune_files context in
         create_from_stanzas ~projects_by_root ~context stanzas)
       |> Memo.Lazy.force)

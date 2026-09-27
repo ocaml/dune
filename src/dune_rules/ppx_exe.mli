@@ -6,9 +6,14 @@ open Import
 
 module Key : sig
   module Decoded : sig
+    type scope = private
+      { project : Loaded_project.Identity.t
+      ; dir : Path.Local.t
+      }
+
     type t = private
       { pps : Lib_name.t list
-      ; project_root : Path.Source.t option
+      ; scope : scope option
       ; opaque_packages : Package.Name.t Lib_name.Map.t
       }
   end
@@ -16,8 +21,8 @@ module Key : sig
   val decode : Digest.t -> Decoded.t
 end
 
-val ppx_exe_path : Build_context.t -> key:string -> Path.Build.t
-val ppx_driver_exe : Context.t -> Lib.t list -> Path.Build.t Memo.t
+val ppx_exe_path : Path.Build.t -> key:string -> Path.Build.t
+val ppx_driver_exe : Context.t -> scope:Scope.t -> Lib.t list -> Path.Build.t Memo.t
 
 (** Get the path to the ppx driver executable for a list of ppx libraries.
     The libraries must be provided with their locations for error reporting. *)

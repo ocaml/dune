@@ -193,17 +193,16 @@ let impl_only_modules_defined_in_this_lib ~sctx ~scope ~info lib =
         then (
           let dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
           let* scope = Scope.DB.find_by_dir dir in
-          let* stanzas =
+          let lib_id = Lib_info.lib_id info |> Lib_id.to_local_exn in
+          let* library =
             Dune_load.stanzas_in_dir dir
             >>= function
-            | None -> Memo.return []
-            | Some dune_file -> Dune_file.find_stanzas dune_file Library.key
-          in
-          let lib_id = Lib_info.lib_id info |> Lib_id.to_local_exn in
-          let src_dir = Path.Build.drop_build_context_exn dir in
-          let library =
-            List.find stanzas ~f:(fun library ->
-              Lib_id.Local.equal (Library.to_lib_id ~src_dir library) lib_id)
+            | None -> Memo.return None
+            | Some dune_file ->
+              let src_dir = Dune_file.source_dir dune_file in
+              let+ stanzas = Dune_file.find_stanzas dune_file Library.key in
+              List.find stanzas ~f:(fun library ->
+                Lib_id.Local.equal (Library.to_lib_id ~src_dir library) lib_id)
           in
           match library with
           | None ->
@@ -449,14 +448,16 @@ let compute_promote_in_source ~promote_in_source ~project ~dir ~mode ~output ~sr
            in
            Path.reach ~from:dst_dir into_dir
          | Public_library { lib_dir; output_dir; target_dir = _ } ->
-           let into_dir =
-             let root = Dune_project.root project |> Source_path.as_workspace_exn in
-             let into_dir = Path.Source.append_local root output_dir in
-             let segment = Path.drop_prefix_exn src_dir ~prefix:lib_dir in
-             Path.Source.append_local into_dir segment
-           in
-           let from = Path.drop_build_context_exn dst_dir |> Path.source in
-           Path.reach ~from (Path.source into_dir)
+           (match Dune_project.root project with
+            | Build _ ->
+              User_error.raise
+                [ Pp.text "Promotion is not supported for mounted package sources." ]
+            | Workspace root ->
+              let into_dir = Path.Source.append_local root output_dir in
+              let segment = Path.drop_prefix_exn src_dir ~prefix:lib_dir in
+              let into_dir = Path.Source.append_local into_dir segment in
+              let from = Path.drop_build_context_exn dst_dir |> Path.source in
+              Path.reach ~from (Path.source into_dir))
        in
        let into =
          let loc =

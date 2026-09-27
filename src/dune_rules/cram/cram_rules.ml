@@ -403,7 +403,7 @@ let rules ~sctx ~dir tests project =
     match
       Dune_project.exclusive_package
         project
-        ~dir:(Source_path.workspace (Path.Build.drop_build_context_exn dir))
+        ~dir:(Path.Build.drop_build_context_exn dir |> Source_path.workspace)
       |> Option.map ~f:Package.Id.name
     with
     | None ->

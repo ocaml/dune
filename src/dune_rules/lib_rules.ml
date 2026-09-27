@@ -602,6 +602,7 @@ let library_rules
       lib
       ~expander:(Memo.return (Expander.to_expander0 expander))
       ~dir
+      ~src_dir:(Expander.source_dir expander)
       ~lib_config
   in
   let+ () =
@@ -668,7 +669,7 @@ let library_rules
 
 let resolve_compile_info (lib : Library.t) ~dir ~scope =
   let lib_id =
-    let src_dir = Path.Build.drop_build_context_exn dir in
+    let src_dir = Scope.source_dir scope dir in
     Library.to_lib_id ~src_dir lib
   in
   let+ local_lib, compile_info =
@@ -783,6 +784,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         lib
         ~expander:(Memo.return (Expander.to_expander0 expander))
         ~dir
+        ~src_dir:(Expander.source_dir expander)
         ~lib_config
     in
     let merlin_ident = Merlin_ident.for_lib (Library.best_name lib) in

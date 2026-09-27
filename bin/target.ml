@@ -47,7 +47,7 @@ let all_direct_targets dir =
   |> List.filter_map ~f:(fun (name, (ctx_type : Build_config.Context_type.t)) ->
     match ctx_type with
     | Empty -> None
-    | With_sources -> Some name)
+    | With_sources _ -> Some name)
   |> Memo.parallel_map ~f:(fun name ->
     let build_dir = Context_name.build_dir name in
     Source_tree_map_reduce.map_reduce

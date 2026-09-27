@@ -15,4 +15,10 @@ type t
 include Stanza.S with type t := t
 
 (** Generate the rules to handle this cinaps stanza *)
-val gen_rules : Super_context.t -> t -> dir:Path.Build.t -> scope:Scope.t -> unit Memo.t
+val gen_rules
+  :  Super_context.t
+  -> t
+  -> dir:Path.Build.t
+  -> scope:Scope.t
+  -> source_tree_dir:Source_tree.Rules.Dir.t option
+  -> unit Memo.t

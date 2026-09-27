@@ -72,7 +72,7 @@ module L : sig
     -> deps:('a -> 'a list Resolve.Memo.t)
     -> ('a list, 'a list) Result.t Resolve.Memo.t
 
-  val project_root : t list -> Path.Source.t option
+  val scope_dir : t list -> Path.Build.t option
 end
 
 (** {1 Compilation contexts} *)

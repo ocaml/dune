@@ -44,20 +44,41 @@ let pp_corrected_path m ~ml_kind ~suffix =
 
 let get_rules sctx key =
   let ctx = Super_context.context sctx in
-  let build_context = Context.build_context ctx in
-  let exe = Ppx_exe.ppx_exe_path build_context ~key in
-  let* pp_names, opaque_packages, scope =
+  let* pp_names, opaque_packages, scope, root =
     match Digest.from_hex key with
     | None ->
+      let exe = Ppx_exe.ppx_exe_path (Context.build_dir ctx) ~key in
       User_error.raise
         [ Pp.textf "invalid ppx key for %s" (Path.Build.to_string_maybe_quoted exe) ]
-    | Some key ->
-      let { Ppx_exe.Key.Decoded.pps; project_root; opaque_packages } =
-        Ppx_exe.Key.decode key
+    | Some digest ->
+      let { Ppx_exe.Key.Decoded.pps; scope = scope_key; opaque_packages } =
+        Ppx_exe.Key.decode digest
       in
-      let+ scope = Scope.DB.find_by_project_root ctx project_root in
-      pps, opaque_packages, scope
+      let+ scope, root =
+        match scope_key with
+        | None ->
+          let+ scope = Scope.DB.find_by_dir (Context.build_dir ctx) in
+          scope, Context.build_dir ctx
+        | Some { project; dir } ->
+          let* loaded_project =
+            Dune_load.find_loaded_project_by_identity
+              ~context:(Context.name ctx)
+              ~identity:project
+          in
+          let scope_dir =
+            Path.Build.append_local (Loaded_project.output_root loaded_project) dir
+          in
+          let+ scope = Scope.DB.find_by_dir scope_dir in
+          let root =
+            match Build_partition.purpose (Loaded_project.partition loaded_project) with
+            | Workspace -> Context.build_dir ctx
+            | Mounted -> Loaded_project.output_root loaded_project
+          in
+          scope, root
+      in
+      pps, opaque_packages, scope, root
   in
+  let exe = Ppx_exe.ppx_exe_path root ~key in
   let* pps =
     Resolve.Memo.List.concat_map pp_names ~f:(fun name ->
       let open Resolve.Memo.O in

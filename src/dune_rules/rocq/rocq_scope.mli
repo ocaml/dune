@@ -18,9 +18,8 @@ type t
 val make
   :  Context.t
   -> public_libs:Lib.DB.t
-  -> db_by_project_dir:('a * Lib.DB.t) Path.Source.Map.t
-  -> projects_by_root:'b Path.Source.Map.t
-  -> (Path.Build.t * Rocq_stanza.Theory.t) list
+  -> db_by_project_output_root:(Loaded_project.t * Lib.DB.t) Path.Build.Map.t
+  -> (Loaded_project.t * Path.Build.t * Rocq_stanza.Theory.t) list
   -> t
 
-val find : t -> dir:Path.Source.t -> Rocq_lib.DB.t Memo.t
+val find : t -> project:Loaded_project.t -> Rocq_lib.DB.t Memo.t

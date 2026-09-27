@@ -6,7 +6,12 @@ open Import
 module Context_type : sig
   type t =
     | Empty
-    | With_sources
+    | With_sources of
+        { build_only_sub_dirs : Filename.Set.t
+          (** Reserved root subtrees with no workspace sources. Their rule
+              generators can be called without loading the workspace root's
+              rule declarations, which may need targets from these subtrees. *)
+        }
 end
 
 module Gen_rules : sig

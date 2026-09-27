@@ -5,7 +5,7 @@ open Import
 (** A fully evaluated dune file *)
 type t
 
-val dir : t -> Path.Source.t
+val dir : t -> Source_path.t
 val loaded_dir : t -> Loaded_dir.t
 val source_dir : t -> Source_path.t
 val output_dir : t -> Path.Build.t
@@ -17,7 +17,7 @@ val find_stanzas : t -> 'a Stanza.Key.t -> 'a list Memo.t
 val fold_static_stanzas : t list -> init:'acc -> f:(t -> Stanza.t -> 'acc -> 'acc) -> 'acc
 
 val eval
-  :  (Path.Source.t * Dune_project.t * Source.Dune_file.t) Appendable_list.t
+  :  (Loaded_project.t * Source_tree.Rules.Dir.t * Source.Dune_file.t) Appendable_list.t
   -> Only_packages.t
   -> t list Per_context.t Memo.t
 

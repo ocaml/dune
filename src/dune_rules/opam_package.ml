@@ -23,12 +23,14 @@ let all =
           match Stanza.repr stanza with
           | Opam_stanza.T stanza ->
             let name = Package.name stanza.package in
-            let dir = Path.Source.relative_fname (Dune_file.dir dune_file) stanza.dir in
+            let source_dir =
+              Source_path.relative_fname (Dune_file.source_dir dune_file) stanza.dir
+            in
             let key =
               let digest =
                 Digest.repr
-                  Repr.(pair Path.Source.repr Package_version.repr)
-                  (dir, stanza.version)
+                  Repr.(pair Source_path.repr Package_version.repr)
+                  (source_dir, stanza.version)
                 |> Digest.to_string
               in
               sprintf "%s-%s" (Package.Name.to_string name) digest
@@ -41,7 +43,9 @@ let all =
             let paths =
               Opam_build.Paths.of_root name ~root ~relative:Path.Build.relative
             in
-            let dir = Path.Build.append_source (Context_name.build_dir context) dir in
+            let dir =
+              Path.Build.relative_fname (Dune_file.output_dir dune_file) stanza.dir
+            in
             if Package.Name.Map.mem acc name
             then
               User_error.raise

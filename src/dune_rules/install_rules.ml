@@ -251,6 +251,7 @@ end = struct
         lib
         ~expander:(Memo.return (Expander.to_expander0 expander))
         ~dir
+        ~src_dir:(Expander.source_dir expander)
         ~lib_config
     in
     let* lib_modes =
@@ -514,11 +515,7 @@ end = struct
         then
           if lib.optional
           then (
-            let src_dir =
-              Expander.dir expander
-              |> Path.build
-              |> Path.drop_optional_build_context_src_exn
-            in
+            let src_dir = Expander.source_dir expander in
             Lib.DB.available_by_lib_id
               (Scope.libs scope)
               (Local (Library.to_lib_id ~src_dir lib)))
@@ -583,7 +580,12 @@ end = struct
           src
     in
     let+ files =
-      Install_entry.File.to_file_bindings_expanded install_conf.files ~expand ~dir
+      Install_entry.File.to_file_bindings_expanded
+        install_conf.files
+        ~expand
+        ~dir
+        ~source_dir:(Expander.source_dir expander)
+        ~source_tree_dir:(Expander.source_tree_dir expander)
       >>= Memo.List.map ~f:(fun fb ->
         let+ entry = make_entry ~kind:File fb in
         let loc = File_binding.Expanded.src_loc fb in
@@ -694,25 +696,31 @@ end = struct
           | None -> deprecated_meta_and_dune_files
           | Some opam_file -> file Lib opam_file "opam" :: deprecated_meta_and_dune_files
         in
-        let pkg_dir = Package.dir pkg |> Source_path.as_workspace_exn in
-        Source_tree.find_dir pkg_dir
-        >>| function
-        | None -> init
+        let* source_dir =
+          match Package.dir pkg with
+          | Build _ -> Memo.return None
+          | Workspace pkg_dir -> Source_tree.find_dir pkg_dir
+        in
+        match source_dir with
+        | None -> Memo.return init
         | Some dir ->
-          let pkg_dir = Path.Build.append_source ctx.build_dir pkg_dir in
-          Source_tree.Dir.filenames dir
-          |> Filename.Array.Set.fold ~init ~f:(fun fn acc ->
-            if is_odig_doc_file (Filename.to_string fn)
-            then (
-              let odig_file = Path.Build.relative_fname pkg_dir fn in
-              let entry =
-                Install.Entry.Unexpanded.make
-                  Doc
-                  ~kind:Install.Entry.Unexpanded.File
-                  odig_file
-              in
-              Install.Entry.Sourced.Unexpanded.create entry :: acc)
-            else acc)
+          let pkg_dir =
+            Path.Build.append_source ctx.build_dir (Source_tree.Dir.path dir)
+          in
+          Memo.return
+            (Source_tree.Dir.filenames dir
+             |> Filename.Array.Set.fold ~init ~f:(fun fn acc ->
+               if is_odig_doc_file (Filename.to_string fn)
+               then (
+                 let odig_file = Path.Build.relative_fname pkg_dir fn in
+                 let entry =
+                   Install.Entry.Unexpanded.make
+                     Doc
+                     ~kind:Install.Entry.Unexpanded.File
+                     odig_file
+                 in
+                 Install.Entry.Sourced.Unexpanded.create entry :: acc)
+               else acc))
       and+ entries =
         let* stanzas = Dune_load.stanzas_of_package ctx.name package_name
         and* package_db = Package_db.create ctx.name in

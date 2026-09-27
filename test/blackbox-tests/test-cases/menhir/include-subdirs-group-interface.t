@@ -43,7 +43,7 @@ when their result type is an abstract type from a sibling module.
 Show the generated inference query through the grammar's header.
 
   $ sed -n '1,/^module M = M$/p' _build/default/group/group__mock.ml.mock
-  open! struct include Dune__menhir__Group__Group__mock end
+  open! struct include Dune__menhir__10b1f5d725119122dd12522ef4f83455 end
   
   type token = 
     | EOF
@@ -55,13 +55,13 @@ Show the generated inference query through the grammar's header.
 The mock opens a private alias interface containing the enclosing scopes in
 their original order.
 
-  $ cat _build/default/.foo.eobjs/dune__menhir__Group__Group__mock.mli
+  $ cat _build/default/.foo.eobjs/dune__menhir__*.mli
   include module type of struct
     include Dune__exe
     include Dune__exe__Group__
   end
   $ ocamldep -modules -impl _build/default/group/group__mock.ml.mock
-  _build/default/group/group__mock.ml.mock: Dune__menhir__Group__Group__mock Lexing M
+  _build/default/group/group__mock.ml.mock: Dune__menhir__10b1f5d725119122dd12522ef4f83455 Lexing M
 
 The inferred interface must also be valid OCaml. Menhir only consumes the
 semantic-action types, so a successful build alone does not demonstrate this.

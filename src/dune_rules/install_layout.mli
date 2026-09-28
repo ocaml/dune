@@ -3,7 +3,7 @@
 open Import
 
 val set_entry_resolver
-  :  (Context_name.t -> Package.Name.t -> Install.Entry.Sourced.Unexpanded.t list Memo.t)
+  :  (Context_name.t -> Package.Name.t -> Path.t Install.Entry.Expanded.t list Memo.t)
   -> unit
 
 type t

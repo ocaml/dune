@@ -216,6 +216,10 @@ module Expanded = struct
 
   let set_src t src = { t with src }
 
+  let make section ~dst ~kind src =
+    { section; dst = Dst.explicit dst; kind; src; optional = false }
+  ;;
+
   let add_install_prefix t ~paths ~prefix =
     let opam_will_install_in_this_dir = Paths.get paths t.section in
     let i_want_to_install_the_file_as =

@@ -40,7 +40,7 @@ let rule (package : Opam_package.t) =
         true)
   in
   let paths = Opam_build.Paths.map_path write_paths ~f:Path.build in
-  let source_files =
+  let source =
     let open Action_builder.O in
     let* source =
       match stanza.source with
@@ -56,85 +56,29 @@ let rule (package : Opam_package.t) =
         let+ src = Expander.expand_path source_expander src in
         src, dst)
     in
-    source @ extra
+    { Opam_build.Source_input.files = source @ extra; directories = [] }
   in
   let build =
     let open Action_builder.O in
     let* layout = Package_layout.materialize context closure in
     let* base = Action_builder.of_memo (Context.base_env context_value) in
     let* env = Install_layout.env layout ~path:(Context.path context_value) ~base in
-    let dependencies = Install_layout.dependencies layout in
-    let env =
-      Env.add
-        env
-        ~var:(Env.Var.of_string "OPAM_PACKAGE_NAME")
-        ~value:(Package.Name.to_string paths.name)
-      |> Env.add
-           ~var:(Env.Var.of_string "OPAM_PACKAGE_VERSION")
-           ~value:(Package_version.to_string stanza.version)
-      |> Env.add ~var:(Env.Var.of_string "OPAMCLI") ~value:"2.0"
-      |> Env.add ~var:(Env.Var.of_string "OPAMSWITCH") ~value:"dune"
-      |> Env.add ~var:(Env.Var.of_string "CDPATH") ~value:""
-      |> Env.add ~var:(Env.Var.of_string "MAKELEVEL") ~value:""
-      |> Env.add
-           ~var:Opam_switch.opam_switch_prefix_var_name
-           ~value:(Path.to_absolute_filename paths.prefix)
-    in
-    let direct_dependencies =
-      List.filter dependencies ~f:(fun (dep : Opam_build.Dependency.t) ->
-        Package.Name.Set.mem direct dep.paths.name)
-    in
-    let depends =
-      List.map direct_dependencies ~f:(fun (dep : Opam_build.Dependency.t) ->
-        dep.paths.name, (dep.variables, dep.paths))
-      |> Package.Name.Map.of_list_exn
-      |> fun deps ->
-      Package.Name.Map.add_exn
-        deps
-        paths.name
-        ( Opam_build.variables ~name:paths.name ~version:stanza.version ~dev:stanza.dev
-        , paths )
-    in
-    let artifacts =
-      List.concat_map dependencies ~f:Opam_build.Dependency.binaries
-      |> Filename.Map.of_list_map_exn ~f:(fun path ->
-        ( Filename.of_string_exn (Bin.strip_exe (Filename.to_string (Path.basename path)))
-        , path ))
-    in
-    let files =
-      List.map direct_dependencies ~f:(fun (dep : Opam_build.Dependency.t) ->
-        dep.paths.name, dep.files)
-      |> Package.Name.Map.of_list_exn
-    in
     let expander =
-      { Opam_build.Action_expander.Expander.name = paths.name
-      ; paths
-      ; depends = Memo.return depends
-      ; files = Memo.return files
-      ; artifacts = Memo.return artifacts
-      ; depexts = stanza.recipe.depexts
-      ; context
-      ; path = Context.path context_value
-      ; version = stanza.version
-      ; env = Env.to_map env |> Env.Map.map ~f:(fun value -> [ Value.String value ])
-      }
+      Opam_build.Action_expander.for_recipe
+        ~context
+        ~path:(Context.path context_value)
+        ~paths
+        ~version:stanza.version
+        ~variables:
+          (Opam_build.variables ~name:paths.name ~version:stanza.version ~dev:stanza.dev)
+        ~depexts:stanza.recipe.depexts
+        ~env
+        ~direct
+        ~dependencies:(Install_layout.dependencies layout)
     in
-    let* build, install =
+    let* { Action_builder.With_targets.build; targets = _ } =
       Action_builder.of_memo
-        (let open Memo.O in
-         let expand = function
-           | None -> Memo.return []
-           | Some action ->
-             let+ action = Opam_build.Action_expander.expand action ~expander in
-             [ Action.chdir paths.source_dir action
-               |> Action.Full.make
-               |> Action_builder.With_targets.return
-             ]
-         in
-         Memo.both (expand stanza.recipe.build) (expand stanza.recipe.install))
-    in
-    let { Action_builder.With_targets.build; targets = _ } =
-      Opam_build.execute ~expander ~write_paths ~source_files ~build ~install
+        (Opam_build.execute_recipe stanza.recipe ~expander ~write_paths ~source)
     in
     build
   in

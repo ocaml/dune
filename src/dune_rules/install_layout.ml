@@ -32,7 +32,7 @@ end = struct
 end
 
 let entry_resolver_fdecl
-  : (Context_name.t -> Package.Name.t -> Install.Entry.Sourced.Unexpanded.t list Memo.t)
+  : (Context_name.t -> Package.Name.t -> Path.t Install.Entry.Expanded.t list Memo.t)
       Fdecl.t
   =
   Fdecl.create Dyn.opaque
@@ -46,9 +46,8 @@ let dir ~context ~key =
     [ Context_name.to_string context; ".packages"; key ]
 ;;
 
-(* Resolve the package set's install entries against the layout root: filter
-   out [Source_tree] entries, expand the rest, and key each entry by its
-   materialised path under the layout. Collisions (two packages installing
+(* Key the package set's install entries by their materialised paths under
+   the layout root. Collisions (two packages installing
    to the same destination, which can only happen in _root sections) are
    reported as user errors naming the conflicting packages and entry. *)
 let compute_entries context_name root packages =
@@ -61,22 +60,13 @@ let compute_entries context_name root packages =
       Install.Paths.make ~relative:Path.relative ~package:pkg ~roots
     in
     let+ entries = get_entries context_name pkg in
-    List.filter_map entries ~f:(fun (s : Install.Entry.Sourced.Unexpanded.t) ->
-      let entry = s.entry in
-      match entry.kind with
-      | Install.Entry.Unexpanded.Source_tree -> None
-      | File | Directory ->
-        let relative =
-          Install.Entry.relative_installed_path entry ~paths:install_paths
-          |> Path.as_in_source_tree_exn
-        in
-        let dst = Path.Build.append_source root relative in
-        let expanded =
-          Install.Entry.Expanded.set_src
-            (Install.Entry.Unexpanded.expand entry)
-            (Path.build entry.src)
-        in
-        Some (dst, (pkg, expanded))))
+    List.map entries ~f:(fun entry ->
+      let relative =
+        Install.Entry.relative_installed_path entry ~paths:install_paths
+        |> Path.as_in_source_tree_exn
+      in
+      let dst = Path.Build.append_source root relative in
+      dst, (pkg, entry)))
   >>| List.concat
   >>| Path.Build.Map.of_list
   >>| function

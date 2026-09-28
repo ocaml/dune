@@ -17,7 +17,6 @@ The broken symlink is detected:
 
   $ build_pkg foo 2>&1 | censor
   Error:
-  readlink(_build/.sandbox/$DIGEST1/_private/default/.pkg/foo.0.0.1-$DIGEST2/target/lib/foo/nonexistent.txt): No such file or directory
-  -> required by
-     _build/_private/default/.pkg/foo.0.0.1-$DIGEST2/target
+  readlink(_build/.sandbox/$DIGEST/default/.lockfile/pkg/foo/.opam/foo/target/lib/foo/nonexistent.txt): No such file or directory
+  -> required by _build/default/.lockfile/pkg/foo/.opam/foo/target
   [1]

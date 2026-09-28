@@ -1236,28 +1236,27 @@ let install_entries = Stanzas_to_entries.package_entries
 
 let () =
   Install_layout.set_entry_resolver (fun context_name package ->
-    let* opaque = Opam_package.find context_name package in
+    let* packages = Dune_load.packages () in
+    let* opaque =
+      if Package.Name.Map.mem packages package
+      then
+        Opam_package.find context_name package >>| Option.map ~f:Opam_package.dependency
+      else Pkg_rules.dependency context_name package
+    in
     match opaque with
     | None ->
       let* sctx = Super_context.find_exn context_name in
-      install_entries sctx package
+      let+ entries = install_entries sctx package in
+      List.filter_map entries ~f:(fun { Install.Entry.Sourced.entry; _ } ->
+        match entry.kind with
+        | Source_tree -> None
+        | File | Directory ->
+          Install.Entry.Unexpanded.expand entry
+          |> fun expanded ->
+          Install.Entry.Expanded.set_src expanded (Path.build entry.src) |> Option.some)
     | Some opaque ->
-      let+ dependency, _ =
-        Action_builder.evaluate_and_collect_facts (Opam_package.dependency opaque)
-      in
-      Section.Map.to_list dependency.files
-      |> List.concat_map ~f:(fun (section, files) ->
-        let prefix =
-          Install.Paths.get (Opam_build.Paths.install_paths dependency.paths) section
-        in
-        List.map files ~f:(fun src ->
-          let dst = Path.drop_prefix_exn src ~prefix |> Path.Local.to_string in
-          Install.Entry.Unexpanded.make
-            section
-            ~dst
-            ~kind:File
-            (Path.as_in_build_dir_exn src)
-          |> Install.Entry.Sourced.Unexpanded.create ~loc:opaque.stanza.loc)))
+      let+ dependency, _ = Action_builder.evaluate_and_collect_facts opaque in
+      Opam_build.Dependency.install_entries dependency)
 ;;
 
 let packages =

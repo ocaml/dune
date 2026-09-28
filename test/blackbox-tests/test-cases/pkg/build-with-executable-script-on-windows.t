@@ -85,8 +85,7 @@ File with just shebang characters, but no executable
     #!/path/to/env -S <executable> <arg1> <arg2> ...
   If this is a valid shebang line that should be parsed by Dune, please report
   upstream including the contents of the shebang line.
-  -> required by
-     _build/_private/default/.pkg/foo.dev-$DIGEST/target
+  -> required by _build/default/.lockfile/pkg/foo/.opam/foo/target
   -> required by alias pkg-install
   [1]
 
@@ -105,8 +104,7 @@ Running env with arguments other than -S
     #!/path/to/env -S <executable> <arg1> <arg2> ...
   If this is a valid shebang line that should be parsed by Dune, please report
   upstream including the contents of the shebang line.
-  -> required by
-     _build/_private/default/.pkg/foo.dev-$DIGEST/target
+  -> required by _build/default/.lockfile/pkg/foo/.opam/foo/target
   -> required by alias pkg-install
   [1]
 
@@ -125,7 +123,6 @@ Running env with extra arguments after -S
     #!/path/to/env -S <executable> <arg1> <arg2> ...
   If this is a valid shebang line that should be parsed by Dune, please report
   upstream including the contents of the shebang line.
-  -> required by
-     _build/_private/default/.pkg/foo.dev-$DIGEST/target
+  -> required by _build/default/.lockfile/pkg/foo/.opam/foo/target
   -> required by alias pkg-install
   [1]

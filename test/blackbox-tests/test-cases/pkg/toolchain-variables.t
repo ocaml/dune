@@ -50,14 +50,15 @@ We generate the lockfile for the fake compiler
   >  (copy $PWD/fake-compiler))
   > EOF
 
-We generate the lock file for the package to demonstrate the variable is
-replaced with the path to the sandbox inside of the path to the non-relocatable
-location.
+The dependent recipe uses a shared layout even when its provider installs
+outside the build directory. Its file capabilities must point at that layout.
 
   $ make_lockpkg baz << EOF
   > (version 1)
   > (build
-  >  (run sh -exc "echo %{pkg:ocaml-base-compiler:share}"))
+  >  (progn
+  >   (run sh -exc "echo %{pkg:ocaml-base-compiler:share}")
+  >   (run sh %{pkg:ocaml-base-compiler:share_root:bin/ocamlc})))
   > (depends ocaml-base-compiler)
   > EOF
 
@@ -79,11 +80,12 @@ We generate a fake package to use it
   > print_endline "Hello, World!"
   > EOF
 
-We try to build the dependency to show that it echoes the wong path. Until we
-fix the problem, it shows the sandbox path
+The recipe receives sandbox-relative layout paths and can read the installed
+file through its direct dependency's capability.
 
   $ XDG_CACHE_HOME=$PWD/fake-cache dune build @pkg-install 2>&1 \
   > | dune_cmd subst '[[:alnum:]]{32}' '<hash>' \
   > | dune_cmd subst '[^ ]*_build' '$TESTCASE_ROOT/_build'
-  $TESTCASE_ROOT/_build/.sandbox/<hash>/_private/default/.pkg/ocaml-base-compiler.1-<hash>/target/share/ocaml-base-compiler
+  $TESTCASE_ROOT/_build/.sandbox/<hash>/_private/default/.packages/<hash>/share/ocaml-base-compiler
+  Hello from fake ocamlc!
 

@@ -58,6 +58,13 @@ module Dependency : sig
     ; export_paths : Path.t Paths.t
     }
 
+  val load
+    :  Path.t Paths.t
+    -> variables:Variable.value Package_variable_name.Map.t
+    -> exported_env:String_with_vars.t Dune_lang.Action.Env_update.t list
+    -> t Action_builder.t
+
+  val install_entries : t -> Path.t Install.Entry.Expanded.t list
   val binaries : t -> Path.t list
 end
 
@@ -103,6 +110,18 @@ module Action_expander : sig
     val filtered_depexts : t -> string list Memo.t
   end
 
+  val for_recipe
+    :  context:Context_name.t
+    -> path:Path.t list
+    -> paths:Path.t Paths.t
+    -> version:Package_version.t
+    -> variables:Variable.value Package_variable_name.Map.t
+    -> depexts:Dune_pkg.Lock_dir.Depexts.t list
+    -> env:Env.t
+    -> direct:Package.Name.Set.t
+    -> dependencies:Dependency.t list
+    -> Expander.t
+
   val expand : Dune_lang.Action.t -> expander:Expander.t -> Action.t Memo.t
 
   val exported_env
@@ -113,19 +132,25 @@ end
 
 module Recipe : sig
   type t =
-    { build : Dune_lang.Action.t option
+    { build : Dune_pkg.Lock_dir.Build_command.t option
     ; install : Dune_lang.Action.t option
     ; depexts : Dune_pkg.Lock_dir.Depexts.t list
     ; exported_env : String_with_vars.t Env_update.t list
     }
 end
 
-(** All source copies are already prepared files. Destinations are relative
-    to the supplied working directory, not persistent source targets. *)
-val execute
-  :  expander:Action_expander.Expander.t
+module Source_input : sig
+  type t =
+    { files : (Path.t * Path.Local.t) list
+    ; directories : Path.Local.t list
+    }
+end
+
+(** Prepared source inputs with destinations relative to the working directory,
+    not persistent source targets. *)
+val execute_recipe
+  :  Recipe.t
+  -> expander:Action_expander.Expander.t
   -> write_paths:Path.Build.t Paths.t
-  -> source_files:(Path.t * Path.Local.t) list Action_builder.t
-  -> build:Action.Full.t Action_builder.With_targets.t list
-  -> install:Action.Full.t Action_builder.With_targets.t list
-  -> Action.Full.t Action_builder.With_targets.t
+  -> source:Source_input.t Action_builder.t
+  -> Action.Full.t Action_builder.With_targets.t Memo.t

@@ -57,7 +57,7 @@ The rule dependency confirms that the selected binary belongs to the host
 context:
 
   $ dune rules --format=json _build/target/pform-output | jq_dune '.[] | ruleDepFilePaths' | censor
-  "_build/_private/host/.pkg/provider.0.0.1-$DIGEST/target/bin/tool"
+  "_build/host/.lockfile/pkg/provider/.opam/provider/target/bin/tool"
 
 Bare-name lookup succeeds too:
 
@@ -67,4 +67,4 @@ Bare-name lookup succeeds too:
 The per-directory PATH points at the host context:
 
   $ env_added "$(cat _build/target/env-output)" "$PATH" | censor
-  $PWD/_build/_private/host/.pkg/provider.0.0.1-$DIGEST/target/bin
+  $PWD/_build/host/.lockfile/pkg/provider/.opam/provider/target/bin

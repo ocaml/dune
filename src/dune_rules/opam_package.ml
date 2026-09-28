@@ -66,26 +66,12 @@ let find context name =
 ;;
 
 let dependency { paths; stanza; _ } =
-  let open Action_builder.O in
-  let paths = Opam_build.Paths.map_path paths ~f:Path.build in
-  let cookie = Opam_build.Paths.install_cookie paths in
-  let* () = Action_builder.path cookie in
-  let { Opam_build.Install_cookie.Gen.files; variables } =
-    Opam_build.Install_cookie.load_exn cookie
-  in
-  let+ () = Section.Map.values files |> List.concat |> Action_builder.paths in
-  let variables =
-    Package_variable_name.Map.superpose
-      (Package_variable_name.Map.of_list_exn variables)
+  Opam_build.Dependency.load
+    (Opam_build.Paths.map_path paths ~f:Path.build)
+    ~variables:
       (Opam_build.variables
          ~name:(Package.name stanza.package)
          ~version:stanza.version
          ~dev:stanza.dev)
-  in
-  { Opam_build.Dependency.paths
-  ; files
-  ; variables
-  ; exported_env = stanza.recipe.exported_env
-  ; export_paths = paths
-  }
+    ~exported_env:stanza.recipe.exported_env
 ;;

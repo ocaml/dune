@@ -44,7 +44,9 @@ let decode =
           and+ exported_env =
             field "exported_env" ~default:[] (repeat Dune_lang.Action.Env_update.decode)
           in
-          { Opam_build.Recipe.build
+          { Opam_build.Recipe.build =
+              Option.map build ~f:(fun action ->
+                Dune_pkg.Lock_dir.Build_command.Action action)
           ; install
           ; exported_env
           ; depexts =

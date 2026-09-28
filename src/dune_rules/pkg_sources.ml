@@ -17,6 +17,121 @@ let package_of_artifact_path path =
      | _ -> None)
 ;;
 
+module Candidate = struct
+  type t =
+    { lock_pkg : Dune_pkg.Lock_dir.Pkg.t
+    ; source_root : Path.Build.t option
+    ; files_dir : Path.Build.t
+    ; artifact_root : Path.Build.t
+    }
+
+  let name t = t.lock_pkg.info.name
+  let source_root t = t.source_root
+  let lock_pkg t = t.lock_pkg
+  let files_dir t = t.files_dir
+  let artifact_root t = t.artifact_root
+
+  let make context (lock_pkg : Dune_pkg.Lock_dir.Pkg.t) ~files_dir =
+    let source_root =
+      Option.map lock_pkg.info.source ~f:(fun source ->
+        Fetch_rules.target source `Directory)
+    in
+    let artifact_root =
+      Path.Build.L.relative
+        (Context_name.build_dir context)
+        [ root_dir_basename
+        ; artifact_dir_basename
+        ; Package.Name.to_string lock_pkg.info.name
+        ]
+    in
+    { lock_pkg; source_root; files_dir; artifact_root }
+  ;;
+
+  let paths t =
+    let name = name t in
+    let root =
+      Path.Build.L.relative t.artifact_root [ ".opam"; Package.Name.to_string name ]
+    in
+    Opam_build.Paths.of_root name ~root ~relative:Path.Build.relative
+  ;;
+end
+
+let candidates =
+  Per_context.create_by_name ~name:"mounted-package-candidates" (fun context ->
+    let* active = Lock_dir.lock_dir_active context in
+    if not active
+    then Memo.return []
+    else
+      let+ lock_dir = Lock_dir.get_exn context
+      and+ lock_dir_path = Lock_dir.get_path context >>| Option.value_exn
+      and+ platform = Lock_dir.Sys_vars.solver_env in
+      Dune_pkg.Lock_dir.packages_on_platform lock_dir ~platform
+      |> Package.Name.Map.values
+      |> List.map ~f:(fun (lock_pkg : Dune_pkg.Lock_dir.Pkg.t) ->
+        let version =
+          Option.some_if
+            (Dune_pkg.Lock_dir.uses_versioned_paths lock_dir)
+            lock_pkg.info.version
+        in
+        let files_dir =
+          Dune_pkg.Lock_dir.Pkg.files_dir
+            lock_pkg.info.name
+            version
+            ~lock_dir:lock_dir_path
+          |> Path.as_in_build_dir_exn
+        in
+        Candidate.make context lock_pkg ~files_dir))
+  |> Staged.unstage
+;;
+
+let find_candidate context name =
+  let+ candidates = candidates context in
+  List.find candidates ~f:(fun candidate ->
+    Package.Name.equal name (Candidate.name candidate))
+;;
+
+let source candidate =
+  let rec loop root local =
+    let dir = Path.Build.append_local root local in
+    let* files, dirs = Build_system.directory_target_contents ~dir in
+    let files =
+      Filename.Array.Set.to_list files
+      |> List.map ~f:(fun file ->
+        ( Path.build (Path.Build.relative_fname dir file)
+        , Path.Local.relative_fname local file ))
+    in
+    let+ subdirs =
+      Filename.Array.Set.to_list dirs
+      |> Memo.List.map ~f:(fun dir -> loop root (Path.Local.relative_fname local dir))
+    in
+    { Opam_build.Source_input.files =
+        files
+        @ List.concat_map subdirs ~f:(fun { Opam_build.Source_input.files; _ } -> files)
+    ; directories =
+        local
+        :: List.concat_map subdirs ~f:(fun { Opam_build.Source_input.directories; _ } ->
+          directories)
+    }
+  in
+  let* empty_directories =
+    match (Candidate.lock_pkg candidate).info.source with
+    | None -> Memo.return None
+    | Some source ->
+      Lock_dir.source_kind source
+      >>= (function
+       | `Local (`File, _) | `Fetch -> Memo.return None
+       | `Local (`Directory, dir) ->
+         let+ files, dirs = Fetch_rules.local_source_contents ~loc:(fst source.url) dir in
+         Option.some_if (List.is_empty files) dirs)
+  in
+  match empty_directories, Candidate.source_root candidate with
+  | Some directories, _ ->
+    (* Empty inputs cannot be represented by an engine directory target. *)
+    Memo.return { Opam_build.Source_input.files = []; directories }
+  | None, None -> Memo.return { Opam_build.Source_input.files = []; directories = [] }
+  | None, Some root -> loop root Path.Local.root
+;;
+
 let source_copy_rule ~dir ~source_dir filename =
   let file = Source_tree.Rules.Dir.file source_dir filename in
   let* materialization = Source_tree.Rules.File.materialization file in

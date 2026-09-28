@@ -2,20 +2,21 @@
 
 open Import
 
-(** The package management rules setup two rules for every package:
-
-    - A rule for fetching the source to produce .pkg/$package/source
-
-    - A rule to build the package and produce the artifacts in
-      .pkg/$package/target.
-
-    It setups an alias rules to trigger the fetch and build of the
-    package universe. *)
+(** Selected lock packages use the context's [.lockfile/pkg/<name>] subtree.
+    Source snapshots are prepared independently in [_fetch]; opaque recipes
+    install under [.opam/<name>/target] within the package mount. Dev tools and
+    their unshared dependencies retain their private package directories. *)
 
 val setup_rules
   :  components:string list
   -> dir:Path.Build.t
   -> Context_name.t
+  -> Build_config.Gen_rules.t Memo.t
+
+val setup_mounted_rules
+  :  Context_name.t
+  -> dir:Path.Build.t
+  -> string list
   -> Build_config.Gen_rules.t Memo.t
 
 val lock_dir_path : Context_name.t -> Path.t option Memo.t
@@ -50,6 +51,11 @@ val exported_env : Context_name.t -> Env.t Memo.t
 val project_ocamlpath : Context_name.t -> Path.t list Memo.t
 val dev_tool_ocamlpath : Dune_pkg.Dev_tool.t -> Path.t list Memo.t
 val find_package : Context_name.t -> Package.Name.t -> unit Action_builder.t option Memo.t
+
+val dependency
+  :  Context_name.t
+  -> Package.Name.t
+  -> Opam_build.Dependency.t Action_builder.t option Memo.t
 
 (* CR-someday Alizter: These prefixes would be [Path.Build.t] if not for
    the "toolchain" mechanism, which installs outside the build directory. *)

@@ -1,9 +1,14 @@
 open Import
 
-(** Fetch remote sources from the revision store or http.
-    Note: this module does not handle source on local disk *)
+(** Prepare source file and directory targets in the independent fetch context. *)
 
 val context : Build_context.t
+val target : Dune_pkg.Source.t -> [ `File | `Directory ] -> Path.Build.t
+
+val local_source_contents
+  :  loc:Loc.t
+  -> Path.Outside_build_dir.t
+  -> (Path.Local.t list * Path.Local.t list) Memo.t
 
 val fetch
   :  target:Path.Build.t

@@ -502,20 +502,7 @@ let ppx_runtime_deps t ~for_ =
 ;;
 
 let pps t ~for_ = Memo.return (Compilation_mode.Per_mode.get ~for_ t.pps)
-
-let is_local t =
-  match Lib_info.obj_dir t.info |> Obj_dir.byte_dir with
-  | External _ -> false
-  | In_source_tree _ -> true
-  | In_build_dir dir ->
-    (match Path.Build.extract_build_context dir with
-     | None -> true
-     | Some (name, _) ->
-       not
-         (Context_name.equal
-            (Context_name.of_string (Filename.to_string name))
-            Private_context.t.name))
-;;
+let is_local t = Lib_info.obj_dir t.info |> Obj_dir.to_local |> Option.is_some
 
 let resolve_main_module_name t =
   let open Resolve.O in

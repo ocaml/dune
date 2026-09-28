@@ -916,11 +916,15 @@ let gen_rules ctx ~dir components =
   else if Context_name.equal ctx Fetch_rules.context.name
   then
     Fetch_rules.gen_rules ~dir ~components:(List.map components ~f:Filename.of_string_exn)
-  else
-    let* () = raise_on_lock_dir_out_of_sync ctx in
-    let gen_pkg_alias_rule = Pkg_rules.setup_pkg_install_alias ~dir ctx in
-    let+ sctx_rules = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
-    Gen_rules.combine sctx_rules gen_pkg_alias_rule
+  else (
+    match components with
+    | root :: rest when String.equal root Pkg_sources.root_dir_basename ->
+      Pkg_rules.setup_mounted_rules ctx ~dir rest
+    | _ ->
+      let* () = raise_on_lock_dir_out_of_sync ctx in
+      let gen_pkg_alias_rule = Pkg_rules.setup_pkg_install_alias ~dir ctx in
+      let+ sctx_rules = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
+      Gen_rules.combine sctx_rules gen_pkg_alias_rule)
 ;;
 
 let () =

@@ -187,6 +187,31 @@ module Dependency = struct
     ; export_paths : Path.t Paths.t
     }
 
+  let load paths ~variables ~exported_env =
+    let open Action_builder.O in
+    let cookie = Paths.install_cookie paths in
+    let* () = Action_builder.path cookie in
+    let { Install_cookie.Gen.files; variables = installed_variables } =
+      Install_cookie.load_exn cookie
+    in
+    let+ () = Section.Map.values files |> List.concat |> Action_builder.paths in
+    let variables =
+      Package_variable_name.Map.superpose
+        (Package_variable_name.Map.of_list_exn installed_variables)
+        variables
+    in
+    { paths; files; variables; exported_env; export_paths = paths }
+  ;;
+
+  let install_entries { paths; files; _ } =
+    Section.Map.to_list files
+    |> List.concat_map ~f:(fun (section, files) ->
+      let prefix = Install.Paths.get (Paths.install_paths paths) section in
+      List.map files ~f:(fun src ->
+        let dst = Path.drop_prefix_exn src ~prefix |> Path.Local.to_string in
+        Install.Entry.Expanded.make section ~dst ~kind:File src))
+  ;;
+
   let binaries { paths; files; _ } =
     let { Install.Roots.bin; _ } = Paths.install_roots paths in
     Section.Map.Multi.find files Bin
@@ -886,11 +911,72 @@ module Action_expander = struct
     in
     { env with value }
   ;;
+
+  let for_recipe
+        ~context
+        ~path
+        ~(paths : Path.t Paths.t)
+        ~version
+        ~variables
+        ~depexts
+        ~env
+        ~direct
+        ~dependencies
+    =
+    let env =
+      Env.add
+        env
+        ~var:(Env.Var.of_string "OPAM_PACKAGE_NAME")
+        ~value:(Package.Name.to_string paths.name)
+      |> Env.add
+           ~var:(Env.Var.of_string "OPAM_PACKAGE_VERSION")
+           ~value:(Package_version.to_string version)
+      |> Env.add ~var:(Env.Var.of_string "OPAMCLI") ~value:"2.0"
+      |> Env.add ~var:(Env.Var.of_string "OPAMSWITCH") ~value:"dune"
+      |> Env.add ~var:(Env.Var.of_string "CDPATH") ~value:""
+      |> Env.add ~var:(Env.Var.of_string "MAKELEVEL") ~value:""
+      |> Env.add
+           ~var:Opam_switch.opam_switch_prefix_var_name
+           ~value:(Path.to_absolute_filename paths.prefix)
+    in
+    let direct_dependencies =
+      List.filter dependencies ~f:(fun (dep : Dependency.t) ->
+        Package.Name.Set.mem direct dep.paths.name)
+    in
+    let depends =
+      List.map direct_dependencies ~f:(fun (dep : Dependency.t) ->
+        dep.paths.name, (dep.variables, dep.paths))
+      |> Package.Name.Map.of_list_exn
+      |> fun deps -> Package.Name.Map.add_exn deps paths.name (variables, paths)
+    in
+    let artifacts =
+      List.concat_map dependencies ~f:Dependency.binaries
+      |> Filename.Map.of_list_map_exn ~f:(fun path ->
+        ( Filename.of_string_exn (Bin.strip_exe (Filename.to_string (Path.basename path)))
+        , path ))
+    in
+    let files =
+      List.map direct_dependencies ~f:(fun (dep : Dependency.t) ->
+        dep.paths.name, dep.files)
+      |> Package.Name.Map.of_list_exn
+    in
+    { Expander.name = paths.name
+    ; paths
+    ; depends = Memo.return depends
+    ; files = Memo.return files
+    ; artifacts = Memo.return artifacts
+    ; depexts
+    ; context
+    ; path
+    ; version
+    ; env = Env.to_map env |> Env.Map.map ~f:(fun value -> [ Value.String value ])
+    }
+  ;;
 end
 
 module Recipe = struct
   type t =
-    { build : Dune_lang.Action.t option
+    { build : Dune_pkg.Lock_dir.Build_command.t option
     ; install : Dune_lang.Action.t option
     ; depexts : Depexts.t list
     ; exported_env : String_with_vars.t Env_update.t list
@@ -1365,14 +1451,22 @@ module Copy_source = struct
   include Action_ext.Make (Spec)
 end
 
-let execute ~expander ~write_paths ~source_files ~build ~install =
+module Source_input = struct
+  type t =
+    { files : (Path.t * Path.Local.t) list
+    ; directories : Path.Local.t list
+    }
+end
+
+let execute ~expander ~write_paths ~source ~build ~install =
   let copies =
     let open Action_builder.O in
-    let* source_files = source_files in
-    let+ () = Action_builder.paths (List.map source_files ~f:fst) in
+    let* { Source_input.files; directories } = source in
+    let+ () = Action_builder.paths (List.map files ~f:fst) in
     Action.progn
-      (Action.mkdir write_paths.Paths.source_dir
-       :: List.map source_files ~f:(fun (src, local) ->
+      (List.map (Path.Local.root :: directories) ~f:(fun local ->
+         Action.mkdir (Path.Build.append_local write_paths.Paths.source_dir local))
+       @ List.map files ~f:(fun (src, local) ->
          let dst = Path.Build.append_local write_paths.source_dir local in
          Action.progn
            [ Action.mkdir (Path.Build.parent_exn dst)
@@ -1415,4 +1509,31 @@ let execute ~expander ~write_paths ~source_files ~build ~install =
     |> Action.Full.disable_sandbox_policy)
   |> Action_builder.With_targets.add_directories
        ~directory_targets:[ write_paths.target_dir ]
+;;
+
+let execute_recipe (recipe : Recipe.t) ~expander ~write_paths ~source =
+  let { Action_expander.Expander.paths; _ } = expander in
+  let expand action =
+    let+ action = Action_expander.expand action ~expander in
+    Action.chdir paths.source_dir action
+    |> Action.Full.make
+    |> Action_builder.With_targets.return
+  in
+  let* build =
+    match recipe.build with
+    | None -> Memo.return []
+    | Some (Action action) -> expand action >>| List.singleton
+    | Some Dune ->
+      Command.run_dyn_prog
+        (Action_builder.return (Ok (Path.of_string Sys.executable_name)))
+        ~dir:paths.source_dir
+        [ A "build"; A "-p"; A (Package.Name.to_string paths.name) ]
+      |> List.singleton
+      |> Memo.return
+  and* install =
+    match recipe.install with
+    | None -> Memo.return []
+    | Some action -> expand action >>| List.singleton
+  in
+  execute ~expander ~write_paths ~source ~build ~install |> Memo.return
 ;;

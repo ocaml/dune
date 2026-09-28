@@ -120,3 +120,27 @@ unrelated provider. Its actions use the mounted project root.
   $ _build/default/main.exe
   native/false/bar
   $ test ! -e _build/default/.lockfile/pkg/unrelated/.opam/unrelated/target
+
+An unused mounted package with a malformed project must not prevent building
+another package. Requesting the broken package should report its own error,
+without falling back to its otherwise successful recipe.
+
+  $ mkdir _broken
+  $ printf '(lang dune 3.25)\n(broken-project)\n' > _broken/dune-project
+  $ echo '(library (public_name broken))' > _broken/dune
+  $ make_lockpkg broken <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_broken))
+  > (build (echo opaque-fallback-must-not-run))
+  > EOF
+
+BUG: preparing every candidate eagerly reports the unrelated project's error.
+
+  $ dune build main.exe
+  File "_build/default/.lockfile/pkg/broken/dune-project", line 2, characters 1-15:
+  Error: Unknown field "broken-project"
+  [1]
+  $ dune build _build/default/.lockfile/pkg/broken/broken.cma
+  File "_build/default/.lockfile/pkg/broken/dune-project", line 2, characters 1-15:
+  Error: Unknown field "broken-project"
+  [1]

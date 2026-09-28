@@ -113,17 +113,13 @@ Declare both OCaml and Melange modes, for example:
 
 If Dune cannot find the Melange compiler, ``melc``, in the build context, it
 skips the Melange variant of this library. The OCaml variants can still be
-built through ``@all``, ``@check``, and ``@install``. Installation includes only
-OCaml artifacts, and the installed library's metadata records only OCaml
-modes. OCaml consumers can therefore use it without Melange.
+built.
 
 When ``melc`` is available, the library retains both OCaml and Melange modes.
 Libraries installed without that variant must be rebuilt and reinstalled with
 ``melc`` available before they can be used by Melange consumers.
 
-This behavior is available with Dune 3.25 and later, even for projects using an
-older Dune language version. Enabling the Melange extension with
-``(using melange 1.0)`` does not itself require the compiler to be installed.
+This behavior is available with Dune 3.25 and later.
 
 There are two important limits:
 

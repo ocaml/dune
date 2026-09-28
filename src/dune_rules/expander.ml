@@ -413,11 +413,10 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
       let* scope = Resolve.Memo.lift_memo scope in
       let* lib = Lib.DB.resolve (Scope.libs scope) (loc, lib) in
       let* current_project = Resolve.Memo.lift_memo project in
-      let referenced_project =
-        Lib.info lib |> Lib_info.status |> Lib_info.Status.project
-      in
+      let info = Lib.info lib in
+      let referenced_project = Lib_info.status info |> Lib_info.Status.project in
       if Option.equal Dune_project.equal (Some current_project) referenced_project
-      then Resolve.Memo.return (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
+      then Resolve.Memo.return (Path.relative (Lib_info.src_dir info) file)
       else
         Resolve.Memo.fail
           (User_error.make

@@ -97,6 +97,46 @@ Adding Melange support to Dune libraries is done as follows:
   This field is analogous to the ``compile_flags``
   field used in ``melange.emit`` stanzas.
 
+Building Without Melange
+------------------------
+
+.. versionadded:: 3.25
+
+A library can support Melange without requiring it in every opam switch.
+Declare both OCaml and Melange modes, for example:
+
+.. code:: dune
+
+  (library
+   (public_name portable)
+   (modes :standard melange))
+
+If Dune cannot find the Melange compiler, ``melc``, in the build context, it
+skips the Melange variant of this library. The OCaml variants can still be
+built through ``@all``, ``@check``, and ``@install``. Installation includes only
+OCaml artifacts, and the installed library's metadata records only OCaml
+modes. OCaml consumers can therefore use it without Melange.
+
+When ``melc`` is available, the library retains both OCaml and Melange modes.
+Libraries installed without that variant must be rebuilt and reinstalled with
+``melc`` available before they can be used by Melange consumers.
+
+This behavior is available with Dune 3.25 and later, even for projects using an
+older Dune language version. Enabling the Melange extension with
+``(using melange 1.0)`` does not itself require the compiler to be installed.
+
+There are two important limits:
+
+- A library with only ``(modes melange)`` still requires ``melc``; it is not
+  silently skipped when the compiler is missing.
+- Building the outputs of a ``melange.emit`` stanza still requires ``melc``.
+  This includes ``@all`` when it selects those outputs. Merely declaring the
+  stanza does not prevent building an unrelated OCaml target without Melange.
+
+The OCaml variants must still have all their dependencies and preprocessors
+available. This behavior does not make an unconditional ``melange`` dependency
+in an opam package optional.
+
 .. _melange-emit:
 
 melange.emit

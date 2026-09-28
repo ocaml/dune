@@ -157,6 +157,28 @@ let entries =
   fun context packages -> Memo.exec memo (context, packages)
 ;;
 
+let binaries context_name packages =
+  let open Memo.O in
+  let+ entries, _ = entries context_name packages in
+  let bin_dir =
+    Path.Build.relative (dir ~context:context_name ~key:(Key.encode packages)) "bin"
+  in
+  Path.Build.Map.foldi
+    entries
+    ~init:Filename.Map.empty
+    ~f:(fun dst (entry : Path.t Install.Entry.Expanded.t) binaries ->
+      match entry.section, entry.kind with
+      | Bin, File when Path.Build.equal (Path.Build.parent_exn dst) bin_dir ->
+        let name =
+          Path.Build.basename dst
+          |> Filename.to_string
+          |> Bin.strip_exe
+          |> Filename.of_string_exn
+        in
+        Filename.Map.add_exn binaries name (Path.build dst)
+      | _ -> binaries)
+;;
+
 let files context_name packages =
   let open Memo.O in
   let+ entries, _ = entries context_name packages in

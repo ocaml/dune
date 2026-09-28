@@ -83,13 +83,12 @@ end = struct
           match Lib_info.package (Lib.info lib) with
           | None -> Memo.return None
           | Some name ->
-            let+ package = Opam_package.find context name in
+            let+ package = Opam_package.find_opaque context name in
             (match package with
-             | Some package
+             | Some (root, _)
                when Path.is_descendant
                       (Lib_info.src_dir (Lib.info lib))
-                      ~of_:(Path.build package.paths.target_dir) ->
-               Some (Lib.name lib, name)
+                      ~of_:(Path.build root) -> Some (Lib.name lib, name)
              | None | Some _ -> None))
         >>| Lib_name.Map.of_list_reduce ~f:(fun package _ -> package)
       in

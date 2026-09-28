@@ -918,6 +918,14 @@ let gen_rules ctx ~dir components =
     Fetch_rules.gen_rules ~dir ~components:(List.map components ~f:Filename.of_string_exn)
   else (
     match components with
+    | root :: packages :: name :: rest
+      when String.equal root Pkg_sources.root_dir_basename
+           && String.equal packages Pkg_sources.artifact_dir_basename ->
+      let* mounted = Pkg_sources.find_mounted ctx (Package.Name.of_string name) in
+      (match mounted with
+       | Some mounted when Pkg_sources.Mounted.is_dune mounted ->
+         gen_rules ctx (Super_context.find_exn ctx) ~dir rest
+       | _ -> Pkg_rules.setup_mounted_rules ctx ~dir (packages :: name :: rest))
     | root :: rest when String.equal root Pkg_sources.root_dir_basename ->
       Pkg_rules.setup_mounted_rules ctx ~dir rest
     | _ ->

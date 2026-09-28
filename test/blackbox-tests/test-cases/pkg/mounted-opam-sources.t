@@ -1,6 +1,6 @@
-Selected lock sources have package-owned output roots, but their existing
-recipes still run opaquely. Incidental Dune configuration is recipe input, not
-configuration for the outer build.
+Selected lock sources have package-owned output roots. Recipes whose source
+preparation needs build-produced files remain opaque. Their incidental Dune
+configuration is recipe input, not configuration for the outer build.
 
   $ make_lockdir
   $ mkdir -p _sources/empty
@@ -19,7 +19,10 @@ configuration for the outer build.
   >   make_lockpkg "$package" <<EOF
   > (version 1.0)
   > (source (copy $PWD/_sources))
-  > (build (run sh build.sh %{pkg-self:name}))
+  > (build
+  >  (progn
+  >   (run sh build.sh %{pkg-self:name})
+  >   (substitute result prepared)))
   > EOF
   > done
 
@@ -45,8 +48,8 @@ using that snapshot are not modified.
   $ find _build/_fetch -path '*/dir/input' -exec cat {} \;
   original
 
-Dune packages also execute their recipe at this stage, using the same opaque
-executor rather than loading their rules into the outer graph.
+Dune packages with supported source preparation now load into the outer graph
+instead of executing their recorded recipe.
 
   $ mkdir _native
   $ cat > _native/dune-project <<'EOF'
@@ -62,10 +65,10 @@ executor rather than loading their rules into the outer graph.
   > (source (copy $PWD/_native))
   > (dune)
   > EOF
-  $ build_pkg native
+  $ dune build _build/default/.lockfile/pkg/native/data
   $ dune trace cat | jq_dune -s '[.[] | processes | select(.args.process_args == ["build", "-p", "native"])] | length'
-  1
-  $ cat "$(get_build_pkg_dir native)/target/share/native/data"
+  0
+  $ cat _build/default/.lockfile/pkg/native/data
   built-by-recipe
 
 Opaque recipes see transitive tools but obtain installed-file capabilities from

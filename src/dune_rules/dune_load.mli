@@ -28,8 +28,14 @@ val find_project : dir:Path.Build.t -> Dune_project.t Memo.t
 val stanzas_in_dir : Path.Build.t -> Dune_file.t option Memo.t
 val mask : unit -> Only_packages.t Memo.t
 val packages : unit -> Package.t Package.Name.Map.t Memo.t
+val packages_for_context : Context_name.t -> Package.t Package.Name.Map.t Memo.t
 
 (** Shared workspace dependency closure for package search narrowing. *)
 val package_closure : Package.Name.Set.t -> Package.Name.Set.t Memo.t
+
+val package_closure_for_context
+  :  Context_name.t
+  -> Package.Name.Set.t
+  -> Package.Name.Set.t Memo.t
 
 val projects : unit -> Dune_project.t list Memo.t

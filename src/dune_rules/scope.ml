@@ -25,6 +25,7 @@ module DB = struct
     { by_dir : scope Path.Build.Map.t
     ; by_package : scope Package.Name.Map.t
     ; dependency_libs_by_package : Lib.DB.t Package.Name.Map.t
+    ; public_libs_by_package : Lib.DB.t Package.Name.Map.t
     }
 
   let find_by_dir t dir =
@@ -137,7 +138,8 @@ module DB = struct
       | Deprecated_library_name lib ->
         Memo.return (Lib.DB.Resolve_result.redirect_by_name public_libs lib)
     in
-    fun ~lib_config ~project stanzas ->
+    fun ~lib_config ~loaded_project stanzas ->
+      let project = Loaded_project.project loaded_project in
       let by_name, by_id, _ =
         List.fold_left
           stanzas
@@ -177,8 +179,9 @@ module DB = struct
                   match Library.package conf with
                   | Some package -> Some (Package.name package)
                   | None ->
-                    Dune_project.exclusive_package project ~dir:src_dir
-                    |> Option.map ~f:Package.Id.name
+                    (match Dune_project.exclusive_package project ~dir:src_dir with
+                     | Some package -> Some (Package.Id.name package)
+                     | None -> Loaded_project.owner loaded_project)
                 in
                 Some lib_id, Library.best_name conf, Found_or_redirect.found info ~owner
             in
@@ -288,13 +291,12 @@ module DB = struct
           "opam-package-libraries"
           ~input:(module Package.Name)
           (fun name ->
-             let* package = Opam_package.find context name in
+             let* package = Opam_package.find_opaque context name in
              match package with
              | None -> Memo.return None
-             | Some package ->
+             | Some (_, dependency) ->
                let* dependency, _ =
-                 Action_builder.evaluate_and_collect_facts
-                   (Opam_package.dependency package)
+                 Action_builder.evaluate_and_collect_facts dependency
                in
                let roots = Opam_build.Paths.install_roots dependency.paths in
                let* findlib =
@@ -320,13 +322,13 @@ module DB = struct
                Memo.return (Some (findlib, db)))
         |> Memo.exec
       in
-      let by_name, by_id =
+      let by_name, by_id, mounted_by_name =
         List.fold_left
           stanzas
-          ~init:(Lib_name.Map.empty, Lib_id.Map.empty)
+          ~init:(Lib_name.Map.empty, Lib_id.Map.empty, Lib_name.Map.empty)
           ~f:
             (fun
-              (by_name, by_id)
+              (by_name, by_id, mounted_by_name)
               ((loaded_dir, stanza) : Loaded_dir.t * Library_related_stanza.t)
             ->
             let dir = Loaded_dir.output_dir loaded_dir in
@@ -353,7 +355,7 @@ module DB = struct
                   (Deprecated_library_name.old_public_name s, Name s.new_public_name, None)
             in
             match candidate with
-            | None -> by_name, by_id
+            | None -> by_name, by_id, mounted_by_name
             | Some (public_name, r2, lib_id2) ->
               let by_name =
                 Lib_name.Map.update by_name public_name ~f:(function
@@ -365,23 +367,57 @@ module DB = struct
                 | None -> by_id
                 | Some lib_id2 -> Lib_id.Map.add_exn by_id (Local lib_id2) r2
               in
-              by_name, by_id)
+              let mounted_by_name =
+                match
+                  Loaded_dir.project loaded_dir
+                  |> Loaded_project.partition
+                  |> Build_partition.purpose
+                with
+                | Workspace -> mounted_by_name
+                | Mounted -> Lib_name.Map.add_multi mounted_by_name public_name r2
+              in
+              by_name, by_id, mounted_by_name)
+      in
+      let installed_libs =
+        if Lib_name.Map.is_empty mounted_by_name
+        then installed_libs
+        else (
+          let resolve name =
+            Lib_name.Map.find mounted_by_name name
+            |> Option.value ~default:[]
+            |> Memo.List.map ~f:(resolve_redirect_to t)
+          in
+          let mounted_libs =
+            Lib.DB.create
+              ()
+              ~parent:None
+              ~resolve
+              ~resolve_lib_id:(fun id ->
+                let+ results = resolve (Lib_id.name id) in
+                match results with
+                | [ result ] -> result
+                | _ -> Lib.DB.Resolve_result.not_found)
+              ~all:(fun () -> Memo.return (Lib_name.Map.keys mounted_by_name))
+              ~instrument_with
+          in
+          Lib.DB.with_parent installed_libs ~parent:(Some mounted_libs))
       in
       Staged.stage (fun ~owner ~include_owner ->
         let candidates =
           Memo.lazy_ ~name:"opaque-library-candidates" (fun () ->
-            let* packages = Opam_package.all context in
+            let* packages = Opam_package.opaque_names context in
             match owner with
-            | None -> Memo.return (Package.Name.Map.keys packages)
+            | None -> Memo.return (Package.Name.Set.to_list packages)
             | Some owner ->
               let+ visible =
-                Dune_load.package_closure (Package.Name.Set.singleton owner)
+                Dune_load.package_closure_for_context
+                  context
+                  (Package.Name.Set.singleton owner)
               in
               let visible =
                 if include_owner then visible else Package.Name.Set.remove visible owner
               in
-              Package.Name.Map.keys packages
-              |> List.filter ~f:(Package.Name.Set.mem visible))
+              Package.Name.Set.inter packages visible |> Package.Name.Set.to_list)
         in
         let resolve_opam name =
           let* candidates = Memo.Lazy.force candidates in
@@ -468,13 +504,18 @@ module DB = struct
           let stanzas = Option.value stanzas ~default:[] in
           Some (project, stanzas))
       |> Path.Build.Map.map ~f:(fun (loaded_project, stanzas) ->
-        let project = Loaded_project.project loaded_project in
         ( loaded_project
-        , Staged.unstage (create_db_from_stanzas stanzas ~lib_config ~project) ))
+        , Staged.unstage (create_db_from_stanzas stanzas ~lib_config ~loaded_project) ))
     in
     let db_by_project_dir =
       Path.Build.Map.map make_db_by_project_dir ~f:(fun (project, make_db) ->
-        project, make_db ~scopes ~owner:None ~public_libs ~instrument_with ~package_scopes)
+        let owner = Loaded_project.owner project in
+        let public_libs =
+          match owner with
+          | None -> public_libs
+          | Some name -> Package.Name.Map.find_exn public_libs_by_package name
+        in
+        project, make_db ~scopes ~owner ~public_libs ~instrument_with ~package_scopes)
     in
     let rocq_scopes =
       Rocq_scope.make
@@ -488,13 +529,18 @@ module DB = struct
         let root = Loaded_project.output_root loaded_project in
         let project = Loaded_project.project loaded_project in
         let rocq_db = Rocq_scope.find rocq_scopes ~project:loaded_project in
+        let public_libs =
+          match Loaded_project.owner loaded_project with
+          | None -> public_libs
+          | Some name -> Package.Name.Map.find_exn public_libs_by_package name
+        in
         { loaded_project; project; db; public_libs; rocq_db; root })
     in
     let by_package =
       Path.Build.Map.to_list make_db_by_project_dir
       |> List.concat_map ~f:(fun (dir, (project, make_db)) ->
         let scope = Path.Build.Map.find_exn by_dir dir in
-        Dune_project.including_hidden_packages (Loaded_project.project project)
+        Loaded_project.packages project
         |> Package.Name.Map.to_list_map ~f:(fun name _ ->
           let public_libs = Package.Name.Map.find_exn public_libs_by_package name in
           let db =
@@ -508,17 +554,34 @@ module DB = struct
           name, { scope with db; public_libs }))
       |> Package.Name.Map.of_list_exn
     in
-    { by_dir; by_package; dependency_libs_by_package }
+    { by_dir; by_package; dependency_libs_by_package; public_libs_by_package }
   ;;
 
   let create ~context ~projects_by_root stanzas rocq_stanzas =
     let t = Fdecl.create Dyn.opaque in
-    let* opaque_packages = Opam_package.all context in
+    let* opaque_packages = Opam_package.all context
+    and* mounted = Pkg_sources.mounted context in
     let package_scopes =
       lazy
-        (Package.Name.Map.mapi opaque_packages ~f:(fun name package ->
-           let scope = Package.Name.Map.find_exn (Fdecl.get t).by_package name in
-           Path.build package.paths.target_dir, scope.db))
+        (let scopes = Fdecl.get t in
+         let workspace =
+           Package.Name.Map.mapi opaque_packages ~f:(fun name package ->
+             let scope = Package.Name.Map.find_exn scopes.by_package name in
+             Path.build package.paths.target_dir, scope.db)
+         in
+         List.fold_left mounted ~init:workspace ~f:(fun acc mounted ->
+           let candidate = Pkg_sources.Mounted.candidate mounted in
+           let name = Pkg_sources.Candidate.name candidate in
+           if Pkg_sources.Mounted.is_dune mounted || Package.Name.Map.mem acc name
+           then acc
+           else (
+             let root =
+               (Pkg_sources.Candidate.paths candidate).target_dir |> Path.build
+             in
+             Package.Name.Map.add_exn
+               acc
+               name
+               (root, Package.Name.Map.find_exn scopes.public_libs_by_package name))))
     in
     let* context = Context.DB.get context in
     let* lib_config =
@@ -527,7 +590,14 @@ module DB = struct
     in
     let instrument_with = Context.instrument_with context in
     let+ make_public_libs =
-      let+ installed_libs = Lib.DB.installed context in
+      let* active = Pkg_rules.lock_dir_active (Context.name context) in
+      let+ installed_libs =
+        if active
+        then
+          let* paths = Context.default_ocamlpath context in
+          Lib.DB.of_paths context ~paths
+        else Lib.DB.installed context
+      in
       public_libs
         t
         ~context:(Context.name context)
@@ -538,11 +608,16 @@ module DB = struct
     in
     let public_libs = make_public_libs ~owner:None ~include_owner:true in
     let package_names =
-      Path.Build.Map.values projects_by_root
-      |> List.concat_map ~f:(fun project ->
-        Loaded_project.project project
-        |> Dune_project.including_hidden_packages
-        |> Package.Name.Map.keys)
+      let projects =
+        Path.Build.Map.values projects_by_root
+        |> List.concat_map ~f:(fun project ->
+          Loaded_project.packages project |> Package.Name.Map.keys)
+      in
+      let mounted =
+        List.map mounted ~f:(fun mounted ->
+          Pkg_sources.Mounted.candidate mounted |> Pkg_sources.Candidate.name)
+      in
+      List.sort_uniq (projects @ mounted) ~compare:Package.Name.compare
     in
     let public_libs_by_package =
       Package.Name.Map.of_list_map_exn package_names ~f:(fun name ->
@@ -644,6 +719,13 @@ module DB = struct
       let* context = Context.DB.by_dir scope.root in
       let+ scopes, _ = create_from_stanzas (Context.name context) in
       Package.Name.Map.find_exn scopes.by_package (Package.name package)
+  ;;
+
+  let libs_for_package context name =
+    let+ scopes, _ = create_from_stanzas context in
+    match Package.Name.Map.find scopes.by_package name with
+    | Some scope -> Some scope.db
+    | None -> Package.Name.Map.find scopes.public_libs_by_package name
   ;;
 
   module Lib_entry = struct

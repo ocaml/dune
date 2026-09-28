@@ -107,6 +107,20 @@ let partition t = t.partition
 let output_root t = t.output_root
 let visible_packages t = t.visible_packages
 
+let owner t =
+  match t.identity with
+  | Identity.Workspace _ -> None
+  | Mounted { package; _ } -> Some package
+;;
+
+let packages t =
+  let packages = Dune_project.including_hidden_packages t.project in
+  match t.visible_packages with
+  | None -> packages
+  | Some visible ->
+    Package.Name.Map.filteri packages ~f:(fun name _ -> Package.Name.Set.mem visible name)
+;;
+
 let output_path t source_path =
   Source_path.descendant source_path ~of_:t.source_root
   |> Option.map ~f:(Path.Build.append_local t.output_root)

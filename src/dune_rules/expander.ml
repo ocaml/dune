@@ -929,18 +929,30 @@ let visible_packages t =
   if not lock_dir_active
   then Memo.return Package.Name.Selection.All
   else (
-    match Dune_project.exclusive_package t.project ~dir:t.source_dir with
-    | None -> Memo.return Package.Name.Selection.All
-    | Some pkg_id ->
-      let name = Package.Id.name pkg_id in
-      let+ selected =
-        let+ universe = Memo.exec package_universe context in
-        Dune_pkg.Package_universe.selected_dependencies_of_local_package
-          universe
-          name
-          ~with_test:true
-      in
-      Package.Name.Selection.Only (Package.Name.Set.of_list (name :: selected)))
+    match Pkg_sources.package_of_artifact_path t.dir with
+    | Some name ->
+      let* candidate = Pkg_sources.find_candidate context name in
+      (match candidate with
+       | None ->
+         Code_error.raise
+           "Mounted package has no selected source"
+           [ "package", Package.Name.to_dyn name ]
+       | Some candidate ->
+         let+ depends = Pkg_sources.Candidate.dependencies candidate in
+         Package.Name.Selection.Only (Package.Name.Set.add depends name))
+    | None ->
+      (match Dune_project.exclusive_package t.project ~dir:t.source_dir with
+       | None -> Memo.return Package.Name.Selection.All
+       | Some pkg_id ->
+         let name = Package.Id.name pkg_id in
+         let+ universe = Memo.exec package_universe context in
+         let selected =
+           Dune_pkg.Package_universe.selected_dependencies_of_local_package
+             universe
+             name
+             ~with_test:true
+         in
+         Package.Name.Selection.Only (Package.Name.Set.of_list (name :: selected))))
 ;;
 
 let expand_pform_macro

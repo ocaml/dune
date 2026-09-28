@@ -82,15 +82,15 @@ let get_rules sctx key =
   let* pps =
     Resolve.Memo.List.concat_map pp_names ~f:(fun name ->
       let open Resolve.Memo.O in
-      let* scope =
+      let* libs =
         Resolve.Memo.lift_memo
           (match Lib_name.Map.find opaque_packages name with
-           | None -> Memo.return scope
+           | None -> Memo.return (Scope.libs scope)
            | Some package_name ->
              let open Memo.O in
-             let* package = Opam_package.find (Context.name ctx) package_name in
-             (match package with
-              | Some package -> Scope.DB.for_package scope (Some package.stanza.package)
+             let* libs = Scope.DB.libs_for_package (Context.name ctx) package_name in
+             (match libs with
+              | Some libs -> Memo.return libs
               | None ->
                 User_error.raise
                   [ Pp.textf
@@ -99,7 +99,7 @@ let get_rules sctx key =
                       (Lib_name.to_string name)
                   ]))
       in
-      Lib.DB.resolve_pps (Scope.libs scope) [ Loc.none, name ])
+      Lib.DB.resolve_pps libs [ Loc.none, name ])
   in
   Ppx_driver.build_ppx_driver sctx ~scope ~pps ~pp_names ~target:exe
 ;;

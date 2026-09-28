@@ -75,13 +75,12 @@ struct
       Variable.Package { Package_variable.scope; name }
   ;;
 
-  let subst env self ~src ~dst =
+  let subst_contents env self ~src raw_contents =
     let contents =
-      let contents = Io.read_file_exn src in
       let fname = OpamFilename.of_string (Path.to_string src) in
-      if is_opam_format contents fname
-      then `Opam contents
-      else `Lines (String.split_lines contents)
+      if is_opam_format raw_contents fname
+      then `Opam raw_contents
+      else `Lines (String.split_lines raw_contents)
     in
     let expand =
       match contents with
@@ -112,6 +111,14 @@ struct
       OpamVariable.Full.Map.of_list expanded
     in
     let env var = OpamVariable.Full.Map.find var expansions in
-    Io.with_file_out (Path.build dst) ~f:(fun oc -> expand env (output_string oc))
+    let output = Buffer.create (String.length raw_contents) in
+    expand env (Buffer.add_string output);
+    Buffer.contents output
+  ;;
+
+  let subst env self ~src ~dst =
+    let contents = Io.read_file_exn src in
+    let+ contents = subst_contents env self ~src contents in
+    Io.write_file_exn (Path.build dst) contents
   ;;
 end

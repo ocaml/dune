@@ -26,6 +26,7 @@ module DB : sig
   val find_by_project_root : Context.t -> Path.Source.t option -> t Memo.t
   val find_by_project : Context_name.t -> Dune_project.t -> t Memo.t
   val for_package : t -> Package.t option -> t Memo.t
+  val libs_for_package : Context_name.t -> Package.Name.t -> Lib.DB.t option Memo.t
   val public_libs : Context_name.t -> Lib.DB.t Memo.t
 
   module Lib_entry : sig

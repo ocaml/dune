@@ -183,6 +183,8 @@ module Pkg = struct
 
   type t =
     { id : Id.t
+    ; context : Context_name.t
+    ; native : bool
     ; recipe : Opam_build.Recipe.t
     ; depends : t list
     ; depends_on_dune : bool
@@ -262,17 +264,31 @@ module Pkg = struct
   ;;
 
   let dependency t =
-    Opam_build.Dependency.load
-      t.paths
-      ~variables:(Pkg_info.variables t.info)
-      ~exported_env:t.recipe.exported_env
+    if not t.native
+    then
+      Opam_build.Dependency.load
+        t.paths
+        ~variables:(Pkg_info.variables t.info)
+        ~exported_env:t.recipe.exported_env
+    else
+      let open Action_builder.O in
+      let+ layout =
+        Install_layout.materialize
+          t.context
+          [ { Opam_build.Dependency.paths = t.paths
+            ; files = Section.Map.empty
+            ; variables = Pkg_info.variables t.info
+            ; exported_env = t.recipe.exported_env
+            ; export_paths = t.paths
+            }
+          ]
+      in
+      Install_layout.dependencies layout |> List.hd
   ;;
 
-  let dep t = Dep.file t.paths.target_dir
-
   let package_deps t =
-    deps_closure t
-    |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t -> dep t |> Dep.Set.add acc)
+    Action_builder.List.iter (deps_closure t) ~f:(fun pkg ->
+      Action_builder.ignore (dependency pkg))
   ;;
 
   let install_roots t =
@@ -371,16 +387,14 @@ module Action_expander = struct
 
     let of_closure closure =
       Memo.parallel_map closure ~f:(fun (pkg : Pkg.t) ->
-        let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-        Action_builder.evaluate_and_collect_facts cookie
-        |> Memo.map ~f:(fun ((cookie : Install_cookie.t), _) -> pkg, cookie))
-      |> Memo.map ~f:(fun (cookies : (Pkg.t * Install_cookie.t) list) ->
+        Action_builder.evaluate_and_collect_facts (Pkg.dependency pkg) >>| fst)
+      |> Memo.map ~f:(fun dependencies ->
         List.fold_left
-          cookies
+          dependencies
           ~init:empty
-          ~f:(fun { binaries; dep_info } ((pkg : Pkg.t), (cookie : Install_cookie.t)) ->
+          ~f:(fun { binaries; dep_info } (dependency : Opam_build.Dependency.t) ->
             let binaries =
-              Section.Map.Multi.find cookie.files Bin
+              Section.Map.Multi.find dependency.files Bin
               |> List.fold_left ~init:binaries ~f:(fun acc bin ->
                 Filename.Map.set
                   acc
@@ -389,12 +403,10 @@ module Action_expander = struct
                   bin)
             in
             let dep_info =
-              let variables =
-                Package_variable_name.Map.superpose
-                  (Package_variable_name.Map.of_list_exn cookie.variables)
-                  (Pkg_info.variables pkg.info)
-              in
-              Package.Name.Map.add_exn dep_info pkg.info.name (variables, pkg.paths)
+              Package.Name.Map.add_exn
+                dep_info
+                dependency.paths.name
+                (dependency.variables, dependency.paths)
             in
             { binaries; dep_info }))
     ;;
@@ -811,6 +823,18 @@ end = struct
              in
              Option.some_if (Pkg_digest.equal pkg_digest selected) candidate)
       in
+      let context = Package_universe.context_name package_universe in
+      let* native =
+        match mounted with
+        | None -> Memo.return false
+        | Some candidate ->
+          let+ mounted =
+            Pkg_sources.find_mounted context (Pkg_sources.Candidate.name candidate)
+          in
+          (match mounted with
+           | None -> false
+           | Some mounted -> Pkg_sources.Mounted.is_dune mounted)
+      in
       let id = Pkg.Id.gen () in
       let write_paths =
         match mounted with
@@ -823,7 +847,18 @@ end = struct
       let build_command = Option.map build_command ~f:relocate_build in
       let paths =
         let paths = Paths.map_path write_paths ~f:Path.build in
-        if
+        if native
+        then (
+          let prefix =
+            Install_layout.root context (Package.Name.Set.singleton info.name)
+            |> Path.build
+          in
+          let paths = Paths.with_prefix paths prefix in
+          let candidate = Option.value_exn mounted in
+          { paths with
+            source_dir = Path.build (Pkg_sources.Candidate.artifact_root candidate)
+          })
+        else if
           (not (Pkg_toolchain.is_compiler_package_with_toolchains_enabled info.name))
           || is_compiler_version_relocatable info
           || has_relocatable_compiler_marker info depends
@@ -859,6 +894,8 @@ end = struct
       in
       let t =
         { Pkg.id
+        ; context
+        ; native
         ; recipe =
             { Opam_build.Recipe.build = build_command
             ; install = install_command
@@ -1100,11 +1137,13 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
            ~write_paths:pkg.write_paths
            ~source)
     in
-    let deps = Dep.Set.union source_deps (Pkg.package_deps pkg) in
     let deps =
-      if pkg.depends_on_dune then Dep.Set.add deps (Lazy.force dune_dep) else deps
+      if pkg.depends_on_dune
+      then Dep.Set.add source_deps (Lazy.force dune_dep)
+      else source_deps
     in
-    let* () = Action_builder.deps deps in
+    let* () = Action_builder.deps deps
+    and* () = Pkg.package_deps pkg in
     let { Action_builder.With_targets.build; targets = _ } =
       Action_builder.progn [ progress; action ]
     in
@@ -1161,8 +1200,8 @@ let setup_pkg_install_alias =
          |> Memo.parallel_map ~f:(fun { DB.Pkg_table.pkg_digest; _ } ->
            Resolve.resolve db Loc.none pkg_digest (Dependencies ctx_name)))
     in
-    List.map packages ~f:(fun (pkg : Pkg.t) -> Path.build pkg.write_paths.target_dir)
-    |> Action_builder.paths
+    Action_builder.List.iter packages ~f:(fun pkg ->
+      Action_builder.ignore (Pkg.dependency pkg))
   in
   fun ~dir ctx_name ->
     (* We only need to build when the build_dir is the root of the context *)
@@ -1418,10 +1457,19 @@ let lock_dir_binaries =
            (describe_packages packages)
            (Context_name.to_string context)))
     (fun (context, packages) ->
-       let+ { binaries; dep_info = _ } =
-         project_deps ~packages context >>= Action_expander.Artifacts_and_deps.of_closure
+       let* packages = project_deps ~packages context in
+       let native, opaque =
+         List.partition_map packages ~f:(fun (pkg : Pkg.t) ->
+           if pkg.native then Left pkg else Right pkg)
        in
-       binaries)
+       let* { binaries; dep_info = _ } =
+         Action_expander.Artifacts_and_deps.of_closure opaque
+       in
+       let+ native =
+         Package.Name.Set.of_list_map native ~f:(fun (pkg : Pkg.t) -> pkg.info.name)
+         |> Install_layout.binaries context
+       in
+       Filename.Map.superpose native binaries)
 ;;
 
 let which ~packages context program =
@@ -1431,7 +1479,10 @@ let which ~packages context program =
 
 let ocamlpath universe =
   let+ all_project_deps = all_deps universe in
-  let env = Pkg.build_env_of_deps all_project_deps in
+  let env =
+    List.filter all_project_deps ~f:(fun (pkg : Pkg.t) -> not pkg.native)
+    |> Pkg.build_env_of_deps
+  in
   Env.Map.find env Dune_findlib.Config.ocamlpath_var
   |> Option.value ~default:[]
   |> List.map ~f:(function
@@ -1504,7 +1555,10 @@ let find_package ctx pkg =
   | false -> Memo.return None
   | true ->
     let+ pkg = resolve_pkg_dep ctx (Loc.none, pkg) in
-    Some (Action_builder.deps (Dep.Set.add (Pkg.package_deps pkg) (Pkg.dep pkg)))
+    Some
+      (let open Action_builder.O in
+       let* () = Pkg.package_deps pkg in
+       Action_builder.ignore (Pkg.dependency pkg))
 ;;
 
 let package_prefixes ctx =
@@ -1519,10 +1573,8 @@ let package_prefixes ctx =
 
 let resolve_installed_file ~loc ~context_name ~pkg_name ~section ~file =
   let open Action_builder.O in
-  let* { paths; _ } =
-    Action_builder.of_memo (resolve_pkg_dep context_name (loc, pkg_name))
-  in
-  let* { files; _ } = (Pkg_installed.of_paths paths).cookie in
+  let* pkg = Action_builder.of_memo (resolve_pkg_dep context_name (loc, pkg_name)) in
+  let* { Opam_build.Dependency.paths; files; _ } = Pkg.dependency pkg in
   let section_dir =
     let install_paths = Lazy.force paths.install_paths in
     Install.Paths.get install_paths section

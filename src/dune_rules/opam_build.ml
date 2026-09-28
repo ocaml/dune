@@ -35,6 +35,39 @@ module Variable = struct
     | L s -> List.map s ~f:(fun x -> Value.String x)
   ;;
 
+  let package_default ~present name =
+    match Package_variable_name.to_string name with
+    | "pinned" -> Some (B false)
+    | "enable" -> Some (S (if present then "enable" else "disable"))
+    | "installed" -> Some (B present)
+    | "build-id" ->
+      (* Dune does not cache across Opam switches. This dummy value cannot
+         collide with real Opam build IDs. *)
+      Some (S "d00ed00ed00ed00ed00ed00ed00ed00e")
+    | _ -> None
+  ;;
+
+  let context ~solver_env (variable : Pform.Var.Pkg.t) =
+    let system name =
+      Dune_pkg.Solver_env.get solver_env name
+      |> Option.map ~f:Dune_pkg.Variable_value.to_opam_variable_contents
+      |> Option.value ~default:(S "")
+      |> Option.some
+    in
+    match variable with
+    | Switch -> Some (S "dune")
+    | Jobs -> Some (S (Int.to_string !Clflags.concurrency))
+    | User -> Some (S (Unix.getlogin ()))
+    | Group -> Some (S (Unix.getgid () |> Unix.getgrgid).gr_name)
+    | Os Os -> system Package_variable_name.os
+    | Os Os_version -> system Package_variable_name.os_version
+    | Os Os_distribution -> system Package_variable_name.os_distribution
+    | Os Os_family -> system Package_variable_name.os_family
+    | Arch -> system Package_variable_name.arch
+    | Sys_ocaml_version -> system Package_variable_name.sys_ocaml_version
+    | Build | Prefix | Section_dir _ -> None
+  ;;
+
   let of_values : dir:Path.t -> Value.t list -> value =
     fun ~dir xs ->
     match List.map xs ~f:(Value.to_string ~dir) with
@@ -527,39 +560,17 @@ module Action_expander = struct
       | Stublibs -> Path.relative roots.lib_root "stublibs"
     ;;
 
-    let sys_poll_var accessor =
-      accessor Lock_dir.Sys_vars.poll
-      |> Memo.Lazy.force
-      >>| function
-      | Some v -> [ Value.String v ]
-      | None ->
-        (* TODO: in OPAM an unset variable evaluates to false, but we
-           can't represent that in a string so it evaluates to an empty
-           string instead *)
-        [ Value.String "" ]
-    ;;
-
     let expand_pkg (paths : Path.t Paths.t) (pform : Pform.Var.Pkg.t) =
       match pform with
-      | Switch -> Memo.return [ Value.String "dune" ]
-      | Os Os -> sys_poll_var (fun { os; _ } -> os)
-      | Os Os_version -> sys_poll_var (fun { os_version; _ } -> os_version)
-      | Os Os_distribution -> sys_poll_var (fun { os_distribution; _ } -> os_distribution)
-      | Os Os_family -> sys_poll_var (fun { os_family; _ } -> os_family)
-      | Sys_ocaml_version ->
-        sys_poll_var (fun { sys_ocaml_version; _ } -> sys_ocaml_version)
       | Build -> Memo.return [ Value.Dir paths.source_dir ]
       | Prefix -> Memo.return [ Value.Dir paths.prefix ]
-      | User -> Memo.return [ Value.String (Unix.getlogin ()) ]
-      | Jobs -> Memo.return [ Value.String (Int.to_string !Clflags.concurrency) ]
-      | Arch -> sys_poll_var (fun { arch; _ } -> arch)
-      | Group ->
-        let group = Unix.getgid () |> Unix.getgrgid in
-        Memo.return [ Value.String group.gr_name ]
       | Section_dir section ->
         let roots = Paths.install_roots paths in
         let dir = section_dir_of_root roots section in
         Memo.return [ Value.Dir dir ]
+      | Switch | Os _ | Sys_ocaml_version | User | Jobs | Arch | Group ->
+        let+ solver_env = Lock_dir.Sys_vars.solver_env in
+        Variable.context ~solver_env pform |> Option.value_exn |> Variable.dune_value
     ;;
 
     let expand_pkg_macro ~loc (paths : _ Paths.t) deps macro_invocation =
@@ -583,34 +594,25 @@ module Action_expander = struct
         | None -> Package_variable_name.Map.empty, None
         | Some (var, paths) -> var, Some paths
       in
-      match Package_variable_name.Map.find variables variable_name with
-      | Some v -> Memo.return @@ Ok (Variable.dune_value v)
+      match
+        Option.first_some
+          (Package_variable_name.Map.find variables variable_name)
+          (Variable.package_default ~present:(Option.is_some paths) variable_name)
+      with
+      | Some value -> Memo.return (Ok (Variable.dune_value value))
       | None ->
-        let present = Option.is_some paths in
-        (* TODO we should be looking it up in all packages now *)
-        (match Package_variable_name.to_string variable_name with
-         | "pinned" -> Memo.return @@ Ok [ Value.false_ ]
-         | "enable" ->
-           Memo.return @@ Ok [ Value.String (if present then "enable" else "disable") ]
-         | "installed" -> Memo.return @@ Ok [ Value.String (Bool.to_string present) ]
-         | "build-id" ->
-           (* build-id is used by some packages (e.g., relocatable-compiler) for
-              caching across opam switches. Since dune doesn't do this, we use a
-              fixed dummy value that won't collide with real opam build-ids. *)
-           Memo.return @@ Ok [ Value.String "d00ed00ed00ed00ed00ed00ed00ed00e" ]
-         | _ ->
-           (match paths with
+        (match paths with
+         | None -> Memo.return (Error (`Undefined_pkg_var variable_name))
+         | Some paths ->
+           (match
+              Pform.Var.Pkg.Section.of_string
+                (Package_variable_name.to_string variable_name)
+            with
             | None -> Memo.return (Error (`Undefined_pkg_var variable_name))
-            | Some paths ->
-              (match
-                 Pform.Var.Pkg.Section.of_string
-                   (Package_variable_name.to_string variable_name)
-               with
-               | None -> Memo.return (Error (`Undefined_pkg_var variable_name))
-               | Some section ->
-                 let section = dune_section_of_pform section in
-                 let install_paths = Paths.install_paths paths in
-                 Memo.return @@ Ok [ Value.Dir (Install.Paths.get install_paths section) ])))
+            | Some section ->
+              let section = dune_section_of_pform section in
+              let install_paths = Paths.install_paths paths in
+              Memo.return (Ok [ Value.Dir (Install.Paths.get install_paths section) ])))
     ;;
 
     let expand_pform

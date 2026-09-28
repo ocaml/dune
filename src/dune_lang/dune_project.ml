@@ -798,6 +798,25 @@ let filter_packages t ~f =
   { t with packages }
 ;;
 
+let set_package_version t ~package:name ~version =
+  let set_version packages =
+    match Package.Name.Map.find packages name with
+    | None -> packages
+    | Some package ->
+      let package =
+        Package.set_version_and_info
+          package
+          ~version:(Some version)
+          ~info:(Package.info package)
+      in
+      Package.Name.Map.set packages name package
+  in
+  { t with
+    packages = set_version t.packages
+  ; including_hidden_packages = set_version t.including_hidden_packages
+  }
+;;
+
 let including_hidden_packages t = t.including_hidden_packages
 
 let make_packages

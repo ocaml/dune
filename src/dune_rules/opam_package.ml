@@ -75,3 +75,34 @@ let dependency { paths; stanza; _ } =
          ~dev:stanza.dev)
     ~exported_env:stanza.recipe.exported_env
 ;;
+
+let opaque_names context =
+  let+ workspace = all context
+  and+ mounted = Pkg_sources.mounted context in
+  List.fold_left
+    mounted
+    ~init:(Package.Name.Set.of_keys workspace)
+    ~f:(fun names mounted ->
+      if Pkg_sources.Mounted.is_dune mounted
+      then names
+      else
+        Package.Name.Set.add
+          names
+          (Pkg_sources.Mounted.candidate mounted |> Pkg_sources.Candidate.name))
+;;
+
+let find_opaque context name =
+  let* workspace = find context name in
+  match workspace with
+  | Some package -> Memo.return (Some (package.paths.target_dir, dependency package))
+  | None ->
+    let* mounted = Pkg_sources.find_mounted context name in
+    (match mounted with
+     | None -> Memo.return None
+     | Some mounted when Pkg_sources.Mounted.is_dune mounted -> Memo.return None
+     | Some mounted ->
+       let candidate = Pkg_sources.Mounted.candidate mounted in
+       let root = (Pkg_sources.Candidate.paths candidate).target_dir in
+       let+ dependency = Pkg_rules.dependency context name in
+       Option.map dependency ~f:(fun dependency -> root, dependency))
+;;

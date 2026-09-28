@@ -49,20 +49,30 @@ let execution_parameters ~sandbox_actions =
     else (
       match source_backed_dir path with
       | None -> Memo.return ep
-      | Some path when Option.is_some (Pkg_sources.package_of_artifact_path path) ->
-        Memo.return ep
       | Some path ->
-        let+ loaded_project = Dune_load.find_loaded_project ~dir:path in
-        let action_project_root =
-          Path.Local.descendant
-            (Path.Build.local (Loaded_project.output_root loaded_project))
-            ~of_:(Path.Build.local (Context_name.build_dir context))
-          |> Option.value_exn
+        let* opaque =
+          match Pkg_sources.package_of_artifact_path path with
+          | None -> Memo.return false
+          | Some name ->
+            let+ mounted = Pkg_sources.find_mounted context name in
+            (match mounted with
+             | None -> true
+             | Some mounted -> not (Pkg_sources.Mounted.is_dune mounted))
         in
-        Dune_project.update_execution_parameters
-          (Loaded_project.project loaded_project)
-          ~action_project_root
-          ep)
+        if opaque
+        then Memo.return ep
+        else
+          let+ loaded_project = Dune_load.find_loaded_project ~dir:path in
+          let action_project_root =
+            Path.Local.descendant
+              (Path.Build.local (Loaded_project.output_root loaded_project))
+              ~of_:(Path.Build.local (Context_name.build_dir context))
+            |> Option.value_exn
+          in
+          Dune_project.update_execution_parameters
+            (Loaded_project.project loaded_project)
+            ~action_project_root
+            ep)
   in
   let memo =
     let module Input = struct

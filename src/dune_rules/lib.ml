@@ -2452,7 +2452,19 @@ module DB = struct
           Findlib.all_packages findlib >>| List.map ~f:Dune_package.Entry.name)
   ;;
 
-  let with_parent t ~parent = { t with parent }
+  let with_parent t ~parent =
+    let db =
+      create
+        ~parent
+        ~resolve:t.resolve
+        ~resolve_lib_id:t.resolve_lib_id
+        ~all:(fun () -> Memo.Lazy.force t.all)
+        ~instrument_with:t.instrument_with
+        ()
+    in
+    { db with package_scopes = t.package_scopes }
+  ;;
+
   let with_package_scopes t ~package_scopes = { t with package_scopes }
 
   let from_findlib context findlib =

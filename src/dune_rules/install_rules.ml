@@ -651,7 +651,7 @@ end = struct
   let package_entries (sctx, package_name) =
     let context = Super_context.context sctx in
     let ctx = Context.build_context context in
-    let* packages = Dune_load.packages () in
+    let* packages = Dune_load.packages_for_context ctx.name in
     match Package.Name.Map.find packages package_name with
     | None -> Memo.return []
     | Some pkg ->
@@ -1241,7 +1241,11 @@ let () =
       if Package.Name.Map.mem packages package
       then
         Opam_package.find context_name package >>| Option.map ~f:Opam_package.dependency
-      else Pkg_rules.dependency context_name package
+      else
+        let* mounted = Pkg_sources.find_mounted context_name package in
+        match mounted with
+        | Some mounted when Pkg_sources.Mounted.is_dune mounted -> Memo.return None
+        | _ -> Pkg_rules.dependency context_name package
     in
     match opaque with
     | None ->

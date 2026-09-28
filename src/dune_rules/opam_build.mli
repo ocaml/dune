@@ -12,6 +12,10 @@ module Variable : sig
   type t = Package_variable_name.t * value
 
   val dune_value : value -> Value.t list
+  val package_default : present:bool -> Package_variable_name.t -> value option
+
+  (** Build-independent values. Paths and install sections have no value here. *)
+  val context : solver_env:Dune_pkg.Solver_env.t -> Pform.Var.Pkg.t -> value option
 end
 
 module Paths : sig

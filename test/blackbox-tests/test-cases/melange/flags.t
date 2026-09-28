@@ -136,3 +136,116 @@ But it is disabled by default
   > EOF
 
   $ dune build output/main.js
+
+The library and env fields keep the old spelling without warnings before 3.25.
+Common flags apply to both compilers, while Melange flags inherit from env and
+support includes.
+
+  $ mkdir lib
+  $ cd lib
+  $ make_melange_project 3.24 1.0
+  $ echo 'let value = 42' > foo.ml
+  $ echo '(-w +42)' > flags.sexp
+  $ cat > dune <<'EOF'
+  > (env
+  >  (_ (melange.compile_flags -w +41)))
+  > (library
+  >  (name foo)
+  >  (modes byte melange)
+  >  (flags -w +43)
+  >  (melange.compile_flags :standard (:include flags.sexp)))
+  > EOF
+
+  $ dune build foo.cma .foo.objs/melange/foo.cmj
+  $ dune trace cat | jq_dune -sc '
+  > [.[] | processes
+  >  | select(.args.target_files // []
+  >           | any(endswith(".cmo") or endswith(".cmj")))
+  >  | {target: (.args.target_files
+  >              | map(select(endswith(".cmo") or endswith(".cmj")))
+  >              | first | basename),
+  >     flags: (.args.process_args | map(select(startswith("+"))))}]
+  > | sort_by(.target)'
+  [{"target":"foo.cmj","flags":["+43","+41","+42"]},{"target":"foo.cmo","flags":["+43"]}]
+
+The old spelling should be deprecated from 3.25, but currently emits no warning.
+
+  $ make_melange_project 3.25 1.0
+  $ dune build foo.cma .foo.objs/melange/foo.cmj
+
+The new spelling should require Dune 3.25, but is currently unknown in both
+language versions.
+
+  $ sed 's/melange.compile_flags/melange.flags/g' dune > dune.new
+  $ mv dune.new dune
+  $ make_melange_project 3.24 1.0
+  $ dune build foo.cma .foo.objs/melange/foo.cmj
+  File "dune", line 2, characters 5-18:
+  2 |  (_ (melange.flags -w +41)))
+           ^^^^^^^^^^^^^
+  Error: Unknown field "melange.flags"
+  [1]
+
+  $ make_melange_project 3.25 1.0
+  $ echo 'let another = 43' >> foo.ml
+  $ dune build foo.cma .foo.objs/melange/foo.cmj
+  File "dune", line 2, characters 5-18:
+  2 |  (_ (melange.flags -w +41)))
+           ^^^^^^^^^^^^^
+  Error: Unknown field "melange.flags"
+  [1]
+  $ dune trace cat | jq_dune -sc '
+  > [.[] | processes
+  >  | select(.args.target_files // []
+  >           | any(endswith(".cmo") or endswith(".cmj")))
+  >  | {target: (.args.target_files
+  >              | map(select(endswith(".cmo") or endswith(".cmj")))
+  >              | first | basename),
+  >     flags: (.args.process_args | map(select(startswith("+"))))}]
+  > | sort_by(.target)'
+  []
+
+Both spellings in the same library or env configuration should be rejected.
+
+  $ cat > dune <<'EOF'
+  > (library
+  >  (name foo)
+  >  (modes melange)
+  >  (melange.flags)
+  >  (melange.compile_flags))
+  > EOF
+  $ dune build @check
+  File "dune", line 4, characters 2-15:
+  4 |  (melange.flags)
+        ^^^^^^^^^^^^^
+  Error: Unknown field "melange.flags"
+  [1]
+
+  $ cat > dune <<'EOF'
+  > (env
+  >  (_
+  >   (melange.flags)
+  >   (melange.compile_flags)))
+  > EOF
+  $ dune build @check
+  File "dune", line 3, characters 3-16:
+  3 |   (melange.flags)
+         ^^^^^^^^^^^^^
+  Error: Unknown field "melange.flags"
+  [1]
+
+The new field must still require the Melange extension.
+
+  $ make_dune_project 3.25
+  $ cat > dune <<'EOF'
+  > (library
+  >  (name foo)
+  >  (modes byte)
+  >  (melange.flags))
+  > EOF
+  $ dune build @check
+  File "dune", line 4, characters 2-15:
+  4 |  (melange.flags))
+        ^^^^^^^^^^^^^
+  Error: Unknown field "melange.flags"
+  [1]

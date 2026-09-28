@@ -20,7 +20,7 @@ module Immutable : sig
   val to_array_unsafe : 'a t -> 'a array
 
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
-  val get : 'a t -> int -> 'a
+  external get : 'a t -> int -> 'a = "%array_safe_get"
   val of_array : 'a array -> 'a t
   val to_list : 'a t -> 'a list
   val of_list : 'a list -> 'a t

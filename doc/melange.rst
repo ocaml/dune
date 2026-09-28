@@ -88,8 +88,7 @@ The selected modes control which compiler is used, and the Melange-specific
 library fields let one stanza describe sources, dependencies, and preprocessing
 that differ between OCaml and Melange builds.
 
-To use Melange-only fields that are marked as available since Dune 3.24, the
-project must use a Dune language version of at least 3.24:
+Certain Melange-only fields are only available from Dune 3.24:
 
 .. code:: dune
 

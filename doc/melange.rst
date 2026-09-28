@@ -215,12 +215,12 @@ preprocessing:
 .. code:: dune
 
   (library
-   (name reason_ui)
+   (name portable_ui)
    (modes :standard melange)
-   (modules reason_shared reason_ppx_user)
+   (modules shared components)
    (preprocess
     (action
-     (run sh %{dep:pp_reason.sh} %{input-file})))
+     (run sh %{dep:pp_ocaml.sh} %{input-file})))
    (melange.preprocess
     (pps melange.ppx)))
 

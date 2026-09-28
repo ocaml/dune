@@ -45,6 +45,9 @@
                     utop = osuper.utop.overrideAttrs {
                       dontGzipMan = true;
                     };
+                    lambda-term = osuper.lambda-term.overrideAttrs {
+                      dontGzipMan = true;
+                    };
                     odoc-parser = osuper.odoc-parser.overrideAttrs (old: {
                       doCheck = false;
                     });

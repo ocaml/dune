@@ -2633,6 +2633,16 @@ let find_package ctx pkg =
     Some (Action_builder.deps (Dep.Set.add (Pkg.package_deps pkg) (Pkg.dep pkg)))
 ;;
 
+let package_prefixes ctx =
+  lock_dir_active ctx
+  >>= function
+  | false -> Memo.return []
+  | true ->
+    all_project_deps ctx
+    >>| List.map ~f:(fun { Pkg.info = { name; _ }; paths = { Paths.prefix; _ }; _ } ->
+      prefix, name)
+;;
+
 let resolve_installed_file ~loc ~context_name ~pkg_name ~section ~file =
   let open Action_builder.O in
   let* { paths; _ } =

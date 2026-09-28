@@ -51,7 +51,7 @@ end = struct
             let status = Lib_info.status info in
             match status with
             | Private (scope_name, _) -> Some scope_name
-            | Installed_private | Public _ | Installed -> None
+            | Installed_private _ | Public _ | Installed _ -> None
           in
           Option.merge acc scope_for_key ~f:(fun a b ->
             assert (Dune_project.equal a b);

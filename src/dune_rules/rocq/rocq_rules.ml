@@ -396,20 +396,19 @@ let ml_flags_and_plugin_ocamlpath
       libs_of_theory ~lib_db ~theories_deps buildable.plugins
     in
     let plugin_loc = List.hd_opt buildable.plugins |> Option.map ~f:fst in
-    List.iter all_libs ~f:(fun lib ->
-      match Lib_info.status (Lib.info lib) with
-      | Public _ | Installed -> ()
-      | Installed_private | Private _ ->
-        let name = Lib.name lib |> Lib_name.to_string in
-        User_error.raise
-          ?loc:plugin_loc
-          [ Pp.textf "Using private library %s as a Rocq plugin is not supported" name ]);
+    let plugin_packages =
+      List.fold_left all_libs ~init:Package.Name.Set.empty ~f:(fun packages lib ->
+        match Lib_info.status (Lib.info lib) with
+        | Installed _ -> packages
+        | Public (_, pkg) -> Package.Name.Set.add packages (Package.name pkg)
+        | Installed_private _ | Private _ ->
+          let name = Lib.name lib |> Lib_name.to_string in
+          User_error.raise
+            ?loc:plugin_loc
+            [ Pp.textf "Using private library %s as a Rocq plugin is not supported" name ])
+    in
     let findlib_plugin_flags = Util.include_flags all_libs in
     let ml_flags = Command.Args.S [ findlib_plugin_flags ] in
-    let plugin_packages =
-      List.filter_map all_libs ~f:(fun lib -> Lib.info lib |> Lib_info.package)
-      |> Package.Name.Set.of_list
-    in
     ml_flags, plugin_packages
   in
   let plugin_ocamlpath =

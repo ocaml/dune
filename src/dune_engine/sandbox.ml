@@ -347,7 +347,7 @@ let create_real
   let t =
     { dir = sandbox_dir
     ; snapshot = None
-    ; deps
+    ; deps = Path.Set.empty
     ; mutex = Fiber.Mutex.create ()
     ; mode
     ; loc = rule_loc
@@ -360,7 +360,8 @@ let create_real
       Path.rm_rf (Path.build sandbox_dir);
       create_dir t rule_dir;
       create_dirs t dirs;
-      link_deps t ~deps)
+      link_deps t ~deps:(unlinked_deps t deps);
+      t.deps <- deps)
   in
   Dune_trace.emit ~buffered:true Sandbox (fun () ->
     Dune_trace.Event.sandbox `Create ~start ~stop ~queued t.loc ~dir:t.dir);

@@ -155,16 +155,8 @@ the OCaml modes of a mixed-mode library.
 
   $ (unset INSIDE_DUNE; PATH=$PWD/_path dune build --root mixed-default \
   >    --no-print-directory @all @check)
-  File "dune", line 4, characters 13-20:
-  4 |  (modes byte melange))
-                   ^^^^^^^
-  Error: 'melange' is available only when melange is enabled in the
-  dune-project or workspace file. You must enable it using (using melange 1.0)
-  in the file.
-  [1]
   $ test -f mixed-default/_build/default/mylib.cma && \
   >   find mixed-default/_build/default -name '*.cmj'
-  [1]
 
 Shared per-module settings may mention Melange-only modules even when melc is
 unavailable:

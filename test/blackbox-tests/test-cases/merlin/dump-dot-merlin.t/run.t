@@ -12,6 +12,7 @@ Dumps `.merlin` contents for source directories with spaces.
   S $TESTCASE_ROOT/src with spaces
   INDEX $TESTCASE_ROOT/_build/default/p p/.pp.eobjs/cctx.ocaml-index
   INDEX $TESTCASE_ROOT/_build/default/src with spaces/.foo.eobjs/cctx.ocaml-index
+  USE_PPX_CACHE
   # FLG -pp ''\''$TESTCASE_ROOT/_build/default/p p/pp.exe'\'''
   # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g
   
@@ -23,5 +24,6 @@ Dumps `.merlin` contents for source directories with spaces.
   S $TESTCASE_ROOT/p p
   INDEX $TESTCASE_ROOT/_build/default/p p/.pp.eobjs/cctx.ocaml-index
   INDEX $TESTCASE_ROOT/_build/default/src with spaces/.foo.eobjs/cctx.ocaml-index
+  USE_PPX_CACHE
   # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g
   

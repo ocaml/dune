@@ -141,7 +141,8 @@ Is it expected that the suffix for implementation and interface is the same ?
    (FLG
     (-open Dune__exe))
    (UNIT_NAME dune__exe__Pped)
-   (SUFFIX ".mlx .mlx"))
+   (SUFFIX ".mlx .mlx")
+   (USE_PPX_CACHE))
 
   $ ./merlin_conf.sh pped.mli | diff pped.out -
 
@@ -167,15 +168,13 @@ As expected, the reader is not communicated for the standard mli
    (FLG
     (-open Dune__exe))
    (UNIT_NAME dune__exe__Mel)
-   (SUFFIX ".mlx .mlx"))
+   (SUFFIX ".mlx .mlx")
+   (USE_PPX_CACHE))
 
 The reader is set for the mlx file
   $ ./merlin_conf.sh mel.mlx | diff mel.out -
-  19c19,20
-  <  (SUFFIX ".mlx .mlx"))
-  ---
-  >  (SUFFIX ".mlx .mlx")
-  >  (READER (mlx)))
+  19a20
+  >  (READER (mlx))
   [1]
 
 Unconventional file names:
@@ -206,7 +205,8 @@ found, then it'll make a guess that the file was preprocessed into a file with
    (FLG
     (-open Dune__exe))
    (UNIT_NAME dune__exe__Cppomod)
-   (SUFFIX ".mlx .mlx"))
+   (SUFFIX ".mlx .mlx")
+   (USE_PPX_CACHE))
 
   $ ./merlin_conf.sh cppomod.ml | diff cppomod.out -
 
@@ -237,7 +237,8 @@ We could expect dune to get the wrongext module configuration
    (FLG
     (-open Dune__exe))
    (UNIT_NAME dune__exe__Wrongext)
-   (SUFFIX ".mlx .mlx"))
+   (SUFFIX ".mlx .mlx")
+   (USE_PPX_CACHE))
 
 We also have generated.ml and generatedx.mlx promoted:
   $ ls -1 . | grep generated
@@ -264,7 +265,8 @@ It should be possible to get its merlin configuration as well:
    (FLG
     (-open Dune__exe))
    (UNIT_NAME dune__exe__Generated)
-   (SUFFIX ".mlx .mlx"))
+   (SUFFIX ".mlx .mlx")
+   (USE_PPX_CACHE))
   $ ./merlin_conf.sh generatedx.mlx
   ((INDEX $TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
@@ -285,4 +287,5 @@ It should be possible to get its merlin configuration as well:
     (-open Dune__exe))
    (UNIT_NAME dune__exe__Generatedx)
    (SUFFIX ".mlx .mlx")
-   (READER (mlx)))
+   (READER (mlx))
+   (USE_PPX_CACHE))

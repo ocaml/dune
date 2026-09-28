@@ -607,6 +607,7 @@ let setup_emit_cmj_rules
         ~modules
         ~libname:None
         ~preprocess:(Preprocess.Per_module.without_instrumentation mel.preprocess.config)
+        ~preprocessor_deps:mel.preprocess.preprocessor_deps
         ~obj_dir
         ~ident:merlin_ident
         ~dialects:(Dune_project.dialects (Scope.project scope))

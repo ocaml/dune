@@ -31,6 +31,7 @@ Generates Merlin config for executables using `future_syntax` preprocessing.
   ["S","$TESTCASE_ROOT"]
   ["FLG",["-w","-40","-g"]]
   ["UNIT_NAME","dune__exe__Pp_future_syntax"]
+  ["USE_PPX_CACHE"]
   "Pp_future_syntax: _build/default/pp_future_syntax.ml"
   ["INDEX","$TESTCASE_ROOT/_build/default/.pp_future_syntax.eobjs/cctx.ocaml-index"]
   ["STDLIB","/OCAMLC_WHERE"]
@@ -40,6 +41,7 @@ Generates Merlin config for executables using `future_syntax` preprocessing.
   ["S","$TESTCASE_ROOT"]
   ["FLG",["-w","-40","-g"]]
   ["UNIT_NAME","dune__exe__Pp_future_syntax"]
+  ["USE_PPX_CACHE"]
   "Pp_future_syntax: _build/default/pp_future_syntax.mli"
   ["INDEX","$TESTCASE_ROOT/_build/default/.pp_future_syntax.eobjs/cctx.ocaml-index"]
   ["STDLIB","/OCAMLC_WHERE"]
@@ -49,3 +51,4 @@ Generates Merlin config for executables using `future_syntax` preprocessing.
   ["S","$TESTCASE_ROOT"]
   ["FLG",["-w","-40","-g"]]
   ["UNIT_NAME","dune__exe__Pp_future_syntax"]
+  ["USE_PPX_CACHE"]

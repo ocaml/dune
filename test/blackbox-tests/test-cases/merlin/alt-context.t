@@ -58,14 +58,14 @@ Request config for file in alt context using --context
   $ query_ocaml_merlin_pp "$FILE2" --context alt | grep -i "$lib2" | sed 's/^[^:]*:[^:]*://'
   ((INDEX $TESTCASE_ROOT/_build/alt/.bar.objs/cctx.ocaml-index)
    (B $TESTCASE_ROOT/_build/alt/.bar.objs/byte)
-   (UNIT_NAME bar))
+   (UNIT_NAME bar)
 
 Request config for default context without using --context
 
   $ query_ocaml_merlin_pp "$FILE1" | grep -i "$lib1" | sed 's/^[^:]*:[^:]*://'
    (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (B $TESTCASE_ROOT/_build/default/.foo.objs/byte)
-   (UNIT_NAME foo))
+   (UNIT_NAME foo)
 
 Request config for default context using --context
 

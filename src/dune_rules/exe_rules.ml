@@ -348,6 +348,7 @@ let executables_rules
       ~obj_dir
       ~preprocess:
         (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess.config)
+      ~preprocessor_deps:exes.buildable.preprocess.preprocessor_deps
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Merlin_ident.for_exe_target (Executables.exe_target exes))
       ~for_

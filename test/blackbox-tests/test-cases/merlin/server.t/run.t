@@ -29,7 +29,8 @@
      -g))
    (FLG
     (-open Dune__exe))
-   (UNIT_NAME dune__exe__Main))
+   (UNIT_NAME dune__exe__Main)
+   (USE_PPX_CACHE))
 
   $ FILE=$PWD/lib3.ml
   $ query_ocaml_merlin_pp "$FILE"
@@ -53,7 +54,8 @@
      -g))
    (FLG
     (-open Mylib3))
-   (UNIT_NAME mylib3__Lib3))
+   (UNIT_NAME mylib3__Lib3)
+   (USE_PPX_CACHE))
 
 If a file has a name of the kind `module_name.xx.xxx.ml/i`
 we consider it as ``module_name.ml/i`
@@ -81,7 +83,8 @@ preprocessing and copy files around.
      -g))
    (FLG
     (-open Mylib3))
-   (UNIT_NAME mylib3__Lib3))
+   (UNIT_NAME mylib3__Lib3)
+   (USE_PPX_CACHE))
 
 If a directory has no configuration the configuration of its parent is used
 This can be useful when some build scripts copy files from subdirectories.
@@ -107,7 +110,8 @@ This can be useful when some build scripts copy files from subdirectories.
      -g))
    (FLG
     (-open Mylib3))
-   (UNIT_NAME mylib3__Lib3))
+   (UNIT_NAME mylib3__Lib3)
+   (USE_PPX_CACHE))
 
 Test of an valid invalid module name
   $ FILE=not-a-module-name.ml
@@ -131,7 +135,8 @@ Test of an valid invalid module name
      -w
      -24
      -g))
-   (UNIT_NAME dune__exe__Not-a-module-name))
+   (UNIT_NAME dune__exe__Not-a-module-name)
+   (USE_PPX_CACHE))
 
 Dune should also provide configuration when the file is in the build folder
   $ FILE=$PWD/_build/default/lib3.ml
@@ -156,7 +161,8 @@ Dune should also provide configuration when the file is in the build folder
      -g))
    (FLG
     (-open Mylib3))
-   (UNIT_NAME mylib3__Lib3))
+   (UNIT_NAME mylib3__Lib3)
+   (USE_PPX_CACHE))
 
   $ FILE=_build/default/lib3.ml
   $ query_ocaml_merlin_pp "$FILE"
@@ -180,4 +186,5 @@ Dune should also provide configuration when the file is in the build folder
      -g))
    (FLG
     (-open Mylib3))
-   (UNIT_NAME mylib3__Lib3))
+   (UNIT_NAME mylib3__Lib3)
+   (USE_PPX_CACHE))

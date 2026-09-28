@@ -168,32 +168,37 @@ support includes.
   > | sort_by(.target)'
   [{"target":"foo.cmj","flags":["+43","+41","+42"]},{"target":"foo.cmo","flags":["+43"]}]
 
-The old spelling should be deprecated from 3.25, but currently emits no warning.
+The old spelling remains accepted but is deprecated from 3.25.
 
   $ make_melange_project 3.25 1.0
   $ dune build foo.cma .foo.objs/melange/foo.cmj
+  File "dune", line 2, characters 4-34:
+  2 |  (_ (melange.compile_flags -w +41)))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Warning: 'melange.compile_flags' was deprecated in version 3.25 of the dune
+  language. Use 'melange.flags' instead.
+  File "dune", line 7, characters 1-56:
+  7 |  (melange.compile_flags :standard (:include flags.sexp)))
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Warning: 'melange.compile_flags' was deprecated in version 3.25 of the dune
+  language. Use 'melange.flags' instead.
 
-The new spelling should require Dune 3.25, but is currently unknown in both
-language versions.
+The new spelling requires Dune 3.25.
 
   $ sed 's/melange.compile_flags/melange.flags/g' dune > dune.new
   $ mv dune.new dune
   $ make_melange_project 3.24 1.0
   $ dune build foo.cma .foo.objs/melange/foo.cmj
-  File "dune", line 2, characters 5-18:
+  File "dune", line 2, characters 4-26:
   2 |  (_ (melange.flags -w +41)))
-           ^^^^^^^^^^^^^
-  Error: Unknown field "melange.flags"
+          ^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'melange.flags' is only available since version 3.25 of the dune
+  language. Please update your dune-project file to have (lang dune 3.25).
   [1]
 
   $ make_melange_project 3.25 1.0
   $ echo 'let another = 43' >> foo.ml
   $ dune build foo.cma .foo.objs/melange/foo.cmj
-  File "dune", line 2, characters 5-18:
-  2 |  (_ (melange.flags -w +41)))
-           ^^^^^^^^^^^^^
-  Error: Unknown field "melange.flags"
-  [1]
   $ dune trace cat | jq_dune -sc '
   > [.[] | processes
   >  | select(.args.target_files // []
@@ -203,9 +208,9 @@ language versions.
   >              | first | basename),
   >     flags: (.args.process_args | map(select(startswith("+"))))}]
   > | sort_by(.target)'
-  []
+  [{"target":"foo.cmj","flags":["+43","+41","+42"]},{"target":"foo.cmo","flags":["+43"]}]
 
-Both spellings in the same library or env configuration should be rejected.
+Both spellings in the same library or env configuration are rejected.
 
   $ cat > dune <<'EOF'
   > (library
@@ -215,10 +220,19 @@ Both spellings in the same library or env configuration should be rejected.
   >  (melange.compile_flags))
   > EOF
   $ dune build @check
-  File "dune", line 4, characters 2-15:
+  File "dune", line 5, characters 1-24:
+  5 |  (melange.compile_flags))
+       ^^^^^^^^^^^^^^^^^^^^^^^
+  Warning: 'melange.compile_flags' was deprecated in version 3.25 of the dune
+  language. Use 'melange.flags' instead.
+  File "dune", lines 1-5, characters 0-80:
+  1 | (library
+  2 |  (name foo)
+  3 |  (modes melange)
   4 |  (melange.flags)
-        ^^^^^^^^^^^^^
-  Error: Unknown field "melange.flags"
+  5 |  (melange.compile_flags))
+  Error: fields "melange.flags" and "melange.compile_flags" are mutually
+  exclusive.
   [1]
 
   $ cat > dune <<'EOF'
@@ -228,10 +242,17 @@ Both spellings in the same library or env configuration should be rejected.
   >   (melange.compile_flags)))
   > EOF
   $ dune build @check
-  File "dune", line 3, characters 3-16:
+  File "dune", line 4, characters 2-25:
+  4 |   (melange.compile_flags)))
+        ^^^^^^^^^^^^^^^^^^^^^^^
+  Warning: 'melange.compile_flags' was deprecated in version 3.25 of the dune
+  language. Use 'melange.flags' instead.
+  File "dune", lines 2-4, characters 1-48:
+  2 |  (_
   3 |   (melange.flags)
-         ^^^^^^^^^^^^^
-  Error: Unknown field "melange.flags"
+  4 |   (melange.compile_flags)))
+  Error: fields "melange.flags" and "melange.compile_flags" are mutually
+  exclusive.
   [1]
 
 The new field must still require the Melange extension.
@@ -244,8 +265,10 @@ The new field must still require the Melange extension.
   >  (melange.flags))
   > EOF
   $ dune build @check
-  File "dune", line 4, characters 2-15:
+  File "dune", line 4, characters 1-16:
   4 |  (melange.flags))
-        ^^^^^^^^^^^^^
-  Error: Unknown field "melange.flags"
+       ^^^^^^^^^^^^^^^
+  Error: 'melange.flags' is available only when melange is enabled in the
+  dune-project or workspace file. You must enable it using (using melange 1.0)
+  in the file.
   [1]

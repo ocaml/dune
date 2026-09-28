@@ -40,9 +40,10 @@ Dependencies in ``dune`` files can be specified using one of the following:
   from the workspace.
 - ``(package <pkg>)`` builds the files installed by ``<package>`` and adds
   them to the action's environment: bin entries on ``PATH``, libraries on
-  ``OCAMLPATH``, stublibs on ``CAML_LD_LIBRARY_PATH``, and so on. Only the
-  named package is added; transitive package dependencies must be listed
-  separately.
+  ``OCAMLPATH``, stublibs on ``CAML_LD_LIBRARY_PATH``, and so on. For packages
+  built by Dune's package management, Dune tracks their build-tree installation
+  directories and those of their full lock-directory dependency closure.
+  Otherwise, transitive package dependencies must be listed separately.
 - ``(env_var <var>)`` depends on the value of the environment variable ``<var>``.
   If this variable becomes set, becomes unset, or changes value, the target
   will be rebuilt.

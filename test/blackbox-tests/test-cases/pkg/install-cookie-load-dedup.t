@@ -20,10 +20,10 @@ Two rules, both depending on package base:
 
   $ DUNE_TRACE="persistent" dune build out1 out2
 
-Count install-cookie loads in this build. Want 1, observe 2:
+Count install-cookie loads in this build. Neither rule needs to load the cookie:
 
   $ dune trace cat | jq -s '
   >   [ .[] | select(.args.module == "INSTALL-COOKIE" and .args.operation == "load") ]
   >   | length
   > '
-  2
+  0

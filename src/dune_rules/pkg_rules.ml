@@ -2630,10 +2630,7 @@ let find_package ctx pkg =
   | false -> Memo.return None
   | true ->
     let+ pkg = resolve_pkg_dep ctx (Loc.none, pkg) in
-    Some
-      (let open Action_builder.O in
-       let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-       ())
+    Some (Action_builder.deps (Dep.Set.add (Pkg.package_deps pkg) (Pkg.dep pkg)))
 ;;
 
 let resolve_installed_file ~loc ~context_name ~pkg_name ~section ~file =

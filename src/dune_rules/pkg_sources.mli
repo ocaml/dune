@@ -26,7 +26,8 @@ module Mounted : sig
   val candidate : t -> Candidate.t
   val tree : t -> Source_tree.Rules.Mounted.t option
   val projects : t -> (Dune_project.t * Source_tree.Rules.Dir.t) list
-  val is_dune : t -> bool
+  val kind : t -> ([ `Dune | `Opam ], User_message.t list) result
+  val kind_exn : t -> [ `Dune | `Opam ] Memo.t
 end
 
 val mounted : Context_name.t -> Mounted.t list Memo.t

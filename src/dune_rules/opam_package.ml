@@ -83,9 +83,9 @@ let opaque_names context =
     mounted
     ~init:(Package.Name.Set.of_keys workspace)
     ~f:(fun names mounted ->
-      if Pkg_sources.Mounted.is_dune mounted
-      then names
-      else
+      match Pkg_sources.Mounted.kind mounted with
+      | Ok `Dune | Error _ -> names
+      | Ok `Opam ->
         Package.Name.Set.add
           names
           (Pkg_sources.Mounted.candidate mounted |> Pkg_sources.Candidate.name))
@@ -99,10 +99,13 @@ let find_opaque context name =
     let* mounted = Pkg_sources.find_mounted context name in
     (match mounted with
      | None -> Memo.return None
-     | Some mounted when Pkg_sources.Mounted.is_dune mounted -> Memo.return None
      | Some mounted ->
-       let candidate = Pkg_sources.Mounted.candidate mounted in
-       let root = (Pkg_sources.Candidate.paths candidate).target_dir in
-       let+ dependency = Pkg_rules.dependency context name in
-       Option.map dependency ~f:(fun dependency -> root, dependency))
+       let* kind = Pkg_sources.Mounted.kind_exn mounted in
+       (match kind with
+        | `Dune -> Memo.return None
+        | `Opam ->
+          let candidate = Pkg_sources.Mounted.candidate mounted in
+          let root = (Pkg_sources.Candidate.paths candidate).target_dir in
+          let+ dependency = Pkg_rules.dependency context name in
+          Option.map dependency ~f:(fun dependency -> root, dependency)))
 ;;

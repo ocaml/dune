@@ -161,6 +161,7 @@ module DB : sig
 
     val of_findlib : (Dune_package.Entry.t, Findlib.Unavailable_reason.t) result -> t
     val not_found : t
+    val invalid : User_message.t -> t
     val found : Lib_info.external_ -> t
     val to_dyn : t Dyn.builder
     val redirect_by_name : db -> Loc.t * Lib_name.t -> t

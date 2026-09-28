@@ -141,16 +141,45 @@ let source candidate =
 ;;
 
 module Mounted = struct
-  type t =
-    { candidate : Candidate.t
-    ; tree : Source_tree.Rules.Mounted.t option
+  type loaded =
+    { tree : Source_tree.Rules.Mounted.t
     ; projects : (Dune_project.t * Source_tree.Rules.Dir.t) list
     }
 
+  type t =
+    { candidate : Candidate.t
+    ; loaded : (loaded option, User_message.t list) result
+    }
+
   let candidate t = t.candidate
-  let tree t = t.tree
-  let projects t = t.projects
-  let is_dune t = Option.is_some t.tree
+
+  let kind t =
+    Result.map t.loaded ~f:(function
+      | None -> `Opam
+      | Some _ -> `Dune)
+  ;;
+
+  let kind_exn t =
+    match kind t with
+    | Ok kind -> Memo.return kind
+    | Error messages ->
+      List.map messages ~f:(fun message ->
+        Exn_with_backtrace.capture (User_error.E message))
+      |> Fiber.reraise_all
+      |> Memo.of_reproducible_fiber
+  ;;
+
+  let tree t =
+    match t.loaded with
+    | Ok (Some loaded) -> Some loaded.tree
+    | Ok None | Error _ -> None
+  ;;
+
+  let projects t =
+    match t.loaded with
+    | Ok (Some loaded) -> loaded.projects
+    | Ok None | Error _ -> []
+  ;;
 end
 
 module Mounted_source_tree = Source_tree.Rules.Mounted
@@ -502,7 +531,7 @@ let prepare candidates candidate =
       Package.Name.equal name (Candidate.name candidate)
       || Package.Name.Set.mem direct name)
   in
-  let opaque = { Mounted.candidate; tree = None; projects = [] } in
+  let opaque = None in
   match Candidate.source_root candidate with
   | None -> Memo.return opaque
   | Some backing_root ->
@@ -568,20 +597,32 @@ let prepare candidates candidate =
                     ~version:lock_pkg.info.version
                 , dir ))
             in
-            Memo.return { Mounted.candidate; tree = Some tree; projects })))
+            Memo.return (Some { Mounted.tree; projects }))))
 ;;
 
-let mounted =
+let mounted_by_name =
   Per_context.create_by_name ~name:"mounted-packages" (fun context ->
-    let* candidates = candidates context in
-    Memo.parallel_map candidates ~f:(prepare candidates))
+    let+ candidates = candidates context in
+    Package.Name.Map.of_list_map_exn candidates ~f:(fun candidate ->
+      let loaded =
+        Memo.lazy_ ~name:"prepare-mounted-package" (fun () ->
+          let+ loaded = Memo.collect_user_errors (prepare candidates candidate) in
+          { Mounted.candidate; loaded })
+      in
+      Candidate.name candidate, loaded))
   |> Staged.unstage
 ;;
 
+let mounted context =
+  let* mounted = mounted_by_name context in
+  Package.Name.Map.values mounted |> Memo.parallel_map ~f:Memo.Lazy.force
+;;
+
 let find_mounted context name =
-  let+ mounted = mounted context in
-  List.find mounted ~f:(fun mounted ->
-    Package.Name.equal name (Candidate.name (Mounted.candidate mounted)))
+  let* mounted = mounted_by_name context in
+  match Package.Name.Map.find mounted name with
+  | None -> Memo.return None
+  | Some mounted -> Memo.Lazy.force mounted >>| Option.some
 ;;
 
 let source_copy_rule ~dir ~source_dir filename =

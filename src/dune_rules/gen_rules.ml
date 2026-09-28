@@ -923,9 +923,14 @@ let gen_rules ctx ~dir components =
            && String.equal packages Pkg_sources.artifact_dir_basename ->
       let* mounted = Pkg_sources.find_mounted ctx (Package.Name.of_string name) in
       (match mounted with
-       | Some mounted when Pkg_sources.Mounted.is_dune mounted ->
-         gen_rules ctx (Super_context.find_exn ctx) ~dir rest
-       | _ -> Pkg_rules.setup_mounted_rules ctx ~dir (packages :: name :: rest))
+       | None -> Pkg_rules.setup_mounted_rules ctx ~dir (packages :: name :: rest)
+       | Some mounted ->
+         let* kind = Pkg_sources.Mounted.kind_exn mounted in
+         (match kind with
+          | `Dune ->
+            let* () = Dune_load.check_package ctx (Package.Name.of_string name) in
+            gen_rules ctx (Super_context.find_exn ctx) ~dir rest
+          | `Opam -> Pkg_rules.setup_mounted_rules ctx ~dir (packages :: name :: rest)))
     | root :: rest when String.equal root Pkg_sources.root_dir_basename ->
       Pkg_rules.setup_mounted_rules ctx ~dir rest
     | _ ->

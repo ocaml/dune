@@ -2386,6 +2386,7 @@ module DB = struct
     ;;
 
     let found info = Found info
+    let invalid message = Invalid message
     let not_found = Not_found
     let redirect_by_name db lib = Redirect_by_name (db, lib)
     let redirect_by_id db lib_id = Redirect_by_id (db, lib_id)

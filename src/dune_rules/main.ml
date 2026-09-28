@@ -57,7 +57,10 @@ let execution_parameters ~sandbox_actions =
             let+ mounted = Pkg_sources.find_mounted context name in
             (match mounted with
              | None -> true
-             | Some mounted -> not (Pkg_sources.Mounted.is_dune mounted))
+             | Some mounted ->
+               (match Pkg_sources.Mounted.kind mounted with
+                | Ok `Dune -> false
+                | Ok `Opam | Error _ -> true))
         in
         if opaque
         then Memo.return ep

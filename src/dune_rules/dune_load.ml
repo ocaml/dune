@@ -148,6 +148,7 @@ type loaded =
   { dune_files : Dune_file.t list
   ; projects_by_output_root : Loaded_project.t Path.Build.Map.t
   ; dune_file_by_dir : Dune_file_db.t
+  ; mounted_errors : User_message.t list Package.Name.Map.t
   }
 
 module Mounted_dune_files =
@@ -157,72 +158,94 @@ module Mounted_dune_files =
          type t = Source_tree.Rules.Dir.t * Source.Dune_file.t
        end))
 
-let load_mounted context =
+let load_mounted context mask =
   let* mounted = Pkg_sources.mounted (Context.name context) in
   let selected =
     Package.Name.Set.of_list_map mounted ~f:(fun mounted ->
       Pkg_sources.Mounted.candidate mounted |> Pkg_sources.Candidate.name)
   in
   Memo.List.map mounted ~f:(fun mounted ->
-    match Pkg_sources.Mounted.tree mounted with
-    | None -> Memo.return ([], Appendable_list.empty)
-    | Some tree ->
-      let candidate = Pkg_sources.Mounted.candidate mounted in
-      let owner = Pkg_sources.Candidate.name candidate in
-      let artifact_root = Pkg_sources.Candidate.artifact_root candidate in
-      let partition =
-        Build_partition.mounted ~resolver:context ~output_root:artifact_root
-      in
-      let* projects =
-        Pkg_sources.Mounted.projects mounted
-        |> Memo.List.map ~f:(fun (project, source_tree_root) ->
-          let* packages =
-            Dune_project.including_hidden_packages project
-            |> Package.Name.Map.values
-            |> Memo.List.filter ~f:Package_enabled.eval
-          in
-          let visible_packages =
-            Package.Name.Set.of_list_map packages ~f:Package.name
-            |> Package.Name.Set.filter ~f:(fun name ->
-              Package.Name.equal name owner || not (Package.Name.Set.mem selected name))
-          in
-          let source_root = Dune_project.root project in
-          let project_root =
-            Source_path.descendant source_root ~of_:(Source_path.build artifact_root)
-            |> Option.value_exn
-          in
-          Loaded_project.create
-            ~project
-            ~identity:(Loaded_project.Identity.mounted ~package:owner ~project_root)
-            ~source_root
-            ~source_tree_root
-            ~partition
-            ~output_root:(Path.Build.append_local artifact_root project_root)
-            ~visible_packages:(Some visible_packages)
-          |> Memo.return)
-      in
-      let projects_by_root =
-        Source_path.Map.of_list_map_exn projects ~f:(fun project ->
-          Loaded_project.source_root project, project)
-      in
-      let+ files =
-        Mounted_dune_files.map_reduce
-          (Source_tree.Rules.Mounted.root tree)
-          ~traverse:Source_dir_status.Set.all
-          ~trace_event_name:"Loaded mounted source tree"
-          ~f:(fun dir ->
-            match Source_tree.Rules.Dir.dune_file dir with
-            | None -> Memo.return Appendable_list.empty
-            | Some file -> Memo.return (Appendable_list.singleton (dir, file)))
-      in
-      let files =
-        Appendable_list.map files ~f:(fun (dir, file) ->
-          let root = Source_tree.Rules.Dir.project dir |> Dune_project.root in
-          Source_path.Map.find_exn projects_by_root root, dir, file)
-      in
-      projects, files)
-  >>| fun mounted ->
-  List.concat_map mounted ~f:fst, List.map mounted ~f:snd |> Appendable_list.concat
+    let owner = Pkg_sources.Mounted.candidate mounted |> Pkg_sources.Candidate.name in
+    let+ result =
+      Memo.collect_user_errors
+        (Memo.of_thunk (fun () ->
+           let* _kind = Pkg_sources.Mounted.kind_exn mounted in
+           let* projects, files =
+             match Pkg_sources.Mounted.tree mounted with
+             | None -> Memo.return ([], Appendable_list.empty)
+             | Some tree ->
+               let candidate = Pkg_sources.Mounted.candidate mounted in
+               let owner = Pkg_sources.Candidate.name candidate in
+               let artifact_root = Pkg_sources.Candidate.artifact_root candidate in
+               let partition =
+                 Build_partition.mounted ~resolver:context ~output_root:artifact_root
+               in
+               let* projects =
+                 Pkg_sources.Mounted.projects mounted
+                 |> Memo.List.map ~f:(fun (project, source_tree_root) ->
+                   let* packages =
+                     Dune_project.including_hidden_packages project
+                     |> Package.Name.Map.values
+                     |> Memo.List.filter ~f:Package_enabled.eval
+                   in
+                   let visible_packages =
+                     Package.Name.Set.of_list_map packages ~f:Package.name
+                     |> Package.Name.Set.filter ~f:(fun name ->
+                       Package.Name.equal name owner
+                       || not (Package.Name.Set.mem selected name))
+                   in
+                   let source_root = Dune_project.root project in
+                   let project_root =
+                     Source_path.descendant
+                       source_root
+                       ~of_:(Source_path.build artifact_root)
+                     |> Option.value_exn
+                   in
+                   Loaded_project.create
+                     ~project
+                     ~identity:
+                       (Loaded_project.Identity.mounted ~package:owner ~project_root)
+                     ~source_root
+                     ~source_tree_root
+                     ~partition
+                     ~output_root:(Path.Build.append_local artifact_root project_root)
+                     ~visible_packages:(Some visible_packages)
+                   |> Memo.return)
+               in
+               let projects_by_root =
+                 Source_path.Map.of_list_map_exn projects ~f:(fun project ->
+                   Loaded_project.source_root project, project)
+               in
+               let+ files =
+                 Mounted_dune_files.map_reduce
+                   (Source_tree.Rules.Mounted.root tree)
+                   ~traverse:Source_dir_status.Set.all
+                   ~trace_event_name:"Loaded mounted source tree"
+                   ~f:(fun dir ->
+                     match Source_tree.Rules.Dir.dune_file dir with
+                     | None -> Memo.return Appendable_list.empty
+                     | Some file -> Memo.return (Appendable_list.singleton (dir, file)))
+               in
+               let files =
+                 Appendable_list.map files ~f:(fun (dir, file) ->
+                   let root = Source_tree.Rules.Dir.project dir |> Dune_project.root in
+                   Source_path.Map.find_exn projects_by_root root, dir, file)
+               in
+               projects, files
+           in
+           let* eval = Dune_file.eval files mask in
+           let+ files = eval (Context.name context) in
+           projects, files))
+    in
+    owner, result)
+  >>| List.fold_left
+        ~init:([], [], Package.Name.Map.empty)
+        ~f:(fun (projects, files, errors) (name, result) ->
+          match result with
+          | Ok (loaded_projects, loaded_files) ->
+            loaded_projects @ projects, loaded_files @ files, errors
+          | Error messages ->
+            projects, files, Package.Name.Map.add_exn errors name messages)
 ;;
 
 let loaded =
@@ -257,13 +280,13 @@ let loaded =
             in
             project, dir, dune_file)
         in
-        let* mounted_projects, mounted_files = load_mounted context in
-        let projects = projects @ mounted_projects in
-        let source_dune_files =
-          Appendable_list.concat [ source_dune_files; mounted_files ]
+        let* mounted_projects, mounted_files, mounted_errors =
+          load_mounted context workspace.mask
         in
+        let projects = projects @ mounted_projects in
         let* eval = Dune_file.eval source_dune_files workspace.mask in
         let+ dune_files = eval context_name in
+        let dune_files = dune_files @ mounted_files in
         let projects_by_output_root =
           Path.Build.Map.of_list_map_exn projects ~f:(fun project ->
             Loaded_project.output_root project, project)
@@ -271,11 +294,25 @@ let loaded =
         { dune_files
         ; projects_by_output_root
         ; dune_file_by_dir = Dune_file_db.make dune_files
+        ; mounted_errors
         })
       |> Memo.Lazy.force)
     |> Staged.unstage
   in
   fun context -> by_context context
+;;
+
+let package_errors context =
+  let+ { mounted_errors; _ } = loaded context in
+  mounted_errors
+;;
+
+let check_package context name =
+  let* { mounted_errors; _ } = loaded context in
+  match Package.Name.Map.find mounted_errors name with
+  | None -> Memo.return ()
+  | Some messages ->
+    Memo.parallel_iter messages ~f:(fun message -> raise (User_error.E message))
 ;;
 
 let projects_by_output_root context =

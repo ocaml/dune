@@ -134,13 +134,88 @@ without falling back to its otherwise successful recipe.
   > (build (echo opaque-fallback-must-not-run))
   > EOF
 
-BUG: preparing every candidate eagerly reports the unrelated project's error.
-
   $ dune build main.exe
-  File "_build/default/.lockfile/pkg/broken/dune-project", line 2, characters 1-15:
-  Error: Unknown field "broken-project"
-  [1]
   $ dune build _build/default/.lockfile/pkg/broken/broken.cma
   File "_build/default/.lockfile/pkg/broken/dune-project", line 2, characters 1-15:
   Error: Unknown field "broken-project"
   [1]
+
+Demand through package materialization also reports the preparation error.
+Merely declaring such a rule must not force it.
+
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target needs-broken)
+  >  (deps (package broken))
+  >  (action (write-file %{target} built)))
+  > EOF
+  $ dune build main.exe
+  $ dune build needs-broken >diagnostic 2>&1
+  [1]
+  $ grep '^Error:' diagnostic
+  Error: Unknown field "broken-project"
+  $ test ! -e _build/default/needs-broken
+
+Dune-file decoding errors are deferred as well, not just dune-project errors.
+
+  $ cat > _broken/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name broken))
+  > EOF
+  $ echo '(broken-stanza)' > _broken/dune
+  $ dune build main.exe
+  $ dune build _build/default/.lockfile/pkg/broken/broken.cma
+  File "_build/default/.lockfile/pkg/broken/dune", line 1, characters 1-14:
+  Error: Unknown constructor broken-stanza
+  [1]
+
+A library lookup in a consumer of the failed package reports that package's
+error rather than claiming its library does not exist.
+
+  $ cat > dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name main) (dir .) (depends broken))
+  > EOF
+  $ echo '(executable (name main) (libraries broken))' > dune
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target available)
+  >  (action (write-file %{target} %{lib-available:broken})))
+  > EOF
+  $ dune build available
+  $ cat _build/default/available
+  false
+  $ dune build main.exe >diagnostic 2>&1
+  [1]
+  $ grep '^Error:' diagnostic
+  Error: Unknown constructor broken-stanza
+
+Fixing the input makes the package build natively, without running its recipe.
+
+  $ echo '(library (public_name broken))' > _broken/dune
+  $ echo 'let message = "repaired"' > _broken/broken.ml
+  $ echo 'let () = print_endline Broken.message' > main.ml
+  $ dune build main.exe
+  $ _build/default/main.exe
+  repaired
+  $ test ! -e _build/default/.lockfile/pkg/broken/.opam/broken/target
+
+Watch mode preserves the boundary when a previously valid input becomes invalid,
+and invalidates the stored failure when the input is repaired.
+
+  $ start_dune
+  $ build main.exe
+  Success
+  $ printf '(lang dune 3.25)\n(broken-project)\n' > _broken/dune-project
+  $ build _build/default/.lockfile/pkg/foo/foo.cma
+  Success
+  $ build main.exe
+  Failure
+  [1]
+  $ cat > _broken/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name broken))
+  > EOF
+  $ build main.exe
+  Success
+  $ stop_dune_quiet

@@ -46,9 +46,11 @@ Ed-format patches are not supported and should give a clear error:
   > EOF
 
   $ build_pkg ed-test 2>&1 | censor
+  File "_build/_private/default/.lock/dune.lock/ed-test.pkg", line 5, characters 9-18:
+  5 |   (patch foo.patch)
+               ^^^^^^^^^
   Error: Could not parse the patch file. Only unified diff format is supported.
   Context diffs and ed commands are not supported.
-  -> required by _build/default/.lockfile/pkg/ed-test/.opam/ed-test/target
   [1]
 
 Demonstrate that the original source shouldn't be modified:

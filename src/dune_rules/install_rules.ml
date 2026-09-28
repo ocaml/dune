@@ -1244,8 +1244,14 @@ let () =
       else
         let* mounted = Pkg_sources.find_mounted context_name package in
         match mounted with
-        | Some mounted when Pkg_sources.Mounted.is_dune mounted -> Memo.return None
-        | _ -> Pkg_rules.dependency context_name package
+        | Some mounted ->
+          let* kind = Pkg_sources.Mounted.kind_exn mounted in
+          (match kind with
+           | `Dune ->
+             let+ () = Dune_load.check_package context_name package in
+             None
+           | `Opam -> Pkg_rules.dependency context_name package)
+        | None -> Pkg_rules.dependency context_name package
     in
     match opaque with
     | None ->

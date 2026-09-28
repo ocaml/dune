@@ -421,17 +421,48 @@ module DB = struct
         in
         let resolve_opam name =
           let* candidates = Memo.Lazy.force candidates in
-          Memo.parallel_map candidates ~f:(fun package ->
-            let* libraries = opam_libraries package in
-            match libraries with
-            | None -> Memo.return None
-            | Some (findlib, db) ->
-              let+ entry = Findlib.find findlib name in
-              (match entry with
-               | Error Not_found -> None
-               | Ok _ | Error (Invalid_dune_package _) ->
-                 Some (Lib.DB.Resolve_result.redirect_by_name db (Loc.none, name))))
-          >>| List.filter_opt
+          let* results =
+            Memo.parallel_map candidates ~f:(fun package ->
+              let* libraries = opam_libraries package in
+              match libraries with
+              | None -> Memo.return None
+              | Some (findlib, db) ->
+                let+ entry = Findlib.find findlib name in
+                (match entry with
+                 | Error Not_found -> None
+                 | Ok _ | Error (Invalid_dune_package _) ->
+                   Some (Lib.DB.Resolve_result.redirect_by_name db (Loc.none, name))))
+            >>| List.filter_opt
+          in
+          if List.is_non_empty results
+          then Memo.return results
+          else
+            let* installed = Lib.DB.available installed_libs name in
+            if installed
+            then Memo.return []
+            else
+              let* errors = Dune_load.package_errors context in
+              let failed = Package.Name.Set.of_keys errors in
+              let* failed =
+                match owner with
+                | None -> Memo.return failed
+                | Some owner ->
+                  let+ visible =
+                    Dune_load.package_closure_for_context
+                      context
+                      (Package.Name.Set.singleton owner)
+                  in
+                  let visible =
+                    if include_owner
+                    then visible
+                    else Package.Name.Set.remove visible owner
+                  in
+                  Package.Name.Set.inter failed visible
+              in
+              Package.Name.Set.to_list failed
+              |> List.concat_map ~f:(Package.Name.Map.find_exn errors)
+              |> List.map ~f:Lib.DB.Resolve_result.invalid
+              |> Memo.return
         in
         let all_opam () =
           let* candidates = Memo.Lazy.force candidates in
@@ -572,7 +603,11 @@ module DB = struct
          List.fold_left mounted ~init:workspace ~f:(fun acc mounted ->
            let candidate = Pkg_sources.Mounted.candidate mounted in
            let name = Pkg_sources.Candidate.name candidate in
-           if Pkg_sources.Mounted.is_dune mounted || Package.Name.Map.mem acc name
+           if
+             (match Pkg_sources.Mounted.kind mounted with
+              | Ok `Dune | Error _ -> true
+              | Ok `Opam -> false)
+             || Package.Name.Map.mem acc name
            then acc
            else (
              let root =

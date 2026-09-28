@@ -184,7 +184,7 @@ module Pkg = struct
   type t =
     { id : Id.t
     ; context : Context_name.t
-    ; native : bool
+    ; builder : ([ `Dune | `Opam ], User_message.t list) result
     ; recipe : Opam_build.Recipe.t
     ; depends : t list
     ; depends_on_dune : bool
@@ -264,13 +264,19 @@ module Pkg = struct
   ;;
 
   let dependency t =
-    if not t.native
-    then
+    match t.builder with
+    | Error messages ->
+      List.map messages ~f:(fun message ->
+        Exn_with_backtrace.capture (User_error.E message))
+      |> Fiber.reraise_all
+      |> Memo.of_reproducible_fiber
+      |> Action_builder.of_memo
+    | Ok `Opam ->
       Opam_build.Dependency.load
         t.paths
         ~variables:(Pkg_info.variables t.info)
         ~exported_env:t.recipe.exported_env
-    else
+    | Ok `Dune ->
       let open Action_builder.O in
       let+ layout =
         Install_layout.materialize
@@ -824,16 +830,16 @@ end = struct
              Option.some_if (Pkg_digest.equal pkg_digest selected) candidate)
       in
       let context = Package_universe.context_name package_universe in
-      let* native =
+      let* builder =
         match mounted with
-        | None -> Memo.return false
+        | None -> Memo.return (Ok `Opam)
         | Some candidate ->
           let+ mounted =
             Pkg_sources.find_mounted context (Pkg_sources.Candidate.name candidate)
           in
           (match mounted with
-           | None -> false
-           | Some mounted -> Pkg_sources.Mounted.is_dune mounted)
+           | None -> Ok `Opam
+           | Some mounted -> Pkg_sources.Mounted.kind mounted)
       in
       let id = Pkg.Id.gen () in
       let write_paths =
@@ -847,6 +853,11 @@ end = struct
       let build_command = Option.map build_command ~f:relocate_build in
       let paths =
         let paths = Paths.map_path write_paths ~f:Path.build in
+        let native =
+          match builder with
+          | Ok `Dune -> true
+          | Ok `Opam | Error _ -> false
+        in
         if native
         then (
           let prefix =
@@ -895,7 +906,7 @@ end = struct
       let t =
         { Pkg.id
         ; context
-        ; native
+        ; builder
         ; recipe =
             { Opam_build.Recipe.build = build_command
             ; install = install_command
@@ -1459,8 +1470,11 @@ let lock_dir_binaries =
     (fun (context, packages) ->
        let* packages = project_deps ~packages context in
        let native, opaque =
-         List.partition_map packages ~f:(fun (pkg : Pkg.t) ->
-           if pkg.native then Left pkg else Right pkg)
+         List.filter_partition_map packages ~f:(fun (pkg : Pkg.t) ->
+           match pkg.builder with
+           | Ok `Dune -> Left pkg
+           | Ok `Opam -> Right pkg
+           | Error _ -> Skip)
        in
        let* { binaries; dep_info = _ } =
          Action_expander.Artifacts_and_deps.of_closure opaque
@@ -1480,7 +1494,10 @@ let which ~packages context program =
 let ocamlpath universe =
   let+ all_project_deps = all_deps universe in
   let env =
-    List.filter all_project_deps ~f:(fun (pkg : Pkg.t) -> not pkg.native)
+    List.filter all_project_deps ~f:(fun (pkg : Pkg.t) ->
+      match pkg.builder with
+      | Ok `Opam -> true
+      | Ok `Dune | Error _ -> false)
     |> Pkg.build_env_of_deps
   in
   Env.Map.find env Dune_findlib.Config.ocamlpath_var

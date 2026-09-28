@@ -41,10 +41,13 @@ module DB = struct
              [ "dir", Path.Build.to_dyn dir ])
     in
     let scope = loop dir in
-    let src_dir = source_dir scope dir in
-    match Dune_project.exclusive_package scope.project ~dir:src_dir with
-    | None -> scope
-    | Some package -> Package.Name.Map.find_exn t.by_package (Package.Id.name package)
+    match Loaded_project.owner scope.loaded_project with
+    | Some _ -> scope
+    | None ->
+      let src_dir = source_dir scope dir in
+      (match Dune_project.exclusive_package scope.project ~dir:src_dir with
+       | None -> scope
+       | Some package -> Package.Name.Map.find_exn t.by_package (Package.Id.name package))
   ;;
 
   let find_by_project t project =
@@ -176,12 +179,14 @@ module DB = struct
                   |> Lib_info.of_local
                 and lib_id = Library.to_lib_id ~src_dir conf in
                 let owner =
-                  match Library.package conf with
-                  | Some package -> Some (Package.name package)
+                  match Loaded_project.owner loaded_project with
+                  | Some _ as owner -> owner
                   | None ->
-                    (match Dune_project.exclusive_package project ~dir:src_dir with
-                     | Some package -> Some (Package.Id.name package)
-                     | None -> Loaded_project.owner loaded_project)
+                    (match Library.package conf with
+                     | Some package -> Some (Package.name package)
+                     | None ->
+                       Dune_project.exclusive_package project ~dir:src_dir
+                       |> Option.map ~f:Package.Id.name)
                 in
                 Some lib_id, Library.best_name conf, Found_or_redirect.found info ~owner
             in
@@ -403,26 +408,59 @@ module DB = struct
           Lib.DB.with_parent installed_libs ~parent:(Some mounted_libs))
       in
       Staged.stage (fun ~owner ~include_owner ->
-        let candidates =
-          Memo.lazy_ ~name:"opaque-library-candidates" (fun () ->
-            let* packages = Opam_package.opaque_names context in
+        let visible_packages =
+          Memo.lazy_ ~name:"library-visible-packages" (fun () ->
             match owner with
-            | None -> Memo.return (Package.Name.Set.to_list packages)
+            | None -> Memo.return (None, None)
             | Some owner ->
-              let+ visible =
+              let* visible =
                 Dune_load.package_closure_for_context
                   context
                   (Package.Name.Set.singleton owner)
-              in
-              let visible =
+              and* workspace = Dune_load.packages () in
+              let declared =
                 if include_owner then visible else Package.Name.Set.remove visible owner
               in
-              Package.Name.Set.inter packages visible |> Package.Name.Set.to_list)
+              let+ visible =
+                if not (Package.Name.Map.mem workspace owner)
+                then Memo.return visible
+                else
+                  let+ managed = Pkg_sources.candidates context in
+                  List.fold_left managed ~init:visible ~f:(fun visible candidate ->
+                    let name = Pkg_sources.Candidate.name candidate in
+                    if Package.Name.Map.mem workspace name
+                    then visible
+                    else Package.Name.Set.add visible name)
+              in
+              ( Some declared
+              , Some
+                  (if include_owner
+                   then visible
+                   else Package.Name.Set.remove visible owner) ))
+        in
+        let candidates =
+          Memo.lazy_ ~name:"opaque-library-candidates" (fun () ->
+            let+ packages = Opam_package.opaque_names context
+            and+ _, visible = Memo.Lazy.force visible_packages in
+            (match visible with
+             | None -> packages
+             | Some visible -> Package.Name.Set.inter packages visible)
+            |> Package.Name.Set.to_list)
         in
         let resolve_opam name =
-          let* candidates = Memo.Lazy.force candidates in
-          let* results =
-            Memo.parallel_map candidates ~f:(fun package ->
+          let* candidates = Memo.Lazy.force candidates
+          and* declared, visible = Memo.Lazy.force visible_packages in
+          let preferred, other =
+            match declared with
+            | None -> candidates, []
+            | Some declared ->
+              List.partition_map candidates ~f:(fun package ->
+                if Package.Name.Set.mem declared package
+                then Left package
+                else Right package)
+          in
+          let search packages =
+            Memo.parallel_map packages ~f:(fun package ->
               let* libraries = opam_libraries package in
               match libraries with
               | None -> Memo.return None
@@ -434,6 +472,7 @@ module DB = struct
                    Some (Lib.DB.Resolve_result.redirect_by_name db (Loc.none, name))))
             >>| List.filter_opt
           in
+          let* results = search preferred in
           if List.is_non_empty results
           then Memo.return results
           else
@@ -442,27 +481,19 @@ module DB = struct
             then Memo.return []
             else
               let* errors = Dune_load.package_errors context in
-              let failed = Package.Name.Set.of_keys errors in
-              let* failed =
-                match owner with
-                | None -> Memo.return failed
-                | Some owner ->
-                  let+ visible =
-                    Dune_load.package_closure_for_context
-                      context
-                      (Package.Name.Set.singleton owner)
-                  in
-                  let visible =
-                    if include_owner
-                    then visible
-                    else Package.Name.Set.remove visible owner
-                  in
-                  Package.Name.Set.inter failed visible
+              let invalid selection =
+                Package.Name.Map.to_list errors
+                |> List.concat_map ~f:(fun (package, messages) ->
+                  match selection with
+                  | Some selected when not (Package.Name.Set.mem selected package) -> []
+                  | None | Some _ -> List.map messages ~f:Lib.DB.Resolve_result.invalid)
               in
-              Package.Name.Set.to_list failed
-              |> List.concat_map ~f:(Package.Name.Map.find_exn errors)
-              |> List.map ~f:Lib.DB.Resolve_result.invalid
-              |> Memo.return
+              let failed = invalid declared in
+              if List.is_non_empty failed
+              then Memo.return failed
+              else
+                let+ results = search other in
+                if List.is_non_empty results then results else invalid visible
         in
         let all_opam () =
           let* candidates = Memo.Lazy.force candidates in
@@ -750,6 +781,8 @@ module DB = struct
 
   let for_package (scope : scope) = function
     | None -> Memo.return scope
+    | Some _ when Option.is_some (Loaded_project.owner scope.loaded_project) ->
+      Memo.return scope
     | Some package ->
       let* context = Context.DB.by_dir scope.root in
       let+ scopes, _ = create_from_stanzas (Context.name context) in

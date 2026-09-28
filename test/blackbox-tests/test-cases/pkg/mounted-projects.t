@@ -80,17 +80,33 @@ or be reassigned to the mounted package during installation.
   $ echo 'let () = print_endline Right.message' > main_right.ml
   $ echo 'let () = print_endline Support.message' > workspace_main.ml
 
-BUG: the unselected source package collides with the workspace provider during
-scope construction. Keep only the diagnostic, not the internal stack trace.
+The mounted and workspace consumers all select the same provider.
 
-  $ dune build main_left.exe main_right.exe workspace_main.exe 2>error
-  [1]
-  $ grep '("Map.of_list_exn"' error
-    ("Map.of_list_exn", { key = "support" })
+  $ dune build main_left.exe main_right.exe workspace_main.exe
+  $ _build/default/main_left.exe
+  left/workspace
+  $ _build/default/main_right.exe
+  right/workspace
+  $ _build/default/workspace_main.exe
+  workspace
 
-Installation encounters the same collision.
+They can also link together without introducing duplicate compilation units.
 
-  $ dune build @pkg-install 2>error
-  [1]
-  $ grep '("Map.of_list_exn"' error
-    ("Map.of_list_exn", { key = "support" })
+  $ cat >> dune <<'EOF'
+  > (executable (name main) (modules main) (libraries left right support))
+  > EOF
+  $ dune build main.exe
+  $ _build/default/main.exe
+  left/workspace/right/workspace
+  $ test ! -e _build/default/.lockfile/pkg/left/other/support.cmxa
+  $ test ! -e _build/default/.lockfile/pkg/right/other/support.cmxa
+
+Installation preserves the declared dependency, without adopting its library.
+
+  $ dune build @pkg-install
+  $ grep '^requires' _build/default/.lockfile/pkg/left/META.left
+  requires = "support"
+  $ grep '^requires' _build/default/.lockfile/pkg/right/sub/META.right
+  requires = "support"
+  $ find _build/_private/default/.packages -path '*/__private__/support/support.cmxa' | wc -l
+  0

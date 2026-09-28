@@ -160,10 +160,6 @@ module Mounted_dune_files =
 
 let load_mounted context mask =
   let* mounted = Pkg_sources.mounted (Context.name context) in
-  let selected =
-    Package.Name.Set.of_list_map mounted ~f:(fun mounted ->
-      Pkg_sources.Mounted.candidate mounted |> Pkg_sources.Candidate.name)
-  in
   Memo.List.map mounted ~f:(fun mounted ->
     let owner = Pkg_sources.Mounted.candidate mounted |> Pkg_sources.Candidate.name in
     let+ result =
@@ -183,16 +179,18 @@ let load_mounted context mask =
                let* projects =
                  Pkg_sources.Mounted.projects mounted
                  |> Memo.List.map ~f:(fun (project, source_tree_root) ->
-                   let* packages =
-                     Dune_project.including_hidden_packages project
-                     |> Package.Name.Map.values
-                     |> Memo.List.filter ~f:Package_enabled.eval
-                   in
-                   let visible_packages =
-                     Package.Name.Set.of_list_map packages ~f:Package.name
-                     |> Package.Name.Set.filter ~f:(fun name ->
-                       Package.Name.equal name owner
-                       || not (Package.Name.Set.mem selected name))
+                   let* visible_packages =
+                     match
+                       Package.Name.Map.find
+                         (Dune_project.including_hidden_packages project)
+                         owner
+                     with
+                     | None -> Memo.return Package.Name.Set.empty
+                     | Some package ->
+                       let+ enabled = Package_enabled.eval package in
+                       if enabled
+                       then Package.Name.Set.singleton owner
+                       else Package.Name.Set.empty
                    in
                    let source_root = Dune_project.root project in
                    let project_root =
@@ -327,9 +325,9 @@ let packages_for_context context =
     Dune_project.packages (Loaded_project.project project)
     |> Package.Name.Map.values
     |> List.filter ~f:(fun package ->
-      match Loaded_project.visible_packages project with
+      match Loaded_project.owner project with
       | None -> true
-      | Some visible -> Package.Name.Set.mem visible (Package.name package)))
+      | Some owner -> Package.Name.equal owner (Package.name package)))
   |> Package.Name.Map.of_list_map_exn ~f:(fun package -> Package.name package, package)
 ;;
 

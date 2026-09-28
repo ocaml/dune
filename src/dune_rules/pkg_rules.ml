@@ -292,10 +292,13 @@ module Pkg = struct
       Install_layout.dependencies layout |> List.hd
   ;;
 
-  let package_deps t =
-    Action_builder.List.iter (deps_closure t) ~f:(fun pkg ->
-      Action_builder.ignore (dependency pkg))
+  let dep t =
+    match t.builder with
+    | Ok `Opam -> Action_builder.path t.paths.target_dir
+    | Ok `Dune | Error _ -> Action_builder.ignore (dependency t)
   ;;
+
+  let package_deps t = Action_builder.List.iter (deps_closure t) ~f:dep
 
   let install_roots t =
     let default_install_roots = Paths.install_roots t.paths in
@@ -1575,7 +1578,7 @@ let find_package ctx pkg =
     Some
       (let open Action_builder.O in
        let* () = Pkg.package_deps pkg in
-       Action_builder.ignore (Pkg.dependency pkg))
+       Pkg.dep pkg)
 ;;
 
 let package_prefixes ctx =

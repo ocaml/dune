@@ -814,7 +814,7 @@ module Unprocessed = struct
       let* stdlib_dir =
         Action_builder.of_memo
         @@
-        match t.config.for_ with
+        match for_ with
         | Ocaml -> Memo.return (Some stdlib_dir)
         | Melange ->
           let open Memo.O in
@@ -827,7 +827,7 @@ module Unprocessed = struct
         let requires_compile =
           Resolve.peek requires_compile |> Result.value ~default:[]
         in
-        match t.config.for_ with
+        match for_ with
         | Ocaml -> Action_builder.return requires_compile
         | Melange ->
           Action_builder.of_memo
@@ -846,7 +846,7 @@ module Unprocessed = struct
                      ocaml.version
                    |> Dune_project.Implicit_transitive_deps.to_bool
                  in
-                 Lib.closure [ lib ] ~linking ~for_:t.config.for_
+                 Lib.closure [ lib ] ~linking ~for_
                  |> Resolve.Memo.peek
                  >>| function
                  | Ok libs -> libs
@@ -855,7 +855,7 @@ module Unprocessed = struct
                List.concat [ requires_compile; libs ])
       in
       let+ flags = flags
-      and+ indexes = Ocaml_index.context_indexes context ~for_:t.config.for_
+      and+ indexes = Ocaml_index.context_indexes context ~for_
       and+ deps_src_dirs, deps_obj_dirs, deps_cmt_dirs =
         add_lib_dirs sctx ~for_ requires_compile
       and+ hidden_src_dirs, hidden_obj_dirs, hidden_cmt_dirs =

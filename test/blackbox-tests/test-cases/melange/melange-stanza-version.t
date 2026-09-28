@@ -147,36 +147,10 @@ Dune 3.25 enables Melange 1.0 without an explicit using declaration.
   > (package (name pkg))
   > EOF
   $ dune build app/pkg.cma @@melange && node _build/default/dist/main.js
-  File "dune", lines 1-3, characters 0-46:
-  1 | (melange.emit
-  2 |  (target dist)
-  3 |  (libraries pkg))
-  Error: 'melange.emit' is available only when melange is enabled in the
-  dune-project or workspace file. You must enable it using (using melange 1.0)
-  in the file.
-  File "app/dune", line 3, characters 18-25:
-  3 |  (modes :standard melange))
-                        ^^^^^^^
-  Error: 'melange' is available only when melange is enabled in the
-  dune-project or workspace file. You must enable it using (using melange 1.0)
-  in the file.
-  [1]
+  hello
   $ dune rules --format=json app/.pkg.objs/melange/pkg__App.cmj > rules.json
-  File "dune", lines 1-3, characters 0-46:
-  1 | (melange.emit
-  2 |  (target dist)
-  3 |  (libraries pkg))
-  Error: 'melange.emit' is available only when melange is enabled in the
-  dune-project or workspace file. You must enable it using (using melange 1.0)
-  in the file.
-  File "app/dune", line 3, characters 18-25:
-  3 |  (modes :standard melange))
-                        ^^^^^^^
-  Error: 'melange' is available only when melange is enabled in the
-  dune-project or workspace file. You must enable it using (using melange 1.0)
-  in the file.
-  [1]
   $ jq_dune -r '.[] | ruleActionFlagValues("--mel-package-name")' rules.json
+  pkg
 
 An explicit Melange 1.0 declaration remains valid.
 
@@ -191,11 +165,9 @@ Automatically enabling Melange does not enable the ReScript dialect either.
   > EOF
   $ dune build --root rescript
   Entering directory 'rescript'
-  File "dune", line 3, characters 8-15:
-  3 |  (modes melange)
-              ^^^^^^^
-  Error: 'melange' is available only when melange is enabled in the
-  dune-project or workspace file. You must enable it using (using melange 1.0)
-  in the file.
+  File "dune", line 4, characters 10-13:
+  4 |  (modules app))
+                ^^^
+  Error: Module App doesn't exist.
   Leaving directory 'rescript'
   [1]

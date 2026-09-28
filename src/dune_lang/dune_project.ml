@@ -327,16 +327,22 @@ module Extension = struct
 
   type automatic =
     | Selected of instance
+    | Default of packed_extension * Syntax.Version.t
     | Not_selected of packed_extension
 
-  let automatic ~explicitly_selected : automatic list =
+  let automatic ~dune_lang_ver ~explicitly_selected : automatic list =
     Table.foldi extensions ~init:[] ~f:(fun name extension acc ->
       match Syntax.Name.Map.find explicitly_selected name with
       | Some instance -> Selected instance :: acc
       | None ->
         (match extension with
          | Deleted_in _ -> acc
-         | Extension e -> Not_selected e :: acc))
+         | Extension e ->
+           if
+             dune_lang_ver >= (3, 25)
+             && Syntax.Name.equal name (Syntax.name Melange.syntax)
+           then Default (e, (1, 0)) :: acc
+           else Not_selected e :: acc))
   ;;
 
   let explicit_extensions_map explicit_extensions =
@@ -394,6 +400,7 @@ let make_parsing_context ~(lang : Lang.Instance.t) extensions =
       List.fold_left extensions ~init:[] ~f:(fun acc (ext : Extension.automatic) ->
         match ext with
         | Not_selected _ -> acc
+        | Default (Packed { syntax; _ }, version) -> (syntax, version) :: acc
         | Selected ext ->
           let syntax =
             let (Extension.Packed ext) = ext.extension in
@@ -411,13 +418,14 @@ let make_parsing_context ~(lang : Lang.Instance.t) extensions =
       let (Extension.Packed ext) =
         match ext with
         | Selected e -> e.extension
-        | Not_selected e -> e
+        | Default (e, _) | Not_selected e -> e
       in
       ext.syntax
     in
     let status : Syntax.Key.t =
       match ext with
       | Selected ext -> Active ext.version
+      | Default (_, version) -> Active version
       | Not_selected (Packed e) ->
         Inactive { lang = e.syntax; dune_lang_ver = lang.version }
     in
@@ -426,7 +434,11 @@ let make_parsing_context ~(lang : Lang.Instance.t) extensions =
 
 let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions =
   let explicit_extensions = Extension.explicit_extensions_map explicit_extensions in
-  let extensions = Extension.automatic ~explicitly_selected:explicit_extensions in
+  let extensions =
+    Extension.automatic
+      ~dune_lang_ver:lang.version
+      ~explicitly_selected:explicit_extensions
+  in
   let parsing_context = make_parsing_context ~lang extensions in
   let extension_args, extension_stanzas =
     List.fold_left
@@ -464,6 +476,14 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
                   assert false) ))
           in
           args_acc, stanzas :: stanzas_acc
+        | Default (Packed e, _) ->
+          let arg, stanzas =
+            Decoder.parse
+              (Decoder.enter e.stanzas)
+              parsing_context
+              (List (Loc.of_pos __POS__, []))
+          in
+          Univ_map.set args_acc e.key arg, stanzas :: stanzas_acc
         | Selected instance ->
           let (Packed e) = instance.extension in
           let args_acc, stanzas =

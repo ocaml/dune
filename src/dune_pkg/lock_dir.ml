@@ -966,6 +966,28 @@ module Pkg = struct
     List.is_empty t.enabled_on_platforms
     || Solver_env_disjunction.matches_platform t.enabled_on_platforms ~platform
   ;;
+
+  let equal_on_platform a b ~platform =
+    match is_enabled_on_platform a ~platform, is_enabled_on_platform b ~platform with
+    | false, false -> true
+    | true, false | false, true -> false
+    | true, true ->
+      let choose choice =
+        match Conditional_choice.choose_for_platform choice ~platform with
+        | None -> Conditional_choice.empty
+        | Some value -> Conditional_choice.singleton Solver_env.empty value
+      in
+      let normalize pkg =
+        { pkg with
+          build_command = choose pkg.build_command
+        ; install_command = choose pkg.install_command
+        ; depends = choose pkg.depends
+        ; enabled_on_platforms = [ Solver_env.empty ]
+        }
+        |> remove_locs
+      in
+      equal (normalize a) (normalize b)
+  ;;
 end
 
 module Repositories = struct

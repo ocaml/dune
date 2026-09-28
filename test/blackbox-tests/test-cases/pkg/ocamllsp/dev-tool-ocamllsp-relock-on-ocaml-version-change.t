@@ -29,14 +29,6 @@ Initially ocamllsp will depend on ocaml-base-compiler.5.2.0 to match the project
 
 We can re-run "dune tools exec ocamllsp" without relocking or rebuilding.
   $ dune tools exec ocamllsp
-  The version of the compiler package ("ocaml-base-compiler") in this project's
-  lockdir has changed to 5.2.0 (formerly the compiler version was 5.2.0). The
-  dev-tool "ocaml-lsp-server" will be re-locked and rebuilt with this version
-  of the compiler.
-  Solution for _build/.dev-tools.locks/ocaml-lsp-server:
-  - ocaml-base-compiler.5.2.0
-  - ocaml-compiler.5.2.0
-  - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'
   hello from fake ocamllsp
 

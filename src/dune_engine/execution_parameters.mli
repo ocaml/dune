@@ -16,6 +16,20 @@ open Action_types
     execution, we can skip a bunch of work by not trying to re-execute all the
     rules. *)
 
+(** Promotion permission follows registered source namespaces. Build-only
+    actions cannot promote, and build-only operands have no destination. *)
+module Promotion : sig
+  type t
+
+  (** Map workspace-backed contexts to their reserved build-only root names. *)
+  val for_rule
+    :  workspace_sources:Filename.Set.t Context_name.Map.t
+    -> dir:Path.Build.t
+    -> t
+
+  val destination : t -> Path.t -> Path.Source.t option
+end
+
 type t
 
 val equal : t -> t -> bool
@@ -56,6 +70,7 @@ val set_workspace_root_to_build_path_prefix_map
 val set_action_project_root : Path.Local.t option -> t -> t
 val set_sandbox_actions : bool -> t -> t
 val set_use_sandbox_policy : bool -> t -> t
+val set_promotion : Promotion.t -> t -> t
 
 (** As configured by [init] *)
 val default : t Memo.t
@@ -70,6 +85,7 @@ val action_stderr_limit : t -> Action_output_limit.t
 val workspace_root_to_build_path_prefix_map : t -> Workspace_root_for_build_prefix_map.t
 val action_project_root : t -> Path.Local.t option
 val use_sandbox_policy : t -> bool
+val promotion : t -> Promotion.t
 
 (** {1 Initialisation} *)
 

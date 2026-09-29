@@ -687,10 +687,6 @@ let add_artifact_source_rules ~dir ~source_dir rules =
         Rules.filter_rules generated_rules ~f:(fun rule ->
           (not (Path.Build.equal rule.targets.root dir))
           || Rule.Set.mem selected_rules rule)
-        |> Rules.map_rules ~f:(fun (rule : Rule.t) ->
-          match rule.mode with
-          | Promote _ -> Rule.set_mode rule Standard
-          | Standard | Fallback | Ignore_source_files -> rule)
       in
       let* source_rules =
         Filename.Array.Set.to_list selected.source_filenames

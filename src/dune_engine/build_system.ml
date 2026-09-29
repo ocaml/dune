@@ -540,7 +540,11 @@ and execute_action_for_rule
             | Normal_rule -> Path.Build.Set.empty
             | Anonymous_action { stamp_file; _ } -> Path.Build.Set.singleton stamp_file
           in
-          Sandbox.move_targets_to_build_dir sandbox ~skip_files ~targets
+          Sandbox.move_targets_to_build_dir
+            sandbox
+            ~promotion:(Execution_parameters.promotion execution_parameters)
+            ~skip_files
+            ~targets
         in
         match Targets.Produced.of_validated targets with
         | Ok produced_targets ->
@@ -604,6 +608,18 @@ and execute_rule_action
       ~facts
       ~execution_parameters
   =
+  let* contexts = Memo.Lazy.force (Build_config.get ()).contexts in
+  let workspace_sources =
+    Context_name.Map.filter_map contexts ~f:(fun context_type ->
+      match (context_type : Build_config.Context_type.t) with
+      | Empty -> None
+      | With_sources { build_only_sub_dirs } -> Some build_only_sub_dirs)
+  in
+  let execution_parameters =
+    Execution_parameters.set_promotion
+      (Execution_parameters.Promotion.for_rule ~workspace_sources ~dir:targets.root)
+      execution_parameters
+  in
   let { Action.Full.action = action_ast; props } = action in
   let wrap_fiber f =
     Memo.of_reproducible_fiber
@@ -758,6 +774,7 @@ and execute_rule_action
         -> Fiber.return ()
       | Promote promote, (Some Automatically | None) ->
         Target_promotion.promote
+          ~promotion:(Execution_parameters.promotion execution_parameters)
           ~targets:produced_targets
           ~promote
           ~promote_source:config.promote_source

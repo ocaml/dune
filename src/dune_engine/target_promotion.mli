@@ -6,8 +6,11 @@ open Import
 
 val save : unit -> unit
 
+(** Non-promotable rules or destinations keep their outputs in the build tree.
+    Promotion destinations are checked before any writeback. *)
 val promote
-  :  targets:Digest.t Targets.Produced.t
+  :  promotion:Execution_parameters.Promotion.t
+  -> targets:Digest.t Targets.Produced.t
   -> promote:Rule.Promote.t
   -> promote_source:
        (chmod:(Permissions.Mode.t -> Permissions.Mode.t)

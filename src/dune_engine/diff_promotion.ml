@@ -129,35 +129,38 @@ let db : db ref = ref []
 let clear_cache () = db := []
 let has_pending () = not (List.is_empty !db)
 
-let register_intermediate how ~source_file ~correction_file =
-  let src = snd (Path.Build.split_sandbox_root correction_file) in
-  Dune_trace.emit Promote (fun () ->
-    Dune_trace.Event.Promote.register `Staged src source_file);
-  let staging = File.in_staging_area source_file in
-  let staging_dir = Path.Build.parent_exn staging in
-  let mkdir_p () = Fpath.mkdir_p_strict (Path.Build.to_string staging_dir) in
-  (match
-     match mkdir_p () with
+let register_intermediate how ~promotion ~source_file ~correction_file =
+  match Execution_parameters.Promotion.destination promotion source_file with
+  | None -> ()
+  | Some source_file ->
+    let src = snd (Path.Build.split_sandbox_root correction_file) in
+    Dune_trace.emit Promote (fun () ->
+      Dune_trace.Event.Promote.register `Staged src source_file);
+    let staging = File.in_staging_area source_file in
+    let staging_dir = Path.Build.parent_exn staging in
+    let mkdir_p () = Fpath.mkdir_p_strict (Path.Build.to_string staging_dir) in
+    (match
+       match mkdir_p () with
+       | `Not_a_dir ->
+         Path.rm_rf (Path.build staging_dir);
+         mkdir_p ()
+       | x -> x
+     with
+     | `Already_exists | `Created -> ()
      | `Not_a_dir ->
-       Path.rm_rf (Path.build staging_dir);
-       mkdir_p ()
-     | x -> x
-   with
-   | `Already_exists | `Created -> ()
-   | `Not_a_dir ->
-     Code_error.raise "dir was deleted" [ "staging_dir", Path.Build.to_dyn staging_dir ]);
-  Path.rm_rf (Path.build staging);
-  (match how with
-   | `Move ->
-     Unix.rename (Path.Build.to_string correction_file) (Path.Build.to_string staging)
-   | `Copy ->
-     Io.copy_file
-       ~overwrite:true
-       ~chmod:Permissions.(add write)
-       ~src:(Path.build correction_file)
-       ~dst:(Path.build staging)
-       ());
-  db := File { src; staging = Some staging; dst = source_file } :: !db
+       Code_error.raise "dir was deleted" [ "staging_dir", Path.Build.to_dyn staging_dir ]);
+    Path.rm_rf (Path.build staging);
+    (match how with
+     | `Move ->
+       Unix.rename (Path.Build.to_string correction_file) (Path.Build.to_string staging)
+     | `Copy ->
+       Io.copy_file
+         ~overwrite:true
+         ~chmod:Permissions.(add write)
+         ~src:(Path.build correction_file)
+         ~dst:(Path.build staging)
+         ());
+    db := File { src; staging = Some staging; dst = source_file } :: !db
 ;;
 
 module P = Persistent.Make (struct
@@ -165,7 +168,7 @@ module P = Persistent.Make (struct
 
     let name = "TO-PROMOTE"
     let sharing = true
-    let version = 6
+    let version = 7
     let repr = Repr.list op_repr
   end)
 
@@ -408,5 +411,12 @@ let partition_db (db : db) files_to_promote =
   { present; missing }
 ;;
 
-let register_delete what src = db := Delete (what, src) :: !db
-let register_create_directory src = db := Create_directory src :: !db
+let register_delete what ~promotion src =
+  Execution_parameters.Promotion.destination promotion src
+  |> Option.iter ~f:(fun dst -> db := Delete (what, dst) :: !db)
+;;
+
+let register_create_directory ~promotion src =
+  Execution_parameters.Promotion.destination promotion src
+  |> Option.iter ~f:(fun dst -> db := Create_directory dst :: !db)
+;;

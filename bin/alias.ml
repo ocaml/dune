@@ -60,11 +60,12 @@ let of_string (root : Workspace_root.t) ~recursive s ~contexts =
     in_dir ~name ~recursive ~contexts dir)
 ;;
 
-let find_dir_specified_on_command_line ~dir =
+let find_dir_specified_on_command_line ~context ~dir =
   let open Memo.O in
-  Source_tree.find_dir dir
+  let build_dir = Path.Build.append_source (Context_name.build_dir context) dir in
+  Dune_rules.Dune_load.source_tree_dir ~dir:build_dir
   >>| function
-  | Some dir -> dir
+  | Some _ -> build_dir
   | None ->
     User_error.raise
       [ Pp.textf
@@ -74,7 +75,6 @@ let find_dir_specified_on_command_line ~dir =
 ;;
 
 let dep_on_alias_multi_contexts ~dir ~name ~contexts =
-  ignore (find_dir_specified_on_command_line ~dir : _ Memo.t);
   let context_to_alias_expansion ctx =
     let ctx_dir = Context_name.build_dir ctx in
     let dir = Path.Build.(append_source ctx_dir dir) in
@@ -85,16 +85,12 @@ let dep_on_alias_multi_contexts ~dir ~name ~contexts =
 
 let dep_on_alias_rec_multi_contexts ~dir:src_dir ~name ~contexts =
   let open Action_builder.O in
-  let* dir = Action_builder.of_memo (find_dir_specified_on_command_line ~dir:src_dir) in
+  let* dirs =
+    Action_builder.List.map contexts ~f:(fun context ->
+      Action_builder.of_memo (find_dir_specified_on_command_line ~context ~dir:src_dir))
+  in
   let* alias_statuses =
-    Action_builder.all
-      (List.map contexts ~f:(fun ctx ->
-         let dir =
-           Path.Build.append_source
-             (Context_name.build_dir ctx)
-             (Source_tree.Dir.path dir)
-         in
-         Dune_rules.Alias_rec.dep_on_alias_rec name dir))
+    Action_builder.List.map dirs ~f:(Dune_rules.Alias_rec.dep_on_alias_rec name)
   in
   match
     Alias0.is_standard name
@@ -107,13 +103,8 @@ let dep_on_alias_rec_multi_contexts ~dir:src_dir ~name ~contexts =
   | false ->
     let* load_dir =
       Action_builder.all
-      @@ List.map contexts ~f:(fun ctx ->
-        let dir =
-          Source_tree.Dir.path dir
-          |> Path.Build.append_source (Context_name.build_dir ctx)
-          |> Path.build
-        in
-        Action_builder.of_memo @@ Load_rules.load_dir ~dir)
+      @@ List.map dirs ~f:(fun dir ->
+        Action_builder.of_memo @@ Load_rules.load_dir ~dir:(Path.build dir))
     in
     let hints =
       let candidates =

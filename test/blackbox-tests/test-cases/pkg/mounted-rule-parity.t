@@ -178,17 +178,31 @@ children, but do not enter ignored or explicitly vendored directories.
   $ (cd _source && dune build --root . --only-packages foo _build/host/traversed)
   scanned
 
-BUG: recursive alias lookup checks the workspace tree instead of the loaded view.
-
   $ dune build _build/host/.lockfile/pkg/foo/traversed
-  File "_build/host/.lockfile/pkg/foo/dune", line 11, characters 18-29:
-  Error: Don't know about directory .lockfile/pkg/foo/checks!
-  [1]
+  scanned
+  $ cat _build/host/.lockfile/pkg/foo/traversed
+  traversed
 
 The same recursive alias can also be requested directly on the command line.
 
   $ (cd _source && dune build --root . --only-packages foo @_build/host/checks/scan)
   $ dune build @_build/host/.lockfile/pkg/foo/checks/scan
-  Error: Don't know about directory .lockfile/pkg/foo/checks specified on the
-  command line!
+
+Implicit default aliases use the same source view and include ordinary targets.
+
+  $ cat >> _source/checks/child/dune <<'EOF'
+  > (rule (target implicit) (action (write-file %{target} implicit)))
+  > EOF
+  $ (cd _source && dune build --root . --only-packages foo @_build/host/checks/child/default)
+  $ cat _source/_build/host/checks/child/implicit
+  implicit
+  $ dune build @_build/host/.lockfile/pkg/foo/checks/child/default
+  $ cat _build/host/.lockfile/pkg/foo/checks/child/implicit
+  implicit
+
+Workspace alias traversal must not sweep in dependency mounts.
+
+  $ dune build @_build/host/scan
+  Error: Alias "scan" specified on the command line is empty.
+  It is not defined in . or any of its descendants.
   [1]

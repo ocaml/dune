@@ -815,7 +815,7 @@ module Rules = struct
         traverse
           ~logical_path:logical_root
           ~relative_dir:Path.Local.root
-          ~status:Source_dir_status.Vendored
+          ~status:Source_dir_status.Normal
           ~parent_dune_file:None
           ~parent_project:None
       in

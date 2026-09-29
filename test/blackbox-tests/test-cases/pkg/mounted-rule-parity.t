@@ -206,3 +206,18 @@ Workspace alias traversal must not sweep in dependency mounts.
   Error: Alias "scan" specified on the command line is empty.
   It is not defined in . or any of its descendants.
   [1]
+
+Requesting a source directory is shorthand for its default alias in either view.
+
+  $ cat >> _source/checks/child/dune <<'EOF'
+  > (rule (target direct) (action (write-file %{target} directory)))
+  > EOF
+  $ (cd _source && dune build --root . --only-packages foo _build/host/checks/child)
+  $ cat _source/_build/host/checks/child/direct
+  directory
+
+BUG: directory target classification still checks only the workspace tree.
+
+  $ dune build _build/host/.lockfile/pkg/foo/checks/child
+  Error: Don't know how to build _build/host/.lockfile/pkg/foo/checks/child
+  [1]

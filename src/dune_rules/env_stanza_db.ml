@@ -131,8 +131,8 @@ module Inherit = struct
     let profile = context_data >>| Context.profile in
     let for_context =
       Memo.Lazy.create ~name:"environment-stanzas-for-context" (fun () ->
-        let+ context = context_data in
-        let profile = Context.profile context in
+        let+ context = context_data
+        and+ profile = profile in
         let { Context.Env_nodes.context; workspace } = Context.env_nodes context in
         let make env = Option.bind env ~f:(Dune_env.find_opt ~profile) in
         [ make workspace; make context ] |> List.filter_opt)

@@ -68,3 +68,20 @@ The per-directory PATH points at the host context:
 
   $ env_added "$(cat _build/target/env-output)" "$PATH" | censor
   $PWD/_build/host/.lockfile/pkg/provider/.opam/provider/target/bin
+
+The same host/target setup must work without an otherwise unused default
+context. This also exercises shared lock storage without native source loading.
+
+  $ cat >dune-workspace <<'EOF'
+  > (lang dune 3.25)
+  > (pkg enabled)
+  > (context (default (name host)))
+  > (context (default (name target) (host host)))
+  > EOF
+
+BUG: the shared lock namespace is rejected as a nonexistent workspace context.
+
+  $ dune build _build/target/pform-output >diagnostic 2>&1
+  [1]
+  $ grep -oF '[gen_rules] did not specify rules for the context' diagnostic
+  [gen_rules] did not specify rules for the context

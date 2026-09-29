@@ -137,3 +137,20 @@ partition while compiling the consuming library in the target context.
   $ find _build/host/.lockfile/pkg/bar/.ppx -name ppx.exe | wc -l
   1
   $ test ! -e _build/target/.lockfile/pkg/bar/.ppx
+
+A workspace does not need a context called default. Shared lock storage is not
+itself a workspace build context.
+
+  $ cat > dune-workspace <<'EOF'
+  > (lang dune 3.25)
+  > (pkg enabled)
+  > (context (default (name host)))
+  > (context (default (name target) (host host)))
+  > EOF
+
+BUG: private rule dispatch rejects the shared lock directory's namespace.
+
+  $ dune build _build/target/.lockfile/pkg/bar/nested/bar.cma >diagnostic 2>&1
+  [1]
+  $ grep -oF '[gen_rules] did not specify rules for the context' diagnostic
+  [gen_rules] did not specify rules for the context

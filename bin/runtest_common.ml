@@ -31,16 +31,21 @@ module Test_kind = struct
   ;;
 end
 
-let cram_tests_of_dir parent_dir =
+let source_tree_dir ~sctx dir =
+  let context = Super_context.context sctx in
+  let dir = Path.Build.append_source (Context.build_dir context) dir in
+  Dune_rules.Dune_load.source_tree_dir ~dir
+;;
+
+let cram_tests_of_dir ~sctx parent_dir =
   let open Memo.O in
-  Source_tree.find_dir parent_dir
+  source_tree_dir ~sctx parent_dir
   >>= function
   | None -> Memo.return []
-  | Some dir -> Dune_rules.Cram_rules.cram_tests (Source_tree.Rules.Dir.source dir)
+  | Some dir -> Dune_rules.Cram_rules.cram_tests dir
 ;;
 
 let find_cram_test cram_tests path =
-  let path = Source_path.workspace path in
   List.find_map cram_tests ~f:(function
     | Ok cram_test when Source_path.equal path (Source.Cram_test.path cram_test) ->
       Some cram_test
@@ -97,31 +102,31 @@ let classify_ml_test ~sctx ~dir ~ml_file =
 let all_tests_of_dir ~sctx parent_dir =
   let open Memo.O in
   let+ cram_candidates =
-    cram_tests_of_dir parent_dir
+    cram_tests_of_dir ~sctx parent_dir
     >>| List.filter_map ~f:(fun res ->
       Result.to_option res
       |> Option.map ~f:(fun test -> Source.Cram_test.path test |> Source_path.to_string))
   and+ ml_test_candidates =
-    Source_tree.find_dir parent_dir
+    source_tree_dir ~sctx parent_dir
     >>= function
     | None -> Memo.return []
     | Some source_dir ->
-      Source_tree.Dir.filenames source_dir
+      Source_tree.Rules.Dir.filenames source_dir
       |> Filename.Array.Set.to_list
       |> Memo.List.filter ~f:(fun ml_file ->
         classify_ml_test ~sctx ~dir:parent_dir ~ml_file >>| Result.is_ok)
       >>| Filename.L.to_string
   and+ dir_candidates =
-    Source_tree.find_dir parent_dir
+    source_tree_dir ~sctx parent_dir
     >>= function
     | None -> Memo.return []
     | Some parent_source_dir ->
-      let dirs = Source_tree.Dir.sub_dirs parent_source_dir in
+      let dirs = Source_tree.Rules.Dir.sub_dirs parent_source_dir in
       Filename.Array.Map.to_list dirs
       |> Memo.List.map ~f:(fun (_candidate, candidate_path) ->
-        Source_tree.Dir.sub_dir_as_t candidate_path
-        >>| Source_tree.Dir.path
-        >>| Path.Source.to_string)
+        Source_tree.Rules.Dir.sub_dir_as_t candidate_path
+        >>| Source_tree.Rules.Dir.source_path
+        >>| Source_path.to_string)
   in
   List.concat [ cram_candidates; ml_test_candidates; dir_candidates ]
   |> String.Set.of_list
@@ -143,19 +148,22 @@ let disambiguate_test_name ~sctx path =
   | None -> Memo.return @@ Test_kind.Runtest (Path.source Path.Source.root)
   | Some parent_dir ->
     let open Memo.O in
-    Source_tree.find_dir parent_dir
+    source_tree_dir ~sctx parent_dir
     >>= (function
      | None -> Memo.return None
      | Some source_dir ->
-       let+ cram_tests =
-         Dune_rules.Cram_rules.cram_tests (Source_tree.Rules.Dir.source source_dir)
+       let+ cram_tests = Dune_rules.Cram_rules.cram_tests source_dir in
+       let path =
+         Source_path.relative_fname
+           (Source_tree.Rules.Dir.source_path source_dir)
+           (Path.Source.basename path)
        in
        find_cram_test cram_tests path |> Option.map ~f:(fun test -> source_dir, test))
     >>= (function
      | Some (source_dir, test) ->
        (* If we find the cram test, then we request that is run. *)
        let dune_version =
-         Source_tree.Dir.project source_dir |> Dune_project.dune_version
+         Source_tree.Rules.Dir.project source_dir |> Dune_project.dune_version
        in
        let name = Source.Cram_test.name test ~dune_version in
        Memo.return (Test_kind.Cram (Path.source parent_dir, name))
@@ -176,7 +184,7 @@ let disambiguate_test_name ~sctx path =
             ]
         | Error `Not_a_test ->
           (* Assume the user intended a directory for @runtest to be used. *)
-          Source_tree.find_dir path
+          source_tree_dir ~sctx path
           >>= (function
            (* We need to make sure that this directory or file exists. *)
            | Some _ -> Memo.return (Test_kind.Runtest (Path.source path))

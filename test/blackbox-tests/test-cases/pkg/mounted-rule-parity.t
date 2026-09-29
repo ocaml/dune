@@ -220,14 +220,23 @@ Requesting a source directory is shorthand for its default alias in either view.
   $ cat _build/host/.lockfile/pkg/foo/checks/child/direct
   directory
 
-Test discovery must use the same view for direct cram requests and directories.
-BUG: the command-line classifier still searches only workspace directories.
+Test discovery uses the same view for direct cram requests and directories.
 
   $ (cd _source && dune runtest --root . _build/host/source-only/basic.t)
   $ dune runtest _build/host/.lockfile/pkg/foo/source-only/basic.t
-  Error: ".lockfile/pkg/foo/source-only/basic.t" does not match any known test.
-  [1]
   $ (cd _source && dune runtest --root . _build/host/source-only)
   $ dune runtest _build/host/.lockfile/pkg/foo/source-only
-  Error: ".lockfile/pkg/foo/source-only" does not match any known test.
-  [1]
+  $ (cd _source && dune runtest --root . _build/host/fixture.t)
+  $ dune runtest _build/host/.lockfile/pkg/foo/fixture.t
+
+OCaml test entry points continue to resolve through the same directory contents.
+
+  $ mkdir _source/unit
+  $ cat > _source/unit/dune <<'EOF'
+  > (test (name smoke) (libraries foo))
+  > EOF
+  $ echo 'let () = print_endline (if Foo.value = 1 then "unit" else "bad")' > _source/unit/smoke.ml
+  $ (cd _source && dune runtest --root . _build/host/unit/smoke.ml)
+  unit
+  $ dune runtest _build/host/.lockfile/pkg/foo/unit/smoke.ml
+  unit

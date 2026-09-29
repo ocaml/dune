@@ -222,9 +222,7 @@ let ppx_driver_exe (ctx : Context.t) ~scope libs =
           ~context:(Context.name host)
           ~identity:project
       in
-      (match Build_partition.purpose (Loaded_project.partition loaded_project) with
-       | Workspace -> Context.build_dir host
-       | Mounted -> Loaded_project.output_root loaded_project)
+      Build_partition.output_root (Loaded_project.partition loaded_project)
   in
   ppx_exe_path root ~key
 ;;

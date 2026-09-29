@@ -70,9 +70,7 @@ let get_rules sctx key =
           in
           let+ scope = Scope.DB.find_by_dir scope_dir in
           let root =
-            match Build_partition.purpose (Loaded_project.partition loaded_project) with
-            | Workspace -> Context.build_dir ctx
-            | Mounted -> Loaded_project.output_root loaded_project
+            Build_partition.output_root (Loaded_project.partition loaded_project)
           in
           scope, root
       in

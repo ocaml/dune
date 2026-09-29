@@ -106,10 +106,34 @@ Internal outputs must use the build partition, not the nested source root.
   > (build (run false))
   > EOF
 
-BUG: internal output placement incorrectly follows the nested source root.
+  $ dune build _build/default/.lockfile/pkg/bar/nested/bar.cma
+  $ test -f _build/default/.lockfile/pkg/bar/nested/bar.cma
+  $ find _build/default/.lockfile/pkg/bar/.ppx -name ppx.exe | wc -l
+  1
+  $ test ! -e _build/default/.lockfile/pkg/bar/nested/.ppx
 
-  $ dune build _build/default/.lockfile/pkg/bar/nested/bar.cma 2>&1 | censor
-  File ".lockfile/pkg/bar/nested/.bar.objs/byte/_unknown_", line 1, characters 0-0:
-  Error: No rule found for
-  .lockfile/pkg/bar/nested/.ppx/$DIGEST/ppx.exe
-  [1]
+With distinct host and target contexts, both builds put the driver in the host
+partition while compiling the consuming library in the target context.
+
+  $ cat > _source/dune-workspace <<'EOF'
+  > (lang dune 3.25)
+  > (context (default))
+  > (context (default (name host)))
+  > (context (default (name target) (host host)))
+  > EOF
+  $ (cd _source && dune build --root . --only-packages bar _build/target/nested/bar.cma)
+  $ find _source/_build/host/.ppx -name ppx.exe | wc -l
+  1
+  $ test ! -e _source/_build/target/.ppx
+  $ cat > dune-workspace <<'EOF'
+  > (lang dune 3.25)
+  > (pkg enabled)
+  > (context (default))
+  > (context (default (name host)))
+  > (context (default (name target) (host host)))
+  > EOF
+  $ dune build _build/target/.lockfile/pkg/bar/nested/bar.cma
+  $ test -f _build/target/.lockfile/pkg/bar/nested/bar.cma
+  $ find _build/host/.lockfile/pkg/bar/.ppx -name ppx.exe | wc -l
+  1
+  $ test ! -e _build/target/.lockfile/pkg/bar/.ppx

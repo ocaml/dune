@@ -164,6 +164,7 @@ let lint_module sctx ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope
             [ Pp.text "Staged ppx rewriters cannot be used as linters." ];
         let corrected_suffix = ".lint-corrected" in
         let ctx = Super_context.context sctx in
+        let command_dir = Context.build_dir ctx |> Path.build in
         let driver_and_flags =
           Action_builder.memoize
             ~cutoff:
@@ -201,9 +202,8 @@ let lint_module sctx ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope
                  ~ml_kind
                  source
                  (let* exe, flags, args = driver_and_flags in
-                  let dir = ctx |> Context.build_dir |> Path.build in
                   Command.run'
-                    ~dir
+                    ~dir:command_dir
                     ~sandbox:pps_sandbox
                     (Ok (Path.build exe))
                     [ As args

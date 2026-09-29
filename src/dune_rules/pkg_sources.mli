@@ -32,9 +32,3 @@ end
 
 val mounted : Context_name.t -> Mounted.t list Memo.t
 val find_mounted : Context_name.t -> Package.Name.t -> Mounted.t option Memo.t
-
-val add_artifact_source_rules
-  :  dir:Path.Build.t
-  -> source_dir:Source_tree.Rules.Dir.t
-  -> Build_config.Gen_rules.t
-  -> Build_config.Gen_rules.t

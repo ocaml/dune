@@ -258,9 +258,93 @@ when the input directory is a descendant of the copying directory.
   $ cat _build/host/.lockfile/pkg/foo/copies/source.txt
   authored
 
-BUG: mounted descendant globs silently omit generated inputs.
-
   $ dune build _build/host/.lockfile/pkg/foo/copies/generated.txt
-  Error: Don't know how to build
-  _build/host/.lockfile/pkg/foo/copies/generated.txt
+  $ cat _build/host/.lockfile/pkg/foo/copies/generated.txt
+  generated
+
+Only-sources globs exclude generated inputs and remove stale copied targets.
+Adding a source file updates the glob in both views.
+
+  $ echo '(copy_files (only_sources) (files input/*.txt))' > _source/copies/dune
+  $ (cd _source && dune build --root . --only-packages foo _build/host/copies/source.txt)
+  $ dune build _build/host/.lockfile/pkg/foo/copies/source.txt
+  $ test ! -e _source/_build/host/copies/generated.txt
+  $ test ! -e _build/host/.lockfile/pkg/foo/copies/generated.txt
+  $ echo added > _source/copies/input/added.txt
+  $ (cd _source && dune build --root . --only-packages foo _build/host/copies/added.txt)
+  $ cat _source/_build/host/copies/added.txt
+  added
+  $ dune build _build/host/.lockfile/pkg/foo/copies/added.txt
+  $ cat _build/host/.lockfile/pkg/foo/copies/added.txt
+  added
+
+Declared source children survive parent cleanup. Once the source directory is
+removed, its stale output directory must no longer be retained.
+
+  $ test -f _source/_build/host/copies/input/source.txt
+  $ test -f _build/host/.lockfile/pkg/foo/copies/input/source.txt
+  $ echo '(rule (target kept) (action (write-file %{target} kept)))' > _source/copies/dune
+  $ rm -r _source/copies/input
+  $ (cd _source && dune build --root . --only-packages foo _build/host/copies/kept)
+  $ dune build _build/host/.lockfile/pkg/foo/copies/kept
+  $ test ! -e _source/_build/host/copies/input
+  $ test ! -e _build/host/.lockfile/pkg/foo/copies/input
+
+Generated directory targets remain distinct from authored directories. Copies
+from a sibling's directory target work in either view.
+
+  $ mkdir _source/dir-producer _source/dir-consumer
+  $ cat > _source/dir-producer/dune <<'EOF'
+  > (rule
+  >  (target (dir files))
+  >  (deps (sandbox always))
+  >  (action (system "mkdir files; echo directory > files/generated.txt")))
+  > EOF
+  $ echo '(copy_files ../dir-producer/files/*.txt)' > _source/dir-consumer/dune
+  $ (cd _source && dune build --root . --only-packages foo _build/host/dir-consumer/generated.txt)
+  $ cat _source/_build/host/dir-consumer/generated.txt
+  directory
+  $ dune build _build/host/.lockfile/pkg/foo/dir-consumer/generated.txt
+  $ cat _build/host/.lockfile/pkg/foo/dir-consumer/generated.txt
+  directory
+
+Declaring a directory target does not give it authored-source independence.
+Copying from one's own directory target still produces the ordinary cycle.
+
+  $ mkdir _source/cycle
+  $ cat > _source/cycle/dune <<'EOF'
+  > (rule
+  >  (target (dir files))
+  >  (deps (sandbox always))
+  >  (action (system "mkdir files; echo directory > files/generated.txt")))
+  > (copy_files files/*.txt)
+  > EOF
+  $ (cd _source && dune build --root . --only-packages foo _build/host/cycle/generated.txt) > ordinary-error 2>&1
   [1]
+  $ grep '^Error:' ordinary-error
+  Error: Dependency cycle between:
+  $ dune build _build/host/.lockfile/pkg/foo/cycle/generated.txt > mounted-error 2>&1
+  [1]
+  $ grep '^Error:' mounted-error
+  Error: Dependency cycle between:
+
+Promoted directory targets can replace authored directories in the build tree.
+A mounted build must retain the source mask without promoting into its inputs.
+
+  $ mkdir -p _source/promoted/dir
+  $ echo authored > _source/promoted/dir/source.txt
+  $ cat > _source/promoted/dune <<'EOF'
+  > (rule
+  >  (mode promote)
+  >  (target (dir dir))
+  >  (deps (sandbox always))
+  >  (action (system "mkdir dir; echo promoted > dir/generated.txt")))
+  > EOF
+  $ dune build _build/host/.lockfile/pkg/foo/promoted/dir/generated.txt
+  $ cat _build/host/.lockfile/pkg/foo/promoted/dir/generated.txt
+  promoted
+  $ test -f _source/promoted/dir/source.txt
+  $ test ! -e _source/promoted/dir/generated.txt
+  $ (cd _source && dune build --root . --only-packages foo _build/host/promoted/dir/generated.txt)
+  $ cat _source/_build/host/promoted/dir/generated.txt
+  promoted

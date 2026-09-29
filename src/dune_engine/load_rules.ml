@@ -12,6 +12,24 @@ end
 
 let set_current_rule_loc = Current_rule_loc.set
 
+let source_file_copy ~src ~dst =
+  let action =
+    Action.Full.make
+      (Action.copy (Path.source src) dst)
+      ~sandbox:Sandbox_config.no_sandboxing
+  in
+  let action =
+    Action_builder.Expert.record_dep_on_source_file_exn
+      action
+      ~loc:Current_rule_loc.get
+      src
+  in
+  Rule.make
+    ~info:(Source_file_copy (Path.source src))
+    ~targets:(Targets.File.create dst)
+    action
+;;
+
 module Loaded = struct
   (* CR-someday amokhov: Loaded rules are relative to the directory passed to [load_dir],
      so these maps should probably be indexed by [Filename.t]s rather than [Path.t]s. We
@@ -303,28 +321,11 @@ module rec Load_rules : sig
 end = struct
   open Load_rules
 
-  let copy_source_action ~src_path ~build_path : Action.Full.t Action_builder.t =
-    let action =
-      Action.Full.make
-        (Action.copy (Path.source src_path) build_path)
-        (* Sandboxing this action doesn't make much sense: if we can copy [src_path] to
-           the sandbox, we might as well copy it to the build directory directly. *)
-        ~sandbox:Sandbox_config.no_sandboxing
-    in
-    Action_builder.Expert.record_dep_on_source_file_exn
-      action
-      ~loc:Current_rule_loc.get
-      src_path
-  ;;
-
   let create_copy_rules ~dir ~ctx_dir ~non_target_source_filenames =
     Filename.Array.Set.to_list_map non_target_source_filenames ~f:(fun filename ->
-      let src_path = Path.Source.relative_fname dir filename in
-      let build_path = Path.Build.append_source ctx_dir src_path in
-      Rule.make
-        ~info:(Source_file_copy (Path.source src_path))
-        ~targets:(Targets.File.create build_path)
-        (copy_source_action ~src_path ~build_path))
+      let src = Path.Source.relative_fname dir filename in
+      let dst = Path.Build.append_source ctx_dir src in
+      source_file_copy ~src ~dst)
   ;;
 
   let compile_rules ~dir ~source_dirs rules =
@@ -394,65 +395,32 @@ end = struct
     Alias.Name.Map.map aliases ~f:Rules.Dir_rules.Alias_spec.to_list
   ;;
 
-  (** A directory is only allowed to be generated if its parent knows about it.
-      This restriction is necessary to prevent stale artifact deletion from
-      removing that directory.
-
-      This module encodes that restriction. *)
-  module Generated_directory_restrictions : sig
-    type restriction =
-      | Unrestricted
-      | Restricted of Path.Unspecified.w Dir_set.t Memo.Lazy.t
-
-    (** Used by the child to ask about the restrictions placed by the parent. *)
-    val allowed_by_parent : dir:Path.Build.t -> restriction Memo.t
-  end = struct
-    type restriction =
-      | Unrestricted
-      | Restricted of Path.Unspecified.w Dir_set.t Memo.Lazy.t
-
-    let source_subdirs_of_build_dir ~dir =
-      let module Source_tree = (val (Build_config.get ()).source_tree) in
-      let corresponding_source_dir =
-        match Dpath.analyse_target dir with
-        | Alias _ | Anonymous_action _ | Other _ -> Memo.return None
-        | Regular (_ctx, sub_dir) -> Source_tree.find_dir sub_dir
-      in
-      corresponding_source_dir
-      >>| function
-      | None -> Filename.Array.Set.empty
-      | Some dir -> Source_tree.Dir.sub_dir_names dir
-    ;;
-
-    let allowed_dirs ~dir ~subdir : restriction Memo.t =
-      let+ subdirs = source_subdirs_of_build_dir ~dir in
-      if Filename.Array.Set.mem subdirs subdir
-      then Unrestricted
-      else
-        Restricted
-          (Memo.Lazy.create ~name:"allowed_dirs" (fun () ->
-             load_dir ~dir:(Path.build dir)
-             >>| function
-             | External _ | Source _ -> Dir_set.just_the_root
-             | Build { allowed_subdirs; _ } -> Dir_set.descend allowed_subdirs subdir
-             | Build_under_directory_target _ -> Dir_set.empty))
-    ;;
-
-    let allowed_by_parent ~dir =
-      allowed_dirs ~dir:(Path.Build.parent_exn dir) ~subdir:(Path.Build.basename dir)
-    ;;
-  end
-
   module Normal = struct
     type t =
       { build_dir_only_sub_dirs : Build_only_sub_dirs.t
+      ; source_sub_dirs : Filename.Set.t Path.Build.Map.t
+      ; source_files : Rule.t Memo.t Filename.Map.t Path.Build.Map.t
       ; directory_targets : Loc.t Path.Build.Map.t
       ; rules : Rules.t Memo.Lazy.t
       }
 
-    let combine_exn r { build_dir_only_sub_dirs; directory_targets; rules } =
+    let combine_exn
+          r
+          { build_dir_only_sub_dirs
+          ; source_sub_dirs
+          ; source_files
+          ; directory_targets
+          ; rules
+          }
+      =
       { build_dir_only_sub_dirs =
           Build_only_sub_dirs.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
+      ; source_sub_dirs =
+          Path.Build.Map.union r.source_sub_dirs source_sub_dirs ~f:(fun _ a b ->
+            Some (Filename.Set.union a b))
+      ; source_files =
+          Path.Build.Map.union r.source_files source_files ~f:(fun _ a b ->
+            Some (Filename.Map.union_exn a b))
       ; directory_targets = Path.Build.Map.union_exn r.directory_targets directory_targets
       ; rules =
           Memo.lazy_ ~name:"union-rules" (fun () ->
@@ -515,17 +483,31 @@ end = struct
 
     let make_rules_gen_result
           ~of_
-          { Gen_rules.Rules.build_dir_only_sub_dirs; directory_targets; rules }
+          { Gen_rules.Rules.build_dir_only_sub_dirs
+          ; source_sub_dirs
+          ; source_files
+          ; directory_targets
+          ; rules
+          }
       =
       check_all_directory_targets_are_descendant ~of_ directory_targets;
       check_all_sub_dirs_rule_dirs_are_descendant ~of_ build_dir_only_sub_dirs;
+      let check_source_dir dir _ =
+        if not (Path.Build.is_descendant dir ~of_)
+        then
+          Code_error.raise
+            "[gen_rules] returned source directories outside its directory"
+            [ "dir", Path.Build.to_dyn of_; "example", Path.Build.to_dyn dir ]
+      in
+      Path.Build.Map.iteri source_sub_dirs ~f:check_source_dir;
+      Path.Build.Map.iteri source_files ~f:check_source_dir;
       let rules =
         Memo.lazy_ ~name:"check-rules-are-descendant" (fun () ->
           let+ rules = rules in
           check_all_rules_are_descendant ~of_ rules;
           rules)
       in
-      { build_dir_only_sub_dirs; directory_targets; rules }
+      { build_dir_only_sub_dirs; source_sub_dirs; source_files; directory_targets; rules }
     ;;
   end
 
@@ -591,6 +573,55 @@ end = struct
         Memo.create ~input:(module Dir_triage.Build_directory) "gen-rules" gen_rules_impl
       in
       fun x -> Memo.exec memo x
+    ;;
+  end
+
+  (** A directory is only allowed to be generated if its parent knows about it.
+      This restriction is necessary to prevent stale artifact deletion from
+      removing that directory.
+
+      This module encodes that restriction. *)
+  module Generated_directory_restrictions : sig
+    type restriction =
+      | Unrestricted
+      | Restricted of Path.Unspecified.w Dir_set.t Memo.Lazy.t
+
+    (** Used by the child to ask about the restrictions placed by the parent. *)
+    val allowed_by_parent : dir:Path.Build.t -> restriction Memo.t
+  end = struct
+    type restriction =
+      | Unrestricted
+      | Restricted of Path.Unspecified.w Dir_set.t Memo.Lazy.t
+
+    let source_subdirs_of_build_dir ~dir =
+      get_dir_triage ~dir:(Path.build dir)
+      >>= function
+      | Known _ -> Memo.return Filename.Set.empty
+      | Build_directory parent ->
+        let+ parent_rules = Gen_rules.gen_rules parent in
+        (match parent_rules with
+         | Under_directory_target _ -> Filename.Set.empty
+         | Normal { source_sub_dirs; _ } ->
+           Path.Build.Map.find source_sub_dirs dir
+           |> Option.value ~default:Filename.Set.empty)
+    ;;
+
+    let allowed_dirs ~dir ~subdir : restriction Memo.t =
+      let+ subdirs = source_subdirs_of_build_dir ~dir in
+      if Filename.Set.mem subdirs subdir
+      then Unrestricted
+      else
+        Restricted
+          (Memo.Lazy.create ~name:"allowed_dirs" (fun () ->
+             load_dir ~dir:(Path.build dir)
+             >>| function
+             | External _ | Source _ -> Dir_set.just_the_root
+             | Build { allowed_subdirs; _ } -> Dir_set.descend allowed_subdirs subdir
+             | Build_under_directory_target _ -> Dir_set.empty))
+    ;;
+
+    let allowed_by_parent ~dir =
+      allowed_dirs ~dir:(Path.Build.parent_exn dir) ~subdir:(Path.Build.basename dir)
     ;;
   end
 
@@ -732,7 +763,13 @@ end = struct
     >>= function
     | Under_directory_target { directory_target_ancestor } ->
       Memo.return (Loaded.Build_under_directory_target { directory_target_ancestor })
-    | Normal { rules; build_dir_only_sub_dirs; directory_targets } ->
+    | Normal
+        { rules
+        ; build_dir_only_sub_dirs
+        ; directory_targets
+        ; source_sub_dirs
+        ; source_files
+        } ->
       let build_dir_only_sub_dirs =
         let declared =
           Path.Build.Map.find build_dir_only_sub_dirs dir
@@ -757,33 +794,63 @@ end = struct
       let collected = Rules.Dir_rules.consume rules in
       let rules = collected.rules in
       let from_workspace = Dir_triage.Build_directory.has_workspace_source build_dir in
+      let source_files = Path.Build.Map.find source_files dir in
       let* source_files_and_dirs =
-        if from_workspace
-        then source_files_and_dirs sub_dir
-        else Memo.return Source_files_and_dirs.empty
+        match source_files with
+        | Some files ->
+          Memo.return
+            { Source_files_and_dirs.source_filenames =
+                Filename.Map.keys files |> Filename.Array.Set.of_sorted_list
+            ; source_dirs = Filename.Array.Set.empty
+            }
+        | None ->
+          if from_workspace
+          then source_files_and_dirs sub_dir
+          else Memo.return Source_files_and_dirs.empty
+      in
+      let source_dirs =
+        Path.Build.Map.find source_sub_dirs dir
+        |> Option.value ~default:Filename.Set.empty
+        |> Filename.Set.to_list
+        |> Filename.Array.Set.of_sorted_list
+        |> Filename.Array.Set.union source_files_and_dirs.source_dirs
       in
       let { Source_selection.source_filenames; source_dirs; rules } =
-        if from_workspace
-        then
-          Source_selection.select
-            ~dir
-            ~source_dir:(Path.source sub_dir)
-            ~build_dir_only_sub_dirs
-            ~source_filenames:source_files_and_dirs.source_filenames
-            ~source_dirs:source_files_and_dirs.source_dirs
-            rules
-        else
-          { Source_selection.source_filenames = source_files_and_dirs.source_filenames
-          ; source_dirs = source_files_and_dirs.source_dirs
-          ; rules
-          }
+        Source_selection.select
+          ~dir
+          ~source_dir:(if from_workspace then Path.source sub_dir else Path.build dir)
+          ~build_dir_only_sub_dirs
+          ~source_filenames:source_files_and_dirs.source_filenames
+          ~source_dirs
+          rules
       in
-      let copy_rules =
-        let ctx_dir = Context_name.build_dir context_name in
-        create_copy_rules
-          ~dir:sub_dir
-          ~ctx_dir
-          ~non_target_source_filenames:source_filenames
+      let* copy_rules =
+        match source_files with
+        | Some files ->
+          Filename.Array.Set.to_list source_filenames
+          |> Memo.List.map ~f:(fun filename ->
+            let+ (rule : Rule.t) = Filename.Map.find_exn files filename in
+            if
+              not
+                (Path.Build.equal rule.targets.root dir
+                 && Filename.Set.equal
+                      rule.targets.files
+                      (Filename.Set.singleton filename)
+                 && Filename.Set.is_empty rule.targets.dirs)
+            then
+              Code_error.raise
+                "Source file rule targets do not match its declaration"
+                [ "file", Path.Build.to_dyn (Path.Build.relative_fname dir filename)
+                ; "targets", Targets.Validated.to_dyn rule.targets
+                ];
+            rule)
+        | None ->
+          let ctx_dir = Context_name.build_dir context_name in
+          create_copy_rules
+            ~dir:sub_dir
+            ~ctx_dir
+            ~non_target_source_filenames:source_filenames
+          |> Memo.return
       in
       let rules = rules @ copy_rules in
       let* descendants_to_keep =

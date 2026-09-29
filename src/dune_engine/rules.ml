@@ -210,27 +210,6 @@ let collect_unit f =
 
 let to_map x = (x : t :> Dir_rules.t Path.Build.Map.t)
 
-let map_rules t ~f =
-  Path.Build.Map.map t ~f:(fun m ->
-    Id.Map.to_list (m : Dir_rules.Nonempty.t :> Dir_rules.t)
-    |> Id.Map.of_list_map_exn ~f:(fun (id, data) ->
-      match (data : Dir_rules.data) with
-      | Alias _ -> id, data
-      | Rule rule -> Id.gen (), (Rule (f rule) : Dir_rules.data))
-    |> Dir_rules.Nonempty.create
-    |> Option.value_exn)
-;;
-
-let filter_rules t ~f =
-  Path.Build.Map.filter_map t ~f:(fun m ->
-    Id.Map.filter_map
-      (m : Dir_rules.Nonempty.t :> Dir_rules.t)
-      ~f:(function
-        | Alias _ as alias -> Some alias
-        | Rule rule as data -> Option.some_if (f rule) data)
-    |> Dir_rules.Nonempty.create)
-;;
-
 let find t p =
   match Path.as_in_build_dir p with
   | None -> Dir_rules.empty

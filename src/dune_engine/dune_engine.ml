@@ -16,7 +16,6 @@ module Alias = Alias
 module Dpath = Dpath
 module Dtemp = Dtemp
 module Rules = Rules
-module Source_selection = Source_selection
 module Rule = Rule
 module Target_promotion = Target_promotion
 module Build_context = Build_context

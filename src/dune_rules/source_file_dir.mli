@@ -7,3 +7,5 @@ type t =
   ; source_dir : Source_tree.Rules.Dir.t option
   ; stanzas : Stanza.t list
   }
+
+val rules : dir:Path.Build.t -> Source_tree.Rules.Dir.t -> Rule.t Memo.t Filename.Map.t

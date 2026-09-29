@@ -5,6 +5,9 @@ open Import
 (** A way to determine the [Loc.t] of the current rule. Set by [Build_system]. *)
 val set_current_rule_loc : (unit -> Loc.t option Memo.t) -> unit
 
+(** Copy a workspace file with source dependency tracking and no sandbox. *)
+val source_file_copy : src:Path.Source.t -> dst:Path.Build.t -> Rule.t
+
 module Loaded : sig
   type rules_here =
     { by_file_targets : Rule.t Path.Build.Map.t

@@ -240,3 +240,27 @@ OCaml test entry points continue to resolve through the same directory contents.
   unit
   $ dune runtest _build/host/.lockfile/pkg/foo/unit/smoke.ml
   unit
+
+Copy-files globs include generated files as well as authored sources, including
+when the input directory is a descendant of the copying directory.
+
+  $ mkdir -p _source/copies/input
+  $ echo '(copy_files input/*.txt)' > _source/copies/dune
+  $ echo authored > _source/copies/input/source.txt
+  $ cat > _source/copies/input/dune <<'EOF'
+  > (rule (target generated.txt) (action (write-file %{target} generated)))
+  > EOF
+  $ (cd _source && dune build --root . --only-packages foo _build/host/copies/source.txt _build/host/copies/generated.txt)
+  $ cat _source/_build/host/copies/source.txt _source/_build/host/copies/generated.txt
+  authored
+  generated
+  $ dune build _build/host/.lockfile/pkg/foo/copies/source.txt
+  $ cat _build/host/.lockfile/pkg/foo/copies/source.txt
+  authored
+
+BUG: mounted descendant globs silently omit generated inputs.
+
+  $ dune build _build/host/.lockfile/pkg/foo/copies/generated.txt
+  Error: Don't know how to build
+  _build/host/.lockfile/pkg/foo/copies/generated.txt
+  [1]

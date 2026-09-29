@@ -129,16 +129,21 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system)
     in
     Error (excluded_hint @ target_hint)
   in
-  let as_source_dir src =
-    Source_tree.find_dir src
-    >>| Option.map ~f:(fun _ ->
+  let as_source_dir src ~contexts =
+    let+ exists =
+      Memo.List.exists contexts ~f:(fun context ->
+        let dir = Path.Build.append_source (Context.build_dir context) src in
+        Dune_rules.Dune_load.source_tree_dir ~dir >>| Option.is_some)
+    in
+    Option.some_if
+      exists
       [ Request.Alias
           (Alias.in_dir
              ~name:Dune_engine.Alias.Name.default
              ~recursive:true
-             ~contexts:setup.contexts
+             ~contexts
              path)
-      ])
+      ]
   in
   let matching_targets src =
     Memo.parallel_map setup.contexts ~f:(fun ctx ->
@@ -161,17 +166,17 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system)
     matching_targets src
     >>= (function
      | [] ->
-       as_source_dir src
+       as_source_dir src ~contexts:setup.contexts
        >>= (function
         | Some res -> Memo.return (Ok res)
         | None -> can't_build ~src path)
      | l -> Memo.return (Ok l))
-  | In_build_dir (_ctx, src) ->
+  | In_build_dir (ctx, src) ->
     matching_target ()
     >>= (function
      | Some res -> Memo.return (Ok res)
      | None ->
-       as_source_dir src
+       as_source_dir src ~contexts:[ ctx ]
        >>= (function
         | Some res -> Memo.return (Ok res)
         | None -> can't_build ~src path))

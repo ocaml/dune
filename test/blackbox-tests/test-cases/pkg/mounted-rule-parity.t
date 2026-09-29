@@ -216,8 +216,6 @@ Requesting a source directory is shorthand for its default alias in either view.
   $ cat _source/_build/host/checks/child/direct
   directory
 
-BUG: directory target classification still checks only the workspace tree.
-
   $ dune build _build/host/.lockfile/pkg/foo/checks/child
-  Error: Don't know how to build _build/host/.lockfile/pkg/foo/checks/child
-  [1]
+  $ cat _build/host/.lockfile/pkg/foo/checks/child/direct
+  directory

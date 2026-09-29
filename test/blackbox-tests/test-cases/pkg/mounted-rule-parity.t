@@ -70,3 +70,46 @@ and inherited cram stanzas must not replace the mounted project's configuration.
   $ cat _build/default/.lockfile/pkg/foo/verified
   verified
   $ test ! -e _build/default/.lockfile/pkg/foo/.opam/foo/target
+
+A selected project can be nested within its source snapshot. Its ordinary
+private PPX belongs to that same project; no other package owns the driver.
+Internal outputs must use the build partition, not the nested source root.
+
+  $ mkdir -p _source/nested/driver
+  $ cat > _source/nested/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name bar) (dir .))
+  > EOF
+  $ cat > _source/nested/dune <<'EOF'
+  > (library (public_name bar) (preprocess (staged_pps identity)))
+  > EOF
+  $ echo 'let value = 3' > _source/nested/bar.ml
+  $ cat > _source/nested/driver/dune <<'EOF'
+  > (library
+  >  (name identity)
+  >  (kind ppx_rewriter)
+  >  (ppx.driver (main Identity.main)))
+  > EOF
+  $ cat > _source/nested/driver/identity.ml <<'EOF'
+  > let main () =
+  >   let input = open_in_bin Sys.argv.(Array.length Sys.argv - 2) in
+  >   let contents = really_input_string input (in_channel_length input) in
+  >   close_in input;
+  >   let output = open_out_bin Sys.argv.(Array.length Sys.argv - 1) in
+  >   output_string output contents;
+  >   close_out output
+  > EOF
+  $ (cd _source && dune build --root . --only-packages bar nested/bar.cma)
+  $ make_lockpkg bar <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_source))
+  > (build (run false))
+  > EOF
+
+BUG: internal output placement incorrectly follows the nested source root.
+
+  $ dune build _build/default/.lockfile/pkg/bar/nested/bar.cma 2>&1 | censor
+  File ".lockfile/pkg/bar/nested/.bar.objs/byte/_unknown_", line 1, characters 0-0:
+  Error: No rule found for
+  .lockfile/pkg/bar/nested/.ppx/$DIGEST/ppx.exe
+  [1]

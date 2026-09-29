@@ -133,6 +133,10 @@ module Make (User : USER) = struct
 
   and lit = sign * var
 
+  type pending =
+    | Pending_clause of clause
+    | Pending_fact of lit * reason
+
   type t =
     { id_maker : VarID.mint
     ; (* Propagation *)
@@ -153,6 +157,8 @@ module Make (User : USER) = struct
     ; num_clauses : Counter.t
     ; num_decisions : Counter.t
     ; num_conflicts : Counter.t
+    ; mutable pending : pending list
+      (* Clauses added since the last [step] which are not yet active. *)
     }
 
   let lit_equal (s1, v1) (s2, v2) = s1 == s2 && v1 == v2
@@ -212,10 +218,6 @@ module Make (User : USER) = struct
 
   exception ConflictingClause of clause
 
-  type added_result =
-    | AddedFact of bool (* Result of enqueing the new fact *)
-    | AddedClause of clause
-
   let create () =
     if debug then log_debug (Pp.text "--- new SAT problem ---");
     { id_maker = VarID.make_mint ()
@@ -231,6 +233,7 @@ module Make (User : USER) = struct
     ; num_clauses = Counter.create ()
     ; num_decisions = Counter.create ()
     ; num_conflicts = Counter.create ()
+    ; pending = []
     }
   ;;
 
@@ -249,11 +252,13 @@ module Make (User : USER) = struct
       then
         log_debug
           (Pp.text "(backtracking: no longer selected " ++ name_lit lit ++ Pp.char ')');
-      (match !current with
-       | l :: lst ->
-         assert (lit_equal lit l);
-         current := lst
-       | [] -> assert false)
+      let var = var_of_lit lit in
+      let rec filter1 = function
+        | [] -> failwith "Sat.undo: at_most missing literal"
+        | l :: rest when var_of_lit l == var -> rest
+        | l :: rest -> l :: filter1 rest
+      in
+      current := filter1 !current
   ;;
 
   let pp_lits lits = Pp.concat_map ~sep:(Pp.text ", ") lits ~f:name_lit
@@ -358,6 +363,9 @@ module Make (User : USER) = struct
     for _i = 1 to n_this_level do
       undo_one problem
     done;
+    (* Every assignment the queue still holds is undone by this, so nothing in
+       it is worth propagating. *)
+    Queue.clear problem.propQ;
     problem.trail_lim <- List.tl problem.trail_lim;
     problem.trail_lim_len <- problem.trail_lim_len - 1
   ;;
@@ -377,6 +385,68 @@ module Make (User : USER) = struct
   let watch_lit lit clause =
     (* if debug then log_debug "%s is watching for %s to become True" clause#to_string (name_lit lit); *)
     Queue.push (watch_queue lit) clause
+  ;;
+
+  let watch_clause = function
+    | Union lits as clause ->
+      watch_lit (neg lits.(0)) clause;
+      watch_lit (neg lits.(1)) clause
+    | At_most _ -> () (* already watched *)
+  ;;
+
+  let sort_watches lits =
+    (* Prefer watching true or undecided literals (as they are free),
+       or if not possible, false literals which have been set recently (less backtrack). *)
+    let rank lit =
+      match lit_value lit with
+      | True | Undecided -> max_int
+      | False -> (var_of_lit lit).level
+    in
+    Array.stable_sort lits ~cmp:(fun a b ->
+      Ordering.to_int @@ Int.compare (rank b) (rank a))
+  ;;
+
+  (* What a clause is, given the current assignment. [Propagate] carries the
+     level at which the clause became unit, which is where the assignment it
+     forces belongs. *)
+  type action =
+    | Continue (* correctly watched: propagation takes it from here *)
+    | Propagate of int
+    | Falsified
+
+  let union_action lits =
+    sort_watches lits;
+    match lit_value lits.(1) with
+    | True | Undecided -> Continue
+    | False ->
+      (match lit_value lits.(0) with
+       | True -> Continue (* Satisfied *)
+       | Undecided ->
+         (* [lits.(1)] is the [False] literal that backtracking frees first. *)
+         Propagate (var_of_lit lits.(1)).level
+       | False -> Falsified)
+  ;;
+
+  let at_most_action (nb, _, lits) =
+    let selected =
+      Array.to_list lits
+      |> List.filter_map ~f:(fun lit ->
+        match lit_value lit with
+        | True -> Some (var_of_lit lit).level
+        | False | Undecided -> None)
+    in
+    match Int.compare (List.length selected) nb with
+    | Gt -> Falsified
+    | Lt -> Continue
+    | Ordering.Eq ->
+      (* Enough literals are selected: all the others must become [False]. *)
+      let level = List.fold_left ~f:Int.max ~init:0 selected in
+      Propagate level
+  ;;
+
+  let clause_action = function
+    | Union lits -> union_action lits
+    | At_most at_most -> at_most_action at_most
   ;;
 
   exception Conflict
@@ -406,23 +476,54 @@ module Make (User : USER) = struct
     (* Which literals caused [lit] to have its current value?
        @return a list of literals which caused the problem by all being True. *)
     let calc_reason_for t lit =
+      let var = var_of_lit lit in
       match t with
       | Union lits ->
         (* Which literals caused [lit] to have its current value? *)
-        assert (lit_equal lit lits.(0));
         (* The cause is everything except lit. *)
         let rec get_cause i =
           if i = Array.length lits
           then []
           else (
             let l = lits.(i) in
-            if lit_equal l lit then get_cause (i + 1) else neg l :: get_cause (i + 1))
+            if var_of_lit l == var then get_cause (i + 1) else neg l :: get_cause (i + 1))
         in
         get_cause 0
       | At_most (_, _, lits) ->
         (* Find the True literals. All true literal other than [lit] would do. *)
         Array.to_list lits
-        |> List.filter ~f:(fun l -> (not (lit_equal l lit)) && lit_value l = True)
+        |> List.filter ~f:(fun l -> var_of_lit l != var && lit_value l = True)
+    ;;
+
+    (* [nb] of the literals of [clause] are [True], so all the others have to
+       be [False]. @return false if there is a conflict. *)
+    let at_most_deduce problem clause nb lits =
+      try
+        (* We set all other literals to False. *)
+        let nb_true = ref 0 in
+        Array.iter lits ~f:(fun l ->
+          match lit_value l with
+          | True ->
+            incr nb_true;
+            (* Due to queuing, more literals could have been selected
+               before we got called. *)
+            if !nb_true > nb
+            then (
+              if debug then log_debug (Pp.text "CONFLICT: already selected " ++ name_lit l);
+              raise_notrace Conflict)
+          | Undecided ->
+            (* Since we have the right number of lits selected,
+               all unknown ones can be set to False. *)
+            let assigned = enqueue problem (neg l) (Clause clause) in
+            if not assigned
+            then (
+              if debug
+              then log_debug (Pp.text "CONFLICT: enqueue failed for " ++ name_lit (neg l));
+              raise_notrace Conflict)
+          | False -> ());
+        true
+      with
+      | Conflict -> false
     ;;
 
     (* [lit] is now [True]. Add any new deductions. @return false if there is a
@@ -486,56 +587,29 @@ module Make (User : USER) = struct
         (* value[lit] has just become true *)
         assert (lit_value lit = True);
         (* if debug then log_debug("%s: noticed %s has become True" % (self, self.solver.name_lit(lit))) *)
-
-        (* If we already propagated successfully when the [nb]
-           one was set then we set all the others to false and
-           anyone trying to set one true will get rejected. And
-           if we didn't propagate yet, current will still be
-           incomplete, even if we now have a conflict (which we'll
-           detect below). When [nb = 0], the constraint will fail
-           immediately. *)
-        assert (List.length !current < nb || nb = 0);
-        current := lit :: !current;
-        (let var_info = var_of_lit lit in
-         (* If we later backtrack, unset current *)
-         var_info.undo <- Undo_at_most current :: var_info.undo);
-        let nb_true = List.length !current in
-        if nb_true < nb
-        then true
-        else if nb_true > nb
-        then (
-          assert (nb = 0);
-          false)
+        if List.exists !current ~f:(lit_equal lit)
+        then
+          (* [lit] was already selected when the clause was created, and this
+             notification of its assignment was still queued. *)
+          true
         else (
-          try
-            let clause = Clause t in
-            (* We set all other literals to False. *)
-            let nb_true = ref 0 in
-            Array.iter lits ~f:(fun l ->
-              match lit_value l with
-              | True ->
-                incr nb_true;
-                (* Due to queuing, more literals could have been selected
-                   before we got called. *)
-                if !nb_true > nb
-                then (
-                  if debug
-                  then log_debug (Pp.text "CONFLICT: already selected " ++ name_lit l);
-                  raise_notrace Conflict)
-              | Undecided ->
-                (* Since we have the right number of lits selected,
-                   all unknown ones can be set to False. *)
-                if not (enqueue problem (neg l) clause)
-                then (
-                  if debug
-                  then
-                    log_debug (Pp.text "CONFLICT: enqueue failed for " ++ name_lit (neg l));
-                  raise_notrace
-                    Conflict (* Can't happen, since we already checked we're Undecided *))
-              | False -> ());
-            true
-          with
-          | Conflict -> false)
+          (* If we already propagated successfully when the [nb]
+             one was set then we set all the others to false and
+             anyone trying to set one true will get rejected. And
+             if we didn't propagate yet, current will still be
+             incomplete, even if we now have a conflict (which we'll
+             detect below). When [nb = 0], the constraint will fail
+             immediately. *)
+          current := lit :: !current;
+          (let var_info = var_of_lit lit in
+           (* If we later backtrack, unset current *)
+           var_info.undo <- Undo_at_most current :: var_info.undo);
+          let nb_true = List.length !current in
+          if nb_true < nb
+          then true
+          else if nb_true > nb
+          then false
+          else at_most_deduce problem t nb lits)
     ;;
   end
 
@@ -560,8 +634,8 @@ module Make (User : USER) = struct
 
             (* Re-add remaining watches *)
             Queue.transfer old_watches watches;
-            (* No point processing the rest of the queue as
-               we'll have to backtrack now. *)
+            (* No point processing the rest of the queue as we'll have to
+               backtrack now, which undoes every assignment it holds. *)
             Queue.clear problem.propQ;
             raise_notrace (ConflictingClause clause))
         done
@@ -585,81 +659,44 @@ module Make (User : USER) = struct
       failwith "Sat.get_selected: too many for an at_most_one_clause"
   ;;
 
-  (* Returns the new clause if one was added, [AddedFact true] if none was added
-     because this clause is trivially True, or [AddedFact false] if the clause
-     caused a conflict. *)
-  let internal_at_least_one problem lits ~learnt ~reason =
-    match lits with
-    | [] -> assert false
-    | [ lit ] ->
-      (* A clause with only a single literal is represented
-         as an assignment rather than as a clause. *)
-      AddedFact (enqueue problem lit reason)
-    | lits ->
-      let lits = Array.of_list lits in
-      if learnt
-      then (
-        (* lits[0] is Undecided because we just backtracked.
-           Start watching the next literal that we will backtrack over. *)
-        let best_level = ref (-1) in
-        let best_i = ref 1 in
-        for i = 0 to Array.length lits - 1 do
-          let lit = lits.(i) in
-          let level = (var_of_lit lit).level in
-          if level > !best_level
-          then (
-            best_level := level;
-            best_i := i)
-        done;
-        Array.swap lits 1 !best_i);
-      let clause = Union lits in
-      (* Watch the first two literals in the clause (both must be
-         undefined at this point). *)
-      let watch i = watch_lit (neg lits.(i)) clause in
-      watch 0;
-      watch 1;
-      AddedClause clause
+  let record problem lits ~reason =
+    let pending =
+      match lits with
+      | [] -> Code_error.raise "Sat.record: the empty clause" []
+      | [ lit ] -> Pending_fact (lit, reason)
+      | _ :: _ :: _ -> Pending_clause (Union (Array.of_list lits))
+    in
+    problem.pending <- pending :: problem.pending
   ;;
 
-  let simplify lits =
+  let simplify problem lits =
     let seen =
       LitSet.clear ();
       LitSet.temp
     in
-    let rec simplify unique = function
-      | [] -> Some unique
+    let toplevel = get_decision_level problem = 0 in
+    let rec simplify acc = function
+      | [] -> Some (List.rev acc)
       | x :: _ when LitSet.mem seen (neg x) -> None (* X or not(X) is always True *)
-      | x :: xs when LitSet.mem seen x -> simplify unique xs (* Skip duplicates *)
-      | x :: xs when lit_value x = False ->
-        simplify unique xs (* Skip values known to be False *)
+      | x :: xs when LitSet.mem seen x -> simplify acc xs (* Skip duplicates *)
       | x :: xs ->
         LitSet.add seen x;
-        simplify (x :: unique) xs
+        (match lit_value x with
+         | True when toplevel -> None
+         | False when toplevel -> simplify acc xs
+         | True | False | Undecided -> simplify (x :: acc) xs)
     in
     simplify [] lits
   ;;
 
-  (** Public interface. Only used before the solve starts. *)
+  (** Public interface. Can be called while solving, in which case the clause is
+      applied by the next [step]. *)
   let at_least_one problem ?(reason = "input fact") lits =
     Counter.incr problem.num_clauses;
-    if List.is_empty lits
-    then problem.toplevel_conflict <- true
-    else if
-      (* if debug then log_debug "at_least_one(%s)" (string_of_lits lits); *)
-      List.exists lits ~f:(fun l -> lit_value l = True)
-    then (* Trivially true already if any literal is True. *)
-      ()
-    else (
-      (* At this point, [unique] contains only [Undefined] literals. *)
-      match simplify lits with
-      | None -> ()
-      | Some [] ->
-        problem.toplevel_conflict <- true (* Everything in the list was False *)
-      | Some unique ->
-        if
-          internal_at_least_one problem unique ~learnt:false ~reason:(External reason)
-          = AddedFact false
-        then problem.toplevel_conflict <- true)
+    match simplify problem lits with
+    | None -> () (* Trivially True *)
+    | Some [] -> problem.toplevel_conflict <- true (* Nothing left to satisfy *)
+    | Some lits -> record problem lits ~reason:(External reason)
   ;;
 
   let implies problem ?reason first rest = at_least_one problem ?reason (neg first :: rest)
@@ -694,17 +731,83 @@ module Make (User : USER) = struct
       in
       invalid_arg (Format.asprintf "%a." Pp.to_fmt msg));
     Counter.incr problem.num_clauses;
-    (* Ignore any literals already known to be False.
-       If any are True then they're enqueued and we'll process them
-       soon. *)
-    let lits = List.filter lits ~f:(fun l -> lit_value l <> False) |> Array.of_list in
-    let clause = nb, ref [], lits in
-    (let clause = At_most clause in
-     Array.iter lits ~f:(fun l -> watch_lit l clause));
-    clause
+    let lits =
+      if get_decision_level problem = 0
+      then List.filter lits ~f:(fun l -> lit_value l <> False)
+      else lits
+    in
+    (* The literals that are already [True] are selected: they were assigned
+       before this clause existed, so register the undo ourselves. *)
+    let current = ref (List.filter lits ~f:(fun l -> lit_value l = True)) in
+    let lits = Array.of_list lits in
+    let at_most = nb, current, lits in
+    let clause = At_most at_most in
+    List.iter !current ~f:(fun lit ->
+      let var = var_of_lit lit in
+      var.undo <- Undo_at_most current :: var.undo);
+    Array.iter lits ~f:(fun l -> watch_lit l clause);
+    problem.pending <- Pending_clause clause :: problem.pending;
+    at_most
   ;;
 
   let at_most_one problem lits = at_most problem 1 lits
+
+  let rec resolve_pending problem =
+    match problem.pending with
+    | [] -> `Ok
+    | entry :: rest ->
+      let continue () =
+        problem.pending <- rest;
+        resolve_pending problem
+      in
+      let backjump level =
+        let nb_levels = get_decision_level problem - level in
+        cancel_until problem level;
+        `Backtrack nb_levels
+      in
+      (match entry with
+       | Pending_fact (lit, reason) ->
+         (match lit_value lit, (var_of_lit lit).level with
+          | Undecided, _ ->
+            if get_decision_level problem > 0
+            then backjump 0
+            else (
+              let enqueued = enqueue problem lit reason in
+              assert enqueued;
+              continue ())
+          | True, 0 -> continue () (* Already a fact *)
+          | False, 0 ->
+            problem.toplevel_conflict <- true;
+            `Unsat
+          | (True | False), assigned_at ->
+            (* Undo the decision that assigned the variable, and no more. *)
+            backjump (assigned_at - 1))
+       | Pending_clause clause ->
+         (match clause_action clause with
+          | Continue ->
+            watch_clause clause;
+            continue ()
+          | Falsified ->
+            (* Keep the clause pending: the backjump that resolves the conflict
+               will leave it unit or free, and it still needs to be watched. *)
+            `Conflict clause
+          | Propagate unit_level ->
+            if unit_level < get_decision_level problem
+            then
+              (* Can't handle the propagation at the current level *)
+              backjump unit_level
+            else (
+              watch_clause clause;
+              match clause with
+              | Union lits ->
+                let enqueued = enqueue problem lits.(0) (Clause clause) in
+                assert enqueued;
+                continue ()
+              | At_most (nb, _, lits) ->
+                if Clause.at_most_deduce problem clause nb lits
+                then continue ()
+                else `Conflict clause)))
+  ;;
 
   let analyse problem (original_cause : clause) =
     (* After trying some assignments, we've discovered a conflict.
@@ -878,57 +981,64 @@ module Make (User : USER) = struct
     learnt, !btlevel
   ;;
 
+  let conflict problem conflicting_clause =
+    Counter.incr problem.num_conflicts;
+    let current_level = get_decision_level problem in
+    let conflict_level =
+      Clause.calc_reason conflicting_clause
+      |> List.fold_left ~init:0 ~f:(fun level lit -> max level (var_of_lit lit).level)
+    in
+    if conflict_level = 0
+    then (
+      if debug then log_debug (Pp.text "FAIL: conflict found at top level");
+      problem.toplevel_conflict <- true;
+      `Unsat)
+    else (
+      (* Conflict analysis works where the conflict is: the literals that
+         caused it are all assigned at that level or before. *)
+      cancel_until problem conflict_level;
+      (* Figure out the root cause of this failure. *)
+      let learnt, backtrack_level = analyse problem conflicting_clause in
+      (* Something in [learnt] must be True or we get a conflict.
+         Everything except its first literal is False at [backtrack_level],
+         so backtrack there such that [step] can enqueue the first literal. *)
+      cancel_until problem backtrack_level;
+      record problem learnt ~reason:(Clause conflicting_clause);
+      let new_level = get_decision_level problem in
+      let nb_levels = current_level - new_level in
+      assert (nb_levels > 0);
+      `Backtrack nb_levels)
+  ;;
+
   let step problem =
     if problem.toplevel_conflict
     then (
       if debug then log_debug (Pp.text "FAIL: toplevel_conflict before starting solve!");
       `Unsat)
     else (
-      (* Use logical deduction to simplify the clauses
-         and assign literals where there is only one possibility. *)
-      match propagate problem with
-      | None ->
-        (* No conflicts *)
-        (* if debug then log_debug "new state: %s" problem.assigns *)
-        (match first_undecided problem with
-         | None -> `Sat
-         | Some _ -> `Decide)
-      | Some conflicting_clause ->
-        Counter.incr problem.num_conflicts;
-        let current_level = get_decision_level problem in
-        if current_level = 0
-        then (
-          if debug then log_debug (Pp.text "FAIL: conflict found at top level");
-          `Unsat)
-        else (
-          (* Figure out the root cause of this failure. *)
-          let learnt, backtrack_level = analyse problem conflicting_clause in
-          (* We have learnt that something in [learnt] must be True or we get a conflict. *)
-          cancel_until problem backtrack_level;
-          (match
-             internal_at_least_one
-               problem
-               learnt
-               ~learnt:true
-               ~reason:(Clause conflicting_clause)
-           with
-           | AddedFact true -> ()
-           | AddedFact false ->
-             (* This is what the Python would do. Perhaps it can't happen? *)
-             let e = enqueue problem (List.hd learnt) (External "conflict!") in
-             assert e
-           | AddedClause c ->
-             (* Everything except the first literal in learnt is known to
-                   be False, so the first must be True. *)
-             let e = enqueue problem (List.hd learnt) (Clause c) in
-             assert e);
-          let new_level = get_decision_level problem in
-          let nb_levels = current_level - new_level in
-          assert (nb_levels > 0);
-          `Backtrack nb_levels))
+      match resolve_pending problem with
+      | `Unsat -> `Unsat
+      | `Backtrack _ as backtrack -> backtrack
+      | `Conflict clause -> conflict problem clause
+      | `Ok ->
+        (* Use logical deduction to simplify the clauses
+           and assign literals where there is only one possibility. *)
+        (match propagate problem with
+         | None ->
+           (* No conflicts *)
+           (* if debug then log_debug "new state: %s" problem.assigns *)
+           (match first_undecided problem with
+            | None -> `Sat
+            | Some _ -> `Decide)
+         | Some conflicting_clause -> conflict problem conflicting_clause))
   ;;
 
   let choose problem choice =
+    if not (List.is_empty problem.pending)
+    then
+      Code_error.raise
+        "Sat.choose: clauses were added since the last Sat.step"
+        [ "pending", Dyn.int (List.length problem.pending) ];
     let lit =
       match choice with
       | `True lit -> lit

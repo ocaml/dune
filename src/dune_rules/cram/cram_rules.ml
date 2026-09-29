@@ -47,10 +47,10 @@ let missing_run_t (error : Cram_test.t) =
     | Dir { dir; file = _ } -> dir
   in
   User_error.raise
-    ~loc:(Loc.in_dir (Path.source dir))
+    ~loc:(Loc.in_dir (Source_path.to_path dir))
     [ Pp.textf
         "Cram test directory %s does not contain a run.t file."
-        (Path.Source.to_string dir)
+        (Source_path.to_string dir)
     ]
 ;;
 
@@ -98,20 +98,15 @@ let test_rule
         Expander.eval_blang expander blang)
     in
     let* () = if enabled then add_extra_aliases_deps () else Memo.return () in
-    let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
-    let script = Path.Build.append_source prefix_with (Cram_test.script test) in
-    let base_path =
-      Path.Build.append_source
-        prefix_with
-        (let path =
-           match test with
-           | File f -> f
-           | Dir d -> d.dir
-         in
-         let dir = Path.Source.parent_exn path in
-         let basename = Path.Source.basename path |> Filename.to_string in
-         Path.Source.relative dir (".cram." ^ basename))
+    let basename = Source_path.basename (Cram_test.path test) in
+    let path = Path.Build.relative_fname dir basename in
+    let script =
+      match test with
+      | File _ -> path
+      | Dir _ ->
+        Path.Build.relative_fname path (Source_path.basename (Cram_test.script test))
     in
+    let base_path = Path.Build.relative dir (".cram." ^ Filename.to_string basename) in
     let script_sh = Path.Build.relative base_path "cram.sh" in
     let output = Path.Build.relative base_path "cram.out" in
     let* () =
@@ -129,13 +124,10 @@ let test_rule
        and+ () =
          match test with
          | File _ -> Action_builder.return ()
-         | Dir { dir; file } ->
-           let file = Path.Build.append_source prefix_with file |> Path.build in
+         | Dir _ ->
            let deps =
-             Path.Build.append_source prefix_with dir
-             |> Path.build
-             |> Source_deps.files_with_filter ~filter:(fun file' ->
-               not (Path.equal file file'))
+             Source_deps.files_with_filter (Path.build path) ~filter:(fun file ->
+               not (Path.equal (Path.build script) file))
            in
            let+ (_ : Path.Set.t) = Action_builder.dyn_memo_deps deps in
            ()
@@ -148,8 +140,8 @@ let test_rule
          ~dir:
            (Path.build
               (match test with
-               | File _ -> Path.Build.parent_exn script
-               | Dir d -> Path.Build.append_source prefix_with d.dir))
+               | File _ -> dir
+               | Dir _ -> path))
          ~script:(Path.build script_sh)
          ~output
          ~timeout
@@ -232,22 +224,30 @@ let collect_stanzas =
   let stanzas dir ~f =
     stanzas_in_dir dir >>| List.filter ~f:(fun { stanza; _ } -> f stanza)
   in
-  let rec collect_whole_subtree acc dir =
+  let rec collect_whole_subtree ~root acc dir =
     let* acc =
       let+ cram =
         stanzas dir ~f:(fun (s : Cram_stanza.t) -> s.applies_to = Whole_subtree)
       in
       cram :: acc
     in
-    match Path.Build.parent dir with
-    | None -> Memo.return (List.concat acc)
-    | Some dir -> collect_whole_subtree acc dir
+    if Path.Build.equal dir root
+    then Memo.return (List.concat acc)
+    else (
+      match Path.Build.parent dir with
+      | None -> Memo.return (List.concat acc)
+      | Some dir -> collect_whole_subtree ~root acc dir)
   in
   fun ~dir ->
+    let* project = Dune_load.find_loaded_project ~dir in
+    let root = Build_partition.output_root (Loaded_project.partition project) in
     let* acc = stanzas dir ~f:(fun _ -> true) in
-    match Path.Build.parent dir with
-    | None -> Memo.return acc
-    | Some dir -> collect_whole_subtree [ acc ] dir
+    if Path.Build.equal dir root
+    then Memo.return acc
+    else (
+      match Path.Build.parent dir with
+      | None -> Memo.return acc
+      | Some dir -> collect_whole_subtree ~root [ acc ] dir)
 ;;
 
 let spec_for_test ~stanzas ~dune_version test =
@@ -395,15 +395,16 @@ let spec_for_test ~stanzas ~dune_version test =
   { acc with extra_aliases }
 ;;
 
-let rules ~sctx ~dir tests project =
+let rules ~sctx ~dir tests source_dir =
+  let project = Source_tree.Rules.Dir.project source_dir in
   let dune_version = Dune_project.dune_version project in
   let* stanzas = collect_stanzas ~dir
   and* with_package_mask =
-    let+ mask = Dune_load.mask () >>| Only_packages.enumerate in
+    let+ mask = Dune_load.mask_for_dir ~dir in
     match
       Dune_project.exclusive_package
         project
-        ~dir:(Path.Build.drop_build_context_exn dir |> Source_path.workspace)
+        ~dir:(Source_tree.Rules.Dir.source_path source_dir)
       |> Option.map ~f:Package.Id.name
     with
     | None ->
@@ -440,33 +441,33 @@ let rules ~sctx ~dir tests project =
 ;;
 
 let cram_tests dir =
-  match Dune_project.cram (Source_tree.Dir.project dir) with
+  match Dune_project.cram (Source_tree.Rules.Dir.project dir) with
   | false -> Memo.return []
   | true ->
-    let path = Source_tree.Dir.path dir in
+    let path = Source_tree.Rules.Dir.source_path dir in
     let file_tests =
-      Source_tree.Dir.filenames dir
+      Source_tree.Rules.Dir.filenames dir
       |> Filename.Array.Set.to_list
       |> List.filter_map ~f:(fun s ->
         if Cram_test.is_cram_suffix s
-        then Some (Ok (Cram_test.File (Path.Source.relative_fname path s)))
+        then Some (Ok (Cram_test.File (Source_path.relative_fname path s)))
         else None)
     in
     let+ dir_tests =
-      Source_tree.Dir.sub_dirs dir
+      Source_tree.Rules.Dir.sub_dirs dir
       |> Filename.Array.Map.to_list
       |> Memo.parallel_map ~f:(fun (name, sub_dir) ->
         match Cram_test.is_cram_suffix name with
         | false -> Memo.return None
         | true ->
-          let+ sub_dir = Source_tree.Dir.sub_dir_as_t sub_dir in
+          let+ sub_dir = Source_tree.Rules.Dir.sub_dir_as_t sub_dir in
           let fname = Cram_test.fname_in_dir_test in
           let test =
-            let dir = Source_tree.Dir.path sub_dir in
-            let file = Path.Source.relative_fname dir fname in
+            let dir = Source_tree.Rules.Dir.source_path sub_dir in
+            let file = Source_path.relative_fname dir fname in
             Cram_test.Dir { file; dir }
           in
-          let files = Source_tree.Dir.filenames sub_dir in
+          let files = Source_tree.Rules.Dir.filenames sub_dir in
           if Filename.Array.Set.is_empty files
           then None
           else
@@ -483,5 +484,5 @@ let rules ~sctx ~dir source_dir =
   cram_tests source_dir
   >>= function
   | [] -> Memo.return ()
-  | tests -> rules ~sctx ~dir tests (Source_tree.Dir.project source_dir)
+  | tests -> rules ~sctx ~dir tests source_dir
 ;;

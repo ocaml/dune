@@ -10,7 +10,11 @@ type error = Missing_run_t of Cram_test.t
 val missing_run_t : Cram_test.t -> 'a
 
 (** Memoized list of cram tests in a directory. *)
-val cram_tests : Source_tree.Dir.t -> (Cram_test.t, error) result list Memo.t
+val cram_tests : Source_tree.Rules.Dir.t -> (Cram_test.t, error) result list Memo.t
 
 (** Cram test rules *)
-val rules : sctx:Super_context.t -> dir:Path.Build.t -> Source_tree.Dir.t -> unit Memo.t
+val rules
+  :  sctx:Super_context.t
+  -> dir:Path.Build.t
+  -> Source_tree.Rules.Dir.t
+  -> unit Memo.t

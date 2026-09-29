@@ -9,24 +9,17 @@ let loc_of_dune_file source_dir dune_file =
   | Some source_dir ->
     (match
        let open Option.O in
-       let* dune_file = Source_tree.Dir.dune_file source_dir in
+       let* dune_file = Source_tree.Rules.Dir.dune_file source_dir in
        (* TODO not really correct. we need to know the [(subdir ..)] that introduced this *)
-       Source.Dune_file.path dune_file
+       Source.Dune_file.source_path dune_file
      with
-     | Some path -> Path.source path
-     | None ->
-       Path.source (Path.Source.relative (Source_tree.Dir.path source_dir) "_unknown_"))
+     | Some path -> Source_path.to_path path
+     | None -> Path.relative (Source_tree.Rules.Dir.path source_dir) "_unknown_")
     |> Loc.in_file
   | None ->
     Source_path.relative_fname (Dune_file.source_dir dune_file) Filename.dune
     |> Source_path.to_path
     |> Loc.in_file
-;;
-
-let workspace_dir source_dir =
-  match Source_tree.Rules.Dir.source_path source_dir |> Source_path.as_workspace with
-  | None -> Memo.return None
-  | Some source_dir -> Source_tree.find_dir source_dir
 ;;
 
 type t =
@@ -39,7 +32,7 @@ type t =
   ; rocq : Rocq_sources.t Memo.Lazy.t
   ; ocaml : Ml_sources.t Memo.Lazy.t
   ; melange : Ml_sources.t Memo.Lazy.t
-  ; source_dir : Source_tree.Dir.t option
+  ; source_dir : Source_tree.Rules.Dir.t option
   }
 
 and kind =
@@ -167,14 +160,10 @@ end = struct
   let load_text_files sctx source_dir stanzas ~project ~dir ~src_dir =
     let* from_source =
       match source_dir with
-      | Some source_dir -> Memo.return (Source_tree.Dir.filenames source_dir)
+      | Some source_dir -> Memo.return (Source_tree.Rules.Dir.filenames source_dir)
       | None ->
-        let* expander = Super_context.expander sctx ~dir in
-        (match Expander.source_tree_dir expander with
-         | Some source_dir -> Memo.return (Source_tree.Rules.Dir.filenames source_dir)
-         | None ->
-           Build_system.files_of ~dir:(Source_path.to_path src_dir)
-           >>| Filename_set.filenames)
+        Build_system.files_of ~dir:(Source_path.to_path src_dir)
+        >>| Filename_set.filenames
     in
     match stanzas with
     | [] -> Memo.return from_source
@@ -487,13 +476,12 @@ end = struct
       let loc, qualif_mode = qualification in
       loc, Include_subdirs.Include qualif_mode
     in
-    let+ workspace_source_dir = workspace_dir source_dir
-    and+ dir_renames =
+    let+ dir_renames =
       match snd qualification with
       | Unqualified | Qualified { dirs = [] } -> Memo.return Dir_renames.empty
       | Qualified { dirs } -> Dir_renames.expand sctx ~dir dirs
     in
-    let loc = loc_of_dune_file workspace_source_dir dune_file in
+    let loc = loc_of_dune_file (Some source_dir) dune_file in
     let contents =
       Memo.lazy_
         ~name:"group-dir-contents"
@@ -509,7 +497,7 @@ end = struct
                     stanzas
                     >>= load_text_files
                           sctx
-                          workspace_source_dir
+                          (Some source_dir)
                           ~project
                           ~src_dir:(Dune_file.dir dune_file)
                           ~dir)
@@ -521,11 +509,10 @@ end = struct
                         let path_to_root =
                           Dir_renames.translate dir_renames path_to_group_root
                         in
-                        let* workspace_source_dir = workspace_dir source_dir in
                         let+ files =
                           load_text_files
                             sctx
-                            workspace_source_dir
+                            (Some source_dir)
                             stanzas
                             ~project
                             ~src_dir:(Source_tree.Rules.Dir.source_path source_dir)
@@ -534,7 +521,7 @@ end = struct
                         { Source_file_dir.dir
                         ; path_to_root
                         ; files
-                        ; source_dir = workspace_source_dir
+                        ; source_dir = Some source_dir
                         ; stanzas
                         })))
            in
@@ -545,7 +532,7 @@ end = struct
                  { Source_file_dir.dir
                  ; path_to_root = []
                  ; files
-                 ; source_dir = workspace_source_dir
+                 ; source_dir = Some source_dir
                  ; stanzas
                  }
                  :: subdirs))
@@ -598,7 +585,7 @@ end = struct
            in
            let root =
              { kind = Group_root subdirs
-             ; source_dir = workspace_source_dir
+             ; source_dir = Some source_dir
              ; dir
              ; dir_renames
              ; text_files = files

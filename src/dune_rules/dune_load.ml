@@ -388,6 +388,13 @@ let mask () =
   mask
 ;;
 
+let mask_for_dir ~dir =
+  let* project = find_loaded_project ~dir in
+  match Loaded_project.visible_packages project with
+  | Some packages -> Memo.return (`Set packages)
+  | None -> mask () >>| Only_packages.enumerate
+;;
+
 let packages () =
   let+ { packages; _ } = load () in
   packages

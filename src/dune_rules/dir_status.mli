@@ -26,11 +26,10 @@ module Group_root : sig
 end
 
 type t =
-  | Lock_dir of
-      Source_tree.Dir.t (* XXX Will have to be modified once lock dirs are targets *)
+  | Lock_dir of Source_tree.Rules.Dir.t
   | Generated
-  | Source_only of Source_tree.Dir.t
-  | Standalone of Source_tree.Dir.t option * Dune_file.t
+  | Source_only of Source_tree.Rules.Dir.t
+  | Standalone of Source_tree.Rules.Dir.t option * Dune_file.t
   (* Directory not part of a multi-directory group. The argument is [None] for
      directory that are not from the source tree, such as generated ones. *)
   | Group_root of Group_root.t

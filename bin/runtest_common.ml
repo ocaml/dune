@@ -1,4 +1,5 @@
 open Import
+module Source_path = Dune_lang.Source_path
 
 module Test_kind = struct
   type t =
@@ -35,16 +36,17 @@ let cram_tests_of_dir parent_dir =
   Source_tree.find_dir parent_dir
   >>= function
   | None -> Memo.return []
-  | Some dir -> Dune_rules.Cram_rules.cram_tests dir
+  | Some dir -> Dune_rules.Cram_rules.cram_tests (Source_tree.Rules.Dir.source dir)
 ;;
 
 let find_cram_test cram_tests path =
+  let path = Source_path.workspace path in
   List.find_map cram_tests ~f:(function
-    | Ok cram_test when Path.Source.equal path (Source.Cram_test.path cram_test) ->
+    | Ok cram_test when Source_path.equal path (Source.Cram_test.path cram_test) ->
       Some cram_test
     (* We raise any error we encounter when looking for our test specifically. *)
     | Error (Dune_rules.Cram_rules.Missing_run_t cram_test)
-      when Path.Source.equal path (Source.Cram_test.path cram_test) ->
+      when Source_path.equal path (Source.Cram_test.path cram_test) ->
       Dune_rules.Cram_rules.missing_run_t cram_test
       (* Any errors or successes unrelated to our test are discarded. *)
     | Error (Dune_rules.Cram_rules.Missing_run_t _) | Ok _ -> None)
@@ -98,7 +100,7 @@ let all_tests_of_dir ~sctx parent_dir =
     cram_tests_of_dir parent_dir
     >>| List.filter_map ~f:(fun res ->
       Result.to_option res
-      |> Option.map ~f:(fun test -> Source.Cram_test.path test |> Path.Source.to_string))
+      |> Option.map ~f:(fun test -> Source.Cram_test.path test |> Source_path.to_string))
   and+ ml_test_candidates =
     Source_tree.find_dir parent_dir
     >>= function
@@ -145,7 +147,9 @@ let disambiguate_test_name ~sctx path =
     >>= (function
      | None -> Memo.return None
      | Some source_dir ->
-       let+ cram_tests = Dune_rules.Cram_rules.cram_tests source_dir in
+       let+ cram_tests =
+         Dune_rules.Cram_rules.cram_tests (Source_tree.Rules.Dir.source source_dir)
+       in
        find_cram_test cram_tests path |> Option.map ~f:(fun test -> source_dir, test))
     >>= (function
      | Some (source_dir, test) ->

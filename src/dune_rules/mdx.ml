@@ -562,15 +562,10 @@ let gen_rules t ~sctx ~dir ~scope ~expander =
     match t.package with
     | None -> Memo.return true
     | Some package ->
-      let+ mask = Dune_load.mask ()
-      and+ loaded_project = Dune_load.find_loaded_project ~dir in
-      let selected_by_only_packages =
-        match Build_partition.purpose (Loaded_project.partition loaded_project) with
-        | Workspace ->
-          Only_packages.mem_all mask || Only_packages.mem mask (Package.name package)
-        | Mounted -> true
-      in
-      selected_by_only_packages
+      let+ mask = Dune_load.mask_for_dir ~dir in
+      (match mask with
+       | `All -> true
+       | `Set packages -> Package.Name.Set.mem packages (Package.name package))
   in
   Memo.when_ do_it register_rules
 ;;

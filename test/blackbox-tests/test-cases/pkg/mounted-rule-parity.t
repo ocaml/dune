@@ -10,7 +10,7 @@ cram fixtures all retain their source view.
   $ mkdir -p _source/source-only _source/group/sub _source/fixture.t/empty
   $ cat > _source/dune-project <<'EOF'
   > (lang dune 3.25)
-  > (package (name foo))
+  > (package (name foo) (dir .))
   > EOF
   $ cat > _source/dune <<'EOF'
   > (library (public_name foo))
@@ -47,26 +47,26 @@ cram fixtures all retain their source view.
 Run the project normally first. The malformed dune-project inside the cram
 fixture is data, not project configuration.
 
-  $ (cd _source && dune build --root . verified)
+  $ (cd _source && dune build --root . --only-packages foo verified)
   $ cat _source/_build/default/verified
   verified
 
 Mount the identical source. The lock recipe is deliberately unusable, so the
-same rules must be generated in the current graph.
-BUG: the common directory contents discard build-backed source directories, so
-the existing cram rule generator is not called for the mounted project.
+same rules must be generated in the current graph. Workspace package selection
+and inherited cram stanzas must not replace the mounted project's configuration.
+
+  $ cat > dune <<'EOF'
+  > (cram
+  >  (applies_to :whole_subtree)
+  >  (deps missing-workspace-only-dependency))
+  > EOF
 
   $ make_lockpkg foo <<EOF
   > (version 1.0)
   > (source (copy $PWD/_source))
   > (build (run false))
   > EOF
-  $ dune build _build/default/.lockfile/pkg/foo/verified
-  File "_build/default/.lockfile/pkg/foo/dune", lines 2-8, characters 0-192:
-  Error: No rule found for alias .lockfile/pkg/foo/fixture.t
-  File "_build/default/.lockfile/pkg/foo/dune", lines 2-8, characters 0-192:
-  Error: No rule found for alias .lockfile/pkg/foo/group/sub/group.t
-  File "_build/default/.lockfile/pkg/foo/dune", lines 2-8, characters 0-192:
-  Error: No rule found for alias .lockfile/pkg/foo/source-only/basic.t
-  [1]
+  $ dune build --only-packages main _build/default/.lockfile/pkg/foo/verified
+  $ cat _build/default/.lockfile/pkg/foo/verified
+  verified
   $ test ! -e _build/default/.lockfile/pkg/foo/.opam/foo/target

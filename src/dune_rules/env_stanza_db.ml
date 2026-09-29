@@ -127,10 +127,12 @@ module Inherit = struct
         (context : Context_name.t)
         ~(f : parent:a Memo.t -> dir:Path.Build.t -> Dune_env.config -> a Memo.t)
     =
+    let context_data = Context.DB.get context in
+    let profile = context_data >>| Context.profile in
     let for_context =
       Memo.Lazy.create ~name:"environment-stanzas-for-context" (fun () ->
-        let+ context = Context.DB.get context in
-        let profile = Context.profile context in
+        let+ context = context_data
+        and+ profile = profile in
         let { Context.Env_nodes.context; workspace } = Context.env_nodes context in
         let make env = Option.bind env ~f:(Dune_env.find_opt ~profile) in
         [ make workspace; make context ] |> List.filter_opt)
@@ -158,7 +160,7 @@ module Inherit = struct
             >>= function
             | None -> Memo.return None
             | Some stanza ->
-              let+ profile = Context.DB.get context >>| Context.profile in
+              let+ profile = profile in
               Dune_env.find_opt stanza ~profile
           in
           let parent =

@@ -154,3 +154,41 @@ itself a workspace build context.
   $ test -f _build/target/.lockfile/pkg/bar/nested/bar.cma
   $ find _build/host/.lockfile/pkg/bar/.ppx -name ppx.exe | wc -l
   1
+
+Recursive aliases follow authored directory selection. They visit ordinary
+children, but do not enter ignored or explicitly vendored directories.
+
+  $ mkdir -p _source/checks/child _source/checks/ignored _source/checks/vendored
+  $ cat > _source/checks/dune <<'EOF'
+  > (dirs :standard \ ignored)
+  > (vendored_dirs vendored)
+  > EOF
+  $ cat > _source/checks/child/dune <<'EOF'
+  > (rule (alias scan) (action (echo scanned)))
+  > EOF
+  $ for dir in ignored vendored; do
+  >   echo '(rule (alias scan) (action (run false)))' > _source/checks/$dir/dune
+  > done
+  $ cat >> _source/dune <<'EOF'
+  > (rule
+  >  (target traversed)
+  >  (deps (alias_rec checks/scan))
+  >  (action (write-file %{target} traversed)))
+  > EOF
+  $ (cd _source && dune build --root . --only-packages foo _build/host/traversed)
+  scanned
+
+BUG: recursive alias lookup checks the workspace tree instead of the loaded view.
+
+  $ dune build _build/host/.lockfile/pkg/foo/traversed
+  File "_build/host/.lockfile/pkg/foo/dune", line 11, characters 18-29:
+  Error: Don't know about directory .lockfile/pkg/foo/checks!
+  [1]
+
+The same recursive alias can also be requested directly on the command line.
+
+  $ (cd _source && dune build --root . --only-packages foo @_build/host/checks/scan)
+  $ dune build @_build/host/.lockfile/pkg/foo/checks/scan
+  Error: Don't know about directory .lockfile/pkg/foo/checks specified on the
+  command line!
+  [1]

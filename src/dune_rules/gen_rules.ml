@@ -814,6 +814,7 @@ let analyze_private_context_path components =
        Per_context.valid ctx
        >>| (function
         | true -> `Valid (ctx, components)
+        | false when Context_name.is_default ctx -> `Shared_locks components
         | false -> `Invalid_context))
 ;;
 
@@ -821,6 +822,7 @@ let private_context ~dir components _ctx =
   analyze_private_context_path components
   >>= function
   | `Invalid_context -> Memo.return Gen_rules.Unknown_context
+  | `Shared_locks components -> Lock_rules.setup_rules ~dir ~components
   | `Valid (_, ".binaries" :: rest) -> Memo.return (Bin_layout.gen_rules ~dir rest)
   | `Valid (ctx, ".packages" :: rest) -> Install_layout.gen_rules ctx ~dir rest
   | `Valid (ctx, ".opam" :: rest) -> Opam_rules.gen_rules ctx ~dir rest
@@ -842,6 +844,12 @@ let private_context ~dir components _ctx =
     Gen_rules.combine private_roots (Gen_rules.combine lock_rules pkg_rules)
   | `Root ->
     let+ contexts = Per_context.list () in
+    (* Lock directories use shared storage under [default], independently of
+       the workspace's build contexts. *)
+    let contexts =
+      Context_name.Set.of_list (Context_name.default :: contexts)
+      |> Context_name.Set.to_list
+    in
     let build_dir_only_sub_dirs =
       Gen_rules.Build_only_sub_dirs.singleton
         ~dir

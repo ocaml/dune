@@ -79,9 +79,6 @@ context. This also exercises shared lock storage without native source loading.
   > (context (default (name target) (host host)))
   > EOF
 
-BUG: the shared lock namespace is rejected as a nonexistent workspace context.
-
-  $ dune build _build/target/pform-output >diagnostic 2>&1
-  [1]
-  $ grep -oF '[gen_rules] did not specify rules for the context' diagnostic
-  [gen_rules] did not specify rules for the context
+  $ dune build _build/target/pform-output
+  $ cat _build/target/pform-output
+  from provider

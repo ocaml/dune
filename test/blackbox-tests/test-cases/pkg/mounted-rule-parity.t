@@ -148,9 +148,9 @@ itself a workspace build context.
   > (context (default (name target) (host host)))
   > EOF
 
-BUG: private rule dispatch rejects the shared lock directory's namespace.
-
-  $ dune build _build/target/.lockfile/pkg/bar/nested/bar.cma >diagnostic 2>&1
-  [1]
-  $ grep -oF '[gen_rules] did not specify rules for the context' diagnostic
-  [gen_rules] did not specify rules for the context
+  $ echo 'let value = 4' > _source/nested/bar.ml
+  $ dune build _build/target/.lockfile/pkg/bar/nested/bar.cma
+  $ test -d _build/_private/default/.lock/dune.lock
+  $ test -f _build/target/.lockfile/pkg/bar/nested/bar.cma
+  $ find _build/host/.lockfile/pkg/bar/.ppx -name ppx.exe | wc -l
+  1

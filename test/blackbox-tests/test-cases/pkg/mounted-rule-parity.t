@@ -219,3 +219,15 @@ Requesting a source directory is shorthand for its default alias in either view.
   $ dune build _build/host/.lockfile/pkg/foo/checks/child
   $ cat _build/host/.lockfile/pkg/foo/checks/child/direct
   directory
+
+Test discovery must use the same view for direct cram requests and directories.
+BUG: the command-line classifier still searches only workspace directories.
+
+  $ (cd _source && dune runtest --root . _build/host/source-only/basic.t)
+  $ dune runtest _build/host/.lockfile/pkg/foo/source-only/basic.t
+  Error: ".lockfile/pkg/foo/source-only/basic.t" does not match any known test.
+  [1]
+  $ (cd _source && dune runtest --root . _build/host/source-only)
+  $ dune runtest _build/host/.lockfile/pkg/foo/source-only
+  Error: ".lockfile/pkg/foo/source-only" does not match any known test.
+  [1]

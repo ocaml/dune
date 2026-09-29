@@ -69,7 +69,7 @@
 (cram
  (deps %{bin:curl})
  (applies_to
-  unavailable-source-package.t
+  unavailable-package-source.t
   compute-checksums-when-missing.t
   e2e.t
   ocamlformat-dev-tool.t

@@ -67,6 +67,11 @@ let bash_generic_completion fun_name = strf
           item="${prefix:0:2}$item"
         fi
         COMPREPLY+=($item)
+        # Items ending in '/' are directory-like; suppress the trailing
+        # space so the user can chain another tab into the subdirectory.
+        if [[ "$item" == */ ]] && (type compopt &> /dev/null); then
+          compopt -o nospace
+        fi
       elif [[ $type == "restart" ]]; then
           # N.B. only emitted if there is a -- token
           for ((i = 0; i < ${#words[@]}; i++)); do
@@ -87,7 +92,7 @@ let zsh_generic_completion fun_name = strf
   local prefix="${words[CURRENT]}"
   w[CURRENT]="--__complete=${words[CURRENT]}"
   local line="${w[@]:0:1} --__complete ${w[@]:1}"
-  local -a completions
+  local -a completions directory_completions
   local version type group item text_line item_doc msg
   eval $line | {
     read -r version
@@ -99,8 +104,12 @@ let zsh_generic_completion fun_name = strf
       if [[ "$type" == "group" ]]; then
         if [ -n "$completions" ]; then
           _describe -V unsorted completions -U
-          completions=()
         fi
+        if [ -n "$directory_completions" ]; then
+          _describe -V unsorted directory_completions -U -S ''
+        fi
+        completions=()
+        directory_completions=()
         read -r group
       elif [[ "$type" == "message" ]]; then
           msg="";
@@ -133,7 +142,11 @@ let zsh_generic_completion fun_name = strf
             fi
         fi
         item_doc="${item_doc//$'\e'\[(01m|04m|m)/}"
-        completions+=("${item}":"${item_doc}")
+        if [[ "$item" == */ ]]; then
+          directory_completions+=("${item}":"${item_doc}")
+        else
+          completions+=("${item}":"${item_doc}")
+        fi
       elif [[ "$type" == "dirs" || "$type" == "files" ]]; then
           local pre=""
           local pat="$prefix"
@@ -163,6 +176,9 @@ let zsh_generic_completion fun_name = strf
   }
   if [ -n "$completions" ]; then
     _describe -V unsorted completions -U
+  fi
+  if [ -n "$directory_completions" ]; then
+    _describe -V unsorted directory_completions -U -S ''
   fi
 }
 |} fun_name

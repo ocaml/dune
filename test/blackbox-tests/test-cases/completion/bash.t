@@ -26,9 +26,9 @@ completion it registered for dune, and exercises that completion registration.
   > EOF
   bash.t
 
-Semantic directory candidates currently use Bash's default trailing-space
-behavior. Use a synthetic completion response so this behavior is covered
-independently of any command-specific semantic completer.
+Semantic directory candidates suppress Bash's default trailing-space behavior.
+Use a synthetic completion response so this behavior is covered independently
+of any command-specific semantic completer.
 
   $ bash <<'EOF'
   > enable complete compgen
@@ -55,4 +55,4 @@ independently of any command-specific semantic completer.
   > if test -s compopt.log; then cat compopt.log; else echo "trailing space"; fi
   > EOF
   tests/
-  trailing space
+  -o nospace

@@ -439,7 +439,10 @@ covering all C and C++ sources declared via ``foreign_stubs``,
 ``foreign_library``, and ctypes stanzas in the workspace. The file is promoted
 to the workspace root so that editors can find it without configuration. Running
 ``dune clean`` removes it. You can also build the file directly with
-``dune build compile_commands.json``.
+``dune build compile_commands.json``. Projects without foreign stanzas do not
+produce a database. An explicit rule for ``compile_commands.json`` takes
+precedence over automatic generation. If all foreign stanzas are disabled,
+Dune preserves an existing database or generates an empty one if none exists.
 
 Each entry records the full compiler invocation that Dune would use for that
 source file, including the C compiler, base flags from ``ocamlc -config``,

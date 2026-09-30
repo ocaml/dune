@@ -71,6 +71,7 @@
  (applies_to
   unavailable-package-source.t
   compute-checksums-when-missing.t
+  curl-failure-gh16465.t
   e2e.t
   ocamlformat-dev-tool.t
   source-caching.t

@@ -113,16 +113,21 @@ Installation preserves the declared dependency, without adopting its library.
 
 Managed dependencies must have the same visibility regardless of their builder.
 Neither lock package below declares a dependency on the other.
-BUG: the native provider is visible despite the missing dependency.
 
   $ echo '(executable (name main_left) (modules main_left) (libraries left))' > dune
   $ echo '(library (public_name left) (libraries right))' > _shared/dune
   $ echo 'let message = Right.message' > _shared/left.ml
   $ dune build main_left.exe
-  $ _build/default/main_left.exe
-  right/workspace
+  File "_build/default/.lockfile/pkg/left/dune", line 1, characters 39-44:
+  Error: Library "right" not found.
+  -> required by library "left" in _build/default/.lockfile/pkg/left
+  -> required by executable main_left in dune:1
+  -> required by
+     _build/default/.main_left.eobjs/native/dune__exe__Main_left.cmx
+  -> required by _build/default/main_left.exe
+  [1]
 
-The same undeclared provider is correctly hidden when it is opaque. Its recipe
+The same undeclared provider is hidden when it is opaque. Its recipe
 must not be run while resolving left's libraries.
 
   $ make_lockpkg right <<EOF
@@ -139,3 +144,27 @@ must not be run while resolving left's libraries.
      _build/default/.main_left.eobjs/native/dune__exe__Main_left.cmx
   -> required by _build/default/main_left.exe
   [1]
+
+A declared transitive dependency makes the native provider visible without
+building the metadata-only intermediate package.
+
+  $ make_lockpkg right <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_shared))
+  > (build (run false))
+  > EOF
+  $ make_lockpkg bridge <<'EOF'
+  > (version 1.0)
+  > (depends right)
+  > (build (run false))
+  > EOF
+  $ make_lockpkg left <<EOF
+  > (version 1.0)
+  > (depends bridge)
+  > (source (copy $PWD/_shared))
+  > (build (run false))
+  > EOF
+  $ dune build main_left.exe
+  $ _build/default/main_left.exe
+  right/workspace
+  $ test ! -e _build/default/.lockfile/pkg/bridge/.opam/bridge/target

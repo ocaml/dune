@@ -362,6 +362,8 @@ module DB = struct
             match candidate with
             | None -> by_name, by_id, mounted_by_name
             | Some (public_name, r2, lib_id2) ->
+              let owner = Loaded_project.owner (Loaded_dir.project loaded_dir) in
+              let r2 = owner, r2 in
               let by_name =
                 Lib_name.Map.update by_name public_name ~f:(function
                   | None -> Some [ r2 ]
@@ -373,39 +375,11 @@ module DB = struct
                 | Some lib_id2 -> Lib_id.Map.add_exn by_id (Local lib_id2) r2
               in
               let mounted_by_name =
-                match
-                  Loaded_dir.project loaded_dir
-                  |> Loaded_project.partition
-                  |> Build_partition.purpose
-                with
-                | Workspace -> mounted_by_name
-                | Mounted -> Lib_name.Map.add_multi mounted_by_name public_name r2
+                match owner with
+                | None -> mounted_by_name
+                | Some _ -> Lib_name.Map.add_multi mounted_by_name public_name r2
               in
               by_name, by_id, mounted_by_name)
-      in
-      let installed_libs =
-        if Lib_name.Map.is_empty mounted_by_name
-        then installed_libs
-        else (
-          let resolve name =
-            Lib_name.Map.find mounted_by_name name
-            |> Option.value ~default:[]
-            |> Memo.List.map ~f:(resolve_redirect_to t)
-          in
-          let mounted_libs =
-            Lib.DB.create
-              ()
-              ~parent:None
-              ~resolve
-              ~resolve_lib_id:(fun id ->
-                let+ results = resolve (Lib_id.name id) in
-                match results with
-                | [ result ] -> result
-                | _ -> Lib.DB.Resolve_result.not_found)
-              ~all:(fun () -> Memo.return (Lib_name.Map.keys mounted_by_name))
-              ~instrument_with
-          in
-          Lib.DB.with_parent installed_libs ~parent:(Some mounted_libs))
       in
       Staged.stage (fun ~owner ~include_owner ->
         let visible_packages =
@@ -437,6 +411,48 @@ module DB = struct
                   (if include_owner
                    then visible
                    else Package.Name.Set.remove visible owner) ))
+        in
+        let visible_candidates candidates =
+          let+ _, visible = Memo.Lazy.force visible_packages in
+          List.filter_map candidates ~f:(fun (owner, candidate) ->
+            match owner, visible with
+            | Some owner, Some visible when not (Package.Name.Set.mem visible owner) ->
+              None
+            | _ -> Some candidate)
+        in
+        let resolve_candidates candidates =
+          let* candidates = visible_candidates candidates in
+          Memo.List.map candidates ~f:(resolve_redirect_to t)
+        in
+        let visible_names by_name =
+          Lib_name.Map.to_list by_name
+          |> Memo.List.filter_map ~f:(fun (name, candidates) ->
+            let+ candidates = visible_candidates candidates in
+            Option.some_if (List.is_non_empty candidates) name)
+        in
+        let installed_libs =
+          if Lib_name.Map.is_empty mounted_by_name
+          then installed_libs
+          else (
+            let resolve name =
+              Lib_name.Map.find mounted_by_name name
+              |> Option.value ~default:[]
+              |> resolve_candidates
+            in
+            let mounted_libs =
+              Lib.DB.create
+                ()
+                ~parent:None
+                ~resolve
+                ~resolve_lib_id:(fun id ->
+                  let+ results = resolve (Lib_id.name id) in
+                  match results with
+                  | [ result ] -> result
+                  | _ -> Lib.DB.Resolve_result.not_found)
+                ~all:(fun () -> visible_names mounted_by_name)
+                ~instrument_with
+            in
+            Lib.DB.with_parent installed_libs ~parent:(Some mounted_libs))
         in
         let candidates =
           Memo.lazy_ ~name:"opaque-library-candidates" (fun () ->
@@ -519,22 +535,21 @@ module DB = struct
         let resolve_lib_id lib_id =
           match Lib_id.Map.find by_id lib_id with
           | None -> Memo.return Lib.DB.Resolve_result.not_found
-          | Some rt -> resolve_redirect_to t rt
+          | Some rt ->
+            let+ results = resolve_candidates [ rt ] in
+            List.hd_opt results |> Option.value ~default:Lib.DB.Resolve_result.not_found
         in
         let resolve name =
-          match Lib_name.Map.find by_name name with
-          | None -> Memo.return []
-          | Some rt -> Memo.List.map ~f:(resolve_redirect_to t) rt
+          Lib_name.Map.find by_name name |> Option.value ~default:[] |> resolve_candidates
         in
         Lib.DB.create
           ~parent:(Some opaque_libs)
           ~resolve
           ~resolve_lib_id
           ~all:(fun () ->
-            let+ libraries = all_opam () in
-            List.sort_uniq
-              (Lib_name.Map.keys by_name @ libraries)
-              ~compare:Lib_name.compare)
+            let+ libraries = all_opam ()
+            and+ native = visible_names by_name in
+            List.sort_uniq (native @ libraries) ~compare:Lib_name.compare)
           ~instrument_with
           ())
   ;;

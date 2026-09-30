@@ -568,25 +568,25 @@ let prepare candidates candidate =
           let* tree = Source_tree.Rules.Mounted.load ~logical_root ~layers in
           let projects = Source_tree.Rules.Mounted.projects tree in
           let name = Candidate.name candidate in
-          let* represents_package =
-            Memo.List.exists projects ~f:(fun (project, _) ->
-              match
-                Package.Name.Map.find
-                  (Dune_project.including_hidden_packages project)
-                  name
-              with
-              | None -> Memo.return false
-              | Some package -> Package_enabled.eval package)
-          in
           let* has_dune_file =
             Scan_dune_files.map_reduce
               (Source_tree.Rules.Mounted.root tree)
               ~traverse:Source_dir_status.Set.all
               ~trace_event_name:"Package source classification"
               ~f:(fun dir ->
-                Memo.return (Option.is_some (Source_tree.Rules.Dir.dune_file dir)))
+                match Source_tree.Rules.Dir.dune_file dir with
+                | None -> Memo.return false
+                | Some _ ->
+                  let project = Source_tree.Rules.Dir.project dir in
+                  (match
+                     Package.Name.Map.find
+                       (Dune_project.including_hidden_packages project)
+                       name
+                   with
+                   | None -> Memo.return false
+                   | Some package -> Package_enabled.eval package))
           in
-          if not (represents_package && has_dune_file)
+          if not has_dune_file
           then Memo.return opaque
           else (
             let projects =

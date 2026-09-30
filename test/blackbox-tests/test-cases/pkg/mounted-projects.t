@@ -183,12 +183,19 @@ A package with no Dune rules initially uses its recipe.
   $ cat _build/default/.lockfile/pkg/probe/.opam/probe/target/share/probe/marker
   opaque
 
-BUG: an unrelated nested project switches the selected package to native.
+Adding an unrelated nested project must not change that choice.
 
   $ mkdir _eligibility/unrelated
   $ printf '(lang dune 3.25)\n(package (name unrelated))\n' > _eligibility/unrelated/dune-project
   $ echo '(rule (target output) (action (write-file %{target} unrelated)))' > _eligibility/unrelated/dune
   $ dune build _build/default/.lockfile/pkg/probe/.opam/probe/target/share/probe/marker
-  Error: Don't know how to build
-  _build/default/.lockfile/pkg/probe/.opam/probe/target/share/probe/marker
-  [1]
+  $ cat _build/default/.lockfile/pkg/probe/.opam/probe/target/share/probe/marker
+  opaque
+
+Rules in a subdirectory of the selected project do make it eligible.
+
+  $ mkdir _eligibility/own
+  $ echo '(rule (target output) (action (write-file %{target} native)))' > _eligibility/own/dune
+  $ dune build _build/default/.lockfile/pkg/probe/own/output
+  $ cat _build/default/.lockfile/pkg/probe/own/output
+  native

@@ -73,6 +73,7 @@ module Curl = struct
       List.flatten
         [ [ "-L"
           ; "-s"
+          ; "-S"
           ; "--user-agent"
           ; Lazy.force user_agent
           ; "--write-out"
@@ -96,27 +97,34 @@ module Curl = struct
     in
     if exit_code <> 0
     then (
-      let stderr =
-        match Io.read_file stderr with
-        | Ok s ->
-          Fpath.unlink_no_err (Path.to_string stderr);
-          [ Pp.text s ]
+      let curl_stderr = Io.read_file stderr in
+      Fpath.unlink_no_err (Path.to_string stderr);
+      let error =
+        match curl_stderr with
+        | Ok msg ->
+          let msg = String.trim msg in
+          if String.is_empty msg
+          then
+            [ Pp.concat
+                ~sep:Pp.space
+                [ User_message.command "curl"
+                ; Pp.textf "returned an error code %d with no error message." exit_code
+                ]
+            ]
+          else [ Pp.text msg ]
         | Error s ->
-          [ Pp.textf
-              "Failed to read stderr from file %s"
-              (Path.to_string_maybe_quoted stderr)
+          [ Pp.concat
+              ~sep:Pp.space
+              [ User_message.command "curl"
+              ; Pp.textf "returned an error code %d." exit_code
+              ; Pp.textf
+                  "Failed to read stderr from file %s"
+                  (Path.to_string_maybe_quoted stderr)
+              ]
           ; Exn.pp s
           ]
       in
-      Error
-        (User_message.make
-           ([ Pp.concat
-                ~sep:Pp.space
-                [ User_message.command "curl"
-                ; Pp.textf "returned an invalid error code %d" exit_code
-                ]
-            ]
-            @ stderr)))
+      Error (User_message.make error))
     else (
       Fpath.unlink_no_err (Path.to_string stderr);
       match

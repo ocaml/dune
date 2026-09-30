@@ -18,9 +18,7 @@ See https://github.com/ocaml/dune/issues/16465
   File "dune.lock/foo.pkg", line 4, characters 7-25:
   4 |   (url "http://0.0.0.0:1")))
              ^^^^^^^^^^^^^^^^^^
-  Error: 'curl' returned an invalid error code 6
-         
-         
+  Error: curl: (6) Fake curl error diagnostic
   [1]
 
 
@@ -32,9 +30,7 @@ See https://github.com/ocaml/dune/issues/16465
   File "dune.lock/foo.pkg", line 4, characters 7-25:
   4 |   (url "http://0.0.0.0:1")))
              ^^^^^^^^^^^^^^^^^^
-  Error: 'curl' returned an invalid error code 7
-         
-         
+  Error: curl: (7) Fake curl error diagnostic
   [1]
 
 
@@ -46,9 +42,7 @@ See https://github.com/ocaml/dune/issues/16465
   File "dune.lock/foo.pkg", line 4, characters 7-25:
   4 |   (url "http://0.0.0.0:1")))
              ^^^^^^^^^^^^^^^^^^
-  Error: 'curl' returned an invalid error code 28
-         
-         
+  Error: curl: (28) Fake curl error diagnostic
   [1]
 
 
@@ -60,9 +54,7 @@ See https://github.com/ocaml/dune/issues/16465
   File "dune.lock/foo.pkg", line 4, characters 7-25:
   4 |   (url "http://0.0.0.0:1")))
              ^^^^^^^^^^^^^^^^^^
-  Error: 'curl' returned an invalid error code 35
-         
-         
+  Error: curl: (35) Fake curl error diagnostic
   [1]
 
 
@@ -75,9 +67,7 @@ all of them. 22 is CURLE_HTTP_RETURNED_ERROR.
   File "dune.lock/foo.pkg", line 4, characters 7-25:
   4 |   (url "http://0.0.0.0:1")))
              ^^^^^^^^^^^^^^^^^^
-  Error: 'curl' returned an invalid error code 22
-         
-         
+  Error: curl: (22) Fake curl error diagnostic
   [1]
 
 
@@ -90,9 +80,7 @@ proxies.
   File "dune.lock/foo.pkg", line 4, characters 7-25:
   4 |   (url "http://0.0.0.0:1")))
              ^^^^^^^^^^^^^^^^^^
-  Error: 'curl' returned an invalid error code 60
-         
-         
+  Error: curl: (60) Fake curl error diagnostic
   [1]
 
 
@@ -104,9 +92,7 @@ proxies.
   File "dune.lock/foo.pkg", line 4, characters 7-25:
   4 |   (url "http://0.0.0.0:1")))
              ^^^^^^^^^^^^^^^^^^
-  Error: 'curl' returned an invalid error code 63
-         
-         
+  Error: curl: (63) Fake curl error diagnostic
   [1]
 
 
@@ -118,9 +104,7 @@ proxies.
   File "dune.lock/foo.pkg", line 4, characters 7-25:
   4 |   (url "http://0.0.0.0:1")))
              ^^^^^^^^^^^^^^^^^^
-  Error: 'curl' returned an invalid error code 255
-         
-         
+  Error: 'curl' returned an error code 255 with no error message.
   [1]
 
 

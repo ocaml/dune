@@ -128,7 +128,8 @@ module Spec = struct
       let loc = loc_url in
       (match message with
        | None -> User_error.raise ~loc [ Pp.text "Unknown fetch failure" ]
-       | Some msg -> User_error.raise ~loc [ User_message.pp msg ])
+       | Some { User_message.paragraphs; hints; _ } ->
+         User_error.raise ~loc ~hints paragraphs)
   ;;
 end
 

@@ -105,6 +105,10 @@ val empty : t
 (** Checks, if action contains a [Dynamic_run]. *)
 val is_dynamic : t -> bool
 
+(** Whether execution may register diff/correction promotions. Extensions are
+    conservatively included. Rule-target promotion is handled after execution. *)
+val may_register_promotions : t -> bool
+
 (** Checks if executing the action may spawn a process. *)
 val runs_process : t -> bool
 

@@ -21,6 +21,8 @@ open Action_types
 module Promotion : sig
   type t
 
+  val disabled : t
+
   (** Map workspace-backed contexts to their reserved build-only root names. *)
   val for_rule
     :  workspace_sources:Filename.Set.t Context_name.Map.t

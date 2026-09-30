@@ -31,26 +31,17 @@ output directory is recursively copied
   > EOF
 
   $ dune build @install
-  Error: _build/default/output: Permission denied
-  -> required by _build/install/default/share/foo/output
-  -> required by _build/default/foo.install
-  -> required by alias install
-  [1]
   $ cat _build/install/default/share/foo/output/top.txt
-  cat: _build/install/default/share/foo/output/top.txt: No such file or directory
-  [1]
+  top
   $ cat _build/install/default/share/foo/output/child/nested.txt
-  cat: _build/install/default/share/foo/output/child/nested.txt: No such file or directory
-  [1]
+  nested
   $ mkdir installation
   $ dune install --prefix ./installation --display short
-  Error: The following <package>.install are missing:
-  - _build/default/foo.install
-  Hint: try running 'dune build [-p <pkg>] @install'
-  [1]
+  Installing installation/lib/foo/META
+  Installing installation/lib/foo/dune-package
+  Installing installation/share/foo/output/child/nested.txt
+  Installing installation/share/foo/output/top.txt
   $ cat installation/share/foo/output/top.txt
-  cat: installation/share/foo/output/top.txt: No such file or directory
-  [1]
+  top
   $ cat installation/share/foo/output/child/nested.txt
-  cat: installation/share/foo/output/child/nested.txt: No such file or directory
-  [1]
+  nested

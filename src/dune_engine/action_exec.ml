@@ -171,6 +171,7 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
       | _ -> copy_file ~src ~dst
     in
     Fiber.return ()
+  | Symlink (src, dst) when Sys.win32 -> exec (Copy (src, dst)) ~ectx ~eenv
   | Symlink (src, dst) ->
     Io.portable_symlink ~src ~dst:(Path.build dst);
     Fiber.return ()

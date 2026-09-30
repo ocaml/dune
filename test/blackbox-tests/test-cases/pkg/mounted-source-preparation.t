@@ -110,8 +110,9 @@ configuration must not be interpreted by the outer graph.
   $ build_pkg opaque
   opaque/1.0
 
-OCaml configuration scripts must read the prepared view, not the backing snapshot.
-BUG: native script evaluation reads the original file despite its overlay.
+OCaml configuration scripts require a physical prepared directory. Until native
+registration supplies one, keep these packages opaque rather than evaluating
+scripts against the unprepared backing snapshot.
 
   $ mkdir _script
   $ printf '(lang dune 3.25)\n(package (name scripted))\n' > _script/dune-project
@@ -144,4 +145,16 @@ BUG: native script evaluation reads the original file despite its overlay.
   > EOF
   $ dune build scripted-result
   $ cat _build/default/scripted-result
+  overlay
+  $ test -f _build/default/.lockfile/pkg/scripted/.opam/scripted/target/cookie
+  $ cat _script/value
   original
+
+Changes to the overlay still invalidate the recipe inputs.
+
+  $ make_lockpkg_file scripted value <<'EOF'
+  > changed overlay
+  > EOF
+  $ dune build scripted-result
+  $ cat _build/default/scripted-result
+  changed overlay

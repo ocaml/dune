@@ -521,7 +521,10 @@ let apply_source_transformations candidates candidate solver_env layers transfor
   loop layers transformations
 ;;
 
-module Scan_dune_files = Source_tree.Rules.Dir.Make_map_reduce (Memo) (Monoid.Exists)
+module Scan_dune_files =
+  Source_tree.Rules.Dir.Make_map_reduce
+    (Memo)
+    (Monoid.Product (Monoid.Exists) (Monoid.Exists))
 
 let prepare candidates candidate =
   let* direct = Candidate.dependencies candidate in
@@ -568,25 +571,31 @@ let prepare candidates candidate =
           let* tree = Source_tree.Rules.Mounted.load ~logical_root ~layers in
           let projects = Source_tree.Rules.Mounted.projects tree in
           let name = Candidate.name candidate in
-          let* has_dune_file =
+          let* has_dune_file, has_script =
             Scan_dune_files.map_reduce
               (Source_tree.Rules.Mounted.root tree)
               ~traverse:Source_dir_status.Set.all
               ~trace_event_name:"Package source classification"
               ~f:(fun dir ->
                 match Source_tree.Rules.Dir.dune_file dir with
-                | None -> Memo.return false
-                | Some _ ->
-                  let project = Source_tree.Rules.Dir.project dir in
-                  (match
-                     Package.Name.Map.find
-                       (Dune_project.including_hidden_packages project)
-                       name
-                   with
-                   | None -> Memo.return false
-                   | Some package -> Package_enabled.eval package))
+                | None -> Memo.return (false, false)
+                | Some file ->
+                  (match Source.Dune_file.kind file with
+                   | Ocaml_script _ -> Memo.return (false, true)
+                   | Plain ->
+                     let project = Source_tree.Rules.Dir.project dir in
+                     let+ enabled =
+                       match
+                         Package.Name.Map.find
+                           (Dune_project.including_hidden_packages project)
+                           name
+                       with
+                       | None -> Memo.return false
+                       | Some package -> Package_enabled.eval package
+                     in
+                     enabled, false))
           in
-          if not has_dune_file
+          if has_script || not has_dune_file
           then Memo.return opaque
           else (
             let projects =

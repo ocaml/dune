@@ -262,14 +262,10 @@ module Run (P : PARAMS) = struct
 
   let inference_alias mock_module =
     let open Memo.O in
-    let ocaml = Compilation_context.ocaml cctx in
     let project = Compilation_context.scope cctx |> Scope.project in
-    match
-      ( Ocaml.Version.supports_generalized_open ocaml.version
-      , Dune_project.dune_version project < (3, 5) )
-    with
-    | false, _ | _, true -> Memo.return None
-    | true, false ->
+    match Dune_project.dune_version project < (3, 5) with
+    | true -> Memo.return None
+    | false ->
       let modules = Compilation_context.modules cctx in
       let aliases = Modules.With_vlib.alias_for modules mock_module in
       (match List.exists aliases ~f:(Modules.With_vlib.is_guarded_alias modules) with
@@ -334,19 +330,39 @@ module Run (P : PARAMS) = struct
         | None -> action
         | Some (name, _) ->
           (* Keep the alias definitions in a private CMI: [ocamldep] then sees
-             logical references, while the anonymous open makes inference
-             eliminate hidden alias paths. Preprocess the same query for both. *)
-          let prefix =
+             logical references, while the anonymous open or functor application
+             eliminates hidden alias paths. Preprocess the same query for both. *)
+          let prelude, postlude =
+            let name = Module_name.to_string name in
+            let ocaml = Compilation_context.ocaml cctx in
+            match Ocaml.Version.supports_generalized_open ocaml.version with
+            | true -> sprintf "open! struct include %s end\n" name, ""
+            | false ->
+              (* The unit functor permits unpacking and generative functor
+                 applications in the query. *)
+              ( sprintf
+                  "include (functor\n\
+                  \  (%s : module type of struct\n\
+                  \    include %s\n\
+                  \  end) ->\n\
+                  \  functor () -> struct\n\
+                  \  open! %s\n"
+                  name
+                  name
+                  name
+              , sprintf "\nend) (struct include %s end) ()\n" name )
+          in
+          let contents =
             Action.progn
-              [ Action.echo
-                  [ sprintf "open! struct include %s end\n" (Module_name.to_string name) ]
+              [ Action.echo [ prelude ]
               ; Action.cat [ Path.build query ]
+              ; Action.echo [ postlude ]
               ]
             |> Action.Full.make
             |> Action_builder.return
           in
           Action_builder.progn
-            [ action; Action_builder.with_stdout_to (mock_ml base) prefix ]
+            [ action; Action_builder.with_stdout_to (mock_ml base) contents ]
       in
       rule ~mode:Standard action
     in

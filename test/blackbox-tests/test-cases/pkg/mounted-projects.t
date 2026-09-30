@@ -110,3 +110,32 @@ Installation preserves the declared dependency, without adopting its library.
   requires = "support"
   $ find _build/_private/default/.packages -path '*/__private__/support/support.cmxa' | wc -l
   0
+
+Managed dependencies must have the same visibility regardless of their builder.
+Neither lock package below declares a dependency on the other.
+BUG: the native provider is visible despite the missing dependency.
+
+  $ echo '(executable (name main_left) (modules main_left) (libraries left))' > dune
+  $ echo '(library (public_name left) (libraries right))' > _shared/dune
+  $ echo 'let message = Right.message' > _shared/left.ml
+  $ dune build main_left.exe
+  $ _build/default/main_left.exe
+  right/workspace
+
+The same undeclared provider is correctly hidden when it is opaque. Its recipe
+must not be run while resolving left's libraries.
+
+  $ make_lockpkg right <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_shared))
+  > (build (progn (run false) (patch missing.patch)))
+  > EOF
+  $ dune build main_left.exe
+  File "_build/default/.lockfile/pkg/left/dune", line 1, characters 39-44:
+  Error: Library "right" not found.
+  -> required by library "left" in _build/default/.lockfile/pkg/left
+  -> required by executable main_left in dune:1
+  -> required by
+     _build/default/.main_left.eobjs/native/dune__exe__Main_left.cmx
+  -> required by _build/default/main_left.exe
+  [1]

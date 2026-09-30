@@ -253,3 +253,18 @@ The invariant is not tied to a context named default.
   $ test ! -e .lockfile
   $ cat _source/source.txt
   authored
+
+Ordinary artifact generation must not depend on unrelated promotion namespaces.
+BUG: adding an unused context reruns an unchanged action in the host context.
+
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target ordinary)
+  >  (action (progn (echo executed) (write-file %{target} ordinary))))
+  > EOF
+  $ dune build _build/host/ordinary
+  executed
+  $ dune build _build/host/ordinary
+  $ echo '(context (default (name unused)))' >> dune-workspace
+  $ dune build _build/host/ordinary
+  executed

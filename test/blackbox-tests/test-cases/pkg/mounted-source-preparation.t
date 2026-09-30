@@ -109,3 +109,39 @@ configuration must not be interpreted by the outer graph.
   > EOF
   $ build_pkg opaque
   opaque/1.0
+
+OCaml configuration scripts must read the prepared view, not the backing snapshot.
+BUG: native script evaluation reads the original file despite its overlay.
+
+  $ mkdir _script
+  $ printf '(lang dune 3.25)\n(package (name scripted))\n' > _script/dune-project
+  $ echo original > _script/value
+  $ cat > _script/dune <<'EOF'
+  > (* -*- tuareg -*- *)
+  > let () =
+  >   let input = open_in "value" in
+  >   let value = input_line input in
+  >   close_in input;
+  >   Jbuild_plugin.V1.send
+  >     ("(rule (target answer) (action (write-file %{target} " ^ value ^ ")))"
+  >      ^ "(install (section share) (files answer))")
+  > EOF
+  $ make_lockpkg scripted <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_script))
+  > (build
+  >  (progn
+  >   (system "cp value answer")
+  >   (write-file scripted.install "share: [ \"answer\" ]")))
+  > EOF
+  $ make_lockpkg_file scripted value <<'EOF'
+  > overlay
+  > EOF
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target scripted-result)
+  >  (action (with-stdout-to %{target} (cat %{pkg:scripted:share:answer}))))
+  > EOF
+  $ dune build scripted-result
+  $ cat _build/default/scripted-result
+  original

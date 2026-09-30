@@ -168,3 +168,27 @@ building the metadata-only intermediate package.
   $ _build/default/main_left.exe
   right/workspace
   $ test ! -e _build/default/.lockfile/pkg/bridge/.opam/bridge/target
+
+Native eligibility belongs to the selected package's project, not its snapshot.
+A package with no Dune rules initially uses its recipe.
+
+  $ mkdir _eligibility
+  $ printf '(lang dune 3.25)\n(package (name probe))\n' > _eligibility/dune-project
+  $ make_lockpkg probe <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_eligibility))
+  > (build (system "mkdir -p %{prefix}/share/probe; echo opaque > %{prefix}/share/probe/marker"))
+  > EOF
+  $ dune build _build/default/.lockfile/pkg/probe/.opam/probe/target/share/probe/marker
+  $ cat _build/default/.lockfile/pkg/probe/.opam/probe/target/share/probe/marker
+  opaque
+
+BUG: an unrelated nested project switches the selected package to native.
+
+  $ mkdir _eligibility/unrelated
+  $ printf '(lang dune 3.25)\n(package (name unrelated))\n' > _eligibility/unrelated/dune-project
+  $ echo '(rule (target output) (action (write-file %{target} unrelated)))' > _eligibility/unrelated/dune
+  $ dune build _build/default/.lockfile/pkg/probe/.opam/probe/target/share/probe/marker
+  Error: Don't know how to build
+  _build/default/.lockfile/pkg/probe/.opam/probe/target/share/probe/marker
+  [1]

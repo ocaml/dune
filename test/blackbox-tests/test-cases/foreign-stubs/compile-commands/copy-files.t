@@ -218,3 +218,89 @@ compilation database target.
   $ jq '.' compile_commands.json
   jq: error: Could not open file compile_commands.json: No such file or directory
   [2]
+
+An explicit database rule must take precedence over automatic generation,
+even if there are foreign stanzas. Start with all of them disabled.
+
+  $ mkdir ../owned && cd ../owned
+  $ make_dune_project 3.23
+  $ echo '[{"file":"external.c"}]' > external.json
+  $ cat > dune <<EOF
+  > (foreign_library
+  >  (archive_name stubs)
+  >  (language c)
+  >  (names missing)
+  >  (enabled_if false))
+  > (rule (action (copy external.json compile_commands.json)))
+  > EOF
+  $ dune build compile_commands.json @check && \
+  >   cat _build/default/compile_commands.json
+  [{"file":"external.c"}]
+  $ test ! -f compile_commands.json
+
+The explicit rule should also take precedence when foreign stanzas are enabled.
+
+  $ echo 'int stub(void) { return 0; }' > stub.c
+  $ cat > dune <<EOF
+  > (foreign_library (archive_name stubs) (language c) (names stub))
+  > (rule (action (copy external.json compile_commands.json)))
+  > EOF
+  $ dune build compile_commands.json && cat _build/default/compile_commands.json
+  Error: Multiple rules generated for _build/default/compile_commands.json:
+  - <internal location>
+  - dune:2
+  [1]
+  $ test ! -f compile_commands.json
+
+Without an explicit rule, disabled foreign stanzas must not overwrite an
+existing source-tree database or register it for deletion on clean.
+
+  $ cat > dune <<EOF
+  > (foreign_library
+  >  (archive_name stubs)
+  >  (language c)
+  >  (names missing)
+  >  (enabled_if false))
+  > EOF
+  $ cp external.json compile_commands.json
+  $ dune build @check
+  $ cat compile_commands.json
+  [{"file":"external.c"}]
+  $ test ! -f _build/.to-delete-in-source-tree
+
+Edits to that database must also update the build-tree copy.
+
+  $ echo '[{"file":"updated.c"}]' > compile_commands.json
+  $ dune build compile_commands.json
+  $ cat _build/default/compile_commands.json
+  [{"file":"updated.c"}]
+  $ cat compile_commands.json
+  [{"file":"updated.c"}]
+
+Enabling a foreign stanza resumes automatic database generation, even though
+there is already a database in the source tree.
+
+  $ cat > dune <<EOF
+  > (foreign_library (archive_name stubs) (language c) (names stub))
+  > EOF
+  $ dune build compile_commands.json
+  $ jq '[.[].file]' compile_commands.json
+  [
+    "stub.c"
+  ]
+
+Disabling it again must leave the existing database alone, including when the
+condition is not a literal false.
+
+  $ cat > dune <<'EOF'
+  > (foreign_library
+  >  (archive_name stubs)
+  >  (language c)
+  >  (names stub)
+  >  (enabled_if (= %{context_name} unused)))
+  > EOF
+  $ dune build @check
+  $ jq '[.[].file]' compile_commands.json
+  [
+    "stub.c"
+  ]

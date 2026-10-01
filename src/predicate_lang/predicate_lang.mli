@@ -45,6 +45,10 @@ module Glob : sig
   val compare : t -> t -> Ordering.t
   val equal : t -> t -> bool
   val hash : t -> int
+
+  (** Lossless encoding, preserving literal names versus glob patterns. *)
+  val conv : t Stdune.Conv.value
+
   val decode : t Dune_sexp.Decoder.t
   val encode : t -> Dune_sexp.t
   val digest : t -> Dune_digest.t

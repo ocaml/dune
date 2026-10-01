@@ -41,6 +41,8 @@ module Restore_result : sig
   val bind : 'a t -> f:('a -> 'b t) -> 'b t
 end
 
+val restore_sexp : Path.t -> Sexp.t Restore_result.t
+
 (** An [Artifacts] entry corresponds to the targets produced by an action. *)
 module Artifacts : sig
   module Metadata_entry : sig

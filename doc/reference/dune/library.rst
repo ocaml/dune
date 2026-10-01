@@ -175,6 +175,60 @@ order to declare a multi-directory library, you need to use the
    The following modes are available: ``byte``, ``native`` and ``best``.
    ``best`` is ``native`` or ``byte`` when native compilation isn't available.
 
+   When the Melange extension is enabled, ``melange`` is also available. A
+   library with ``(modes melange)`` is compiled only by Melange. A library with
+   ``(modes :standard melange)`` is compiled both by OCaml and by Melange.
+   See :doc:`/melange` for the complete guide to Melange libraries.
+
+.. describe:: (melange.modules <modules>)
+
+   .. versionadded:: 3.24
+
+   Specifies the modules used when compiling the Melange variant of the
+   library. This field has the same syntax as ``modules``. If omitted, Melange
+   compilation uses ``modules``.
+
+.. describe:: (melange.libraries <library-dependencies>)
+
+   .. versionadded:: 3.24
+
+   Specifies the dependencies used when compiling the Melange variant of the
+   library. If omitted, Melange compilation uses ``libraries``. This field may
+   only be used by libraries that include ``melange`` in ``modes``.
+
+.. describe:: (melange.preprocess <preprocess-spec>)
+
+   .. versionadded:: 3.24
+
+   Specifies preprocessing for Melange compilation. If omitted, Melange
+   compilation uses ``preprocess``. This field has the same syntax as
+   ``preprocess``.
+
+.. describe:: (melange.preprocessor_deps (<deps-conf list>))
+
+   .. versionadded:: 3.24
+
+   Specifies extra dependencies for ``melange.preprocess``. The dependency
+   specification is described in :doc:`/concepts/dependency-spec`.
+
+.. describe:: (melange.ppx_runtime_libraries (<library-names>))
+
+   .. versionadded:: 3.24
+
+   Specifies PPX runtime dependencies for Melange compilation. If omitted,
+   Melange compilation uses ``ppx_runtime_libraries``.
+
+.. describe:: (melange.compile_flags <flags>)
+
+   Specifies flags passed to ``melc`` when compiling the Melange variant of the
+   library. The field uses the :doc:`/reference/ordered-set-language`.
+
+.. describe:: (melange.runtime_deps <deps>)
+
+   Specifies files needed at runtime by JavaScript emitted from this library,
+   such as CSS, images, fonts, or JavaScript files. The dependency
+   specification is described in :doc:`/concepts/dependency-spec`.
+
 .. describe:: (no_dynlink)
 
    Disables (native) dynamic linking of the library. This means that the

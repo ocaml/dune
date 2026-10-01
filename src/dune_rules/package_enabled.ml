@@ -7,9 +7,9 @@ let eval package =
   | Some expr ->
     Blang_expand.eval expr ~dir:Path.root ~f:(fun ~source:_ pform ->
       match pform with
-      | Var (Os v) -> Lock_dir.Sys_vars.(os_values poll v)
+      | Var (Os v) -> Pkg_sys_vars.(os_values poll v)
       | Var Architecture ->
-        let+ arch = Memo.Lazy.force Lock_dir.Sys_vars.poll.arch in
+        let+ arch = Memo.Lazy.force Pkg_sys_vars.poll.arch in
         [ Value.String (Option.value ~default:"" arch) ]
       | pform ->
         Code_error.raise

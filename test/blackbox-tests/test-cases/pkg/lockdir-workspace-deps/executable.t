@@ -96,3 +96,21 @@ install/build cycle. Report it as a dependency error, not a missing lock entry.
   [1]
   $ grep '^Error:' error
   Error: Dependency cycle between packages:
+
+A locked provider's exports can also refer to its workspace dependency's cookie.
+Currently the legacy resolver tries to expand them outside the materialiser.
+
+  $ cat > dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (using unreleased 0.1)
+  > (package (name ws-tool) (allow_empty))
+  > EOF
+  $ make_lockpkg consumer <<'EOF'
+  > (version 0.0.1)
+  > (depends ws-tool)
+  > (exported_env (= FORWARDED_ANSWER %{pkg:ws-tool:answer}))
+  > EOF
+  $ dune build out 2>error
+  [1]
+  $ grep '^Error:' error
+  Error: Undefined package variable: answer

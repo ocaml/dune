@@ -869,11 +869,7 @@ let raise_on_lock_dir_out_of_sync =
           Dune_load.packages ()
           >>| Dune_lang.Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
         in
-        match
-          Dune_pkg.Package_universe.up_to_date
-            local_packages
-            ~dependency_hash:(Option.map ~f:snd lock_dir.dependency_hash)
-        with
+        match Dune_pkg.Package_universe.up_to_date local_packages lock_dir with
         | `Valid -> ()
         | `Invalid ->
           let source_path = Dune_pkg.Lock_dir.in_source_tree path in

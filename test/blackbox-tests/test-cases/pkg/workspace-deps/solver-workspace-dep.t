@@ -59,15 +59,41 @@ version rather than the repository's unrelated util version.
   $ cat _build/default/result
   done
 
-Changing a supplied workspace version can invalidate a repository constraint.
-Currently validation misses that change, even though a fresh solve rejects it.
+Changing a supplied workspace version invalidates the saved solution. Both
+validation and building require relocking before using that changed provider.
 
   $ sed 's/(version 1.2)/(version 2.0)/' dune-project > dune-project.new
   $ mv dune-project.new dune-project
-  $ dune pkg validate-lockdir
+  $ dune pkg validate-lockdir 2>validation-error
+  [1]
+  $ grep '^Error:' validation-error
+  Error: Dependency hash in lockdir does not match the current package
+  Error: Some lockdirs do not contain solutions for local packages:
+  $ dune build result 2>build-error
+  [1]
+  $ grep '^Error:' build-error
+  Error: The lock dir is not sync with your dune-project
+
+A fresh solve reports the incompatible workspace version.
+
   $ dune pkg lock >solve-error 2>&1
   [1]
   $ grep '^Error:' solve-error
   Error:
   $ grep -q '1.2' solve-error
   $ grep -q '2.0' solve-error
+
+Autolocking must rerun the solver when supplied metadata changes, rather than
+restore the previous solution from an action keyed only by missing packages.
+
+  $ sed 's/(version 2.0)/(version 1.2)/' dune-project > dune-project.new
+  $ mv dune-project.new dune-project
+  $ mv dune.lock saved-lock
+  $ echo '(pkg enabled)' >> dune-workspace
+  $ dune build result
+  $ sed 's/(version 1.2)/(version 2.0)/' dune-project > dune-project.new
+  $ mv dune-project.new dune-project
+  $ dune build result 2>autolock-error
+  [1]
+  $ grep -q '1.2' autolock-error
+  $ grep -q '2.0' autolock-error

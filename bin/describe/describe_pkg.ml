@@ -72,8 +72,8 @@ module Dependency_hash = struct
 
   let info =
     let doc =
-      "Print the hash of the project's non-local dependencies such as what would appear \
-       in the \"dependency_hash\" field of a a lock.dune file."
+      "Print the hash of the project's non-local dependency formula. Mixed lockdirs \
+       additionally fingerprint the workspace metadata referenced by locked packages."
     in
     Cmd.info "dependency-hash" ~doc
   ;;

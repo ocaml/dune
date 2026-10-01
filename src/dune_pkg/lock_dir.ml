@@ -1148,6 +1148,17 @@ let validate_packages packages ~local_packages =
   else Error (`Missing_dependencies missing_dependencies)
 ;;
 
+let dependency_hash packages ~local_packages =
+  let referenced_packages =
+    Packages.to_pkg_list packages
+    |> List.concat_map ~f:(fun (pkg : Pkg.t) ->
+      List.concat_map pkg.depends ~f:(fun { Conditional.value; _ } ->
+        List.map value ~f:(fun (dep : Dependency.t) -> dep.name)))
+    |> Package_name.Set.of_list
+  in
+  Local_package.For_solver.dependency_hash local_packages ~referenced_packages
+;;
+
 let create_latest_version
       packages
       ~local_packages
@@ -1181,8 +1192,7 @@ let create_latest_version
      |> Code_error.raise "Invalid package table");
   let version = Syntax.greatest_supported_version_exn Dune_lang.Pkg.syntax in
   let dependency_hash =
-    Local_package.For_solver.non_local_dependencies local_packages
-    |> Local_package.Dependency_hash.of_dependency_formula
+    dependency_hash packages ~local_packages
     |> Option.map ~f:(fun dependency_hash -> Loc.none, dependency_hash)
   in
   let complete, used =

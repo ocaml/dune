@@ -194,17 +194,14 @@ let check_for_unnecessary_packges_in_lock_dir
       ])
 ;;
 
-let dependency_digest local_packages =
-  let local_packages =
-    Package_name.Map.values local_packages |> List.map ~f:Local_package.for_solver
+let up_to_date local_packages (lock_dir : Lock_dir.t) =
+  let dependency_hash =
+    Lock_dir.dependency_hash
+      lock_dir.packages
+      ~local_packages:
+        (Package_name.Map.values local_packages |> List.map ~f:Local_package.for_solver)
   in
-  Local_package.For_solver.non_local_dependencies local_packages
-  |> Local_package.Dependency_hash.of_dependency_formula
-;;
-
-let up_to_date local_packages ~dependency_hash:saved_dependency_hash =
-  let dependency_hash = dependency_digest local_packages in
-  match saved_dependency_hash, dependency_hash with
+  match Option.map lock_dir.dependency_hash ~f:snd, dependency_hash with
   | None, None -> `Valid
   | Some lock_dir_dependency_hash, Some non_local_dependencies_hash
     when Local_package.Dependency_hash.equal
@@ -216,7 +213,7 @@ let up_to_date local_packages ~dependency_hash:saved_dependency_hash =
   | Some _, None -> `Invalid
 ;;
 
-let validate_dependency_hash local_packages ~saved_dependency_hash =
+let validate_dependency_hash local_packages (lock_dir : Lock_dir.t) =
   let local_packages =
     Package_name.Map.values local_packages |> List.map ~f:Local_package.for_solver
   in
@@ -228,11 +225,8 @@ let validate_dependency_hash local_packages ~saved_dependency_hash =
         ]
     ]
   in
-  let dependency_hash =
-    Local_package.For_solver.non_local_dependencies local_packages
-    |> Local_package.Dependency_hash.of_dependency_formula
-  in
-  match saved_dependency_hash, dependency_hash with
+  let dependency_hash = Lock_dir.dependency_hash lock_dir.packages ~local_packages in
+  match lock_dir.dependency_hash, dependency_hash with
   | None, None -> ()
   | Some (loc, lock_dir_dependency_hash), None ->
     User_error.raise
@@ -275,19 +269,16 @@ let validate_dependency_hash local_packages ~saved_dependency_hash =
         ~loc
         ~hints:regenerate_lock_dir_hints
         [ Pp.text
-            "Dependency hash in lockdir does not match the hash of non-local \
-             dependencies of this project. The lockdir expects the non-local \
-             dependencies to hash to:"
+            "Dependency hash in lockdir does not match the current package metadata. The \
+             lockdir expects the solver inputs to hash to:"
         ; Pp.text (Local_package.Dependency_hash.to_string lock_dir_dependency_hash)
-        ; Pp.text "...but the non-local dependencies of this project hash to:"
+        ; Pp.text "...but the current package metadata hashes to:"
         ; Pp.text (Local_package.Dependency_hash.to_string non_local_dependency_hash)
         ]
 ;;
 
 let validate t =
-  validate_dependency_hash
-    t.local_packages
-    ~saved_dependency_hash:t.lock_dir.dependency_hash;
+  validate_dependency_hash t.local_packages t.lock_dir;
   all_non_local_dependencies_of_local_packages t
   |> check_for_unnecessary_packges_in_lock_dir t
 ;;

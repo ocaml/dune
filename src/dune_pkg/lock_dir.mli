@@ -129,6 +129,13 @@ val to_dyn : t -> Dyn.t
     handle multiple versions of the same package. *)
 val uses_versioned_paths : t -> bool
 
+(** Fingerprint the non-local requirements and the supplied workspace metadata
+    referenced by locked packages, across all platform branches. *)
+val dependency_hash
+  :  Packages.t
+  -> local_packages:Local_package.For_solver.t list
+  -> Local_package.Dependency_hash.t option
+
 (** Construct a solution completing [local_packages]. Every locked dependency
     must be supplied by either the workspace or the lock directory. *)
 val create_latest_version

@@ -5,6 +5,8 @@ module Local_package = Dune_pkg.Local_package
 module Show_lock = struct
   let print_lock lock_dir_arg () =
     let open Fiber.O in
+    let* local_packages = Memo.run Pkg.Pkg_common.find_local_packages in
+    let local_packages = Package_name.Set.of_keys local_packages in
     let* lock_dir_paths =
       Memo.run (Workspace.workspace ())
       >>| Pkg.Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dir_arg
@@ -12,7 +14,7 @@ module Show_lock = struct
     Fiber.parallel_map lock_dir_paths ~f:(fun lock_dir_path ->
       let lock_dir_path = Path.source lock_dir_path in
       let+ platform = Pkg.Pkg_common.solver_env_from_system_and_context ~lock_dir_path in
-      let lock_dir = Lock_dir.read_disk_exn lock_dir_path in
+      let lock_dir = Lock_dir.read_disk_exn lock_dir_path ~local_packages in
       let packages =
         Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform
         |> Package_name.Map.values
@@ -121,14 +123,14 @@ module List_locked_dependencies = struct
     |> Pp.vbox
   ;;
 
-  let enumerate_lock_dirs_by_path workspace ~lock_dirs =
+  let enumerate_lock_dirs_by_path workspace ~lock_dirs ~local_packages =
     let lock_dirs =
       Pkg.Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs workspace
     in
     List.filter_map lock_dirs ~f:(fun lock_dir_path ->
       if Fpath.exists (Path.Source.to_string lock_dir_path)
       then (
-        match Lock_dir.read_disk_exn (Path.source lock_dir_path) with
+        match Lock_dir.read_disk_exn (Path.source lock_dir_path) ~local_packages with
         | lock_dir -> Some (lock_dir_path, lock_dir)
         | exception User_error.E e ->
           User_warning.emit
@@ -145,9 +147,13 @@ module List_locked_dependencies = struct
     let open Fiber.O in
     let* lock_dirs_by_path, local_packages =
       let open Memo.O in
-      Memo.both
-        (Workspace.workspace () >>| enumerate_lock_dirs_by_path ~lock_dirs)
-        Pkg.Pkg_common.find_local_packages
+      (let* local_packages = Pkg.Pkg_common.find_local_packages in
+       let+ workspace = Workspace.workspace () in
+       ( enumerate_lock_dirs_by_path
+           workspace
+           ~lock_dirs
+           ~local_packages:(Package_name.Set.of_keys local_packages)
+       , local_packages ))
       |> Memo.run
     in
     let+ pp =

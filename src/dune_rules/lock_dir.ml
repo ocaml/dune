@@ -122,7 +122,7 @@ let get_with_path =
          ~input:(module Path)
          (fun path ->
             let* () = Build_system.build_dir path in
-            Load.load path))
+            Load.load path ~local_packages:Package.Name.Set.empty))
   in
   Per_context.create_by_name ~name:"lock-dir-get" (fun ctx ->
     Memo.lazy_ ~name:"lock-dir-get" (fun () ->
@@ -158,7 +158,7 @@ let of_dev_tool dev_tool =
   let path = dev_tool |> dev_tool_external_lock_dir |> Path.external_ in
   (* Ensure the internal lock dir is built so copy rules run *)
   let* () = Build_system.build_dir (dev_tool_lock_dir dev_tool) in
-  Load.load_exn path
+  Load.load_exn path ~local_packages:Package.Name.Set.empty
 ;;
 
 let of_dev_tool_if_lock_dir_exists dev_tool =
@@ -170,7 +170,7 @@ let of_dev_tool_if_lock_dir_exists dev_tool =
   in
   if exists
   then
-    let+ t = Load.load_exn path in
+    let+ t = Load.load_exn path ~local_packages:Package.Name.Set.empty in
     Some t
   else Memo.return None
 ;;

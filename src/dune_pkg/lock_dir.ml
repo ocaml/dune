@@ -1030,17 +1030,6 @@ module Packages = struct
     |> Package_name.Map.map ~f:Package_version.Map.of_list_exn
   ;;
 
-  (* [choose_pkg_for_platform t name ~platform] returns the package whose name
-     is [name] which is enabled on [platform], and returns [None] if either no
-     package exists whose name is [name] or if there is no version of the
-     package that is enabled on [platform]. *)
-  let choose_pkg_for_platform t name ~platform =
-    let open Option.O in
-    Package_name.Map.find t name
-    >>| Package_version.Map.values
-    >>= List.find ~f:(Pkg.is_enabled_on_platform ~platform)
-  ;;
-
   let pkgs_on_platform_by_name t ~platform =
     Package_name.Map.filter_map t ~f:(fun version_map ->
       Package_version.Map.values version_map
@@ -1138,8 +1127,8 @@ type missing_dependency =
 (* [validate_packages packages] returns
    [Error (`Missing_dependencies missing_dependencies)] where
    [missing_dependencies] is a non-empty list with an element for each package
-   dependency which doesn't have a corresponding entry in [packages]. *)
-let validate_packages packages =
+   dependency absent from both the lock directory and the workspace. *)
+let validate_packages packages ~local_packages =
   let missing_dependencies =
     Packages.to_pkg_list packages
     |> List.concat_map ~f:(fun (dependant_package : Pkg.t) ->
@@ -1149,6 +1138,7 @@ let validate_packages packages =
              we supposed to filter these upfront? *)
           if
             Package_name.Map.mem packages depend.name
+            || Package_name.Set.mem local_packages depend.name
             || Package_name.equal depend.name Dune_dep.name
           then None
           else Some { dependant_package; dependency = depend.name; loc = depend.loc })))
@@ -1171,7 +1161,14 @@ let create_latest_version
     Package_name.Map.map packages ~f:(fun (pkg : Pkg.t) ->
       Package_version.Map.singleton pkg.info.version pkg)
   in
-  (match validate_packages packages with
+  (match
+     validate_packages
+       packages
+       ~local_packages:
+         (Package_name.Set.of_list_map
+            local_packages
+            ~f:(fun (pkg : Local_package.For_solver.t) -> pkg.name))
+   with
    | Ok () -> ()
    | Error (`Missing_dependencies missing_dependencies) ->
      List.map missing_dependencies ~f:(fun { dependant_package; dependency; loc = _ } ->
@@ -1638,8 +1635,8 @@ struct
       package_name
   ;;
 
-  let check_packages packages ~lock_dir_path =
-    match validate_packages packages with
+  let check_packages packages ~lock_dir_path ~local_packages =
+    match validate_packages packages ~local_packages with
     | Ok () -> Ok ()
     | Error (`Missing_dependencies missing_dependencies) ->
       List.iter missing_dependencies ~f:(fun { dependant_package; dependency; loc } ->
@@ -1672,7 +1669,7 @@ struct
            ])
   ;;
 
-  let load lock_dir_path =
+  let load lock_dir_path ~local_packages =
     let event =
       Dune_trace.(
         Out.start (global ()) (fun () ->
@@ -1716,7 +1713,7 @@ struct
       >>| Packages.of_pkg_list
     in
     let result =
-      check_packages packages ~lock_dir_path
+      check_packages packages ~lock_dir_path ~local_packages
       |> Result.map ~f:(fun () ->
         { version
         ; dependency_hash
@@ -1731,9 +1728,9 @@ struct
     result
   ;;
 
-  let load_exn lock_dir_path =
+  let load_exn lock_dir_path ~local_packages =
     let open Io.O in
-    load lock_dir_path >>| User_error.ok_exn
+    load lock_dir_path ~local_packages >>| User_error.ok_exn
   ;;
 end
 
@@ -1753,45 +1750,6 @@ module Load_immediate = Make_load (struct
 
 let read_disk = Load_immediate.load
 let read_disk_exn = Load_immediate.load_exn
-
-let transitive_dependency_closure t ~platform start =
-  let missing_packages =
-    let all_packages_in_lock_dir = Package_name.Set.of_keys t.packages in
-    Package_name.Set.diff start all_packages_in_lock_dir
-  in
-  match Package_name.Set.is_empty missing_packages with
-  | false -> Error (`Missing_packages missing_packages)
-  | true ->
-    let to_visit = Queue.create () in
-    let push_set = Package_name.Set.iter ~f:(Queue.push to_visit) in
-    push_set start;
-    let rec loop seen =
-      match Queue.pop to_visit with
-      | None -> seen
-      | Some node ->
-        let unseen_deps =
-          (* Note that the call to [Packages.choose_pkg_for_platform] won't
-             in general return [None] because [t] guarantees that its map of
-             dependencies is closed under "depends on". Sometimes a package
-             (such as dune) is explicitly removed from the closure in which
-             case we will have a [None] and ignore it. *)
-          Package_name.Set.(
-            diff
-              (of_list_map
-                 ~f:(fun depend -> depend.name)
-                 ((let open Option.O in
-                   let* pkg =
-                     Packages.choose_pkg_for_platform t.packages node ~platform
-                   in
-                   Conditional_choice.choose_for_platform pkg.depends ~platform)
-                  |> Option.value ~default:[]))
-              seen)
-        in
-        push_set unseen_deps;
-        loop (Package_name.Set.union seen unseen_deps)
-    in
-    Ok (loop start)
-;;
 
 let compute_missing_checksums t ~pinned_packages =
   let open Fiber.O in

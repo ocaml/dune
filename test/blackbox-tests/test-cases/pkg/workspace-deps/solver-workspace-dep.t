@@ -21,11 +21,26 @@ version rather than lock another definition of that package.
   > (package (name util) (version 1.2) (depends leaf))
   > EOF
 
-The solver rejects the dependency because [mylock] is outside the
-workspace and [util] is inside it:
+Locking fills only the missing packages. Workspace util satisfies mylock's
+version constraint and does not get a lock entry.
 
-  $ dune pkg lock 2>&1
-  Error: Dune does not support packages outside the workspace depending on
-  packages in the workspace. The package "mylock" is not in the workspace but
-  it depends on the package "util" which is in the workspace.
-  [1]
+  $ dune pkg lock
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - leaf.0.0.1
+  - mylock.0.0.1
+  $ ls dune.lock/*.pkg
+  dune.lock/leaf.0.0.1.pkg
+  dune.lock/mylock.0.0.1.pkg
+  $ dune pkg validate-lockdir
+  $ dune describe pkg list-locked-dependencies --transitive
+  Dependencies of local packages locked in dune.lock
+  - Transitive dependencies of local package main.dev
+    - leaf.0.0.1
+    - mylock.0.0.1
+    - util.1.2
+    
+  - Transitive dependencies of local package util.1.2
+    - leaf.0.0.1
+    

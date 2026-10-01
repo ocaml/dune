@@ -22,29 +22,30 @@ Create the package "foo" with an invalid opam file:
   Parse error
   [1]
 
-Create the package "foo" with an opam file that creates a circular dep with the project:
+References back to the workspace are valid solver inputs, including cyclic
+package metadata. Build dependencies are checked when the artifacts are built:
   $ mkpkg foo <<EOF
   > depends: [ "x" ]
   > EOF
 
   $ dune pkg lock
-  Error: Dune does not support packages outside the workspace depending on
-  packages in the workspace. The package "foo" is not in the workspace but it
-  depends on the package "x" which is in the workspace.
-  [1]
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - foo.0.0.1
+  $ dune pkg validate-lockdir
 
-Create the package "foo" with a dependency on the workspace package "x" that
-only applies on macos. Platform-conditional dependencies must be validated,
-and the error must be reported only once:
+A workspace dependency selected only on macos is valid too:
   $ mkpkg foo <<EOF
   > depends: [ "x" { os = "macos" } ]
   > EOF
 
   $ dune pkg lock
-  Error: Dune does not support packages outside the workspace depending on
-  packages in the workspace. The package "foo" is not in the workspace but it
-  depends on the package "x" which is in the workspace.
-  [1]
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - foo.0.0.1
+  $ dune pkg validate-lockdir
 
 Create the package "foo" with an invalid variable interpolation:
   $ mkpkg foo <<EOF

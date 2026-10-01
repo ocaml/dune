@@ -19,6 +19,21 @@ let lockdir_regenerate_hints =
   ]
 ;;
 
+let check_package_names (lock_dir : Lock_dir.t) ~local_packages =
+  Lock_dir.Packages.to_pkg_list lock_dir.packages
+  |> List.iter ~f:(fun (pkg : Lock_dir.Pkg.t) ->
+    match Package_name.Map.find local_packages pkg.info.name with
+    | None -> ()
+    | Some loc ->
+      User_error.raise
+        ~loc
+        ~hints:lockdir_regenerate_hints
+        [ Pp.textf
+            "A package named %S is defined locally but is also present in the lockdir"
+            (Package_name.to_string pkg.info.name)
+        ])
+;;
+
 let version_by_package_name local_packages lock_packages =
   let from_local_packages =
     Package_name.Map.map local_packages ~f:(fun (local_package : Local_package.t) ->
@@ -27,23 +42,18 @@ let version_by_package_name local_packages lock_packages =
   let from_lock_dir =
     Package_name.Map.map lock_packages ~f:(fun (pkg : Lock_dir.Pkg.t) -> pkg.info.version)
   in
-  let exception Duplicate_package of Package_name.t in
-  try
-    Package_name.Map.union
-      from_local_packages
-      from_lock_dir
-      ~f:(fun duplicate_package_name _ _ ->
-        raise (Duplicate_package duplicate_package_name))
-  with
-  | Duplicate_package duplicate_package_name ->
-    let local_package = Package_name.Map.find_exn local_packages duplicate_package_name in
-    User_error.raise
-      ~hints:lockdir_regenerate_hints
-      ~loc:local_package.loc
-      [ Pp.textf
-          "A package named %S is defined locally but is also present in the lockdir"
-          (Package_name.to_string local_package.name)
-      ]
+  Package_name.Map.union_exn from_local_packages from_lock_dir
+;;
+
+let resolve_local_dependencies local_package ~env ~with_test ~packages =
+  Lock_pkg.local_package_dependencies
+    (Local_package.for_solver local_package)
+    ~env:(Solver_env.to_env env)
+    ~with_test
+    ~packages
+    ~dune_version:(Package_version.of_opam_package_version Dune_dep.version)
+  |> Result.map_error ~f:(fun (`Formula_could_not_be_satisfied hints) ->
+    List.map hints ~f:Resolve_opam_formula.Unsatisfied_formula_hint.pp)
 ;;
 
 let lock_dir_filter_env t =
@@ -283,6 +293,10 @@ let validate t =
 ;;
 
 let create_unvalidated ~platform local_packages lock_dir =
+  check_package_names
+    lock_dir
+    ~local_packages:
+      (Package_name.Map.map local_packages ~f:(fun (pkg : Local_package.t) -> pkg.loc));
   let lock_packages =
     Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.Lock_dir.packages ~platform
   in

@@ -13,11 +13,11 @@ val setup_rules
   -> Context_name.t
   -> Build_config.Gen_rules.t Memo.t
 
-val setup_mounted_rules
+val gen_mounted_rule
   :  Context_name.t
-  -> dir:Path.Build.t
-  -> string list
-  -> Build_config.Gen_rules.t Memo.t
+  -> Pkg_sources.Candidate.t
+  -> dependencies:(Package.Name.Set.t * Install_layout.t) Action_builder.t
+  -> unit Memo.t
 
 val lock_dir_path : Context_name.t -> Path.t option Memo.t
 val lock_dir_active : Context_name.t -> bool Memo.t

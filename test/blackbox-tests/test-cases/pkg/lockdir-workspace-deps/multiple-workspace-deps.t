@@ -39,20 +39,9 @@ A rule depends on the lock-dir package:
 
   $ write_lockdir_consumer_rule
 
-Lock-dir validation does not currently recognise workspace packages as
-valid dependency targets. Both missing workspace deps are reported:
+Both workspace providers contribute to the recipe's dependency layout.
 
-  $ dune build out 2>&1
-  File "_build/_private/default/.lock/dune.lock/consumer.pkg", line 2,
-  characters 9-17:
-  The package "consumer" depends on the package "ws-lib-a", but "ws-lib-a" does
-  not appear in the lockdir _build/_private/default/.lock/dune.lock.
-  File "_build/_private/default/.lock/dune.lock/consumer.pkg", line 2,
-  characters 18-26:
-  The package "consumer" depends on the package "ws-lib-b", but "ws-lib-b" does
-  not appear in the lockdir _build/_private/default/.lock/dune.lock.
-  Error: At least one package dependency is itself not present as a package in
-  the lockdir _build/_private/default/.lock/dune.lock.
-  Hint: This could indicate that the lockdir is corrupted. Delete it and then
-  regenerate it by running: 'dune pkg lock'
-  [1]
+  $ dune build out
+  building consumer
+  $ cat _build/default/out
+  ok

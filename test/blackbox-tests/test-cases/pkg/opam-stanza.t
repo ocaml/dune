@@ -564,7 +564,7 @@ Missing required workspace dependencies instead get a user-facing diagnostic.
   $ dune build result 2>error
   [1]
   $ grep '^Error:' error
-  Error: Dependency "absent" of package "b" is not a workspace package.
+  Error: The dependencies of package "b" could not be satisfied:
 
 Included package dependencies must enable binary lookup as well as PATH. The
 include below is generated and contains another include.

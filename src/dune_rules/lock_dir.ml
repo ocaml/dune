@@ -122,7 +122,15 @@ let get_with_path =
          ~input:(module Path)
          (fun path ->
             let* () = Build_system.build_dir path in
-            Load.load path ~local_packages:Package.Name.Set.empty))
+            let* { Dune_load_workspace.packages; _ } = Dune_load_workspace.load () in
+            let+ lock_dir =
+              Load.load path ~local_packages:(Package.Name.Set.of_keys packages)
+            in
+            Result.map lock_dir ~f:(fun lock_dir ->
+              Dune_pkg.Package_universe.check_package_names
+                lock_dir
+                ~local_packages:(Package.Name.Map.map packages ~f:Package.loc);
+              lock_dir)))
   in
   Per_context.create_by_name ~name:"lock-dir-get" (fun ctx ->
     Memo.lazy_ ~name:"lock-dir-get" (fun () ->

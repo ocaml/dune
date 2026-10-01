@@ -12,33 +12,6 @@ let rule (package : Opam_package.t) =
        [ Pp.text "Opam builds are not supported in cross-compilation target contexts." ]);
   let* sctx = Super_context.find_exn context in
   let* source_expander = Super_context.expander sctx ~dir in
-  let direct =
-    Package.depends stanza.package
-    |> Package.Name.Set.of_list_map ~f:(fun (dep : Package_dependency.t) -> dep.name)
-  in
-  let* closure = Dune_load.package_closure direct in
-  let* packages = Dune_load.packages () in
-  let check_required package =
-    List.iter (Package.depends package) ~f:(fun (dep : Package_dependency.t) ->
-      if not (Package.Name.Map.mem packages dep.name)
-      then
-        User_error.raise
-          ~loc:stanza.loc
-          [ Pp.textf
-              "Dependency %S of package %S is not a workspace package."
-              (Package.Name.to_string dep.name)
-              (Package.Name.to_string (Package.name package))
-          ])
-  in
-  check_required stanza.package;
-  let closure =
-    Package.Name.Set.filter closure ~f:(fun name ->
-      match Package.Name.Map.find packages name with
-      | None -> false
-      | Some package ->
-        check_required package;
-        true)
-  in
   let paths = Opam_build.Paths.map_path write_paths ~f:Path.build in
   let source =
     let open Action_builder.O in
@@ -60,7 +33,9 @@ let rule (package : Opam_package.t) =
   in
   let build =
     let open Action_builder.O in
-    let* layout = Package_layout.materialize context closure in
+    let* direct, layout =
+      Package_layout.materialize_dependencies context (Package.name stanza.package)
+    in
     let* base = Action_builder.of_memo (Context.base_env context_value) in
     let* env = Install_layout.env layout ~path:(Context.path context_value) ~base in
     let expander =
@@ -114,4 +89,62 @@ let gen_rules context ~dir rest =
               (Path.Build.Map.singleton package.paths.target_dir package.stanza.loc)
             (Rules.collect_unit (fun () -> rule package))))
   | _ -> Memo.return (G.Redirect_to_parent G.Rules.empty)
+;;
+
+let gen_mounted_rules context ~dir components =
+  let open Build_config.Gen_rules in
+  let module Rules = Dune_engine.Rules in
+  match components with
+  | [] ->
+    make_empty
+      ~dir
+      (Subdir_set.of_list [ Filename.of_string_exn Pkg_sources.artifact_dir_basename ])
+    |> Memo.return
+  | [ packages ] when String.equal packages Pkg_sources.artifact_dir_basename ->
+    let+ candidates = Pkg_sources.candidates context in
+    List.map candidates ~f:(fun candidate ->
+      Pkg_sources.Candidate.name candidate
+      |> Package.Name.to_string
+      |> Filename.of_string_exn)
+    |> Subdir_set.of_list
+    |> make_empty ~dir
+  | packages :: name :: rest when String.equal packages Pkg_sources.artifact_dir_basename
+    ->
+    let name = Package.Name.of_string name in
+    let* candidate = Pkg_sources.find_candidate context name in
+    (match candidate with
+     | None -> Memo.return no_rules
+     | Some candidate ->
+       let paths = Pkg_sources.Candidate.paths candidate in
+       let package = Package.Name.to_string name in
+       (match rest with
+        | [] ->
+          let rules =
+            Rules.collect_unit (fun () ->
+              Rules.Produce.Alias.add_deps
+                (Alias.make Alias0.all ~dir)
+                (Action_builder.path (Path.build paths.target_dir)))
+          in
+          make
+            ~build_dir_only_sub_dirs:
+              (Build_only_sub_dirs.singleton
+                 ~dir
+                 (Subdir_set.of_list [ Filename.of_string_exn ".opam" ]))
+            rules
+          |> Memo.return
+        | [ ".opam" ] ->
+          make_empty ~dir (Subdir_set.of_list [ Filename.of_string_exn package ])
+          |> Memo.return
+        | [ ".opam"; owner ] when String.equal owner package ->
+          let dependencies = Package_layout.materialize_dependencies context name in
+          let rules =
+            Rules.collect_unit (fun () ->
+              Pkg_rules.gen_mounted_rule context candidate ~dependencies)
+          in
+          make
+            ~directory_targets:(Path.Build.Map.singleton paths.target_dir Loc.none)
+            rules
+          |> Memo.return
+        | _ -> Memo.return no_rules))
+  | _ -> Memo.return no_rules
 ;;

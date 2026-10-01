@@ -213,23 +213,29 @@ let resolve_package_variable
       Package.Name.equal (Candidate.name candidate) package)
   with
   | None ->
-    let value =
-      match Package_variable_name.to_string name with
-      | "build-id" -> None
-      | _ -> Variable.package_default ~present:false name
-    in
-    Resolved value
+    let+ { Dune_load_workspace.packages; _ } = Dune_load_workspace.load ()
+    and+ direct = Candidate.dependencies candidate in
+    if Package.Name.Set.mem direct package && Package.Name.Map.mem packages package
+    then Requires_package_build
+    else (
+      let value =
+        match Package_variable_name.to_string name with
+        | "build-id" -> None
+        | _ -> Variable.package_default ~present:false name
+      in
+      Resolved value)
   | Some package ->
     let variables =
       Dune_pkg.Lock_dir.Pkg_info.variables (Candidate.lock_pkg package).info
     in
-    (match
-       Option.first_some
-         (Package_variable_name.Map.find variables name)
-         (Variable.package_default ~present:true name)
-     with
-     | Some value -> Resolved (Some value)
-     | None -> Requires_package_build)
+    Memo.return
+      (match
+         Option.first_some
+           (Package_variable_name.Map.find variables name)
+           (Variable.package_default ~present:true name)
+       with
+       | Some value -> Resolved (Some value)
+       | None -> Requires_package_build)
 ;;
 
 let rec action_contains_source_transformation = function
@@ -288,7 +294,8 @@ let expand_condition_pform candidates candidate solver_env unsupported ~source =
       | Ok variable -> variable
       | Error `Unexpected_macro -> Code_error.raise "Unexpected package variable macro" []
     in
-    (match resolve_package_variable candidates candidate variable with
+    let* resolution = resolve_package_variable candidates candidate variable in
+    (match resolution with
      | Resolved (Some value) -> Variable.dune_value value |> Result.ok |> Memo.return
      | Resolved None -> Memo.return (Error (`Undefined_pkg_var variable.name))
      | Requires_package_build ->
@@ -455,7 +462,8 @@ let substitution_env candidates candidate solver_env unsupported = function
        unsupported := true;
        Memo.return None)
   | Package variable ->
-    (match resolve_package_variable candidates candidate variable with
+    let* resolution = resolve_package_variable candidates candidate variable in
+    (match resolution with
      | Resolved value -> Memo.return value
      | Requires_package_build ->
        unsupported := true;

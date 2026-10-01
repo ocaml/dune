@@ -484,6 +484,7 @@ module DB = struct
           (lock_dir : Dune_pkg.Lock_dir.t)
           ~platform
           ~system_provided
+          ~local_packages
       =
       let pkgs_by_name = Dune_pkg.Lock_dir.packages_on_platform lock_dir ~platform in
       let cache =
@@ -522,8 +523,22 @@ module DB = struct
                    with
                    | true, _ -> true, acc
                    | false, true -> has_dune_dep, acc
+                   | _, false when Package.Name.Set.mem local_packages name ->
+                     has_dune_dep, acc
                    | _, false ->
-                     let dep_pkg = Package.Name.Map.find_exn pkgs_by_name name in
+                     let dep_pkg =
+                       match Package.Name.Map.find pkgs_by_name name with
+                       | Some pkg -> pkg
+                       | None ->
+                         User_error.raise
+                           ~loc:dep_loc
+                           [ Pp.textf
+                               "Dependency %S of package %S is not available on the \
+                                current platform."
+                               (Package.Name.to_string name)
+                               (Package.Name.to_string pkg.info.name)
+                           ]
+                     in
                      let dep_entry = compute_entry dep_pkg ~seen_set ~seen_list in
                      ( has_dune_dep
                      , { dep_pkg; dep_loc; dep_pkg_digest = dep_entry.pkg_digest } :: acc
@@ -544,8 +559,8 @@ module DB = struct
     (* Associate each package's digest with the package and its dependencies. *)
     type t = entry Pkg_digest.Map.t
 
-    let of_lock_dir lock_dir ~platform ~system_provided =
-      entries_by_name_of_lock_dir lock_dir ~platform ~system_provided
+    let of_lock_dir lock_dir ~platform ~system_provided ~local_packages =
+      entries_by_name_of_lock_dir lock_dir ~platform ~system_provided ~local_packages
       |> Package.Name.Map.values
       |> Pkg_digest.Map.of_list_map_exn ~f:(fun entry -> entry.pkg_digest, entry)
     ;;
@@ -589,7 +604,9 @@ module DB = struct
 
     let of_dev_tool_deps_if_lock_dir_exists dev_tool ~platform ~system_provided =
       let+ lock_dir_opt = Lock_dir.of_dev_tool_if_lock_dir_exists dev_tool in
-      Option.map lock_dir_opt ~f:(of_lock_dir ~platform ~system_provided)
+      Option.map
+        lock_dir_opt
+        ~f:(of_lock_dir ~platform ~system_provided ~local_packages:Package.Name.Set.empty)
     ;;
 
     let all_existing_dev_tools =
@@ -613,17 +630,22 @@ module DB = struct
     { id : Id.t
     ; pkg_digest_table : Pkg_table.t
     ; system_provided : Package.Name.Set.t
+    ; local_packages : Package.Name.Set.t
     }
 
   let equal x y = Id.equal x.id y.id
 
-  let create ~pkg_digest_table ~system_provided =
-    { id = Id.gen (); pkg_digest_table; system_provided }
+  let create ~pkg_digest_table ~system_provided ~local_packages =
+    { id = Id.gen (); pkg_digest_table; system_provided; local_packages }
   ;;
 
-  let pkg_digest_of_name lock_dir platform pkg_name ~system_provided =
+  let pkg_digest_of_name lock_dir platform pkg_name ~system_provided ~local_packages =
     let entries_by_name =
-      Pkg_table.entries_by_name_of_lock_dir lock_dir ~platform ~system_provided
+      Pkg_table.entries_by_name_of_lock_dir
+        lock_dir
+        ~platform
+        ~system_provided
+        ~local_packages
     in
     let entry = Package.Name.Map.find_exn entries_by_name pkg_name in
     entry.pkg_digest
@@ -653,6 +675,8 @@ module DB = struct
              let allow_sharing = allow_sharing && Context_name.is_default ctx in
              (* Is this value anything other than [default_system_provided]? *)
              let system_provided = default_system_provided in
+             let* { Dune_load_workspace.packages; _ } = Dune_load_workspace.load () in
+             let local_packages = Package.Name.Set.of_keys packages in
              let+ pkg_digest_table =
                let* lock_dir = Lock_dir.get_exn ctx
                and* platform = Lock_dir.Sys_vars.solver_env in
@@ -660,9 +684,13 @@ module DB = struct
                 then Memo.Lazy.force Pkg_table.all_existing_dev_tools
                 else Memo.return Pkg_table.empty)
                >>| Pkg_table.union
-                     (Pkg_table.of_lock_dir lock_dir ~platform ~system_provided)
+                     (Pkg_table.of_lock_dir
+                        lock_dir
+                        ~platform
+                        ~system_provided
+                        ~local_packages)
              in
-             create ~pkg_digest_table ~system_provided)
+             create ~pkg_digest_table ~system_provided ~local_packages)
     in
     fun ctx ~allow_sharing -> Memo.exec of_ctx_memo (ctx, allow_sharing)
   ;;
@@ -673,7 +701,13 @@ module DB = struct
     let* lock_dir = Lock_dir.get_exn ctx
     and* platform = Lock_dir.Sys_vars.solver_env in
     let+ t = of_ctx ctx ~allow_sharing:true in
-    t, pkg_digest_of_name lock_dir platform pkg_name ~system_provided:t.system_provided
+    ( t
+    , pkg_digest_of_name
+        lock_dir
+        platform
+        pkg_name
+        ~system_provided:t.system_provided
+        ~local_packages:t.local_packages )
   ;;
 
   (* Returns the db for all dev tools combined with the default context, and
@@ -683,7 +717,7 @@ module DB = struct
     let inactive_lockdir =
       Memo.lazy_ ~name:"inactive-lockdir-package-db" (fun () ->
         let+ pkg_digest_table = Memo.Lazy.force Pkg_table.all_existing_dev_tools in
-        create ~pkg_digest_table ~system_provided)
+        create ~pkg_digest_table ~system_provided ~local_packages:Package.Name.Set.empty)
     in
     let of_dev_tool_memo =
       Memo.create "pkg-db-dev-tool" ~input:(module Dune_pkg.Dev_tool)
@@ -695,6 +729,7 @@ module DB = struct
         platform
         (Pkg_dev_tool.package_name dev_tool)
         ~system_provided
+        ~local_packages:Package.Name.Set.empty
     in
     fun dev_tool ->
       let+ db =
@@ -829,6 +864,7 @@ end = struct
                  platform
                  info.name
                  ~system_provided:db.system_provided
+                 ~local_packages:db.local_packages
              in
              Option.some_if (Pkg_digest.equal pkg_digest selected) candidate)
       in
@@ -1081,7 +1117,7 @@ let dune_dep =
   lazy (Sys.executable_name |> Path.External.of_string |> Path.external_ |> Dep.file)
 ;;
 
-let build_rule context_name ~source_deps (pkg : Pkg.t) =
+let build_rule ~source_deps ~expander ~package_deps (pkg : Pkg.t) =
   let source =
     let open Action_builder.O in
     let* source =
@@ -1118,31 +1154,7 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
   in
   let build =
     let open Action_builder.O in
-    let* expander =
-      match pkg.mounted with
-      | None -> Action_builder.return (Action_expander.expander context_name pkg)
-      | Some _ ->
-        let* dependencies =
-          Action_builder.List.map (Pkg.deps_closure pkg) ~f:Pkg.dependency
-        in
-        let* layout = Install_layout.materialize context_name dependencies in
-        let path = Env_path.path (Global.env ()) in
-        let+ env =
-          match dependencies with
-          | [] -> Action_builder.return (Global.env ())
-          | _ -> Install_layout.env layout ~path ~base:(Global.env ())
-        in
-        Opam_build.Action_expander.for_recipe
-          ~context:context_name
-          ~path
-          ~paths:pkg.paths
-          ~version:pkg.info.version
-          ~variables:(Pkg_info.variables pkg.info)
-          ~depexts:pkg.recipe.depexts
-          ~env
-          ~direct:(Package.Name.Set.of_list_map pkg.depends ~f:(fun pkg -> pkg.info.name))
-          ~dependencies:(Install_layout.dependencies layout)
-    in
+    let* expander = expander in
     let* action =
       Action_builder.of_memo
         (Opam_build.execute_recipe
@@ -1157,7 +1169,7 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
       else source_deps
     in
     let* () = Action_builder.deps deps
-    and* () = Pkg.package_deps pkg in
+    and* () = package_deps in
     let { Action_builder.With_targets.build; targets = _ } =
       Action_builder.progn [ progress; action ]
     in
@@ -1176,7 +1188,13 @@ let gen_rules context_name (pkg : Pkg.t) =
     | Some _ -> Memo.return (Dep.Set.empty, Memo.return ())
   in
   let* () = copy_rules
-  and* build_rule = build_rule context_name pkg ~source_deps in
+  and* build_rule =
+    build_rule
+      pkg
+      ~source_deps
+      ~expander:(Action_builder.return (Action_expander.expander context_name pkg))
+      ~package_deps:(Pkg.package_deps pkg)
+  in
   rule ~loc:Loc.none (* TODO *) build_rule
 ;;
 
@@ -1325,62 +1343,37 @@ let dependency context name =
     Some (Pkg.dependency pkg)
 ;;
 
-let setup_mounted_rules context ~dir components =
-  let open Gen_rules in
-  let module Rules = Dune_engine.Rules in
-  match components with
-  | [] ->
-    make_empty
-      ~dir
-      (Subdir_set.of_list [ Filename.of_string_exn Pkg_sources.artifact_dir_basename ])
-    |> Memo.return
-  | [ packages ] when String.equal packages Pkg_sources.artifact_dir_basename ->
-    let+ candidates = Pkg_sources.candidates context in
-    List.map candidates ~f:(fun candidate ->
-      Pkg_sources.Candidate.name candidate
-      |> Package.Name.to_string
-      |> Filename.of_string_exn)
-    |> Subdir_set.of_list
-    |> make_empty ~dir
-  | packages :: name :: rest when String.equal packages Pkg_sources.artifact_dir_basename
-    ->
-    let name = Package.Name.of_string name in
-    let* candidate = Pkg_sources.find_candidate context name in
-    (match candidate with
-     | None -> Memo.return no_rules
-     | Some candidate ->
-       let paths = Pkg_sources.Candidate.paths candidate in
-       let package = Package.Name.to_string name in
-       (match rest with
-        | [] ->
-          let rules =
-            Rules.collect_unit (fun () ->
-              Rules.Produce.Alias.add_deps
-                (Alias.make Alias0.all ~dir)
-                (Action_builder.path (Path.build paths.target_dir)))
-          in
-          make
-            ~build_dir_only_sub_dirs:
-              (Build_only_sub_dirs.singleton
-                 ~dir
-                 (Subdir_set.of_list [ Filename.of_string_exn ".opam" ]))
-            rules
-          |> Memo.return
-        | [ ".opam" ] ->
-          make_empty ~dir (Subdir_set.of_list [ Filename.of_string_exn package ])
-          |> Memo.return
-        | [ ".opam"; owner ] when String.equal owner package ->
-          let rules =
-            Rules.collect_unit (fun () ->
-              let* pkg = resolve_pkg_dep context (Loc.none, name) in
-              gen_rules context pkg)
-          in
-          make
-            ~directory_targets:(Path.Build.Map.singleton paths.target_dir Loc.none)
-            rules
-          |> Memo.return
-        | _ -> Memo.return no_rules))
-  | _ -> Memo.return no_rules
+let gen_mounted_rule context candidate ~dependencies =
+  let name = Pkg_sources.Candidate.name candidate in
+  let* pkg = resolve_pkg_dep context (Loc.none, name) in
+  let expander =
+    let open Action_builder.O in
+    let* direct, layout = dependencies in
+    let path = Env_path.path (Global.env ()) in
+    let+ env =
+      match Install_layout.dependencies layout with
+      | [] -> Action_builder.return (Global.env ())
+      | _ -> Install_layout.env layout ~path ~base:(Global.env ())
+    in
+    Opam_build.Action_expander.for_recipe
+      ~context
+      ~path
+      ~paths:pkg.paths
+      ~version:pkg.info.version
+      ~variables:(Pkg_info.variables pkg.info)
+      ~depexts:pkg.recipe.depexts
+      ~env
+      ~direct
+      ~dependencies:(Install_layout.dependencies layout)
+  in
+  let* build =
+    build_rule
+      pkg
+      ~source_deps:Dep.Set.empty
+      ~expander
+      ~package_deps:(Action_builder.return ())
+  in
+  rule ~loc:Loc.none build
 ;;
 
 let ocaml_toolchain context =

@@ -1,21 +1,20 @@
-A lock-dir package depends on a workspace library and its build
-action inspects [OCAMLPATH].
+A locked opaque recipe must receive workspace package variables and installed
+artifacts through the same materialiser as other recipe dependencies.
 
   $ make_workspace_lib_package
 
-The lock dir contains one package "consumer" whose build action
-writes [OCAMLPATH] to a file and installs it. The intent is that the
-file should later be inspectable to confirm the workspace install
-layout was prepended.
+The recipe checks metadata and section paths, compiles against the workspace
+library, and records the result. Merely adding an OCAMLPATH entry is not enough:
+the library files must be materialised and tracked as dependencies.
 
   $ make_lockdir
   $ make_lockpkg consumer <<EOF
   > (version 0.0.1)
   > (depends workspace-lib)
   > (build
-  >  (system "echo \$OCAMLPATH > ocamlpath.txt"))
+  >  (system "set -eu; test '%{pkg:workspace-lib:name}' = workspace-lib; test '%{pkg:workspace-lib:version}' = dev; test '%{pkg:workspace-lib:installed}' = true; test -f '%{pkg:workspace-lib:lib}/workspace_lib.cma'; echo 'let () = print_endline Workspace_lib.greeting' > main.ml; ocamlc -I '%{pkg:workspace-lib:lib}' workspace_lib.cma main.ml -o main.exe; ./main.exe > result"))
   > (install
-  >  (system "mkdir -p %{lib}/consumer && cp ocamlpath.txt %{lib}/consumer/"))
+  >  (system "mkdir -p %{share}; cp result %{share}/result"))
   > EOF
 
 A rule depends on the lock-dir package:

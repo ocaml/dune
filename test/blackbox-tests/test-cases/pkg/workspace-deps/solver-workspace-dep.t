@@ -4,22 +4,21 @@ package depends on a workspace package.
   $ mkrepo
   $ add_mock_repo_if_needed
 
-The mock package [mylock] declares the workspace package [util] as a
-dependency:
+The graph crosses the workspace boundary twice:
+main (workspace) -> mylock (locked) -> util (workspace) -> leaf (locked).
+The repository also contains util, but solving must use the supplied workspace
+version rather than lock another definition of that package.
 
+  $ mkpkg leaf
+  $ mkpkg util 99.0
   $ mkpkg mylock <<EOF
-  > depends: [
-  >  "util"
-  > ]
+  > depends: [ "util" {= "1.2"} ]
   > EOF
-
-The workspace has two packages: [main] depends on the mock package
-[mylock], and [util] has no dependencies.
 
   $ make_dune_project 3.24
   $ cat >> dune-project <<EOF
   > (package (name main) (depends mylock))
-  > (package (name util))
+  > (package (name util) (version 1.2) (depends leaf))
   > EOF
 
 The solver rejects the dependency because [mylock] is outside the

@@ -96,65 +96,81 @@ let get_lib_requires ~dir ~scope (lib : Library.t) =
   >>= Lib.Compile.direct_requires ~for_:Ocaml
 ;;
 
-(* Collect all compile command entries from the workspace *)
-let collect_entries sctx =
+(* Collect compile command entries from the selected foreign stanzas. *)
+let collect_entries sctx stanzas =
   let ctx = Super_context.context sctx in
   let open Memo.O in
-  let* dune_files = Dune_load.dune_files (Context.name ctx) in
-  Dune_file.fold_static_stanzas dune_files ~init:[] ~f:(fun dune_file stanza acc ->
+  Memo.parallel_map stanzas ~f:(fun (dune_file, stanza) ->
     let dir =
       Path.Build.append_source (Context.build_dir ctx) (Dune_file.dir dune_file)
     in
-    (let* expander = Super_context.expander sctx ~dir
-     and* dir_contents = Dir_contents.get sctx ~dir
-     and* scope = Scope.DB.find_by_dir dir in
-     let* foreign_sources = Dir_contents.foreign_sources dir_contents in
-     match Stanza.repr stanza with
-     | Library.T lib when Buildable.has_foreign_stubs lib.buildable ->
-       Foreign_sources.for_lib_opt foreign_sources ~name:(Library.best_name lib)
-       |> (function
-        | None -> Memo.return None
-        | Some sources ->
-          get_lib_requires ~dir ~scope lib
-          >>| fun requires ->
-          Some
-            (collect_from_foreign_sources
-               ~sctx
-               ~dir
-               ~expander
-               ~dir_contents
-               ~requires
-               sources))
-     | (Executables.T exes | Tests.T { exes; _ })
-       when Buildable.has_foreign_stubs exes.buildable ->
-       let requires = Resolve.return [] in
-       Foreign_sources.for_exes_opt
-         foreign_sources
-         ~first_exe:(snd (Nonempty_list.hd exes.names))
-       |> Option.map
-            ~f:(collect_from_foreign_sources ~sctx ~dir ~expander ~dir_contents ~requires)
-       |> Memo.return
-     | Foreign_library.T lib ->
-       let requires = Resolve.return [] in
-       Foreign_sources.for_archive_opt foreign_sources ~archive_name:lib.archive_name
-       |> Option.map
-            ~f:(collect_from_foreign_sources ~sctx ~dir ~expander ~dir_contents ~requires)
-       |> Memo.return
-     | _ -> Memo.return None)
-    :: acc)
-  |> Memo.all_concurrently
+    let* expander = Super_context.expander sctx ~dir
+    and* dir_contents = Dir_contents.get sctx ~dir in
+    let* foreign_sources = Dir_contents.foreign_sources dir_contents in
+    match Stanza.repr stanza with
+    | Library.T lib when Buildable.has_foreign_stubs lib.buildable ->
+      Foreign_sources.for_lib_opt foreign_sources ~name:(Library.best_name lib)
+      |> (function
+       | None -> Memo.return None
+       | Some sources ->
+         let* scope = Scope.DB.find_by_dir dir in
+         get_lib_requires ~dir ~scope lib
+         >>| fun requires ->
+         Some
+           (collect_from_foreign_sources
+              ~sctx
+              ~dir
+              ~expander
+              ~dir_contents
+              ~requires
+              sources))
+    | (Executables.T exes | Tests.T { exes; _ })
+      when Buildable.has_foreign_stubs exes.buildable ->
+      let requires = Resolve.return [] in
+      Foreign_sources.for_exes_opt
+        foreign_sources
+        ~first_exe:(snd (Nonempty_list.hd exes.names))
+      |> Option.map
+           ~f:(collect_from_foreign_sources ~sctx ~dir ~expander ~dir_contents ~requires)
+      |> Memo.return
+    | Foreign_library.T lib ->
+      let requires = Resolve.return [] in
+      Foreign_sources.for_archive_opt foreign_sources ~archive_name:lib.archive_name
+      |> Option.map
+           ~f:(collect_from_foreign_sources ~sctx ~dir ~expander ~dir_contents ~requires)
+      |> Memo.return
+    | _ -> Memo.return None)
   >>| List.filter_map ~f:Fun.id
 ;;
 
-let gen_rules sctx =
-  let build_dir = Super_context.context sctx |> Context.build_dir in
+let gen_rules sctx ~rules =
+  let ctx = Super_context.context sctx in
+  let build_dir = Context.build_dir ctx in
   let open Memo.O in
   let* project = Dune_load.find_project ~dir:build_dir in
   if Dune_project.dune_version project < (3, 23)
   then Memo.return ()
   else
-    let* entry_builders = collect_entries sctx in
-    if List.is_empty entry_builders
+    let* dune_files = Dune_load.dune_files (Context.name ctx) in
+    let foreign_stanzas =
+      Dune_file.fold_static_stanzas dune_files ~init:[] ~f:(fun dune_file stanza acc ->
+        match Stanza.repr stanza with
+        | Foreign_library.T _ -> (dune_file, stanza) :: acc
+        | Library.T { buildable; _ }
+        | Executables.T { buildable; _ }
+        | Tests.T { exes = { buildable; _ }; _ }
+          when Buildable.has_foreign_stubs buildable -> (dune_file, stanza) :: acc
+        | _ -> acc)
+    in
+    let has_existing_rule =
+      let { Rules.Dir_rules.rules; _ } =
+        Rules.find rules (Path.build build_dir) |> Rules.Dir_rules.consume
+      in
+      let filename = Filename.of_string_exn filename in
+      List.exists rules ~f:(fun { Rule.targets = { files; dirs; _ }; _ } ->
+        Filename.Set.mem files filename || Filename.Set.mem dirs filename)
+    in
+    if List.is_empty foreign_stanzas || has_existing_rule
     then Memo.return ()
     else (
       let gen_path = Path.Build.relative build_dir filename in
@@ -163,8 +179,22 @@ let gen_rules sctx =
         Action_builder.write_file_dyn
           gen_path
           (let open Action_builder.O in
-           let+ entries = Action_builder.all entry_builders >>| List.concat in
-           Json.to_string (`List (List.map entries ~f:entry_to_json)))
+           (* Discovering copied sources can depend on these root rules. *)
+           let* entry_builders =
+             Action_builder.of_memo (collect_entries sctx foreign_stanzas)
+           in
+           match entry_builders with
+           | [] ->
+             (* Identical contents prevent promotion from overwriting the
+                source or scheduling it for deletion on clean. *)
+             let source = Path.source (Path.Build.drop_build_context_exn gen_path) in
+             Action_builder.if_file_exists
+               source
+               ~then_:(Action_builder.contents source)
+               ~else_:(Action_builder.return "[]")
+           | _ ->
+             let+ entries = Action_builder.all entry_builders >>| List.concat in
+             Json.to_string (`List (List.map entries ~f:entry_to_json)))
         |> Super_context.add_rule sctx ~mode ~dir:build_dir
       in
       Rules.Produce.Alias.add_deps

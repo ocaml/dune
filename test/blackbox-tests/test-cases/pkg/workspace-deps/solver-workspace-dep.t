@@ -58,3 +58,16 @@ version rather than the repository's unrelated util version.
   $ dune build result
   $ cat _build/default/result
   done
+
+Changing a supplied workspace version can invalidate a repository constraint.
+Currently validation misses that change, even though a fresh solve rejects it.
+
+  $ sed 's/(version 1.2)/(version 2.0)/' dune-project > dune-project.new
+  $ mv dune-project.new dune-project
+  $ dune pkg validate-lockdir
+  $ dune pkg lock >solve-error 2>&1
+  [1]
+  $ grep '^Error:' solve-error
+  Error:
+  $ grep -q '1.2' solve-error
+  $ grep -q '2.0' solve-error

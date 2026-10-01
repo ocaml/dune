@@ -175,6 +175,10 @@ let action dap =
     |> Lwt.map (function
       | Unix.WEXITED 0 -> ()
       | _ -> failwith "cat failed")
+  | [| _; "absolute"; path |] ->
+    let open Lwt.Syntax in
+    let* data = read_file dap ~path:(absolute_path path) in
+    Lwt_io.printl data
   | [| _ |] -> ordinary_action dap ~path:"some_dependency"
   | [| _; "read"; path |] -> ordinary_action dap ~path
   | [| _; "sandbox" |] -> sandbox_action dap

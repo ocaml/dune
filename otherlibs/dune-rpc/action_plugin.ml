@@ -13,19 +13,9 @@ module Error = struct
   let raise string = raise (E string)
 end
 
-let validate_path path =
-  if not (Filename.is_relative path)
-  then
-    invalid_arg
-      (Printf.sprintf
-         "Path %S is absolute. All paths used with Dune_rpc.V1.Action_plugin must be \
-          relative."
-         path)
-;;
-
 (* Unlike Path.External.reach, the wire namespace requires relative paths on
    Windows too. Split off the volume before using the local-path operation. *)
-let relative_dir ~root dir =
+let relative_path ~root path =
   let split dir =
     let rec loop dir components =
       let parent = Filename.dirname dir in
@@ -40,16 +30,16 @@ let relative_dir ~root dir =
             |> String.lowercase_ascii
           else dir
         in
-        volume, Path.Local.of_comps components)
-      else loop parent (Filename.of_string_exn (Filename.basename dir) :: components)
+        volume, Path.Local.of_string (String.concat ~sep:"/" components))
+      else loop parent (Filename.basename dir :: components)
     in
     loop dir []
   in
   let root_volume, root = split root in
-  let volume, dir = split dir in
+  let volume, path = split path in
   if not (String.equal root_volume volume)
-  then Error.raise "The current directory and action root are on different volumes.";
-  Path.Local.reach dir ~from:root
+  then Error.raise "The path and action root are on different volumes.";
+  Path.Local.reach path ~from:root
 ;;
 
 module type Rpc_client = Client.Public
@@ -121,15 +111,18 @@ struct
        | Some message -> Error.raise message)
   ;;
 
+  let absolute_path path =
+    if Filename.is_relative path then Filename.concat (Sys.getcwd ()) path else path
+  ;;
+
   let prepare_path t path =
-    validate_path path;
-    let cwd = Sys.getcwd () in
+    let absolute_path = absolute_path path in
     let dependency =
       match t with
-      | Outside_of_dune -> path
-      | Under_dune { root; _ } -> Filename.concat (relative_dir ~root cwd) path
+      | Outside_of_dune -> absolute_path
+      | Under_dune { root; _ } -> relative_path ~root absolute_path
     in
-    Filename.concat cwd path, dependency
+    absolute_path, dependency
   ;;
 
   let build_deps t deps =

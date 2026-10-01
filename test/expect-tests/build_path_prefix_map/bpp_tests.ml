@@ -30,33 +30,45 @@ let%expect_test "encode then decode preserves the map" =
 ;;
 
 let%expect_test "decoding an unescaped drive-letter colon in a source (#10176)" =
-  (* CR-soon Alizter: this is wrong, it should decode to
-     /NATIVEPATH=C:/
-     $TESTCASE_ROOT=C:\foo *)
   decode_and_print "/NATIVEPATH=C:/:$TESTCASE_ROOT=C%.\\foo";
-  [%expect {| Error: invalid key/value pair "/", no '=' separator |}]
+  [%expect
+    {|
+    /NATIVEPATH=C:/
+    $TESTCASE_ROOT=C:\foo
+    |}]
 ;;
 
 let%expect_test "decoding a drive-letter colon in a target" =
-  (* CR-soon Alizter: this is wrong, it should be C:\work\test=src *)
   decode_and_print "C:\\work\\test=src";
-  [%expect {| Error: invalid key/value pair "C", no '=' separator |}]
+  [%expect
+    {|
+    C:\work\test=src
+    |}]
+;;
+
+let%expect_test "a drive-letter target in a non-initial entry stays with its entry" =
+  decode_and_print "A=B:C:\\work=/ROOT";
+  [%expect
+    {|
+    A=B
+    C:\work=/ROOT
+    |}]
 ;;
 
 let%expect_test "decoding a drive-letter colon in the middle of a map" =
-  (* CR-soon Alizter: this is wrong, it should be
-     a=b:C:/foo
-     d=e *)
   decode_and_print "a=b:C:/foo:d=e";
-  [%expect {| Error: invalid key/value pair "C", no '=' separator |}]
+  [%expect
+    {|
+    a=b:C:/foo
+    d=e
+    |}]
 ;;
 
-let%expect_test "decode_prefix rejects an unescaped colon" =
-  (* CR-soon Alizter: this is wrong, it should be C: *)
+let%expect_test "decode_prefix accepts an unescaped colon" =
   (match Build_path_prefix_map.decode_prefix "C:" with
    | Error msg -> print_endline ("Error: " ^ msg)
    | Ok p -> print_endline p);
-  [%expect {| Error: invalid character ':' in key or value |}]
+  [%expect {| C: |}]
 ;;
 
 let%expect_test "empty entries are preserved" =
@@ -67,12 +79,39 @@ let%expect_test "empty entries are preserved" =
     (empty)
     B=/a/b
     (empty)
+    |}];
+  decode_and_print ":A=B";
+  [%expect
+    {|
+    (empty)
+    A=B
+    |}]
+;;
+
+let%expect_test "empty entries adjacent to rejoined segments" =
+  decode_and_print "a=b:C::/x:d=e";
+  [%expect
+    {|
+    a=b:C:/x
+    (empty)
+    d=e
+    |}]
+;;
+
+let%expect_test "a colon at the end of a value is ambiguous with an empty entry" =
+  decode_and_print "A=B:garbage";
+  [%expect {| A=B:garbage |}];
+  decode_and_print "A=B:";
+  [%expect
+    {|
+    A=B
+    (empty)
     |}]
 ;;
 
 let%expect_test "malformed maps are errors" =
   decode_and_print "foo:bar";
-  [%expect {| Error: invalid key/value pair "foo", no '=' separator |}];
+  [%expect {| Error: invalid key/value pair "foo:bar", no '=' separator |}];
   decode_and_print ":/NOEQUALS";
   [%expect {| Error: invalid key/value pair "/NOEQUALS", no '=' separator |}];
   decode_and_print "a=b=c";

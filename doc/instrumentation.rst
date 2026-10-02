@@ -20,6 +20,9 @@ the precise instrumentation backend in your project.
 Specifying What to Instrument
 =============================
 
+When an instrumentation backend is activated, Dune will only instrument
+libraries and executables for which the user has requested instrumentation.
+
 To request instrumentation, one must add the following field to a library,
 executable, or ``melange.emit`` stanza:
 
@@ -84,6 +87,24 @@ no plan to add support for them in the future.
       enabled, these libraries are ignored. The specification of library
       dependencies is described in
       :doc:`reference/library-dependencies`.
+
+      For instance, a backend may let users plug in a custom implementation
+      provided by a separate library, which should only be linked when the
+      instrumentation is enabled:
+
+      .. code:: dune
+
+         (executable
+          (name main)
+          (instrumentation
+           (backend landmarks)
+           (libraries my_landmarks_backend)))
+
+      Libraries that are only linked for their side effects must be built with
+      ``-linkall`` (for instance, using ``(library_flags (-linkall))``), since
+      otherwise none of their modules are linked into the executable. Such
+      libraries are also reported by the ``@unused-libs`` alias, which only
+      considers module references.
 
 Enabling/Disabling Instrumentation
 ==================================

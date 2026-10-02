@@ -421,7 +421,7 @@ and tolerates private modules omitted from the modules field.
   $ (cd _vendor && dune build --root . dep/warning/warning.cma \
   >   dep/alert/alert.cma dep/modules/modules.cma)
 
-BUG: the mounted project does not receive the same treatment.
+The mounted project receives the same treatment, with no warnings or alerts.
 
   $ make_lockdir
   $ make_lockpkg dep <<EOF
@@ -430,18 +430,9 @@ BUG: the mounted project does not receive the same treatment.
   > (build (run false))
   > EOF
   $ mounted=_build/default/.lockfile/pkg/dep
-  $ dune build "$mounted/warning/warning.cma" 2>mounted-warning
-  [1]
-  $ grep '^Error' mounted-warning
-  Error (warning 26 [unused-var]): unused variable unused.
-  $ dune build "$mounted/alert/alert.cma" 2>mounted-alert
-  [1]
-  $ grep '^Error' mounted-alert
-  Error (alert deprecated): Old.value
-  $ dune build "$mounted/modules/modules.cma" 2>mounted-modules
-  [1]
-  $ grep '^Error' mounted-modules
-  Error: These modules appear in the private_modules field:
+  $ dune build "$mounted/warning/warning.cma"
+  $ dune build "$mounted/alert/alert.cma"
+  $ dune build "$mounted/modules/modules.cma"
   $ test ! -e "$mounted/.opam/dep/target"
 
 Older projects use a different set of default development warning flags, but
@@ -451,10 +442,7 @@ should still receive the vendored override when mounted.
   > (lang dune 3.20)
   > (package (name dep))
   > EOF
-  $ dune build "$mounted/warning/warning.cma" 2>mounted-warning
-  [1]
-  $ grep '^Error' mounted-warning
-  Error (warning 26 [unused-var]): unused variable unused.
+  $ dune build "$mounted/warning/warning.cma"
 
 Neither vendoring nor mounting may suppress actual type errors.
 

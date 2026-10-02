@@ -104,10 +104,10 @@ Melange 1.0 does not implicitly enable the ReScript dialect
   Leaving directory 'rescript'
   [1]
 
-Before Dune 3.25, Melange must be explicitly enabled.
+Before Dune 3.26, Melange must be explicitly enabled.
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.24)
+  > (lang dune 3.25)
   > (package (name pkg))
   > EOF
   $ cat > app/dune <<EOF
@@ -140,10 +140,10 @@ Before Dune 3.25, Melange must be explicitly enabled.
   in the file.
   [1]
 
-Dune 3.25 enables Melange 1.0 without an explicit using declaration.
+Dune 3.26 enables Melange 1.0 without an explicit using declaration.
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.25)
+  > (lang dune 3.26)
   > (package (name pkg))
   > EOF
   $ dune build app/pkg.cma @@melange && node _build/default/dist/main.js
@@ -161,7 +161,7 @@ An explicit Melange 1.0 declaration remains valid.
 Automatically enabling Melange does not enable the ReScript dialect either.
 
   $ cat > rescript/dune-project <<EOF
-  > (lang dune 3.25)
+  > (lang dune 3.26)
   > EOF
   $ dune build --root rescript
   Entering directory 'rescript'

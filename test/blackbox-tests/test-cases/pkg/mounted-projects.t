@@ -199,3 +199,55 @@ Rules in a subdirectory of the selected project do make it eligible.
   $ dune build _build/default/.lockfile/pkg/probe/own/output
   $ cat _build/default/.lockfile/pkg/probe/own/output
   native
+
+Restore the prototype's authored-vendoring regression. Unlike the unselected
+sibling packages above, this nested project is explicitly in vendored_dirs.
+The selected package needs its public library even though the vendored package
+is not selected in the lockdir, as with Menhir's vendored_pprint.
+
+  $ mkdir vendored-project
+  $ cd vendored-project
+  $ make_lockdir
+  $ cat > dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name main) (depends bundle))
+  > EOF
+  $ echo '(executable (name main) (libraries bundle))' > dune
+  $ echo 'let () = print_endline Bundle.message' > main.ml
+  $ mkdir -p _bundle/vendor/src
+  $ cat > _bundle/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name bundle))
+  > EOF
+  $ cat > _bundle/dune <<'EOF'
+  > (vendored_dirs vendor)
+  > (library (public_name bundle) (libraries vendored_support))
+  > EOF
+  $ echo 'let message = Vendored_support.message' > _bundle/bundle.ml
+  $ cat > _bundle/vendor/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name vendored_support))
+  > EOF
+  $ cat > _bundle/vendor/src/dune <<'EOF'
+  > (library (public_name vendored_support))
+  > EOF
+  $ cat > _bundle/vendor/src/vendored_support.ml <<'EOF'
+  > let message = "mounted vendored project"
+  > EOF
+  $ make_lockpkg bundle <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_bundle))
+  > (build (run false))
+  > EOF
+
+The same authored projects work without mounting, including package selection.
+
+  $ cp -R _bundle _workspace
+  $ (cd _workspace && dune build -p bundle bundle.cma)
+
+BUG: the mounted package mask drops the explicitly vendored library as well.
+
+  $ dune build main.exe 2>error
+  [1]
+  $ grep '^Error:' error
+  Error: Library "vendored_support" not found.

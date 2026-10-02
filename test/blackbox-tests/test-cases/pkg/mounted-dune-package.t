@@ -219,3 +219,47 @@ and invalidates the stored failure when the input is repaired.
   $ build main.exe
   Success
   $ stop_dune_quiet
+
+Restore the prototype's mounted library-file regression. Like ppxlib's source
+generators, a rule reads a source file from another library in its own package
+through %{lib:...}. This must not require installing the whole package.
+
+  $ mkdir lib-pform
+  $ cd lib-pform
+  $ make_lockdir
+  $ cat > dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name main) (depends foo))
+  > EOF
+  $ echo '(executable (name main) (libraries foo))' > dune
+  $ echo 'let () = print_endline Foo.message' > main.ml
+  $ mkdir -p _foo/src _foo/support
+  $ cat > _foo/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name foo))
+  > EOF
+  $ cat > _foo/src/dune <<'EOF'
+  > (library (public_name foo))
+  > (rule
+  >  (target from_lib.ml)
+  >  (action (copy %{lib:foo.support:support.ml} %{target})))
+  > (rule (target unrelated) (action (run false)))
+  > (install (section share) (files unrelated))
+  > EOF
+  $ echo 'let message = From_lib.message' > _foo/src/foo.ml
+  $ cat > _foo/support/dune <<'EOF'
+  > (library (name support) (public_name foo.support))
+  > EOF
+  $ echo 'let message = "mounted library file"' > _foo/support/support.ml
+  $ make_lockpkg foo <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_foo))
+  > (build (run false))
+  > EOF
+
+BUG: the mounted library file still resolves through the workspace install tree.
+
+  $ dune build main.exe 2>error
+  [1]
+  $ grep '^Error:' error
+  Error: No rule found for default/lib/foo/support/support.ml (context install)

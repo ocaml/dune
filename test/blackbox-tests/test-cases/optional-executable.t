@@ -99,7 +99,7 @@ The same applies to %{bin-available:...}.
   true
 
   $ dune build --instrument-with instr ./available && cat _build/default/available
-  true
+  false
 
 Reproduction case for a bug in dune < 2.4 where all executables where
 considered as optional:

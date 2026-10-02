@@ -339,7 +339,7 @@ module Extension = struct
          | Deleted_in _ -> acc
          | Extension e ->
            if
-             dune_lang_ver >= (3, 25)
+             dune_lang_ver >= (3, 26)
              && Syntax.Name.equal name (Syntax.name Melange.syntax)
            then Default (e, (1, 0)) :: acc
            else Not_selected e :: acc))

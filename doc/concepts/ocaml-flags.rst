@@ -9,11 +9,11 @@ you can specify OCaml compilation flags using the following fields:
 - ``(ocamlc_flags <flags>)`` to specify flags passed to ``ocamlc`` only
 - ``(ocamlopt_flags <flags>)`` to specify flags passed to ``ocamlopt`` only
 - ``(melange.flags <flags>)`` to specify flags passed to ``melc`` only,
-  available since Dune 3.25 with the Melange extension enabled
+  available since Dune 3.26 with the Melange extension enabled
 
 Compiler-specific flags are appended to the shared ``flags``. The older
 spelling ``melange.compile_flags`` remains accepted, but is deprecated in Dune
-language 3.25 and later. It cannot be combined with ``melange.flags`` in the
+language 3.26 and later. It cannot be combined with ``melange.flags`` in the
 same configuration.
 
 For all these fields, ``<flags>`` is specified in the

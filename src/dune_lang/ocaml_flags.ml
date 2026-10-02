@@ -32,14 +32,14 @@ module Spec = struct
       fields_mutually_exclusive
         ~default:Ordered_set_lang.Unexpanded.standard
         [ ( "melange.flags"
-          , Syntax.since Stanza.syntax (3, 25)
+          , Syntax.since Stanza.syntax (3, 26)
             >>> Syntax.since Melange.syntax (0, 1)
             >>> Ordered_set_lang.Unexpanded.decode )
         ; ( "melange.compile_flags"
           , Syntax.since Melange.syntax (0, 1)
             >>> Syntax.deprecated_in
                   Stanza.syntax
-                  (3, 25)
+                  (3, 26)
                   ~extra_info:"Use 'melange.flags' instead."
             >>> Ordered_set_lang.Unexpanded.decode )
         ]

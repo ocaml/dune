@@ -16,7 +16,7 @@ while [[ $# -gt 0 ]]; do
       VERSIONINFO=YES
       shift # past argument
       ;;
-    -L|-s|--)
+    -L|-s|-S|--)
       shift # past argument
       ;;
     -o|--extension)
@@ -52,6 +52,10 @@ fi
 # still reports an http code of 000.
 if [ -n "${FAKE_CURL_EXIT_CODE:-}" ]; then
   echo -n '"000"'
+  # We use 255 to test how we handle curl errors with no error messages
+  if [ "${FAKE_CURL_EXIT_CODE}" -lt 255 ]; then
+    >&2 echo "curl: ($FAKE_CURL_EXIT_CODE) Fake curl error diagnostic"
+  fi
   exit "$FAKE_CURL_EXIT_CODE"
 fi
 

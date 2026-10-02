@@ -348,3 +348,121 @@ A mounted build must retain the source mask without promoting into its inputs.
   $ (cd _source && dune build --root . --only-packages foo _build/host/promoted/dir/generated.txt)
   $ cat _source/_build/host/promoted/dir/generated.txt
   promoted
+
+Mounted dependencies follow the vendored warning policy, not the workspace's
+warning-as-error policy. Compare the same project in all three roles. An
+unusable lock recipe ensures the mounted build uses ordinary native rules.
+
+  $ mkdir warning-policy
+  $ cd warning-policy
+  $ cat > dune-workspace <<'EOF'
+  > (lang dune 3.25)
+  > (pkg enabled)
+  > EOF
+  $ cat > dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name main) (depends dep))
+  > EOF
+  $ mkdir -p _source/warning _source/alert _source/modules
+  $ cat > _source/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name dep))
+  > EOF
+  $ cat > _source/warning/dune <<'EOF'
+  > (library (name warning) (public_name dep.warning))
+  > EOF
+  $ echo 'let value = let unused = 0 in 42' > _source/warning/warning.ml
+  $ cat > _source/alert/dune <<'EOF'
+  > (library
+  >  (name alert)
+  >  (public_name dep.alert)
+  >  (flags (:standard -alert @deprecated)))
+  > EOF
+  $ cat > _source/alert/alert.ml <<'EOF'
+  > module Old : sig
+  >   val value : int [@@deprecated "Use another value"]
+  > end = struct
+  >   let value = 42
+  > end
+  > let value = Old.value
+  > EOF
+  $ cat > _source/modules/dune <<'EOF'
+  > (library
+  >  (name modules)
+  >  (public_name dep.modules)
+  >  (modules modules)
+  >  (private_modules ignored))
+  > EOF
+  $ echo 'let value = 42' > _source/modules/modules.ml
+  $ echo 'let value = 0' > _source/modules/ignored.ml
+  $ mkdir _vendor
+  $ cp -R _source _vendor/dep
+  $ echo '(lang dune 3.25)' > _vendor/dune-project
+  $ echo '(vendored_dirs dep)' > _vendor/dune
+
+The development workspace rejects these warnings and module declarations.
+
+  $ (cd _source && dune build --root . warning/warning.cma) 2>workspace-warning
+  [1]
+  $ grep '^Error' workspace-warning
+  Error (warning 26 [unused-var]): unused variable unused.
+  $ (cd _source && dune build --root . alert/alert.cma) 2>workspace-alert
+  [1]
+  $ grep '^Error' workspace-alert
+  Error (alert deprecated): Old.value
+  $ (cd _source && dune build --root . modules/modules.cma) 2>workspace-modules
+  [1]
+  $ grep '^Error' workspace-modules
+  Error: These modules appear in the private_modules field:
+
+Vendoring suppresses warnings and alerts, including explicitly enabled alerts,
+and tolerates private modules omitted from the modules field.
+
+  $ (cd _vendor && dune build --root . dep/warning/warning.cma \
+  >   dep/alert/alert.cma dep/modules/modules.cma)
+
+BUG: the mounted project does not receive the same treatment.
+
+  $ make_lockdir
+  $ make_lockpkg dep <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_source))
+  > (build (run false))
+  > EOF
+  $ mounted=_build/default/.lockfile/pkg/dep
+  $ dune build "$mounted/warning/warning.cma" 2>mounted-warning
+  [1]
+  $ grep '^Error' mounted-warning
+  Error (warning 26 [unused-var]): unused variable unused.
+  $ dune build "$mounted/alert/alert.cma" 2>mounted-alert
+  [1]
+  $ grep '^Error' mounted-alert
+  Error (alert deprecated): Old.value
+  $ dune build "$mounted/modules/modules.cma" 2>mounted-modules
+  [1]
+  $ grep '^Error' mounted-modules
+  Error: These modules appear in the private_modules field:
+  $ test ! -e "$mounted/.opam/dep/target"
+
+Older projects use a different set of default development warning flags, but
+should still receive the vendored override when mounted.
+
+  $ cat > _source/dune-project <<'EOF'
+  > (lang dune 3.20)
+  > (package (name dep))
+  > EOF
+  $ dune build "$mounted/warning/warning.cma" 2>mounted-warning
+  [1]
+  $ grep '^Error' mounted-warning
+  Error (warning 26 [unused-var]): unused variable unused.
+
+Neither vendoring nor mounting may suppress actual type errors.
+
+  $ echo 'let value : int = "wrong"' > _source/warning/warning.ml
+  $ cp _source/warning/warning.ml _vendor/dep/warning/warning.ml
+  $ (cd _vendor && dune build --root . dep/warning/warning.cma) 2>vendor-type
+  [1]
+  $ grep -q '^Error:' vendor-type
+  $ dune build "$mounted/warning/warning.cma" 2>mounted-type
+  [1]
+  $ grep -q '^Error:' mounted-type

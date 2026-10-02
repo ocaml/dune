@@ -106,11 +106,19 @@ let source_tree_root t = t.source_tree_root
 let partition t = t.partition
 let output_root t = t.output_root
 let visible_packages t = t.visible_packages
+let hide_packages t = { t with visible_packages = Some Package.Name.Set.empty }
 
 let owner t =
   match t.identity with
   | Identity.Workspace _ -> None
-  | Mounted { package; _ } -> Some package
+  | Mounted { package; _ } ->
+    (match Source_tree.Rules.Dir.status t.source_tree_root with
+     | Vendored
+       when not
+              (Package.Name.Map.mem
+                 (Dune_project.including_hidden_packages t.project)
+                 package) -> None
+     | Vendored | Normal | Data_only -> Some package)
 ;;
 
 let packages t =

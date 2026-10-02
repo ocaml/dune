@@ -64,7 +64,7 @@
 
 (cram
  (deps %{bin:cmp} %{bin:ocamlfind})
- (applies_to package-library-closure.t))
+ (applies_to package-library-closure.t mounted-projects.t))
 
 (cram
  (deps %{bin:curl})

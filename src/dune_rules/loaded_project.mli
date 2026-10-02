@@ -31,7 +31,12 @@ val source_tree_dir : t -> Path.Build.t -> Source_tree.Rules.Dir.t option Memo.t
 val partition : t -> Build_partition.t
 val output_root : t -> Path.Build.t
 val visible_packages : t -> Package.Name.Set.t option
+val hide_packages : t -> t
+
+(** The selected package whose resolver this project uses, if any. Authored
+    vendored subprojects retain their ordinary package scopes instead. *)
 val owner : t -> Package.Name.t option
+
 val packages : t -> Package.t Package.Name.Map.t
 val output_path : t -> Source_path.t -> Path.Build.t option
 val source_path : t -> Path.Build.t -> Source_path.t option

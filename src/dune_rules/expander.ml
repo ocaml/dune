@@ -921,9 +921,17 @@ let package_universe =
        let open Memo.O in
        let+ platform = Lock_dir.Sys_vars.solver_env
        and+ lock_dir = Lock_dir.get_exn context
-       and+ local_packages =
-         Dune_load.packages ()
-         >>| Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
+       and+ workspace_packages = Dune_load.packages ()
+       and+ source_packages = Dune_load.packages_for_context context in
+       let locked_packages =
+         Dune_pkg.Lock_dir.Packages.to_pkg_list lock_dir.packages
+         |> Package.Name.Set.of_list_map ~f:(fun (pkg : Lock_dir.Pkg.t) -> pkg.info.name)
+       in
+       let local_packages =
+         Package.Name.Map.filteri source_packages ~f:(fun name _ ->
+           Package.Name.Map.mem workspace_packages name
+           || not (Package.Name.Set.mem locked_packages name))
+         |> Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
        in
        Dune_pkg.Package_universe.create_unvalidated ~platform local_packages lock_dir)
 ;;
@@ -934,8 +942,9 @@ let visible_packages t =
   let* lock_dir_active = Pkg_rules.lock_dir_active context in
   if not lock_dir_active
   then Memo.return Package.Name.Selection.All
-  else (
-    match Pkg_sources.package_of_artifact_path t.dir with
+  else
+    let* project = Dune_load.find_loaded_project ~dir:t.dir in
+    match Loaded_project.owner project with
     | Some name ->
       let* candidate = Pkg_sources.find_candidate context name in
       (match candidate with
@@ -958,7 +967,7 @@ let visible_packages t =
              name
              ~with_test:true
          in
-         Package.Name.Selection.Only (Package.Name.Set.of_list (name :: selected))))
+         Package.Name.Selection.Only (Package.Name.Set.of_list (name :: selected)))
 ;;
 
 let expand_pform_macro

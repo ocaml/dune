@@ -14,8 +14,14 @@ let find_package ctx pkg =
   match opaque with
   | Some opaque -> Memo.return (Some (Opam opaque))
   | None ->
-    let* packages = Dune_load.packages () in
-    (match Package.Name.Map.find packages pkg with
+    let* local =
+      let+ packages = Dune_load.packages_for_context ctx
+      and+ candidate = Pkg_sources.find_candidate ctx pkg in
+      match candidate with
+      | Some _ -> None
+      | None -> Package.Name.Map.find packages pkg
+    in
+    (match local with
      | Some p -> Memo.return (Some (Local p))
      | None ->
        Pkg_rules.lock_dir_active ctx

@@ -1141,9 +1141,9 @@ end = struct
     let* loaded_project = Dune_load.find_loaded_project ~dir in
     Dune_project.packages project
     |> Package.Name.Map.filteri ~f:(fun name _ ->
-      match Loaded_project.owner loaded_project with
+      match Loaded_project.visible_packages loaded_project with
       | None -> true
-      | Some owner -> Package.Name.equal name owner)
+      | Some packages -> Package.Name.Set.mem packages name)
     |> Dune_lang.Package_name.Map.to_seq
     |> Memo.parallel_iter_seq ~f:(fun (name, pkg) ->
       let metadata_dir = Package_paths.metadata_dir ctx pkg in

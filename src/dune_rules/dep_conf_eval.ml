@@ -257,6 +257,7 @@ let package ~explicit loc pkg_name (context : Build_context.t) ~dune_version =
    packages that own those libraries. *)
 let expand_package_set context package_names =
   let open Memo.O in
+  let* source_packages = Dune_load.packages_for_context context in
   Memo.map_reduce_seq
     (Package.Name.Set.to_seq package_names)
     ~empty:package_names
@@ -271,9 +272,10 @@ let expand_package_set context package_names =
         | Some (Installed { entries; _ }) ->
           let* lib_db = Scope.DB.public_libs context in
           Lib_name.Map.keys entries |> Memo.List.filter_map ~f:(Lib.DB.find lib_db)
-        | Some (Local pkg) ->
+        | (Some (Local _) | Some (Build _))
+          when Package.Name.Map.mem source_packages package_name ->
           let* { Scope.DB.Lib_entry.Set.libraries; deprecated_library_names } =
-            Scope.DB.lib_entries_of_package context (Package.name pkg)
+            Scope.DB.lib_entries_of_package context package_name
           in
           let+ redirected =
             let* lib_db = Scope.DB.public_libs context in
@@ -281,10 +283,8 @@ let expand_package_set context package_names =
               Lib.DB.find lib_db (Deprecated_library_name.old_public_name redirect))
           in
           List.map libraries ~f:Lib.Local.to_lib @ redirected
-        | Some (Opam _) | Some (Build _) ->
-          (* We cannot know the libraries of a given dune pkg package so
-             easily, however the dependency on that package already expands
-             correctly to include the closure we are after. *)
+        | Some (Local _) | Some (Opam _) | Some (Build _) ->
+          (* Opaque package dependencies already include their closure. *)
           Memo.return []
       in
       Lib.descriptive_closure libs ~with_pps:false ~for_:Compilation_mode.Ocaml

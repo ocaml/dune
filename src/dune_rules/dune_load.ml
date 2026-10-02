@@ -48,17 +48,18 @@ let load_mounted context mask =
                  Pkg_sources.Mounted.projects mounted
                  |> Memo.List.map ~f:(fun (project, source_tree_root) ->
                    let* visible_packages =
-                     match
-                       Package.Name.Map.find
-                         (Dune_project.including_hidden_packages project)
-                         owner
-                     with
-                     | None -> Memo.return Package.Name.Set.empty
-                     | Some package ->
-                       let+ enabled = Package_enabled.eval package in
-                       if enabled
-                       then Package.Name.Set.singleton owner
-                       else Package.Name.Set.empty
+                     let vendored =
+                       match Source_tree.Rules.Dir.status source_tree_root with
+                       | Vendored -> true
+                       | Normal | Data_only -> false
+                     in
+                     Dune_project.including_hidden_packages project
+                     |> Package.Name.Map.values
+                     |> Memo.List.filter ~f:(fun package ->
+                       if vendored || Package.Name.equal owner (Package.name package)
+                       then Package_enabled.eval package
+                       else Memo.return false)
+                     >>| Package.Name.Set.of_list_map ~f:Package.name
                    in
                    let source_root = Dune_project.root project in
                    let project_root =
@@ -114,6 +115,91 @@ let load_mounted context mask =
             projects, files, Package.Name.Map.add_exn errors name messages)
 ;;
 
+let rec same_source_tree left right =
+  let module Dir = Source_tree.Rules.Dir in
+  let same_status =
+    match Dir.status left, Dir.status right with
+    | Normal, Normal | Vendored, Vendored | Data_only, Data_only -> true
+    | _ -> false
+  in
+  if
+    (not same_status)
+    || (not (Filename.Array.Set.equal (Dir.filenames left) (Dir.filenames right)))
+    || not (Filename.Array.Set.equal (Dir.sub_dir_names left) (Dir.sub_dir_names right))
+  then Memo.return false
+  else
+    let* same_files =
+      Filename.Array.Set.to_list (Dir.filenames left)
+      |> Memo.List.for_all ~f:(fun name ->
+        let+ left = Dir.file left name |> Source_tree.Rules.File.materialization
+        and+ right = Dir.file right name |> Source_tree.Rules.File.materialization in
+        match left, right with
+        | Some (Copy left), Some (Copy right) -> Path.equal left right
+        | Some (Write left), Some (Write right) ->
+          String.equal left.contents right.contents
+          && Bool.equal left.executable right.executable
+          && List.equal Path.equal left.dependencies right.dependencies
+        | None, None -> true
+        | _ -> false)
+    in
+    if not same_files
+    then Memo.return false
+    else
+      Filename.Array.Set.to_list (Dir.sub_dir_names left)
+      |> Memo.List.for_all ~f:(fun name ->
+        let* left =
+          Filename.Array.Map.find (Dir.sub_dirs left) name
+          |> Option.value_exn
+          |> Dir.sub_dir_as_t
+        and* right =
+          Filename.Array.Map.find (Dir.sub_dirs right) name
+          |> Option.value_exn
+          |> Dir.sub_dir_as_t
+        in
+        same_source_tree left right)
+;;
+
+(* Compare the complete prepared views: an overlay outside the vendored project
+   can change its inherited environment too. Sharing must not discard it. *)
+let share_vendored_projects projects files =
+  let roots =
+    Path.Build.Map.of_list_map_exn projects ~f:(fun project ->
+      Loaded_project.output_root project, Loaded_project.source_tree_root project)
+  in
+  let+ _, hidden, projects =
+    Memo.List.fold_left
+      projects
+      ~init:(Path.Map.empty, Path.Build.Set.empty, [])
+      ~f:(fun (seen, hidden, projects) project ->
+        let dir = Loaded_project.source_tree_root project in
+        match Source_tree.Rules.Dir.status dir with
+        | Normal | Data_only -> Memo.return (seen, hidden, project :: projects)
+        | Vendored ->
+          let backing = Source_tree.Rules.Dir.backing_path dir in
+          let root =
+            Loaded_project.partition project
+            |> Build_partition.output_root
+            |> Path.Build.Map.find_exn roots
+          in
+          let* duplicate =
+            match Path.Map.find seen backing with
+            | None -> Memo.return false
+            | Some previous -> same_source_tree previous root
+          in
+          if duplicate
+          then
+            Memo.return
+              ( seen
+              , Path.Build.Set.add hidden (Loaded_project.output_root project)
+              , Loaded_project.hide_packages project :: projects )
+          else Memo.return (Path.Map.set seen backing root, hidden, project :: projects))
+  in
+  ( List.rev projects
+  , List.filter files ~f:(fun file ->
+      let project = Dune_file.loaded_dir file |> Loaded_dir.project in
+      not (Path.Build.Set.mem hidden (Loaded_project.output_root project))) )
+;;
+
 let loaded =
   let by_context =
     Per_context.create_by_name ~name:"workspace-loaded-projects" (fun context_name ->
@@ -149,7 +235,45 @@ let loaded =
         let* mounted_projects, mounted_files, mounted_errors =
           load_mounted context workspace.mask
         in
+        let* () =
+          let local_packages =
+            List.fold_left
+              mounted_projects
+              ~init:Package.Name.Map.empty
+              ~f:(fun packages project ->
+                match Loaded_project.owner project with
+                | Some _ -> packages
+                | None ->
+                  Package.Name.Map.foldi
+                    (Loaded_project.packages project)
+                    ~init:packages
+                    ~f:(fun name package packages ->
+                      Package.Name.Map.set packages name (Package.loc package)))
+          in
+          if Package.Name.Map.is_empty local_packages
+          then Memo.return ()
+          else
+            let+ lock_dir = Lock_dir.get_exn context_name in
+            Dune_pkg.Package_universe.check_package_names lock_dir ~local_packages
+        in
+        let* mounted_projects, mounted_files =
+          share_vendored_projects (List.rev mounted_projects) mounted_files
+        in
         let projects = projects @ mounted_projects in
+        let (_ : Package.t Package.Name.Map.t) =
+          List.fold_left projects ~init:Package.Name.Map.empty ~f:(fun packages project ->
+            Package.Name.Map.union
+              packages
+              (Loaded_project.packages project)
+              ~f:(fun name first second ->
+                User_error.raise
+                  [ Pp.textf
+                      "The package %S is defined more than once:"
+                      (Package.Name.to_string name)
+                  ; Pp.textf "- %s" (Loc.to_file_colon_line (Package.loc first))
+                  ; Pp.textf "- %s" (Loc.to_file_colon_line (Package.loc second))
+                  ]))
+        in
         let* eval = Dune_file.eval source_dune_files workspace.mask in
         let+ dune_files = eval context_name in
         let dune_files = dune_files @ mounted_files in
@@ -187,16 +311,12 @@ let projects_by_output_root context =
 ;;
 
 let packages_for_context context =
+  let* workspace = load () in
   let+ projects = projects_by_output_root context in
-  Path.Build.Map.values projects
-  |> List.concat_map ~f:(fun project ->
-    Dune_project.packages (Loaded_project.project project)
-    |> Package.Name.Map.values
-    |> List.filter ~f:(fun package ->
-      match Loaded_project.owner project with
-      | None -> true
-      | Some owner -> Package.Name.equal owner (Package.name package)))
-  |> Package.Name.Map.of_list_map_exn ~f:(fun package -> Package.name package, package)
+  Path.Build.Map.fold projects ~init:workspace.packages ~f:(fun project packages ->
+    match Build_partition.purpose (Loaded_project.partition project) with
+    | Workspace -> packages
+    | Mounted -> Package.Name.Map.union_exn packages (Loaded_project.packages project))
 ;;
 
 let context_of_dir dir =
@@ -288,7 +408,7 @@ let package_closure names =
 ;;
 
 let package_closure_for_context context names =
-  let* workspace = packages ()
+  let* source_packages = packages_for_context context
   and* candidates = Pkg_sources.candidates context in
   let+ managed =
     Memo.List.map candidates ~f:(fun candidate ->
@@ -302,14 +422,15 @@ let package_closure_for_context context names =
     else (
       let acc = Package.Name.Set.add acc name in
       let depends =
-        match Package.Name.Map.find workspace name with
-        | Some package ->
-          Package.depends package @ Package.depopts package
-          |> Package.Name.Set.of_list_map ~f:(fun (dep : Package_dependency.t) ->
-            dep.name)
+        match Package.Name.Map.find managed name with
+        | Some depends -> depends
         | None ->
-          Package.Name.Map.find managed name
-          |> Option.value ~default:Package.Name.Set.empty
+          (match Package.Name.Map.find source_packages name with
+           | None -> Package.Name.Set.empty
+           | Some package ->
+             Package.depends package @ Package.depopts package
+             |> Package.Name.Set.of_list_map ~f:(fun (dep : Package_dependency.t) ->
+               dep.name))
       in
       Package.Name.Set.fold depends ~init:acc ~f:(fun name acc -> loop acc name))
   in

@@ -245,12 +245,11 @@ The same authored projects work without mounting, including package selection.
   $ cp -R _bundle _workspace
   $ (cd _workspace && dune build -p bundle bundle.cma)
 
-BUG: the mounted package mask drops the explicitly vendored library as well.
+The mounted package retains the explicitly vendored library too.
 
-  $ dune build main.exe 2>error
-  [1]
-  $ grep '^Error:' error
-  Error: Library "vendored_support" not found.
+  $ dune build main.exe
+  $ _build/default/main.exe
+  mounted vendored project
 
 Vendoring does not change package ownership or public names. A library-file
 pform can refer to the vendored package from outside its project. Within that
@@ -283,21 +282,18 @@ project, lib-private still recognizes its original project identity.
   >   _workspace/_build/default/vendor/vendored_support.dune-package
   (name vendored_support)
 
-BUG: the mounted view drops the library and its own package metadata.
+The mounted view preserves the same library and package identities.
 
   $ mounted=_build/default/.lockfile/pkg/bundle
-  $ dune build "$mounted/public-file" 2>error
-  [1]
-  $ grep '^Error:' error
-  Error: Library "vendored_support" not found.
-  $ dune build "$mounted/vendor/src/private-file" 2>error
-  [1]
-  $ grep '^Error:' error
-  Error: Library "vendored_support" not found.
-  $ dune build "$mounted/vendor/vendored_support.dune-package" 2>error
-  [1]
-  $ grep '^Error:' error
-  Error: Don't know how to build
+  $ dune build "$mounted/public-file" "$mounted/vendor/src/private-file" \
+  >   "$mounted/META.bundle" "$mounted/vendor/vendored_support.dune-package"
+  $ cat "$mounted/public-file" "$mounted/vendor/src/private-file"
+  vendored payload
+  vendored payload
+  $ grep '^requires' "$mounted/META.bundle"
+  requires = "vendored_support"
+  $ grep '^(name ' "$mounted/vendor/vendored_support.dune-package"
+  (name vendored_support)
 
 Two selected packages from a common source see the same vendored project, just
 as they do when that source folder is included once in the workspace.
@@ -327,7 +323,156 @@ as they do when that source folder is included once in the workspace.
   $ cat > main.ml <<'EOF'
   > let () = Printf.printf "%s/%s\n" Bundle.message Peer.message
   > EOF
+  $ dune build main.exe
+  $ _build/default/main.exe
+  mounted vendored project/mounted vendored project
+
+A vendored project uses its own declared package scope for tools, rather than
+the enclosing lock package's dependency list.
+
+  $ mkdir tools
+  $ cat > tools/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name tool))
+  > EOF
+  $ echo '(executable (name tool) (public_name scoped-tool))' > tools/dune
+  $ echo 'let () = print_endline "vendored tool scope"' > tools/tool.ml
+  $ cp -R tools _workspace/tools
+  $ cat > _bundle/vendor/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name vendored_support) (dir .) (depends tool))
+  > EOF
+  $ cat >> _bundle/vendor/src/dune <<'EOF'
+  > (rule
+  >  (target tool-output)
+  >  (action (with-stdout-to %{target} (run %{bin:scoped-tool}))))
+  > EOF
+  $ cp _bundle/vendor/dune-project _workspace/vendor/dune-project
+  $ cp _bundle/vendor/src/dune _workspace/vendor/src/dune
+  $ (cd _workspace && dune build --only-packages bundle,peer,tool \
+  >   vendor/src/tool-output)
+  $ cat _workspace/_build/default/vendor/src/tool-output
+  vendored tool scope
+  $ dune build "$mounted/vendor/src/tool-output"
+  $ cat "$mounted/vendor/src/tool-output"
+  vendored tool scope
+
+Explicit package dependencies materialize the ordinary library closure. The
+vendored library keeps its own package name and metadata, rather than being
+installed as a private library of bundle.
+
+  $ cat >> _bundle/dune <<'EOF'
+  > (rule
+  >  (target client.exe)
+  >  (deps (package bundle) input)
+  >  (action
+  >   (run ocamlfind ocamlc -linkpkg -package bundle -impl input -o %{target})))
+  > EOF
+  $ echo 'let () = print_endline Bundle.message' > _bundle/input
+  $ cp _bundle/dune _bundle/input _workspace
+  $ (cd _workspace && dune build --only-packages bundle,peer,tool client.exe)
+  $ _workspace/_build/default/client.exe
+  mounted vendored project
+  $ dune build "$mounted/client.exe"
+  $ "$mounted/client.exe"
+  mounted vendored project
+
+The workspace can also refer to the vendored package by its authored name.
+
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target package-file)
+  >  (action (copy %{pkg:vendored_support:lib:payload} %{target})))
+  > EOF
+  $ dune build package-file
+  $ cat _build/default/package-file
+  vendored payload
+
+Sharing is only valid for identical prepared source views. An overlay changing
+the vendored project in one view must not silently use the other definition.
+
+  $ echo 'different payload' > _payload
+  $ make_lockpkg peer <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_bundle))
+  > (extra_sources (vendor/src/payload (copy $PWD/_payload)))
+  > (build (run false))
+  > EOF
   $ dune build main.exe 2>error
   [1]
-  $ grep '^Error:' error | sort -u
-  Error: Library "vendored_support" not found.
+  $ grep '^Error:' error
+  Error: The package "vendored_support" is defined more than once:
+  $ make_lockpkg peer <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_bundle))
+  > (build (run false))
+  > EOF
+  $ dune build main.exe
+  $ _build/default/main.exe
+  mounted vendored project/mounted vendored project
+
+An overlay outside the vendored directory can change its inherited environment.
+It must not be discarded when deciding whether two views can share the project.
+
+  $ cp _bundle/dune _different-dune
+  $ echo '(env (_ (flags (:standard -opaque))))' >> _different-dune
+  $ make_lockpkg peer <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_bundle))
+  > (extra_sources (dune (copy $PWD/_different-dune)))
+  > (build (run false))
+  > EOF
+  $ dune build main.exe 2>error
+  [1]
+  $ grep '^Error:' error
+  Error: The package "vendored_support" is defined more than once:
+  $ make_lockpkg peer <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_bundle))
+  > (build (run false))
+  > EOF
+
+A bundled package and a lockdir entry of the same name are conflicting
+providers, just as for a workspace package and a lockdir entry.
+
+  $ make_lockpkg vendored_support <<'EOF'
+  > (version 2.0)
+  > (build (run false))
+  > EOF
+  $ dune build main.exe 2>error
+  [1]
+  $ grep -A 1 '^Error:' error
+  Error: A package named "vendored_support" is defined locally but is also
+  present in the lockdir
+  $ rm dune.lock/vendored_support.pkg
+
+Different source folders defining the same vendored package conflict in both
+the workspace and mounted cases. They are not given private names to hide the
+collision.
+
+  $ mkdir -p _workspace/other _other
+  $ cp -R _workspace/vendor _workspace/other/vendor
+  $ echo '(vendored_dirs vendor)' > _workspace/other/dune
+  $ (cd _workspace && dune build --only-packages bundle,peer bundle.cma) 2>error
+  [1]
+  $ grep '^Error:' error
+  Error: The package "vendored_support" is defined more than once:
+  $ cp -R _bundle/vendor _other/vendor
+  $ cat > _other/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name other))
+  > EOF
+  $ cat > _other/dune <<'EOF'
+  > (vendored_dirs vendor)
+  > (library (public_name other))
+  > EOF
+  $ echo 'let value = ()' > _other/other.ml
+  $ make_lockpkg other <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_other))
+  > (build (run false))
+  > EOF
+  $ dune build main.exe 2>error
+  [1]
+  $ grep '^Error:' error
+  Error: The package "vendored_support" is defined more than once:

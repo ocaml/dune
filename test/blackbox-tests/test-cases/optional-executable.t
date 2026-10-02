@@ -88,6 +88,19 @@ whether the binary should be installed.
   $ grep "bin/x" _build/default/x.install
   [1]
 
+The same applies to %{bin-available:...}.
+
+  $ cat >>dune <<EOF
+  > (rule
+  >  (with-stdout-to available (echo %{bin-available:x})))
+  > EOF
+
+  $ dune build ./available && cat _build/default/available
+  true
+
+  $ dune build --instrument-with instr ./available && cat _build/default/available
+  true
+
 Reproduction case for a bug in dune < 2.4 where all executables where
 considered as optional:
 

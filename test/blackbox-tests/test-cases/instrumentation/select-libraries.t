@@ -44,10 +44,3 @@ specification.
   $ cat >other.ml <<'EOF2'
   > EOF2
   $ dune build --instrument-with hello "$exe"
-  File "dune", lines 15-16, characters 3-63:
-  15 |    (select selected.ml from
-  16 |     (choice -> selected.choice.ml)))))
-  Error: Too many files for module Selected in .:
-  - _build/default/selected.ml
-  - _build/default/selected.ml
-  [1]

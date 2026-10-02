@@ -46,6 +46,15 @@ if [ "$VERSIONINFO" = "YES" ]; then
   exit 0
 fi
 
+# Simulate curl failing before any HTTP exchange takes place, e.g. because the
+# host could not be resolved (6) or the connection was refused (7). Like the
+# real curl invoked with -s, nothing is written to stderr, but --write-out
+# still reports an http code of 000.
+if [ -n "${FAKE_CURL_EXIT_CODE:-}" ]; then
+  echo -n '"000"'
+  exit "$FAKE_CURL_EXIT_CODE"
+fi
+
 # read the offset from the URL
 PORT_OFFSET=$(echo "$POSITIONAL_ARGS" | grep -Eo ':[0-9]+' | grep -o '[0-9]*')
 

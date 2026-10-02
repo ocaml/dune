@@ -251,3 +251,83 @@ BUG: the mounted package mask drops the explicitly vendored library as well.
   [1]
   $ grep '^Error:' error
   Error: Library "vendored_support" not found.
+
+Vendoring does not change package ownership or public names. A library-file
+pform can refer to the vendored package from outside its project. Within that
+project, lib-private still recognizes its original project identity.
+
+  $ cat >> _bundle/dune <<'EOF'
+  > (rule
+  >  (target public-file)
+  >  (action (copy %{lib:vendored_support:payload} %{target})))
+  > EOF
+  $ cat >> _bundle/vendor/src/dune <<'EOF'
+  > (install (section lib) (files payload))
+  > (rule
+  >  (target private-file)
+  >  (action (copy %{lib-private:vendored_support:payload} %{target})))
+  > EOF
+  $ echo 'vendored payload' > _bundle/vendor/src/payload
+  $ cp _bundle/dune _workspace/dune
+  $ cp _bundle/vendor/src/dune _bundle/vendor/src/payload _workspace/vendor/src
+  $ (cd _workspace && dune build --only-packages bundle \
+  >   public-file vendor/src/private-file META.bundle \
+  >   vendor/vendored_support.dune-package)
+  $ cat _workspace/_build/default/public-file
+  vendored payload
+  $ cat _workspace/_build/default/vendor/src/private-file
+  vendored payload
+  $ grep '^requires' _workspace/_build/default/META.bundle
+  requires = "vendored_support"
+  $ grep '^(name ' \
+  >   _workspace/_build/default/vendor/vendored_support.dune-package
+  (name vendored_support)
+
+BUG: the mounted view drops the library and its own package metadata.
+
+  $ mounted=_build/default/.lockfile/pkg/bundle
+  $ dune build "$mounted/public-file" 2>error
+  [1]
+  $ grep '^Error:' error
+  Error: Library "vendored_support" not found.
+  $ dune build "$mounted/vendor/src/private-file" 2>error
+  [1]
+  $ grep '^Error:' error
+  Error: Library "vendored_support" not found.
+  $ dune build "$mounted/vendor/vendored_support.dune-package" 2>error
+  [1]
+  $ grep '^Error:' error
+  Error: Don't know how to build
+
+Two selected packages from a common source see the same vendored project, just
+as they do when that source folder is included once in the workspace.
+
+  $ mkdir _bundle/peer
+  $ cat > _bundle/peer/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name peer))
+  > EOF
+  $ cat > _bundle/peer/dune <<'EOF'
+  > (library (public_name peer) (libraries vendored_support))
+  > EOF
+  $ echo 'let message = Vendored_support.message' > _bundle/peer/peer.ml
+  $ cp -R _bundle/peer _workspace/peer
+  $ (cd _workspace && dune build --only-packages bundle,peer \
+  >   bundle.cma peer/peer.cma)
+  $ make_lockpkg peer <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_bundle))
+  > (build (run false))
+  > EOF
+  $ cat > dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name main) (depends bundle peer))
+  > EOF
+  $ echo '(executable (name main) (libraries bundle peer))' > dune
+  $ cat > main.ml <<'EOF'
+  > let () = Printf.printf "%s/%s\n" Bundle.message Peer.message
+  > EOF
+  $ dune build main.exe 2>error
+  [1]
+  $ grep '^Error:' error | sort -u
+  Error: Library "vendored_support" not found.

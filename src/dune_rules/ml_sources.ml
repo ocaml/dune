@@ -1307,6 +1307,8 @@ let modules_of_stanzas =
       |> Option.value_exn
       |> snd
     in
+    (* Instrumentation libraries may contain [(select ...)] forms, whose
+       targets are modules of the stanza. *)
     let instrumentation_libraries preprocess =
       let* lib_db = libs in
       Lib.DB.instrumentation_libraries lib_db preprocess

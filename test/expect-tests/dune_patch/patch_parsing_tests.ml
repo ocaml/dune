@@ -451,6 +451,12 @@ let%expect_test "parse_patches - combined with spurious new file mode" =
     |}]
 ;;
 
+(* Empty patches are a no-op, matching opam behavior. *)
+let%expect_test "parse_patches - empty" =
+  test "";
+  [%expect {| [] |}]
+;;
+
 (* Testing parsing of bad patch names *)
 
 let bad_name name =
@@ -520,7 +526,7 @@ let%expect_test "parse_patches - reject absolute paths" =
     |}]
 ;;
 
-let%expect_test "parse_patches - reject empty/unparseable patch" =
+let%expect_test "parse_patches - reject unparseable patch" =
   let patch_file = Path.of_string "dummy.file" in
   let loc = Loc.in_file patch_file in
   (match
@@ -538,18 +544,11 @@ let%expect_test "parse_patches - reject empty/unparseable patch" =
     |}]
 ;;
 
-let%expect_test "parse_patches - empty patch is rejected (bug)" =
+let%expect_test "parse_patches - empty patch is a no-op" =
   let patch_file = Path.of_string "dummy.file" in
   let loc = Loc.in_file patch_file in
   (match Dune_patch.For_tests.parse_patches ~loc ~patch_file "" with
    | exception e -> Exn.pp e |> Format.printf "%a" Pp.to_fmt
    | _ -> print_endline "No error!");
-  [%expect
-    {|
-    File "dummy.file", line 1, characters 0-0:
-    Error: Could not parse the patch file. Only unified diff format is
-    supported.
-    Context diffs and ed commands are not
-    supported.
-    |}]
+  [%expect {| No error! |}]
 ;;

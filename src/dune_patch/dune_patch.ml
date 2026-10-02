@@ -133,18 +133,22 @@ let prefix_of_patch ~patch_loc patch_string =
 ;;
 
 let parse_patches ~loc ~patch_file patch_contents =
-  let patch_loc = Loc.in_file patch_file in
-  let p = prefix_of_patch ~patch_loc patch_contents in
-  let patch_contents = disambiguate_git_header_filenames patch_contents in
-  match Patch.parse ~loc ~p patch_contents with
-  | [] ->
-    User_error.raise
-      ~loc
-      [ Pp.text
-          "Could not parse the patch file. Only unified diff format is supported. \
-           Context diffs and ed commands are not supported."
-      ]
-  | patches -> patches
+  (* Empty patches are treated as a no-op *)
+  if String.is_empty (String.trim patch_contents)
+  then []
+  else (
+    let patch_loc = Loc.in_file patch_file in
+    let p = prefix_of_patch ~patch_loc patch_contents in
+    let patch_contents = disambiguate_git_header_filenames patch_contents in
+    match Patch.parse ~loc ~p patch_contents with
+    | [] ->
+      User_error.raise
+        ~loc
+        [ Pp.text
+            "Could not parse the patch file. Only unified diff format is supported. \
+             Context diffs and ed commands are not supported."
+        ]
+    | patches -> patches)
 ;;
 
 let write_patch_result ~file target_path = function

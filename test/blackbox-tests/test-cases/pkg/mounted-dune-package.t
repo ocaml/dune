@@ -257,9 +257,55 @@ through %{lib:...}. This must not require installing the whole package.
   > (build (run false))
   > EOF
 
-BUG: the mounted library file still resolves through the workspace install tree.
+The file resolves to its mounted producer, without demanding unrelated install
+entries or the opaque recipe.
 
-  $ dune build main.exe 2>error
-  [1]
-  $ grep '^Error:' error
-  Error: No rule found for default/lib/foo/support/support.ml (context install)
+  $ dune build main.exe
+  $ _build/default/main.exe
+  mounted library file
+  $ test ! -e _build/default/.lockfile/pkg/foo/src/unrelated
+  $ test ! -e _build/default/.lockfile/pkg/foo/.opam/foo/target
+
+Editing the source invalidates the generated file and its consumer.
+
+  $ echo 'let message = "updated library file"' > _foo/support/support.ml
+  $ dune build main.exe
+  $ _build/default/main.exe
+  updated library file
+
+Library-file pforms name installed files, which need not have the same name or
+location in the source tree.
+
+  $ echo installed-name > _foo/support/data
+  $ cat >> _foo/support/dune <<'EOF'
+  > (install (section lib) (files (data as support/renamed.txt)))
+  > EOF
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target renamed)
+  >  (action (copy %{lib:foo.support:renamed.txt} %{target})))
+  > EOF
+  $ dune build renamed
+  $ cat _build/default/renamed
+  installed-name
+  $ test ! -e _build/default/.lockfile/pkg/foo/src/unrelated
+
+The libexec section shares the library directory and is accessible through
+both lib and libexec pforms.
+
+  $ cat >> _foo/support/dune <<'EOF'
+  > (install (section libexec) (files (data as support/executable-data)))
+  > EOF
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target libexec-data)
+  >  (action (copy %{libexec:foo.support:executable-data} %{target})))
+  > (rule
+  >  (target lib-data)
+  >  (action (copy %{lib:foo.support:executable-data} %{target})))
+  > EOF
+  $ dune build libexec-data lib-data
+  $ cat _build/default/libexec-data _build/default/lib-data
+  installed-name
+  installed-name
+  $ test ! -e _build/default/.lockfile/pkg/foo/src/unrelated

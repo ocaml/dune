@@ -402,26 +402,32 @@ let expand_read_macro ~dir ~source s ~read =
 
 let file_of_lib db context ~loc ~lib ~file =
   let open Resolve.Memo.O in
-  let+ dir =
-    let* lib = Lib.DB.resolve db (loc, lib) in
-    let info = Lib.info lib in
-    match Lib.is_local lib with
-    | false -> Resolve.Memo.return @@ Lib_info.src_dir info
-    | true ->
-      let name = Lib.name lib in
-      let subdir =
-        Lib_info.Status.relative_to_package (Lib_info.status info) name
-        |> Option.value_exn
-      in
-      let+ pkg_root =
-        let package = Lib_name.package_name name in
-        (* Why do we return the install path? *)
-        let+ context = Resolve.Memo.lift_memo @@ context >>| Context.name in
-        Install.Context.lib_dir ~context ~package
-      in
-      Path.build (Path.Build.append_local pkg_root subdir)
-  in
-  Path.relative dir file
+  let* lib = Lib.DB.resolve db (loc, lib) in
+  let info = Lib.info lib in
+  match Lib.is_local lib with
+  | false -> Resolve.Memo.return (Path.relative (Lib_info.src_dir info) file)
+  | true ->
+    let name = Lib.name lib in
+    let package = Lib_name.package_name name in
+    let subdir =
+      Lib_info.Status.relative_to_package (Lib_info.status info) name |> Option.value_exn
+    in
+    let* context = Resolve.Memo.lift_memo context >>| Context.name in
+    let* project =
+      let dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
+      Dune_load.find_loaded_project ~dir |> Resolve.Memo.lift_memo
+    in
+    let root =
+      match Build_partition.purpose (Loaded_project.partition project) with
+      | Workspace -> Install.Context.lib_dir ~context ~package
+      | Mounted ->
+        let prefix = Install_layout.root context (Package.Name.Set.singleton package) in
+        let roots = Install.Roots.opam_from_prefix prefix ~relative:Path.Build.relative in
+        let paths = Install.Paths.make ~relative:Path.Build.relative ~package ~roots in
+        Install.Paths.get paths Section.Lib
+    in
+    let dir = Path.Build.append_local root subdir in
+    Resolve.Memo.return (Path.relative (Path.build dir) file)
 ;;
 
 let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =

@@ -33,17 +33,24 @@ let with_instrumentation
 
 let active_libraries t ~instrumentation_backend =
   let open Resolve.Memo.O in
+  (* Per-module preprocessing copies each instrumentation field into every
+     preprocessing specification. The location of the backend name identifies
+     the field, so we use it to keep a single copy. *)
   fold t ~init:[] ~f:(fun t init ->
     match t with
     | Preprocess.Pps t ->
       Resolve.Memo.List.fold_left t.pps ~init ~f:(fun acc -> function
         | Preprocess.With_instrumentation.Ordinary _ -> Resolve.Memo.return acc
-        | Instrumentation_backend { libname; libraries; deps = _; flags = _ } ->
-          instrumentation_backend libname
-          >>| (function
-           | Some _ -> libraries :: acc
-           | None -> acc))
+        | Instrumentation_backend
+            { libname = (loc, _) as libname; libraries; deps = _; flags = _ } ->
+          if List.exists acc ~f:(fun (loc', _) -> Loc.equal loc loc')
+          then Resolve.Memo.return acc
+          else
+            instrumentation_backend libname
+            >>| (function
+             | Some _ -> (loc, libraries) :: acc
+             | None -> acc))
     | Preprocess.No_preprocessing | Action _ | Future_syntax _ -> Resolve.Memo.return init)
-  >>| List.rev
-  >>| List.flatten
+  >>| List.rev_map ~f:snd
+  >>| List.concat
 ;;

@@ -87,3 +87,29 @@ without sources).
   -> required by
      _build/_private/default/.pkg/no-source.0.0.1-$DIGEST/target
   [1]
+
+Demonstrate the current behavior: empty patch is rejected (bug, should be no-op
+like Opam):
+
+  $ mkdir empty-test-source
+  $ cat > empty-test-source/foo.ml <<EOF
+  > original content
+  > EOF
+  $ make_lockpkg empty-test <<EOF
+  > (version 0.0.1)
+  > (source (copy $PWD/empty-test-source))
+  > (build
+  >  (progn
+  >   (patch foo.patch)
+  >   (system "cat foo.ml")))
+  > EOF
+
+  $ make_lockpkg_file empty-test foo.patch <<EOF
+  > EOF
+
+  $ build_pkg empty-test 2>&1 | censor
+  Error: Could not parse the patch file. Only unified diff format is supported.
+  Context diffs and ed commands are not supported.
+  -> required by
+     _build/_private/default/.pkg/empty-test.0.0.1-$DIGEST/target
+  [1]

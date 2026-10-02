@@ -537,3 +537,19 @@ let%expect_test "parse_patches - reject empty/unparseable patch" =
     supported.
     |}]
 ;;
+
+let%expect_test "parse_patches - empty patch is rejected (bug)" =
+  let patch_file = Path.of_string "dummy.file" in
+  let loc = Loc.in_file patch_file in
+  (match Dune_patch.For_tests.parse_patches ~loc ~patch_file "" with
+   | exception e -> Exn.pp e |> Format.printf "%a" Pp.to_fmt
+   | _ -> print_endline "No error!");
+  [%expect
+    {|
+    File "dummy.file", line 1, characters 0-0:
+    Error: Could not parse the patch file. Only unified diff format is
+    supported.
+    Context diffs and ed commands are not
+    supported.
+    |}]
+;;

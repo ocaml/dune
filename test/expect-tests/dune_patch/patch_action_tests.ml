@@ -153,3 +153,18 @@ let%expect_test "action test - edit_with_rename" =
   check "target.ml";
   [%expect {| This is right |}]
 ;;
+
+let%expect_test "action test - empty patch is rejected (bug)" =
+  test [ "foo.ml", "Hello World\n" ] ("foo.patch", "");
+  check "foo.ml";
+  [%expect.unreachable]
+[@@expect.uncaught_exn
+  {|
+  (Dune_util__Report_error.Already_reported)
+  Trailing output
+  ---------------
+  File "dune.patch.test", line 1, characters 0-0:
+  Error: Could not parse the patch file. Only unified diff format is supported.
+  Context diffs and ed commands are not supported.
+  |}]
+;;

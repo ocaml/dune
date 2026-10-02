@@ -522,12 +522,14 @@ end = struct
                   shouldn't install the binary rather than failing outright. *)
                let+ pps =
                  Lib.DB.pps_for_preprocessing libs exes.buildable.preprocess.config
+               and+ instrumentation_libraries =
+                 Lib.DB.instrumentation_libraries libs exes.buildable.preprocess.config
                in
                Lib.DB.resolve_user_written_deps
                  libs
                  ~forbidden_libraries:[]
                  (Executables.exe_target exes)
-                 exes.buildable.libraries
+                 (exes.buildable.libraries @ instrumentation_libraries)
                  ~allow_unused_libraries:exes.buildable.allow_unused_libraries
                  ~pps
                  ~dune_version

@@ -34,6 +34,14 @@ module Processed : sig
   val pp_args : pp_flag -> string
   val load_file : Path.t -> (t, string) result
 
+  type file_configuration =
+    { mode : Compilation_mode.t
+    ; is_default : bool
+    ; kind : Ml_kind.t
+    ; counterpart : Path.t option
+    ; directives : Sexp.t
+    }
+
   (** [print_file path] reads the configuration at path [path] and print it as a
       s-expression *)
   val print_file : Path.t -> unit
@@ -45,6 +53,7 @@ module Processed : sig
   val print_generic_dot_merlin : Path.t list -> unit
 
   val get : t -> file:Path.Build.t -> Sexp.t option
+  val configurations : t -> file:Path.Build.t -> file_configuration Nonempty_list.t option
 end
 
 val make

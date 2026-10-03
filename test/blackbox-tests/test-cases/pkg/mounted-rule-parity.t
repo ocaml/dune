@@ -536,15 +536,19 @@ one package must not create installation targets for its unselected siblings.
   $ test -f _source/_build/default/project/.foo.objs/cctx.ocaml-index
   $ test ! -e _source/_build/default/project/omitted.install
 
-These built-in aliases currently succeed without doing the work.
+The mounted aliases build the same project targets without running the recipe.
 
   $ dune build @_build/default/.lockfile/pkg/foo/project/install
   $ test -f _build/default/.lockfile/pkg/foo/project/foo.install
-  [1]
   $ dune build @_build/default/.lockfile/pkg/foo/project/ocaml-index
   $ test -f _build/default/.lockfile/pkg/foo/project/.foo.objs/cctx.ocaml-index
-  [1]
-  $ dune build _build/default/.lockfile/pkg/foo/project/foo.install 2>error
-  [1]
-  $ grep '^Error:' error
-  Error: Don't know how to build
+  $ dune build _build/default/.lockfile/pkg/foo/project/foo.install
+  $ test ! -e _build/default/.lockfile/pkg/foo/project/omitted.install
+  $ test ! -e _build/default/.lockfile/pkg/foo/.opam/foo/target
+
+Enabling ordinary project targets does not grant writeback into their inputs.
+
+  $ dune build --promote-install-files=true \
+  >   _build/default/.lockfile/pkg/foo/project/foo.install
+  $ test ! -e _source/project/foo.install
+  $ test ! -e _source/project/omitted.install

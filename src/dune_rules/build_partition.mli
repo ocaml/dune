@@ -11,5 +11,4 @@ val mounted : resolver:Context.t -> output_root:Path.Build.t -> t
 val build_context : t -> Build_context.t
 val output_root : t -> Path.Build.t
 val purpose : t -> purpose
-val implicit_workspace_targets : t -> bool
 val to_dyn : t -> Dyn.t

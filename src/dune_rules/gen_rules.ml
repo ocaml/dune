@@ -422,8 +422,15 @@ let duplicate_deps =
 (* To be called once per project, when we are generating the rules for the root
    directory of the project *)
 let gen_project_rules =
-  let rules sctx project =
+  let rules sctx loaded_project =
     let* sctx = sctx in
+    let project = Loaded_project.project loaded_project in
+    let project =
+      match Loaded_project.visible_packages loaded_project with
+      | None -> project
+      | Some packages ->
+        Dune_project.filter_packages project ~f:(Package.Name.Set.mem packages)
+    in
     let dune_version = Dune_project.dune_version project in
     let+ () = Install_rules.gen_project_rules sctx project
     and+ () = Odoc.gen_project_rules sctx project
@@ -436,9 +443,7 @@ let gen_project_rules =
       | Some _ when dune_version < version -> Memo.return ()
       | Some loc ->
         let+ vendored =
-          match Dune_project.root project with
-          | Workspace root -> Source_tree.is_vendored root
-          | Build _ -> Memo.return true
+          Dune_load.is_vendored ~dir:(Loaded_project.output_root loaded_project)
         in
         if not vendored
         then
@@ -487,7 +492,7 @@ let gen_project_rules =
     in
     ()
   in
-  fun sctx project -> Rules.collect_unit (fun () -> rules sctx project)
+  fun sctx loaded_project -> Rules.collect_unit (fun () -> rules sctx loaded_project)
 ;;
 
 let gen_project_metadata_rules sctx loaded_project ~dir =
@@ -660,11 +665,8 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
               and+ project_metadata_rules =
                 gen_project_metadata_rules sctx loaded_project ~dir
               and+ project_rules =
-                if
-                  Path.Build.equal dir (Loaded_project.output_root loaded_project)
-                  && Build_partition.implicit_workspace_targets
-                       (Loaded_project.partition loaded_project)
-                then gen_project_rules sctx (Loaded_project.project loaded_project)
+                if Path.Build.equal dir (Loaded_project.output_root loaded_project)
+                then gen_project_rules sctx loaded_project
                 else Memo.return Rules.empty
               and+ compile_commands_rules =
                 let { Build_context.build_dir; _ } =

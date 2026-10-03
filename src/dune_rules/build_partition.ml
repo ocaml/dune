@@ -19,12 +19,6 @@ let build_context t = Context.build_context t.resolver
 let output_root t = t.output_root
 let purpose t = t.purpose
 
-let implicit_workspace_targets t =
-  match t.purpose with
-  | Workspace -> true
-  | Mounted -> false
-;;
-
 let to_dyn t =
   Dyn.record
     [ "resolver", Context.to_dyn_concise t.resolver

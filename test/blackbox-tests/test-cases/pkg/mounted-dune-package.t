@@ -309,3 +309,111 @@ both lib and libexec pforms.
   installed-name
   installed-name
   $ test ! -e _build/default/.lockfile/pkg/foo/src/unrelated
+
+Generated installation metadata uses the same rules as an ordinary workspace.
+Neither a generated opam file nor an odoc configuration requires an opaque build.
+BUG: mounted projects currently omit these rules.
+
+  $ mkdir ../install-metadata
+  $ cd ../install-metadata
+  $ make_dune_project 3.25
+  $ mkdir _foo
+  $ cat > _foo/dune-project <<'EOF'
+  > (lang dune 2.0)
+  > (name foo)
+  > (version 1.0)
+  > (generate_opam_files true)
+  > (package (name foo) (depends (doc-helper :with-doc)))
+  > EOF
+  $ echo '(install (section share) (files data))' > _foo/dune
+  $ echo payload > _foo/data
+  $ cp -R _foo _workspace
+  $ (cd _workspace && dune build --only-packages foo \
+  >   foo.opam foo.odoc-config.sexp)
+  $ cat _workspace/_build/default/foo.odoc-config.sexp
+  (packages doc-helper)
+  $ make_lockdir
+  $ make_lockpkg foo <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_foo))
+  > (build (run false))
+  > EOF
+  $ cat > dune <<'EOF'
+  > (rule (target opam) (action (copy %{pkg:foo:lib:opam} %{target})))
+  > (rule
+  >  (target odoc-config)
+  >  (action (copy %{pkg:foo:doc:odoc-config.sexp} %{target})))
+  > EOF
+  $ dune build opam odoc-config 2>error
+  [1]
+  $ grep '^Error:' error | sort
+  Error: No rule found for .lockfile/pkg/foo/foo.odoc-config.sexp
+  Error: No rule found for .lockfile/pkg/foo/foo.opam
+
+The opam-directory layout must also generate the file installed in dev profile,
+including when its visible source copy already exists.
+
+  $ cat > _foo/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (name foo)
+  > (version 1.0)
+  > (generate_opam_files true)
+  > (opam_file_location inside_opam_directory)
+  > (package (name foo) (depends (doc-helper :with-doc)))
+  > EOF
+  $ mkdir _foo/opam _workspace/opam
+  $ echo 'opam-version: "2.0"' > _foo/opam/foo.opam
+  $ cp _foo/dune-project _workspace/dune-project
+  $ mv _workspace/foo.opam _workspace/opam/foo.opam
+  $ (cd _workspace && dune build --only-packages foo \
+  >   opam/foo.opam.generated foo.odoc-config.sexp)
+  $ dune build opam 2>error
+  [1]
+  $ grep '^Error:' error | sort
+  Error: No rule found for .lockfile/pkg/foo/foo.odoc-config.sexp
+  Error: No rule found for .lockfile/pkg/foo/opam/foo.opam.generated
+
+A context-wide C compiler vendor probe must not build every package to look for
+its compiler. In particular, it must not build an opaque consumer while building
+that consumer's native foreign library dependency.
+
+  $ mkdir ../foreign-lookup
+  $ cd ../foreign-lookup
+  $ make_dune_project 3.25
+  $ make_lockdir
+  $ mkdir _native
+  $ cat > _native/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name native))
+  > EOF
+  $ cat > _native/dune <<'EOF'
+  > (library
+  >  (public_name native)
+  >  (foreign_stubs (language c) (names stubs)))
+  > EOF
+  $ echo 'external answer : unit -> int = "answer"' > _native/native.ml
+  $ cat > _native/stubs.c <<'EOF'
+  > #include <caml/mlvalues.h>
+  > CAMLprim value answer(value unit) { return Val_int(42); }
+  > EOF
+  $ make_lockpkg native <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_native))
+  > (build (run false))
+  > EOF
+  $ make_lockpkg opaque <<'EOF'
+  > (version 1.0)
+  > (depends native)
+  > (build
+  >  (progn
+  >   (echo opaque-built)
+  >   (write-file result ready)
+  >   (write-file opaque.install "share: [ \"result\" ]")))
+  > EOF
+  $ cat > dune <<'EOF'
+  > (rule (target result) (action (copy %{pkg:opaque:share:result} %{target})))
+  > EOF
+  $ dune build result 2>error
+  [1]
+  $ grep '^Error:' error
+  Error: Dependency cycle between:

@@ -824,6 +824,8 @@ let private_context ~dir components _ctx =
   | `Valid (_, ".binaries" :: rest) -> Memo.return (Bin_layout.gen_rules ~dir rest)
   | `Valid (ctx, ".packages" :: rest) -> Install_layout.gen_rules ctx ~dir rest
   | `Valid (ctx, ".opam" :: rest) -> Opam_rules.gen_rules ctx ~dir rest
+  | `Valid (ctx, ".dune-source" :: rest) ->
+    Pkg_sources.gen_script_source_rules ctx ~dir rest
   | `Valid (ctx, components) ->
     let+ lock_rules = Lock_rules.setup_rules ~dir ~components
     and+ pkg_rules = Pkg_rules.setup_rules ctx ~dir ~components in
@@ -836,6 +838,7 @@ let private_context ~dir components _ctx =
              [ Filename.of_string_exn ".packages"
              ; Filename.of_string_exn ".binaries"
              ; Filename.of_string_exn ".opam"
+             ; Filename.of_string_exn ".dune-source"
              ])
       | _ -> Gen_rules.no_rules
     in

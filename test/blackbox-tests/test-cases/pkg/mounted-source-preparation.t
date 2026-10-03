@@ -110,9 +110,8 @@ configuration must not be interpreted by the outer graph.
   $ build_pkg opaque
   opaque/1.0
 
-OCaml configuration scripts require a physical prepared directory. Until native
-registration supplies one, keep these packages opaque rather than evaluating
-scripts against the unprepared backing snapshot.
+OCaml configuration scripts read a physical prepared view, not the backing
+snapshot. Their ordinary rules run natively without invoking the opaque recipe.
 
   $ mkdir _script
   $ printf '(lang dune 3.25)\n(package (name scripted))\n' > _script/dune-project
@@ -146,19 +145,141 @@ scripts against the unprepared backing snapshot.
   >  (action (with-stdout-to %{target} (cat %{pkg:scripted:share:answer}))))
   > EOF
   $ dune build scripted-result
-  opaque-script-build
   $ cat _build/default/scripted-result
   overlay
-  $ test -f _build/default/.lockfile/pkg/scripted/.opam/scripted/target/cookie
+  $ test ! -e _build/default/.lockfile/pkg/scripted/.opam/scripted/target
   $ cat _script/value
   original
 
-Changes to the overlay still invalidate the recipe inputs.
+Changes to the overlay invalidate script evaluation and its generated rules.
 
   $ make_lockpkg_file scripted value <<'EOF'
   > changed overlay
   > EOF
   $ dune build scripted-result
-  opaque-script-build
   $ cat _build/default/scripted-result
   changed overlay
+
+Nested scripts also see parent paths and inputs excluded from rule generation.
+The snapshot includes substitutions, patched executable permissions, deletions,
+and an overlaid script, without demanding unrelated native build targets.
+
+  $ mkdir nested-script
+  $ cd nested-script
+  $ make_dune_project 3.25
+  $ mkdir -p _source/tools/version _source/ignored
+  $ cat > _source/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name nested))
+  > EOF
+  $ cat > _source/dune <<'EOF'
+  > (dirs :standard \ ignored)
+  > (install (section share) (files (tools/version/answer as answer)))
+  > (rule (target unrelated) (action (run false)))
+  > EOF
+  $ cat > _source/tools/version/dune <<'EOF'
+  > (* -*- tuareg -*- *)
+  > let () = failwith "unprepared script"
+  > EOF
+  $ echo 'unprepared data' > _source/ignored/value
+  $ echo '%{version}%' > _source/ignored/value.in
+  $ echo remove-me > _source/removed
+  $ cat > _source/ignored/tool <<'EOF'
+  > #!/bin/sh
+  > echo original
+  > EOF
+  $ chmod +x _source/ignored/tool
+  $ cat > _script-overlay <<'EOF'
+  > (* -*- tuareg -*- *)
+  > let () =
+  >   let input = open_in "../../ignored/value" in
+  >   let value = input_line input in
+  >   close_in input;
+  >   let tool =
+  >     Jbuild_plugin.V1.run_and_read_lines "../../ignored/tool" |> List.hd
+  >   in
+  >   let answer =
+  >     Printf.sprintf "%s/%s/%b" value tool (Sys.file_exists "../../removed")
+  >   in
+  >   Jbuild_plugin.V1.send
+  >     ("(rule (target answer) (action (write-file %{target} "
+  >      ^ Printf.sprintf "%S" answer ^ ")))")
+  > EOF
+  $ make_lockdir
+  $ make_lockpkg nested <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_source))
+  > (extra_sources (tools/version/dune (copy $PWD/_script-overlay)))
+  > (build
+  >  (progn
+  >   (patch prepare.patch)
+  >   (substitute ignored/value.in ignored/value)
+  >   (run false)))
+  > EOF
+  $ make_lockpkg_file nested prepare.patch <<'EOF'
+  > --- a/ignored/tool
+  > +++ b/ignored/tool
+  > @@ -1,2 +1,2 @@
+  >  #!/bin/sh
+  > -echo original
+  > +echo patched
+  > --- a/removed
+  > +++ /dev/null
+  > @@ -1 +0,0 @@
+  > -remove-me
+  > EOF
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target result)
+  >  (action (copy %{pkg:nested:share:answer} %{target})))
+  > (rule (target standalone) (action (write-file %{target} ok)))
+  > EOF
+  $ dune build result
+  $ cat _build/default/result
+  1.0/patched/false
+  $ test ! -e _build/default/.lockfile/pkg/nested/.opam/nested/target
+  $ test ! -e _build/default/.lockfile/pkg/nested/unrelated
+  $ cat _source/ignored/value _source/removed
+  unprepared data
+  remove-me
+  $ _source/ignored/tool
+  original
+
+Changes to the original inputs invalidate evaluation too. Removing the patch
+must restore the deleted file and executable from the original source view.
+
+  $ echo 'updated/%{version}%' > _source/ignored/value.in
+  $ dune build result
+  $ cat _build/default/result
+  updated/1.0/patched/false
+  $ make_lockpkg nested <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_source))
+  > (extra_sources (tools/version/dune (copy $PWD/_script-overlay)))
+  > (build (progn (substitute ignored/value.in ignored/value) (run false)))
+  > EOF
+  $ dune build result
+  $ cat _build/default/result
+  updated/1.0/original/true
+  $ rm _source/removed
+  $ dune build result
+  $ cat _build/default/result
+  updated/1.0/original/false
+
+Errors in generated stanzas are saved for demand, not used to select the opaque
+recipe. Repairing the script makes the native rules available again.
+
+  $ cp _script-overlay _valid-script
+  $ cat > _script-overlay <<'EOF'
+  > (* -*- tuareg -*- *)
+  > let () = Jbuild_plugin.V1.send "(broken-stanza)"
+  > EOF
+  $ dune build standalone
+  $ dune build result 2>error
+  [1]
+  $ grep '^Error:' error
+  Error: Unknown constructor broken-stanza
+  $ cp _valid-script _script-overlay
+  $ dune build result
+  $ cat _build/default/result
+  updated/1.0/original/false

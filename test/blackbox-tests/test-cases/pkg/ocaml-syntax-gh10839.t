@@ -30,7 +30,7 @@ Dune file in OCaml syntax and a files directory should work
 
 A native dependency's OCaml-syntax Dune file must be evaluated with the locked
 compiler. Restored from the mounted prototype: the opaque recipe must not run.
-BUG: the script currently makes the whole package opaque.
+The mock compiler is local to each workspace, not a user-wide toolchain install.
 
   $ mkdir compiler-for-script
   $ cd compiler-for-script
@@ -51,24 +51,24 @@ BUG: the script currently makes the whole package opaque.
   > |}
   > EOF
   $ make_lockdir
-  $ echo '(ocaml ocaml-base-compiler)' >> dune.lock/lock.dune
-  $ make_lockpkg ocaml-base-compiler <<EOF
+  $ echo '(ocaml script-compiler)' >> dune.lock/lock.dune
+  $ make_lockpkg script-compiler <<EOF
   > (version 1.0)
   > (install
   >  (progn
   >   (system "mkdir -p %{bin}")
-  >   (run cp $(command -v ocamlc) %{bin}/ocamlc)))
+  >   (run cp $(command -v ocamlc) $(command -v ocaml) %{bin})))
   > EOF
   $ make_lockpkg scripted <<EOF
   > (version 1.0)
-  > (depends ocaml-base-compiler)
+  > (depends script-compiler)
   > (source (copy $PWD/_scripted))
   > (build (run false))
   > EOF
-  $ dune build @pkg-install 2>error
-  [1]
-  $ grep '^Error:' error
-  Error: Logs for package scripted
+  $ dune build @pkg-install
+  $ cat _build/default/.lockfile/pkg/scripted/result
+  evaluated
+  $ test ! -e _build/default/.lockfile/pkg/scripted/.opam/scripted/target
 
 The workspace Dune file itself may also need the locked compiler. Its rules
 must not be needed to materialize that compiler for the first time.
@@ -83,15 +83,14 @@ must not be needed to materialize that compiler for the first time.
   > |}
   > EOF
   $ make_lockdir
-  $ echo '(ocaml ocaml-base-compiler)' >> dune.lock/lock.dune
-  $ make_lockpkg ocaml-base-compiler <<EOF
+  $ echo '(ocaml script-compiler)' >> dune.lock/lock.dune
+  $ make_lockpkg script-compiler <<EOF
   > (version 1.0)
   > (install
   >  (progn
   >   (system "mkdir -p %{bin}")
-  >   (run cp $(command -v ocamlc) %{bin}/ocamlc)))
+  >   (run cp $(command -v ocamlc) $(command -v ocaml) %{bin})))
   > EOF
-  $ dune build result 2>error
-  [1]
-  $ grep '^Error:' error
-  Error: Dependency cycle between:
+  $ dune build result
+  $ cat _build/default/result
+  workspace-evaluated

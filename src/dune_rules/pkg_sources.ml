@@ -528,10 +528,7 @@ let apply_source_transformations candidates candidate solver_env layers transfor
   loop layers transformations
 ;;
 
-module Scan_dune_files =
-  Source_tree.Rules.Dir.Make_map_reduce
-    (Memo)
-    (Monoid.Product (Monoid.Exists) (Monoid.Exists))
+module Scan_dune_files = Source_tree.Rules.Dir.Make_map_reduce (Memo) (Monoid.Exists)
 
 let prepare candidates candidate =
   let* direct = Candidate.dependencies candidate in
@@ -578,31 +575,25 @@ let prepare candidates candidate =
           let* tree = Source_tree.Rules.Mounted.load ~logical_root ~layers in
           let projects = Source_tree.Rules.Mounted.projects tree in
           let name = Candidate.name candidate in
-          let* has_dune_file, has_script =
+          let* has_dune_file =
             Scan_dune_files.map_reduce
               (Source_tree.Rules.Mounted.root tree)
               ~traverse:Source_dir_status.Set.all
               ~trace_event_name:"Package source classification"
               ~f:(fun dir ->
                 match Source_tree.Rules.Dir.dune_file dir with
-                | None -> Memo.return (false, false)
-                | Some file ->
-                  (match Source.Dune_file.kind file with
-                   | Ocaml_script _ -> Memo.return (false, true)
-                   | Plain ->
-                     let project = Source_tree.Rules.Dir.project dir in
-                     let+ enabled =
-                       match
-                         Package.Name.Map.find
-                           (Dune_project.including_hidden_packages project)
-                           name
-                       with
-                       | None -> Memo.return false
-                       | Some package -> Package_enabled.eval package
-                     in
-                     enabled, false))
+                | None -> Memo.return false
+                | Some _ ->
+                  let project = Source_tree.Rules.Dir.project dir in
+                  (match
+                     Package.Name.Map.find
+                       (Dune_project.including_hidden_packages project)
+                       name
+                   with
+                   | None -> Memo.return false
+                   | Some package -> Package_enabled.eval package))
           in
-          if has_script || not has_dune_file
+          if not has_dune_file
           then Memo.return opaque
           else (
             let projects =
@@ -639,4 +630,81 @@ let find_mounted context name =
   match Package.Name.Map.find mounted name with
   | None -> Memo.return None
   | Some mounted -> Memo.Lazy.force mounted >>| Option.some
+;;
+
+let script_source context name =
+  Path.Build.L.relative
+    Private_context.t.build_dir
+    [ Context_name.to_string context
+    ; ".dune-source"
+    ; Package.Name.to_string name
+    ; "source"
+    ]
+;;
+
+let script_source_rule tree ~target =
+  let* files, directories = Source_tree.Rules.Mounted.files_and_directories tree in
+  let* copies =
+    Memo.List.map files ~f:(fun file ->
+      let local =
+        Path.drop_prefix_exn
+          (Source_tree.Rules.File.path file)
+          ~prefix:(Path.build (Source_tree.Rules.Mounted.source_root tree))
+      in
+      let dst = Path.Build.append_local target local in
+      let+ materialization = Source_tree.Rules.File.materialization file in
+      match materialization with
+      | None ->
+        Code_error.raise
+          "Prepared script source has no materialization"
+          [ "file", Source_path.to_dyn (Source_tree.Rules.File.source_path file) ]
+      | Some (Copy src) -> Action_builder.copy ~src ~dst
+      | Some (Write { contents; executable; dependencies }) ->
+        let perm =
+          if executable
+          then Dune_lang.Action.File_perm.Executable
+          else Dune_lang.Action.File_perm.Normal
+        in
+        let { Action_builder.With_targets.build; targets } =
+          Action_builder.write_file ~perm dst contents
+        in
+        let build =
+          let open Action_builder.O in
+          let* () = Action_builder.paths dependencies in
+          build
+        in
+        { Action_builder.With_targets.build; targets })
+  in
+  let mkdirs =
+    List.map directories ~f:(fun local ->
+      Action.mkdir (Path.Build.append_local target local))
+    |> Action.progn
+    |> Action.Full.make
+    |> Action_builder.With_targets.return
+  in
+  let { Action_builder.With_targets.build; targets = _ } =
+    Action_builder.progn (mkdirs :: copies)
+  in
+  let { Action_builder.With_targets.build; targets } =
+    Action_builder.with_no_targets build
+    |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
+  in
+  Rules.Produce.rule (Rule.make ~targets build)
+;;
+
+let gen_script_source_rules context ~dir components =
+  let module G = Build_config.Gen_rules in
+  match components with
+  | [] -> G.make_empty ~dir Subdir_set.all |> Memo.return
+  | [ name ] ->
+    let name = Package.Name.of_string name in
+    let+ mounted = find_mounted context name in
+    (match Option.bind mounted ~f:Mounted.tree with
+     | None -> G.no_rules
+     | Some tree ->
+       let target = script_source context name in
+       G.make
+         ~directory_targets:(Path.Build.Map.singleton target Loc.none)
+         (Rules.collect_unit (fun () -> script_source_rule tree ~target)))
+  | _ -> G.Redirect_to_parent G.Rules.empty |> Memo.return
 ;;

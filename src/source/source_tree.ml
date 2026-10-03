@@ -580,6 +580,7 @@ module Rules = struct
 
     type t =
       { logical_root : Path.Build.t
+      ; layers : Layer.t list
       ; root : Dir.t
       ; projects : (Dune_project.t * Dir.t) list
       }
@@ -671,6 +672,25 @@ module Rules = struct
       in
       Memo.return
         (Filename.Array.Set.of_list files, Filename.Array.Set.of_list sub_dirs, physical)
+    ;;
+
+    let files_and_directories t =
+      let rec loop local =
+        let logical_path = Path.Build.append_local t.logical_root local in
+        let* files, dirs, _ = directory_contents ~logical_path t.layers in
+        let files =
+          Filename.Array.Set.to_list_map files ~f:(fun name ->
+            File.mounted
+              ~logical:(Path.Build.relative_fname logical_path name)
+              ~layers:t.layers)
+        in
+        let+ children =
+          Filename.Array.Set.to_list dirs
+          |> Memo.List.map ~f:(fun dir -> loop (Path.Local.relative_fname local dir))
+        in
+        files @ List.concat_map children ~f:fst, local :: List.concat_map children ~f:snd
+      in
+      loop Path.Local.root
     ;;
 
     let load_impl (logical_root, layers) =
@@ -819,7 +839,7 @@ module Rules = struct
           ~parent_dune_file:None
           ~parent_project:None
       in
-      { logical_root; root = Dir.Mounted root; projects }
+      { logical_root; layers; root = Dir.Mounted root; projects }
     ;;
 
     let load =

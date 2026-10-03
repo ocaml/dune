@@ -136,6 +136,10 @@ module Rules : sig
 
     val root : t -> Dir.t
     val projects : t -> (Dune_project.t * Dir.t) list
+
+    (** All prepared inputs, including files excluded from rule generation.
+        Directory names are relative to [source_root]. *)
+    val files_and_directories : t -> (File.t list * Path.Local.t list) Memo.t
   end
 end
 

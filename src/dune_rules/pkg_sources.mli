@@ -32,3 +32,13 @@ end
 
 val mounted : Context_name.t -> Mounted.t list Memo.t
 val find_mounted : Context_name.t -> Package.Name.t -> Mounted.t option Memo.t
+
+(** A physical prepared view for OCaml configuration scripts. Its rules do not
+    depend on loading the Dune files that the scripts generate. *)
+val script_source : Context_name.t -> Package.Name.t -> Path.Build.t
+
+val gen_script_source_rules
+  :  Context_name.t
+  -> dir:Path.Build.t
+  -> string list
+  -> Build_config.Gen_rules.t Memo.t

@@ -474,15 +474,25 @@ let stanzas_of_package =
 let source_tree_dir ~dir =
   match Path.Build.extract_build_context dir with
   | None -> Memo.return None
-  | Some (context, _) ->
-    let* valid =
-      Per_context.valid (Context_name.of_string (Filename.to_string context))
-    in
+  | Some (context, source) ->
+    let context = Context_name.of_string (Filename.to_string context) in
+    let* valid = Per_context.valid context in
     if not valid
     then Memo.return None
-    else
-      let* project = find_loaded_project ~dir in
-      Loaded_project.source_tree_dir project dir
+    else (
+      match Pkg_sources.package_of_artifact_path dir with
+      | None -> Source_tree.find_dir source >>| Option.map ~f:Source_tree.Rules.Dir.source
+      | Some package ->
+        let* mounted = Pkg_sources.find_mounted context package in
+        (match Option.bind mounted ~f:Pkg_sources.Mounted.tree with
+         | None -> Memo.return None
+         | Some tree ->
+           let local =
+             Path.drop_prefix_exn
+               (Path.build dir)
+               ~prefix:(Path.build (Source_tree.Rules.Mounted.source_root tree))
+           in
+           Source_tree.Rules.Dir.find_dir (Source_tree.Rules.Mounted.root tree) local))
 ;;
 
 let find_loaded_project_by_identity ~context ~identity =

@@ -4,17 +4,19 @@ open Action_builder.O
 let materialize_ordered context names =
   let packages = Package.Name.Set.of_list names in
   let prefix = Install_layout.root context packages |> Path.build in
-  let* local_packages =
-    Action_builder.of_memo
-      (let open Memo.O in
-       let+ packages = Dune_load.packages_for_context context
-       and+ candidates = Pkg_sources.candidates context in
-       List.fold_left candidates ~init:packages ~f:(fun packages candidate ->
-         Package.Name.Map.remove packages (Pkg_sources.Candidate.name candidate)))
-  in
   let* dependencies =
     Action_builder.List.map names ~f:(fun name ->
-      match Package.Name.Map.find local_packages name with
+      let* local_package =
+        Action_builder.of_memo
+          (let open Memo.O in
+           let* candidate = Pkg_sources.find_candidate context name in
+           match candidate with
+           | Some _ -> Memo.return None
+           | None ->
+             let+ packages = Dune_load.packages_for_context context in
+             Package.Name.Map.find packages name)
+      in
+      match local_package with
       | None ->
         let* dependency = Action_builder.of_memo (Pkg_rules.dependency context name) in
         (match dependency with

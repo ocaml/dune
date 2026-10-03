@@ -104,6 +104,10 @@
   broken-symlink-in-dependency.t))
 
 (cram
+ (deps %{bin:odoc} %{bin:sherlodoc})
+ (applies_to mounted-rule-parity.t))
+
+(cram
  (deps %{bin:ocaml_index})
  (applies_to ocaml-index-private-lib-gh10985.t))
 

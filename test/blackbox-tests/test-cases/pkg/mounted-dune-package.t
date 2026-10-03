@@ -420,14 +420,20 @@ that consumer's native foreign library dependency.
   > (depends native)
   > (build
   >  (progn
-  >   (echo opaque-built)
+  >   (system "echo opaque-built")
   >   (write-file result ready)
   >   (write-file opaque.install "share: [ \"result\" ]")))
+  > EOF
+  $ make_lockpkg unrelated <<'EOF'
+  > (version 1.0)
+  > (build (run false))
   > EOF
   $ cat > dune <<'EOF'
   > (rule (target result) (action (copy %{pkg:opaque:share:result} %{target})))
   > EOF
-  $ dune build result 2>error
-  [1]
-  $ grep '^Error:' error
-  Error: Dependency cycle between:
+  $ dune build result
+  opaque-built
+  $ cat _build/default/result
+  ready
+  $ test ! -e _build/default/.lockfile/pkg/native/.opam/native/target
+  $ test ! -e _build/default/.lockfile/pkg/unrelated/.opam/unrelated/target

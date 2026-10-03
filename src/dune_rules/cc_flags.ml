@@ -133,7 +133,9 @@ let resolve_c_compiler context ~dir program =
   | Relative_to_current_dir -> Memo.return (Ok (Path.relative (Path.build dir) program))
   | In_path ->
     let program = Filename.of_string_exn program in
-    Context.which context program
+    (* This context-wide probe has no package scope. Looking through every locked
+       package can build a consumer of the foreign library being compiled. *)
+    Which.which ~path:(Context.path context) program
     >>| (function
      | Some path -> Ok path
      | None ->

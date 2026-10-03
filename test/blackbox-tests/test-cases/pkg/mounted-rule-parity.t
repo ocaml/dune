@@ -511,3 +511,40 @@ Changes to sibling inputs invalidate both uses of the glob.
   changed
   $ cat _build/default/installed
   changed
+
+Project-local installation targets and aliases are ordinary rules too. Selecting
+one package must not create installation targets for its unselected siblings.
+
+  $ cat >> _source/project/dune-project <<'EOF'
+  > (package (name omitted))
+  > EOF
+  $ cat > _source/project/dune <<'EOF'
+  > (library (public_name foo))
+  > (env (_ (binaries (index-tool as ocaml-index))))
+  > EOF
+  $ echo 'let value = 42' > _source/project/foo.ml
+  $ cat > _source/project/index-tool <<'EOF'
+  > #!/bin/sh
+  > test "$1" = aggregate || exit 1
+  > shift
+  > test "$1" = -o || exit 1
+  > touch "$2"
+  > EOF
+  $ chmod +x _source/project/index-tool
+  $ (cd _source && dune build --root . --only-packages foo \
+  >   project/foo.install @project/install @project/ocaml-index)
+  $ test -f _source/_build/default/project/.foo.objs/cctx.ocaml-index
+  $ test ! -e _source/_build/default/project/omitted.install
+
+These built-in aliases currently succeed without doing the work.
+
+  $ dune build @_build/default/.lockfile/pkg/foo/project/install
+  $ test -f _build/default/.lockfile/pkg/foo/project/foo.install
+  [1]
+  $ dune build @_build/default/.lockfile/pkg/foo/project/ocaml-index
+  $ test -f _build/default/.lockfile/pkg/foo/project/.foo.objs/cctx.ocaml-index
+  [1]
+  $ dune build _build/default/.lockfile/pkg/foo/project/foo.install 2>error
+  [1]
+  $ grep '^Error:' error
+  Error: Don't know how to build

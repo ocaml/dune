@@ -124,7 +124,8 @@ scripts against the unprepared backing snapshot.
   >   let value = input_line input in
   >   close_in input;
   >   Jbuild_plugin.V1.send
-  >     ("(rule (target answer) (action (write-file %{target} " ^ value ^ ")))"
+  >     ("(rule (target answer) (action (write-file %{target} "
+  >      ^ Printf.sprintf "%S" value ^ ")))"
   >      ^ "(install (section share) (files answer))")
   > EOF
   $ make_lockpkg scripted <<EOF
@@ -132,6 +133,7 @@ scripts against the unprepared backing snapshot.
   > (source (copy $PWD/_script))
   > (build
   >  (progn
+  >   (system "echo opaque-script-build")
   >   (system "cp value answer")
   >   (write-file scripted.install "share: [ \"answer\" ]")))
   > EOF
@@ -144,6 +146,7 @@ scripts against the unprepared backing snapshot.
   >  (action (with-stdout-to %{target} (cat %{pkg:scripted:share:answer}))))
   > EOF
   $ dune build scripted-result
+  opaque-script-build
   $ cat _build/default/scripted-result
   overlay
   $ test -f _build/default/.lockfile/pkg/scripted/.opam/scripted/target/cookie
@@ -156,5 +159,6 @@ Changes to the overlay still invalidate the recipe inputs.
   > changed overlay
   > EOF
   $ dune build scripted-result
+  opaque-script-build
   $ cat _build/default/scripted-result
   changed overlay

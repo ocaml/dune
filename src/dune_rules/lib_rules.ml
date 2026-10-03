@@ -161,6 +161,8 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
 let ocamlmklib
       ~loc
       ~c_library_flags
+      ~env
+      ~sandbox
       ~sctx
       ~dir
       ~o_files
@@ -176,8 +178,9 @@ let ocamlmklib
         c_library_flags
         ~f:(cclibs ocaml.lib_config.ccomp_type ~flag:"-ldopt")
     in
-    fun ~custom ~sandbox targets ->
+    fun ~custom ~rule_sandbox targets ->
       let ctx = Super_context.context sctx in
+      let sandbox = Sandbox_config.inter sandbox rule_sandbox in
       [ Command.Args.A "-g"
       ; (if custom then A "-custom" else Command.Args.empty)
       ; A "-o"
@@ -189,7 +192,11 @@ let ocamlmklib
       ; Dyn cclibs
       ; Hidden_targets targets
       ]
-      |> Command.run ~dir:(Path.build (Context.build_dir ctx)) ~sandbox ocaml.ocamlmklib
+      |> Command.run
+           ~dir:(Path.build (Context.build_dir ctx))
+           ~env
+           ~sandbox
+           ocaml.ocamlmklib
       |> Super_context.add_rule sctx ~dir ~loc
   in
   let { Lib_config.ext_lib; ext_dll; _ } = ocaml.lib_config in
@@ -207,11 +214,14 @@ let ocamlmklib
     >>| (function
      | true -> [ static_target; dynamic_target ]
      | false -> [ static_target ])
-    >>= build ~sandbox:Sandbox_config.no_special_requirements ~custom:false
+    >>= build ~rule_sandbox:Sandbox_config.no_special_requirements ~custom:false
   else
     (* Build the static target only by passing the [-custom] flag. *)
     let* () =
-      build ~sandbox:Sandbox_config.no_special_requirements ~custom:true [ static_target ]
+      build
+        ~rule_sandbox:Sandbox_config.no_special_requirements
+        ~custom:true
+        [ static_target ]
     in
     (* The second rule (below) may fail on some platforms, but the build will
        succeed as long as the resulting dynamic library isn't actually needed
@@ -228,7 +238,7 @@ let ocamlmklib
       Context.dynamically_linked_foreign_archives ctx
     in
     Memo.when_ dynamically_linked_foreign_archives (fun () ->
-      build ~sandbox:Sandbox_config.needs_sandboxing ~custom:false [ dynamic_target ])
+      build ~rule_sandbox:Sandbox_config.needs_sandboxing ~custom:false [ dynamic_target ])
 ;;
 
 (* Build a static and a dynamic archive for a foreign library. Note that the
@@ -279,6 +289,8 @@ let foreign_rules (library : Foreign_library.t) ~sctx ~expander ~dir ~dir_conten
     ~archive_name
     ~loc:library.stubs.loc
     ~c_library_flags
+    ~env:(Action_builder.return Env.empty)
+    ~sandbox:Sandbox_config.no_special_requirements
     ~sctx
     ~dir
     ~o_files
@@ -309,6 +321,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
   then Memo.return ()
   else (
     let modes = Compilation_context.modes cctx |> Option.value_exn in
+    let env, sandbox = Ctypes_rules.link_deps ~expander ~buildable:lib.buildable in
     let ocamlmklib =
       let build_targets_together =
         modes.native
@@ -343,6 +356,8 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
         ~sctx
         ~dir
         ~c_library_flags
+        ~env
+        ~sandbox
         ~build_targets_together
     in
     let for_all_modes =

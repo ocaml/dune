@@ -1453,13 +1453,22 @@ end = struct
                in this position."
           ]
     in
+    let instrumentation_backend =
+      instrumentation_backend db.instrument_with resolve_forbid_ignore
+    in
+    let lib_deps ~for_ =
+      let open Memo.O in
+      let+ instrumentation_libraries =
+        Lib_info.preprocess info ~for_
+        |> Instrumentation.active_libraries ~instrumentation_backend
+        |> Resolve.Memo.read_memo
+      in
+      Lib_info.requires info ~for_ @ instrumentation_libraries
+    in
     let* parameters = resolve_parameters db ~private_deps info in
     let* resolved =
       let open Resolve.Memo.O in
       let* pps =
-        let instrumentation_backend =
-          instrumentation_backend db.instrument_with resolve_forbid_ignore
-        in
         let modes = Compilation_mode.Set.of_lib_mode_set (Lib_info.modes info) in
         Memo.parallel_map (Compilation_mode.Set.to_list modes) ~f:(fun for_ ->
           Lib_info.preprocess info ~for_
@@ -1474,14 +1483,14 @@ end = struct
         Compilation_mode.Per_mode.map pps ~f:(fun ~for_ pps ->
           let open Memo.O in
           let+ resolved =
-            Lib_info.requires info ~for_
-            |> resolve_deps_and_add_runtime_deps
-                 db
-                 ~private_deps
-                 ~parameters
-                 ~dune_version
-                 ~pps
-                 ~for_
+            lib_deps ~for_
+            >>= resolve_deps_and_add_runtime_deps
+                  db
+                  ~private_deps
+                  ~parameters
+                  ~dune_version
+                  ~pps
+                  ~for_
           in
           resolved)
       in
@@ -1596,8 +1605,7 @@ end = struct
       Compilation_mode.Per_mode.from_fun (fun ~for_ ->
         let open Memo.O in
         let+ complex =
-          Lib_info.requires info ~for_
-          |> resolve_complex_deps db ~private_deps ~parameters:[] ~for_
+          lib_deps ~for_ >>= resolve_complex_deps db ~private_deps ~parameters:[] ~for_
         in
         Resolved.user_written complex)
     in
@@ -2648,6 +2656,13 @@ module DB = struct
       ~instrumentation_backend:(instrumentation_backend t)
     |> Resolve.Memo.read_memo
     |> Memo.map ~f:Preprocess.Per_module.pps
+  ;;
+
+  let instrumentation_libraries t preprocess =
+    Instrumentation.active_libraries
+      preprocess
+      ~instrumentation_backend:(instrumentation_backend t)
+    |> Resolve.Memo.read_memo
   ;;
 end
 

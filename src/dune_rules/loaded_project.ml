@@ -58,6 +58,7 @@ type t =
   ; partition : Build_partition.t
   ; output_root : Path.Build.t
   ; visible_packages : Package.Name.Set.t option
+  ; stanza_mask : Package.Name.Set.t option
   }
 
 let create
@@ -68,6 +69,7 @@ let create
       ~partition
       ~output_root
       ~visible_packages
+      ~stanza_mask
   =
   if
     not
@@ -96,6 +98,7 @@ let create
   ; partition
   ; output_root
   ; visible_packages
+  ; stanza_mask
   }
 ;;
 
@@ -106,7 +109,14 @@ let source_tree_root t = t.source_tree_root
 let partition t = t.partition
 let output_root t = t.output_root
 let visible_packages t = t.visible_packages
-let hide_packages t = { t with visible_packages = Some Package.Name.Set.empty }
+let stanza_mask t = t.stanza_mask
+
+let hide_packages t =
+  { t with
+    visible_packages = Some Package.Name.Set.empty
+  ; stanza_mask = Some Package.Name.Set.empty
+  }
+;;
 
 let owner t =
   match t.identity with
@@ -153,5 +163,6 @@ let to_dyn t =
     ; "partition", Build_partition.to_dyn t.partition
     ; "output_root", Path.Build.to_dyn t.output_root
     ; "visible_packages", Dyn.option Package.Name.Set.to_dyn t.visible_packages
+    ; "stanza_mask", Dyn.option Package.Name.Set.to_dyn t.stanza_mask
     ]
 ;;

@@ -26,7 +26,7 @@ module Mounted_dune_files =
          type t = Source_tree.Rules.Dir.t * Source.Dune_file.t
        end))
 
-let load_mounted context mask =
+let load_mounted context =
   let* mounted = Pkg_sources.mounted (Context.name context) in
   Memo.List.map mounted ~f:(fun mounted ->
     let owner = Pkg_sources.Mounted.candidate mounted |> Pkg_sources.Candidate.name in
@@ -77,6 +77,7 @@ let load_mounted context mask =
                      ~partition
                      ~output_root:(Path.Build.append_local artifact_root project_root)
                      ~visible_packages:(Some visible_packages)
+                     ~stanza_mask:(Some visible_packages)
                    |> Memo.return)
                in
                let projects_by_root =
@@ -100,7 +101,7 @@ let load_mounted context mask =
                in
                projects, files
            in
-           let* eval = Dune_file.eval files mask in
+           let* eval = Dune_file.eval files in
            let+ files = eval (Context.name context) in
            projects, files))
     in
@@ -208,6 +209,11 @@ let loaded =
         let* workspace = load ()
         and* context = Context.DB.get context_name in
         let partition = Build_partition.workspace context in
+        let stanza_mask =
+          match Only_packages.enumerate workspace.mask with
+          | `All -> None
+          | `Set names -> Some names
+        in
         let projects =
           List.map workspace.projects ~f:(fun project ->
             let source_root = Dune_project.root project in
@@ -220,7 +226,8 @@ let loaded =
                 (Source_path.Map.find_exn workspace.project_dirs source_root)
               ~partition
               ~output_root:(Path.Build.append_source (Context.build_dir context) root)
-              ~visible_packages:None)
+              ~visible_packages:None
+              ~stanza_mask)
         in
         let projects_by_root =
           Source_path.Map.of_list_map_exn projects ~f:(fun project ->
@@ -233,9 +240,7 @@ let loaded =
             in
             project, dir, dune_file)
         in
-        let* mounted_projects, mounted_files, mounted_errors =
-          load_mounted context workspace.mask
-        in
+        let* mounted_projects, mounted_files, mounted_errors = load_mounted context in
         let* () =
           let local_packages =
             List.fold_left
@@ -275,7 +280,7 @@ let loaded =
                   ; Pp.textf "- %s" (Loc.to_file_colon_line (Package.loc second))
                   ]))
         in
-        let* eval = Dune_file.eval source_dune_files workspace.mask in
+        let* eval = Dune_file.eval source_dune_files in
         let+ dune_files = eval context_name in
         let dune_files = dune_files @ mounted_files in
         let projects_by_output_root =
@@ -378,10 +383,10 @@ let mask () =
 ;;
 
 let mask_for_dir ~dir =
-  let* project = find_loaded_project ~dir in
-  match Loaded_project.visible_packages project with
-  | Some packages -> Memo.return (`Set packages)
-  | None -> mask () >>| Only_packages.enumerate
+  let+ project = find_loaded_project ~dir in
+  match Loaded_project.stanza_mask project with
+  | Some packages -> `Set packages
+  | None -> `All
 ;;
 
 let packages () =

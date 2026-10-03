@@ -21,6 +21,7 @@ val create
   -> partition:Build_partition.t
   -> output_root:Path.Build.t
   -> visible_packages:Package.Name.Set.t option
+  -> stanza_mask:Package.Name.Set.t option
   -> t
 
 val project : t -> Dune_project.t
@@ -31,6 +32,11 @@ val source_tree_dir : t -> Path.Build.t -> Source_tree.Rules.Dir.t option Memo.t
 val partition : t -> Build_partition.t
 val output_root : t -> Path.Build.t
 val visible_packages : t -> Package.Name.Set.t option
+
+(** Build selection is separate from admitted package definitions: for example,
+    disabled packages still need their opam metadata generated. *)
+val stanza_mask : t -> Package.Name.Set.t option
+
 val hide_packages : t -> t
 
 (** The selected package whose resolver this project uses, if any. Authored

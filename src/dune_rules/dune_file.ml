@@ -47,20 +47,7 @@ module Mask = struct
         | _ -> Drop)
   ;;
 
-  let of_only_packages_mask mask =
-    match Only_packages.enumerate mask with
-    | `All -> True
-    | `Set visible_pkgs ->
-      Fun
-        (fun stanza ->
-          match Stanzas.stanza_package stanza with
-          | None -> true
-          | Some package ->
-            let name = Package.Id.name package in
-            Package.Name.Set.mem visible_pkgs name)
-  ;;
-
-  let of_visible_packages = function
+  let of_packages = function
     | None -> True
     | Some visible_pkgs ->
       Fun
@@ -489,8 +476,7 @@ module Eval = struct
     }
   ;;
 
-  let eval dune_files workspace_mask =
-    let workspace_mask = Mask.of_only_packages_mask workspace_mask in
+  let eval dune_files =
     (* CR-someday rgrinberg: all this evaluation complexity is to share
        some work in multi context builds. Is it worth it? *)
     let+ dune_syntax, ocaml_syntax =
@@ -498,15 +484,9 @@ module Eval = struct
       |> Memo.parallel_map ~f:(fun (loaded_project, dir, dune_file) ->
         let project = Loaded_project.project loaded_project in
         let mask =
-          match Build_partition.purpose (Loaded_project.partition loaded_project) with
-          | Workspace -> workspace_mask
-          | Mounted -> Mask.True
-        in
-        let mask = Mask.combine mask (Mask.ignore_promote project) in
-        let mask =
           Mask.combine
-            mask
-            (Mask.of_visible_packages (Loaded_project.visible_packages loaded_project))
+            (Mask.ignore_promote project)
+            (Mask.of_packages (Loaded_project.stanza_mask loaded_project))
         in
         let eval = { loaded_project; source_dir = dir; project; mask } in
         context_independent ~eval dune_file)

@@ -18,7 +18,6 @@ val fold_static_stanzas : t list -> init:'acc -> f:(t -> Stanza.t -> 'acc -> 'ac
 
 val eval
   :  (Loaded_project.t * Source_tree.Rules.Dir.t * Source.Dune_file.t) Appendable_list.t
-  -> Only_packages.t
   -> t list Per_context.t Memo.t
 
 module Memo_fold : sig

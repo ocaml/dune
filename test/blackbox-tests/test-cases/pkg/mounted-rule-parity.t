@@ -572,13 +572,15 @@ ordinary source/package inventories, including the selected nested project.
   >  (target readme)
   >  (action (copy %{pkg:foo:doc:README.md} %{target})))
   > EOF
-  $ dune build readme 2>error
-  [1]
-  $ grep '^Error:' error
-  Error: File README.md not found in section doc of package foo
-  $ dune build @_build/default/.lockfile/pkg/foo/project/doc 2>error
-  [1]
-  $ grep '^Error:' error | sort
-  Error: No rule found for _doc/_odoc/pkg/foo/page-guide.odoc
-  Error: No rule found for _doc/_odoc/pkg/foo/page-index.odoc
-  Error: No rule found for alias _doc/_odoc/pkg/foo/.odoc-all
+  $ dune build readme @_build/default/.lockfile/pkg/foo/project/doc
+  $ cat _build/default/readme
+  package readme
+  $ test -f _build/default/_doc/_html/foo/guide.html
+  $ dune build _build/default/.lockfile/pkg/foo/project/foo.install
+  $ grep -q 'README.md' _build/default/.lockfile/pkg/foo/project/foo.install
+  $ grep -q 'LICENSE' _build/default/.lockfile/pkg/foo/project/foo.install
+  $ echo 'updated readme' > _source/project/README.md
+  $ dune build readme
+  $ cat _build/default/readme
+  updated readme
+  $ test ! -e _build/default/.lockfile/pkg/foo/.opam/foo/target

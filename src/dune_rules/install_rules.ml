@@ -696,19 +696,13 @@ end = struct
           | None -> deprecated_meta_and_dune_files
           | Some opam_file -> file Lib opam_file "opam" :: deprecated_meta_and_dune_files
         in
-        let* source_dir =
-          match Package.dir pkg with
-          | Build _ -> Memo.return None
-          | Workspace pkg_dir -> Source_tree.find_dir pkg_dir
-        in
+        let pkg_dir = Package_paths.build_dir ctx pkg in
+        let* source_dir = Dune_load.source_tree_dir ~dir:pkg_dir in
         match source_dir with
         | None -> Memo.return init
         | Some dir ->
-          let pkg_dir =
-            Path.Build.append_source ctx.build_dir (Source_tree.Dir.path dir)
-          in
           Memo.return
-            (Source_tree.Dir.filenames dir
+            (Source_tree.Rules.Dir.filenames dir
              |> Filename.Array.Set.fold ~init ~f:(fun fn acc ->
                if is_odig_doc_file (Filename.to_string fn)
                then (

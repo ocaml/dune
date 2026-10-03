@@ -455,6 +455,51 @@ Neither vendoring nor mounting may suppress actual type errors.
   [1]
   $ grep -q '^Error:' mounted-type
 
+The dependency warning context also applies while decoding stanzas, not only
+when compiling OCaml. no_keep_locs is a warning whose producer raises an error
+in recent language versions; authored vendoring suppresses it.
+
+  $ mkdir _source/syntax _vendor/dep/syntax
+  $ cat > _source/syntax/dune <<'EOF'
+  > (library (name syntax) (public_name dep.syntax) (no_keep_locs))
+  > EOF
+  $ echo 'let value = 42' > _source/syntax/syntax.ml
+  $ cp _source/syntax/dune _source/syntax/syntax.ml _vendor/dep/syntax/
+  $ (cd _source && dune build --root . syntax/syntax.cma) 2>workspace-syntax
+  [1]
+  $ grep '^no_keep_locs' workspace-syntax
+  no_keep_locs is a no-op. Please delete it.
+  $ (cd _vendor && dune build --root . dep/syntax/syntax.cma)
+  $ dune build "$mounted/syntax/syntax.cma" 2>mounted-syntax
+  [1]
+  $ grep '^no_keep_locs' mounted-syntax
+  no_keep_locs is a no-op. Please delete it.
+
+Warnings emitted by generated project rules must use that same context.
+
+  $ echo '(library (name syntax) (public_name dep.syntax))' > _source/syntax/dune
+  $ cp _source/syntax/dune _vendor/dep/syntax/dune
+  $ cat > _source/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (generate_opam_files true)
+  > (package (name dep) (depends helper helper))
+  > EOF
+  $ cp _source/dune-project _vendor/dep/dune-project
+  $ cat > _source/dune <<'EOF'
+  > (rule (target probe) (action (write-file %{target} probe)))
+  > EOF
+  $ cp _source/dune _vendor/dep/dune
+  $ (cd _source && dune build --root . probe) 2>workspace-project
+  $ grep -c 'Duplicate dependency' workspace-project
+  1
+  $ (cd _vendor && dune build --root . dep/probe) 2>vendor-project
+  $ grep -c 'Duplicate dependency' vendor-project
+  0
+  [1]
+  $ dune build "$mounted/probe" 2>mounted-project
+  $ grep -c 'Duplicate dependency' mounted-project
+  1
+
 Recursive globs can reach a sibling directory, even above the current project
 root. Rule dependencies and install entries must traverse the same input tree.
 

@@ -454,3 +454,51 @@ Neither vendoring nor mounting may suppress actual type errors.
   $ dune build "$mounted/warning/warning.cma" 2>mounted-type
   [1]
   $ grep -q '^Error:' mounted-type
+
+Recursive globs can reach a sibling directory, even above the current project
+root. Rule dependencies and install entries must traverse the same input tree.
+
+  $ mkdir ../relative-globs
+  $ cd ../relative-globs
+  $ make_dune_project 3.25
+  $ make_lockdir
+  $ mkdir -p _source/project/sub _source/data/nested
+  $ echo '(lang dune 3.25)' > _source/dune-project
+  $ cat > _source/project/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name foo))
+  > EOF
+  $ echo first > _source/data/first.txt
+  $ echo second > _source/data/nested/second.txt
+  $ cat > _source/project/sub/dune <<'EOF'
+  > (rule
+  >  (target result)
+  >  (deps (glob_files_rec ../../data/*.txt))
+  >  (action (with-stdout-to %{target} (cat %{deps}))))
+  > (install
+  >  (package foo)
+  >  (section share)
+  >  (files (glob_files_rec (../../data/*.txt with_prefix data))))
+  > EOF
+  $ (cd _source && dune build --root . project/sub/result project/foo.install)
+  $ cat _source/_build/default/project/sub/result
+  first
+  second
+  $ make_lockpkg foo <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_source))
+  > (build (run false))
+  > EOF
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target installed)
+  >  (action (copy %{pkg:foo:share:data/nested/second.txt} %{target})))
+  > EOF
+  $ dune build _build/default/.lockfile/pkg/foo/project/sub/result 2>error
+  [1]
+  $ grep '^Error:' error
+  Error: path outside the workspace: ../../data from .
+  $ dune build installed 2>error
+  [1]
+  $ grep '^Error:' error
+  Error: path outside the workspace: ../../data from .

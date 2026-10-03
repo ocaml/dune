@@ -170,7 +170,7 @@ let rec dir_contents ~loc d =
     >>| List.concat
 ;;
 
-let package loc pkg_name (context : Build_context.t) ~dune_version =
+let package ~explicit loc pkg_name (context : Build_context.t) ~dune_version =
   Action_builder.of_memo
     (let open Memo.O in
      let* package_db = Package_db.create context.name in
@@ -184,7 +184,7 @@ let package loc pkg_name (context : Build_context.t) ~dune_version =
        [(public_headers (package foo))]) where a no-op is fine. *)
     Action_builder.return ()
   | Some (Installed pkg) ->
-    if dune_version < (2, 9)
+    if explicit && dune_version < (2, 9)
     then
       Action_builder.fail
         { fail =
@@ -338,7 +338,7 @@ let rec dep expander : Dep_conf.t -> _ = function
          let context = Build_context.create ~name:(Expander.context expander) in
          let loc = String_with_vars.loc p in
          let dune_version = Expander.project expander |> Dune_project.dune_version in
-         package loc pkg_name context ~dune_version
+         package ~explicit:true loc pkg_name context ~dune_version
        in
        [])
   | Universe ->
@@ -410,7 +410,13 @@ and combined_package_deps_builder expander pkgs =
       match found with
       | Some (Local _) -> Action_builder.return ()
       | Some (Build build) -> build
-      | Some (Installed _) | None -> package loc pkg_name context ~dune_version)
+      | Some (Installed _) ->
+        let explicit =
+          List.exists requested ~f:(fun (_, requested_package) ->
+            Package.Name.equal pkg_name requested_package)
+        in
+        package ~explicit loc pkg_name context ~dune_version
+      | None -> package ~explicit:true loc pkg_name context ~dune_version)
   in
   env
 

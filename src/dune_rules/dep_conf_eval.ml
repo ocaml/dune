@@ -170,7 +170,7 @@ let rec dir_contents ~loc d =
     >>| List.concat
 ;;
 
-let package loc pkg_name (context : Build_context.t) ~dune_version =
+let package loc pkg_name (context : Build_context.t) =
   Action_builder.of_memo
     (let open Memo.O in
      let* package_db = Package_db.create context.name in
@@ -184,33 +184,21 @@ let package loc pkg_name (context : Build_context.t) ~dune_version =
        [(public_headers (package foo))]) where a no-op is fine. *)
     Action_builder.return ()
   | Some (Installed pkg) ->
-    if dune_version < (2, 9)
-    then
-      Action_builder.fail
-        { fail =
-            (fun () ->
-              User_error.raise
-                ~loc
-                [ Pp.textf
-                    "Dependency on an installed package requires at least (lang dune 2.9)"
-                ])
-        }
-    else
-      (let open Memo.O in
-       Memo.parallel_map pkg.files ~f:(fun (s, l) ->
-         let dir = Section.Map.find_exn pkg.sections s in
-         Memo.parallel_map l ~f:(fun { kind; dst } ->
-           let path = Path.append_local dir (Install.Entry.Dst.local dst) in
-           match kind with
-           | File -> Memo.return [ path ]
-           | Directory ->
-             Path.as_outside_build_dir_exn path
-             |> dir_contents ~loc
-             >>| List.rev_map ~f:Path.outside_build_dir)
-         >>| List.concat)
+    (let open Memo.O in
+     Memo.parallel_map pkg.files ~f:(fun (s, l) ->
+       let dir = Section.Map.find_exn pkg.sections s in
+       Memo.parallel_map l ~f:(fun { kind; dst } ->
+         let path = Path.append_local dir (Install.Entry.Dst.local dst) in
+         match kind with
+         | File -> Memo.return [ path ]
+         | Directory ->
+           Path.as_outside_build_dir_exn path
+           |> dir_contents ~loc
+           >>| List.rev_map ~f:Path.outside_build_dir)
        >>| List.concat)
-      |> Action_builder.of_memo
-      >>= Action_builder.paths
+     >>| List.concat)
+    |> Action_builder.of_memo
+    >>= Action_builder.paths
   | None ->
     Action_builder.fail
       { fail =
@@ -337,8 +325,7 @@ let rec dep expander : Dep_conf.t -> _ = function
          let* pkg_name = expand_package_name expander p in
          let context = Build_context.create ~name:(Expander.context expander) in
          let loc = String_with_vars.loc p in
-         let dune_version = Expander.project expander |> Dune_project.dune_version in
-         package loc pkg_name context ~dune_version
+         package loc pkg_name context
        in
        [])
   | Universe ->
@@ -404,13 +391,12 @@ and combined_package_deps_builder expander pkgs =
     then Action_builder.return Env.empty
     else Install_layout.env context.name local_package_names
   in
-  let dune_version = Expander.project expander |> Dune_project.dune_version in
   let+ () =
     Action_builder.List.iter classified ~f:(fun (loc, pkg_name, found) ->
       match found with
       | Some (Local _) -> Action_builder.return ()
       | Some (Build build) -> build
-      | Some (Installed _) | None -> package loc pkg_name context ~dune_version)
+      | Some (Installed _) | None -> package loc pkg_name context)
   in
   env
 

@@ -60,16 +60,15 @@
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @runtest
 
+Installed packages also work with Dune language versions older than 2.9.
+
   $ cat >b/dune-project <<EOF
   > (lang dune 2.8)
   > (package (name b))
   > EOF
 
-  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @runtest
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH \
+  >   dune build --root b --build-dir _build_2_8 @runtest
   Entering directory 'b'
-  File "dune", line 1, characters 37-38:
-  1 | (rule (alias runtest) (deps (package a)) (action (run cat $TESTCASE_ROOT/prefix/share/a/CATME)))
-                                           ^
-  Error: Dependency on an installed package requires at least (lang dune 2.9)
+  Ouaf
   Leaving directory 'b'
-  [1]

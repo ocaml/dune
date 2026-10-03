@@ -1,7 +1,5 @@
-Depending on a local package should work before Dune language 2.9, even when
-one of its libraries depends on an installed library such as unix. Currently,
-following those library dependencies incorrectly applies the version restriction
-for explicit dependencies on installed packages.
+Depending on a local package works before Dune language 2.9, even when
+one of its libraries depends on an installed library such as unix.
 
   $ make_dune_project 2.0
   $ touch foo.opam
@@ -16,9 +14,7 @@ for explicit dependencies on installed packages.
   >  (action (echo ok)))
   > EOF
   $ dune runtest
-  Error: Dependency on an installed package requires at least (lang dune 2.9)
-  -> required by alias runtest in dune:4
-  [1]
+  ok
 
 The same dependency succeeds with language version 2.9.
 

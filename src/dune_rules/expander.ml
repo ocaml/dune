@@ -432,19 +432,7 @@ let file_of_lib db context ~loc ~lib ~file =
       Lib_info.Status.relative_to_package (Lib_info.status info) name |> Option.value_exn
     in
     let* context = Resolve.Memo.lift_memo context >>| Context.name in
-    let* project =
-      let dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
-      Dune_load.find_loaded_project ~dir |> Resolve.Memo.lift_memo
-    in
-    let root =
-      match Build_partition.purpose (Loaded_project.partition project) with
-      | Workspace -> Install.Context.lib_dir ~context ~package
-      | Mounted ->
-        let prefix = Install_layout.root context (Package.Name.Set.singleton package) in
-        let roots = Install.Roots.opam_from_prefix prefix ~relative:Path.Build.relative in
-        let paths = Install.Paths.make ~relative:Path.Build.relative ~package ~roots in
-        Install.Paths.get paths Section.Lib
-    in
+    let root = Install.Context.lib_dir ~context ~package in
     let dir = Path.Build.append_local root subdir in
     Resolve.Memo.return (Path.relative (Path.build dir) file)
 ;;

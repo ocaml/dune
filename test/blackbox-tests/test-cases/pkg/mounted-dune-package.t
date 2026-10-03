@@ -327,14 +327,14 @@ pform-only route is not a substitute for these targets.
   $ _foo/_build/install/default/bin/foo-tool
   native-tool
   $ test ! -e _foo/_build/default/src/unrelated
-  $ dune build _build/install/default/lib/foo/support/renamed.txt 2>error
-  [1]
-  $ grep '^Error:' error
-  Error: Don't know how to build
-  $ dune build _build/install/default/bin/foo-tool 2>error
-  [1]
-  $ grep '^Error:' error
-  Error: Don't know how to build _build/install/default/bin/foo-tool
+  $ dune build _build/install/default/lib/foo/support/renamed.txt \
+  >   _build/install/default/bin/foo-tool
+  $ cat _build/install/default/lib/foo/support/renamed.txt
+  installed-name
+  $ _build/install/default/bin/foo-tool
+  native-tool
+  $ test ! -e _build/default/.lockfile/pkg/foo/src/unrelated
+  $ test ! -e _build/default/.lockfile/pkg/foo/.opam/foo/target
 
 Generated installation metadata uses the same rules as an ordinary workspace.
 Neither a generated opam file nor an odoc configuration requires an opaque build.

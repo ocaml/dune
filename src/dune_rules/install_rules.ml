@@ -1280,7 +1280,8 @@ let () =
 
 let packages =
   let f sctx =
-    let* packages = Dune_load.packages () in
+    let context = Super_context.context sctx |> Context.name in
+    let* packages = Dune_load.packages_for_context context in
     let packages = Package.Name.Map.values packages in
     let+ l =
       Memo.parallel_map packages ~f:(fun (pkg : Package.t) ->
@@ -1500,7 +1501,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
     files >>| Path.Set.of_list_map ~f:Path.build >>= Action_builder.path_set
   in
   let* () =
-    let* all_packages = Dune_load.packages () in
+    let* all_packages = Dune_load.packages_for_context build_context.name in
     let target_alias = package_install ~context:build_context ~pkg:package in
     let open Action_builder.O in
     Rules.Produce.Alias.add_deps
@@ -1616,7 +1617,8 @@ let scheme_per_ctx_memo =
     ~input:(module Super_context.As_memo_key)
     "install-rule-scheme"
     (fun sctx ->
-       Dune_load.packages ()
+       let context = Super_context.context sctx |> Context.name in
+       Dune_load.packages_for_context context
        >>| Package.Name.Map.values
        >>= Memo.parallel_map ~f:(fun pkg -> scheme sctx (Package.name pkg))
        >>| Scheme.all

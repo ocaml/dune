@@ -608,17 +608,6 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
   | Lock_dir _ -> Memo.return Gen_rules.no_rules
   | dir_status ->
     let+ rules =
-      let* st_dir =
-        match Source_path.as_workspace src_dir with
-        | None -> Memo.return None
-        | Some src_dir -> Source_tree.find_dir src_dir
-      in
-      let* nearest_src_dir =
-        match st_dir, Source_path.as_workspace src_dir with
-        | Some dir, _ -> Memo.return (Some dir)
-        | None, None -> Memo.return None
-        | None, Some src_dir -> Source_tree.find_dir (Path.Source.parent_exn src_dir)
-      in
       let* has_nearest_source_dir =
         match source_tree_dir with
         | Some _ -> Memo.return true
@@ -721,11 +710,12 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
                   ~dir
                   ~project:(Dune_file.project dune_file)))
       in
-      match Source_path.as_workspace src_dir with
-      | None -> rules
-      | Some src_dir ->
-        let opam_rules = Opam_create.gen_rules sctx ~dir ~nearest_src_dir ~src_dir in
-        Gen_rules.combine opam_rules rules
+      let opam_rules =
+        if has_nearest_source_dir
+        then Opam_create.gen_rules sctx ~dir ~loaded_project ~src_dir
+        else Gen_rules.no_rules
+      in
+      Gen_rules.combine opam_rules rules
     and+ melange_rules = Melange_rules.setup_emit_js_rules sctx ~dir in
     Gen_rules.combine melange_rules rules
 ;;

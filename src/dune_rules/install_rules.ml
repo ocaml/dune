@@ -43,7 +43,7 @@ module Package_paths = struct
     | Generated | Generated_with_diff ->
       let+ use_source_opam =
         if Profile.is_release (Context.profile context)
-        then Build_system.file_exists (Source_path.to_path opam_file)
+        then Opam_create.source_file_exists pkg
         else Memo.return false
       in
       Some (if use_source_opam then build_opam_file else generated_opam_file ctx pkg)
@@ -771,8 +771,6 @@ module Meta_and_dune_package : sig
     -> Dune_project.t
     -> dir:Path.Build.t
     -> unit Memo.t
-
-  val gen_odoc_config : Super_context.t -> Package.t -> unit Memo.t
 end = struct
   let sections ctx_name files pkg =
     let pkg_name = Package.name pkg in
@@ -1022,7 +1020,7 @@ end = struct
         |> sprintf "(packages %s)"
       in
       let action = Action_builder.write_file_dyn odoc_config_file action in
-      Super_context.add_rule sctx ~dir:ctx.build_dir action
+      Super_context.add_rule sctx ~dir:(Path.Build.parent_exn odoc_config_file) action
   ;;
 
   let gen_meta_file sctx ~dir (pkg : Package.t) entries =
@@ -1139,6 +1137,12 @@ end = struct
   let gen_metadata_rules sctx project ~dir =
     let ctx = Super_context.context sctx |> Context.build_context in
     let* loaded_project = Dune_load.find_loaded_project ~dir in
+    let rec nearest_input_dir dir =
+      Loaded_project.source_tree_dir loaded_project dir
+      >>= function
+      | Some _ -> Memo.return dir
+      | None -> nearest_input_dir (Path.Build.parent_exn dir)
+    in
     Dune_project.packages project
     |> Package.Name.Map.filteri ~f:(fun name _ ->
       match Loaded_project.visible_packages loaded_project with
@@ -1147,13 +1151,13 @@ end = struct
     |> Dune_lang.Package_name.Map.to_seq
     |> Memo.parallel_iter_seq ~f:(fun (name, pkg) ->
       let metadata_dir = Package_paths.metadata_dir ctx pkg in
-      let* source_dir =
-        Source_tree.nearest_dir (Path.Build.drop_build_context_exn metadata_dir)
+      let* () =
+        if Path.Build.equal (Package_paths.build_dir ctx pkg) dir
+        then gen_odoc_config sctx pkg
+        else Memo.return ()
       in
-      if
-        Path.Source.equal
-          (Source_tree.Dir.path source_dir)
-          (Path.Build.drop_build_context_exn dir)
+      let* owner_dir = nearest_input_dir metadata_dir in
+      if Path.Build.equal owner_dir dir
       then (
         let entries = Scope.DB.lib_entries_of_package ctx.name name in
         gen_dune_package sctx ~dir:metadata_dir pkg entries
@@ -1685,7 +1689,6 @@ let gen_project_rules sctx project =
   Dune_project.packages project
   |> Dune_lang.Package_name.Map.to_seq
   |> Memo.parallel_iter_seq ~f:(fun (_name, package) ->
-    let* () = gen_odoc_config sctx package in
     let* () = gen_package_install_file_rules sctx package in
     gen_install_alias sctx package)
 ;;

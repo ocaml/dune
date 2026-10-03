@@ -64,7 +64,10 @@
 
 (cram
  (deps %{bin:cmp} %{bin:ocamlfind})
- (applies_to package-library-closure.t mounted-projects.t))
+ (applies_to
+  package-library-closure.t
+  mounted-projects.t
+  mounted-dune-package.t))
 
 (cram
  (deps %{bin:curl})

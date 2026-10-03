@@ -370,6 +370,19 @@ let build_path ~build_dir pkg =
   | Exists _ | Generated -> opam_path
 ;;
 
+let source_file_exists pkg =
+  match Package.opam_file pkg with
+  | Workspace path -> Build_system.file_exists (Path.source path)
+  | Build path ->
+    let* dir = Dune_load.source_tree_dir ~dir:(Path.Build.parent_exn path) in
+    (match dir with
+     | None -> Memo.return false
+     | Some dir ->
+       Source_tree.Rules.Dir.file dir (Path.Build.basename path)
+       |> Source_tree.Rules.File.read
+       >>| Option.is_some)
+;;
+
 let opam_template ~opam_path =
   let open Action_builder.O in
   let opam_template_path = template_file opam_path in
@@ -418,10 +431,9 @@ let add_alias_rule (ctx : Build_context.t) ~profile ~project ~pkg =
   in
   let generated_opam_path = build_path ~build_dir pkg in
   let opam_alias = Alias.make Alias0.opam ~dir in
+  let has_source_opam = source_file_exists pkg in
   let* use_source_opam =
-    if Profile.is_release profile
-    then Build_system.file_exists source_opam_path
-    else Memo.return false
+    if Profile.is_release profile then has_source_opam else Memo.return false
   in
   let aliases = [ Alias.make Alias0.install ~dir; Alias.make Alias0.runtest ~dir ] in
   let* () =
@@ -441,10 +453,10 @@ let add_alias_rule (ctx : Build_context.t) ~profile ~project ~pkg =
         (let open Action_builder.O in
          let+ () = Action_builder.path (Path.build generated_opam_path)
          and+ () =
-           Action_builder.if_file_exists
-             source_opam_path
-             ~then_:(Action_builder.path (Path.build opam_path))
-             ~else_:(Action_builder.return ())
+           let* exists = Action_builder.of_memo has_source_opam in
+           if exists
+           then Action_builder.path (Path.build opam_path)
+           else Action_builder.return ()
          in
          Action.diff (Path.build opam_path) generated_opam_path
          |> Action.Full.make
@@ -511,49 +523,51 @@ let add_rules sctx project =
 
 module Gen_rules = Build_config.Gen_rules
 
-let gen_rules sctx ~dir ~nearest_src_dir ~src_dir =
-  match nearest_src_dir with
-  | None -> Gen_rules.no_rules
-  | Some nearest_src_dir ->
-    let project = Source_tree.Dir.project nearest_src_dir in
-    let project_root = Dune_project.root project in
-    let src_dir = Source_path.workspace src_dir in
-    (match Source_path.is_descendant src_dir ~of_:project_root with
-     | false -> Gen_rules.no_rules
-     | true ->
-       let project_rules = Source_path.equal project_root src_dir in
-       let opam_file_location = Dune_project.opam_file_location project in
-       let opam_dir = "opam" in
-       let inside_generated_opam_directory =
-         match opam_file_location with
-         | `Inside_opam_directory ->
-           Source_path.equal src_dir (Source_path.relative project_root opam_dir)
-         | `Relative_to_project -> false
-       in
-       if (not inside_generated_opam_directory) && not project_rules
-       then Gen_rules.no_rules
-       else (
-         let allowed_subdirs =
-           match opam_file_location with
-           | `Inside_opam_directory when project_rules ->
-             Filename.Set.singleton Filename.opam
-           | `Relative_to_project | `Inside_opam_directory -> Filename.Set.empty
-         in
-         let rules =
-           Rules.collect_unit (fun () ->
-             let* sctx = sctx in
-             let+ () = if project_rules then add_rules sctx project else Memo.return ()
-             and+ () =
-               if inside_generated_opam_directory
-               then add_opam_file_rules sctx project
-               else Memo.return ()
-             in
-             ())
-         in
-          Gen_rules.make
-            ~build_dir_only_sub_dirs:
-              (Gen_rules.Build_only_sub_dirs.singleton
-                 ~dir
-                 (Subdir_set.of_set allowed_subdirs))
-            rules))
+let gen_rules sctx ~dir ~loaded_project ~src_dir =
+  let project = Loaded_project.project loaded_project in
+  let project =
+    match Loaded_project.visible_packages loaded_project with
+    | None -> project
+    | Some packages ->
+      Dune_project.filter_packages project ~f:(Package.Name.Set.mem packages)
+  in
+  let project_root = Dune_project.root project in
+  match Source_path.is_descendant src_dir ~of_:project_root with
+  | false -> Gen_rules.no_rules
+  | true ->
+    let project_rules = Source_path.equal project_root src_dir in
+    let opam_file_location = Dune_project.opam_file_location project in
+    let opam_dir = "opam" in
+    let inside_generated_opam_directory =
+      match opam_file_location with
+      | `Inside_opam_directory ->
+        Source_path.equal src_dir (Source_path.relative project_root opam_dir)
+      | `Relative_to_project -> false
+    in
+    if (not inside_generated_opam_directory) && not project_rules
+    then Gen_rules.no_rules
+    else (
+      let allowed_subdirs =
+        match opam_file_location with
+        | `Inside_opam_directory when project_rules ->
+          Filename.Set.singleton Filename.opam
+        | `Relative_to_project | `Inside_opam_directory -> Filename.Set.empty
+      in
+      let rules =
+        Rules.collect_unit (fun () ->
+          let* sctx = sctx in
+          let+ () = if project_rules then add_rules sctx project else Memo.return ()
+          and+ () =
+            if inside_generated_opam_directory
+            then add_opam_file_rules sctx project
+            else Memo.return ()
+          in
+          ())
+      in
+      Gen_rules.make
+        ~build_dir_only_sub_dirs:
+          (Gen_rules.Build_only_sub_dirs.singleton
+             ~dir
+             (Subdir_set.of_set allowed_subdirs))
+        rules)
 ;;

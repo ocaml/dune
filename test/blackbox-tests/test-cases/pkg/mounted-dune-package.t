@@ -312,7 +312,6 @@ both lib and libexec pforms.
 
 Generated installation metadata uses the same rules as an ordinary workspace.
 Neither a generated opam file nor an odoc configuration requires an opaque build.
-BUG: mounted projects currently omit these rules.
 
   $ mkdir ../install-metadata
   $ cd ../install-metadata
@@ -344,11 +343,14 @@ BUG: mounted projects currently omit these rules.
   >  (target odoc-config)
   >  (action (copy %{pkg:foo:doc:odoc-config.sexp} %{target})))
   > EOF
-  $ dune build opam odoc-config 2>error
-  [1]
-  $ grep '^Error:' error | sort
-  Error: No rule found for .lockfile/pkg/foo/foo.odoc-config.sexp
-  Error: No rule found for .lockfile/pkg/foo/foo.opam
+  $ dune build opam odoc-config
+  $ cmp _workspace/_build/default/foo.opam _build/default/opam
+  $ cat _build/default/odoc-config
+  (packages doc-helper)
+  $ test ! -e _foo/foo.opam
+  $ test ! -e _build/default/.lockfile/pkg/foo/.opam/foo/target
+  $ dune build --profile release opam
+  $ cmp _workspace/_build/default/foo.opam _build/default/opam
 
 The opam-directory layout must also generate the file installed in dev profile,
 including when its visible source copy already exists.
@@ -367,11 +369,23 @@ including when its visible source copy already exists.
   $ mv _workspace/foo.opam _workspace/opam/foo.opam
   $ (cd _workspace && dune build --only-packages foo \
   >   opam/foo.opam.generated foo.odoc-config.sexp)
-  $ dune build opam 2>error
-  [1]
-  $ grep '^Error:' error | sort
-  Error: No rule found for .lockfile/pkg/foo/foo.odoc-config.sexp
-  Error: No rule found for .lockfile/pkg/foo/opam/foo.opam.generated
+  $ dune build opam
+  $ cmp _workspace/_build/default/opam/foo.opam.generated _build/default/opam
+  $ cat _foo/opam/foo.opam
+  opam-version: "2.0"
+
+Release builds use an existing source opam file, as in the workspace. Without
+one, the ordinary fallback still generates the installed file.
+
+  $ dune build --profile release opam
+  $ cat _build/default/opam
+  opam-version: "2.0"
+  $ rm _foo/opam/foo.opam
+  $ rmdir _foo/opam
+  $ dune build --profile release opam
+  $ cmp _workspace/_build/default/opam/foo.opam.generated _build/default/opam
+  $ test ! -d _foo/opam
+  $ test ! -e _build/default/.lockfile/pkg/foo/.opam/foo/target
 
 A context-wide C compiler vendor probe must not build every package to look for
 its compiler. In particular, it must not build an opaque consumer while building

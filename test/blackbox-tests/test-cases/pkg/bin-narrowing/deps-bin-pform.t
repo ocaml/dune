@@ -12,8 +12,8 @@ Sibling that is not a declared dependency
 -----------------------------------------
 
 [producer] installs [producer-bin]; [consumer] names it in [(deps ...)] and
-invokes it by bare name through the shell, so the action finds it on $PATH
-rather than by artifact resolution.
+invokes it by bare name through the shell, without declaring a dependency on
+[producer].
 
   $ mkdir -p producer consumer
   $ cat >producer/producer-bin.sh <<'EOF'
@@ -39,9 +39,22 @@ rather than by artifact resolution.
   > (package (name consumer) (allow_empty) (dir consumer))
   > EOF
 
+The [%{bin:...}] in the [(deps ...)] field is expanded through the directory's
+artifacts like any other pform, so it is narrowed and the rule fails before
+[producer-bin] is staged. Nothing reaches $PATH:
+
   $ dune build consumer/via-deps
+  File "consumer/dune", line 2, characters 7-26:
+  2 |  (deps %{bin:producer-bin})
+             ^^^^^^^^^^^^^^^^^^^
+  Error: Program producer-bin not found in the tree or in PATH
+   (context: default)
+  Hint: add a dependency on the package installing "producer-bin" to this
+  package
+  [1]
   $ cat _build/default/consumer/via-deps
-  hello from producer
+  cat: _build/default/consumer/via-deps: No such file or directory
+  [1]
 
 A declared lockdir binary and an undeclared sibling of the same name
 ---------------------------------------------------------------------
@@ -78,8 +91,7 @@ A declared lockdir binary and an undeclared sibling of the same name
   > EOF
 
 [consumer] declares the lockdir package [provider], but not the workspace
-sibling [sibling]. Neither declaration affects binary resolution: a package's
-[(depends ...)] is not consulted when looking up a binary.
+sibling [sibling]:
 
   $ make_dune_project 3.25
   $ cat >> dune-project << 'EOF'
@@ -89,14 +101,19 @@ sibling [sibling]. Neither declaration affects binary resolution: a package's
 
   $ dune build consumer/via-pform consumer/via-path
 
-The workspace copy shadows the lockdir one for both, since [local_bins] is
-consulted before the lock directory. The staged copy on $PATH agrees with the
-pform, so [(system dup)] and [%{bin:dup}] name the same file.
+[sibling] is not in [consumer]'s dependency closure, so its [dup] is narrowed
+out of [local_bins] and the lookup falls through to the declared lockdir copy.
+Nothing is staged, since only workspace binaries are, and [(system dup)] finds
+that same copy through [provider]'s bin directory on $PATH.
+
+In [workspace-shadows-lockdir.t] the workspace binary does shadow the lockdir
+one: there it belongs to the directory's own owning package, which is always in
+its own closure.
 
   $ cat _build/default/consumer/via-pform
-  from workspace
+  from lockdir
   $ cat _build/default/consumer/via-path
-  from workspace
+  from lockdir
 
 A name installed by two workspace packages
 -------------------------------------------
@@ -123,6 +140,8 @@ A name installed by two workspace packages
   > EOF
   $ cat >c/dune <<'EOF'
   > (rule
+  >  (action (with-stdout-to via-pform (run %{bin:dup}))))
+  > (rule
   >  (deps %{bin:dup})
   >  (action (with-stdout-to via-path (system dup))))
   > EOF
@@ -134,14 +153,17 @@ A name installed by two workspace packages
   > (package (name pkg-c) (allow_empty) (dir c) (depends pkg-a))
   > EOF
 
-[pkg-c] depends on [pkg-a] only, but that does not pick [pkg-a]'s [dup]: both
-definitions are in scope and the lookup is ambiguous.
+The ordinary narrowed pform lookup selects [pkg-a], the only provider in
+[pkg-c]'s dependency closure:
+
+  $ dune build c/via-pform
+  $ cat _build/default/c/via-pform
+  from a
+
+[pkg-c] depends on [pkg-a] only, and [pkg-a]'s [dup] binary is picked up
+correctly, via PATH too.
 
   $ dune build c/via-path
-  File "b/dune", line 1, characters 47-53:
-  1 | (install (package pkg-b) (section bin) (files (dup.sh as dup)))
-                                                     ^^^^^^
-  Error: binary "dup" is available from more than one definition. It is also
-  available in:
-  - a/dune:1
-  [1]
+
+  $ cat _build/default/c/via-path
+  from a

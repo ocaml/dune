@@ -131,6 +131,7 @@ let rec same_source_tree left right =
     let* same_files =
       Filename.Array.Set.to_list (Dir.filenames left)
       |> Memo.List.for_all ~f:(fun name ->
+        let name = Path.Local.relative_fname Path.Local.root name in
         let+ left = Dir.file left name |> Source_tree.Rules.File.materialization
         and+ right = Dir.file right name |> Source_tree.Rules.File.materialization in
         match left, right with

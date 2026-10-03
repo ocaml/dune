@@ -8,4 +8,9 @@ type t =
   ; stanzas : Stanza.t list
   }
 
+val materialize
+  :  dst:Path.Build.t
+  -> Source_tree.Rules.File.materialization
+  -> Action.Full.t Action_builder.With_targets.t
+
 val rules : dir:Path.Build.t -> Source_tree.Rules.Dir.t -> Rule.t Memo.t Filename.Map.t

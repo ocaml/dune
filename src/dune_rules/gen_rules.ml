@@ -815,7 +815,7 @@ let private_context ~dir components _ctx =
   | `Valid (ctx, ".packages" :: rest) -> Install_layout.gen_rules ctx ~dir rest
   | `Valid (ctx, ".opam" :: rest) -> Opam_rules.gen_rules ctx ~dir rest
   | `Valid (ctx, ".dune-source" :: rest) ->
-    Pkg_sources.gen_script_source_rules ctx ~dir rest
+    Pkg_sources.gen_prepared_source_rules ctx ~dir rest
   | `Valid (ctx, components) ->
     let+ lock_rules = Lock_rules.setup_rules ~dir ~components
     and+ pkg_rules = Pkg_rules.setup_rules ctx ~dir ~components in

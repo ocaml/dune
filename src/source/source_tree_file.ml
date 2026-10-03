@@ -216,6 +216,11 @@ module File = struct
     | Mounted mounted -> find_materialization mounted
   ;;
 
+  let exists = function
+    | Workspace path -> Fs_memo.file_exists (Path.Outside_build_dir.In_source_dir path)
+    | Mounted mounted -> find_materialization mounted >>| Option.is_some
+  ;;
+
   let backing_path_opt t =
     materialization t
     >>| function

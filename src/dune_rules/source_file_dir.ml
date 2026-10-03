@@ -8,10 +8,34 @@ type t =
   ; stanzas : Stanza.t list
   }
 
+let materialize ~dst (source : Source_tree.Rules.File.materialization) =
+  match source with
+  | Copy src -> Action_builder.copy ~src ~dst
+  | Write { contents; executable; dependencies } ->
+    let perm =
+      if executable
+      then Dune_lang.Action.File_perm.Executable
+      else Dune_lang.Action.File_perm.Normal
+    in
+    let { Action_builder.With_targets.build; targets } =
+      Action_builder.write_file ~perm dst contents
+    in
+    let build =
+      let open Action_builder.O in
+      let* () = Action_builder.paths dependencies in
+      build
+    in
+    { Action_builder.With_targets.build; targets }
+;;
+
 let rules ~dir source_dir =
   let open Memo.O in
   let source_copy_rule filename =
-    let file = Source_tree.Rules.Dir.file source_dir filename in
+    let file =
+      Source_tree.Rules.Dir.file
+        source_dir
+        (Path.Local.relative_fname Path.Local.root filename)
+    in
     let* materialization = Source_tree.Rules.File.materialization file in
     let dst = Path.Build.relative_fname dir filename in
     match materialization with
@@ -21,27 +45,14 @@ let rules ~dir source_dir =
         [ "file", Source_tree.Rules.File.source_path file |> Source_path.to_dyn ]
     | Some (Copy (In_source_tree src)) ->
       Load_rules.source_file_copy ~src ~dst |> Memo.return
-    | Some (Copy src) ->
-      let { Action_builder.With_targets.build; targets } =
-        Action_builder.copy ~src ~dst
+    | Some source ->
+      let { Action_builder.With_targets.build; targets } = materialize ~dst source in
+      let path =
+        match source with
+        | Copy path -> path
+        | Write _ -> Source_tree.Rules.File.path file
       in
-      Rule.make ~info:(Rule.Info.Source_file_copy src) ~targets build |> Memo.return
-    | Some (Write { contents; executable; dependencies }) ->
-      let perm =
-        if executable
-        then Dune_lang.Action.File_perm.Executable
-        else Dune_lang.Action.File_perm.Normal
-      in
-      let { Action_builder.With_targets.build; targets } =
-        Action_builder.write_file ~perm dst contents
-      in
-      let build =
-        let open Action_builder.O in
-        let* () = Action_builder.paths dependencies in
-        build
-      in
-      let source = Source_tree.Rules.File.path file in
-      Rule.make ~info:(Rule.Info.Source_file_copy source) ~targets build |> Memo.return
+      Rule.make ~info:(Rule.Info.Source_file_copy path) ~targets build |> Memo.return
   in
   Source_tree.Rules.Dir.filenames source_dir
   |> Filename.Array.Set.to_list

@@ -61,6 +61,7 @@ module Rules : sig
     val backing_path : t -> Path.t Memo.t
     val relative : t -> Loc.t -> string -> t
     val materialization : t -> materialization option Memo.t
+    val exists : t -> bool Memo.t
     val read_with_perm : t -> contents option Memo.t
     val read : t -> string option Memo.t
     val equal : t -> t -> bool
@@ -81,7 +82,12 @@ module Rules : sig
     (** The directory from which source contents are enumerated. *)
     val backing_path : t -> Path.t
 
-    val file : t -> Filename.t -> File.t
+    val file : t -> Path.Local.t -> File.t
+
+    (** A physical directory containing the complete source view, including inputs
+        excluded from rule generation. This does not demand generated stanzas. *)
+    val materialize : t -> Path.t Memo.t
+
     val relative_dir : t -> Path.Local.t
     val filenames : t -> Filename.Array.Set.t
     val sub_dirs : t -> sub_dir Filename.Array.Map.t
@@ -129,7 +135,11 @@ module Rules : sig
 
     (** Load a logical mounted tree from ordered immutable input layers. Later
         layers replace earlier files at the same logical path. *)
-    val load : logical_root:Path.Build.t -> layers:Layer.t list -> t Memo.t
+    val load
+      :  logical_root:Path.Build.t
+      -> materialized_root:Path.Build.t
+      -> layers:Layer.t list
+      -> t Memo.t
 
     (** The logical mounted root. *)
     val source_root : t -> Path.Build.t

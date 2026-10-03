@@ -530,7 +530,17 @@ let apply_source_transformations candidates candidate solver_env layers transfor
 
 module Scan_dune_files = Source_tree.Rules.Dir.Make_map_reduce (Memo) (Monoid.Exists)
 
-let prepare candidates candidate =
+let prepared_source context name =
+  Path.Build.L.relative
+    Private_context.t.build_dir
+    [ Context_name.to_string context
+    ; ".dune-source"
+    ; Package.Name.to_string name
+    ; "source"
+    ]
+;;
+
+let prepare context candidates candidate =
   let* direct = Candidate.dependencies candidate in
   let candidates =
     List.filter candidates ~f:(fun other ->
@@ -572,7 +582,10 @@ let prepare candidates candidate =
        (match layers with
         | Unsupported -> Memo.return opaque
         | Supported layers ->
-          let* tree = Source_tree.Rules.Mounted.load ~logical_root ~layers in
+          let materialized_root = prepared_source context (Candidate.name candidate) in
+          let* tree =
+            Source_tree.Rules.Mounted.load ~logical_root ~materialized_root ~layers
+          in
           let projects = Source_tree.Rules.Mounted.projects tree in
           let name = Candidate.name candidate in
           let* has_dune_file =
@@ -613,7 +626,7 @@ let mounted_by_name =
     Package.Name.Map.of_list_map_exn candidates ~f:(fun candidate ->
       let loaded =
         Memo.lazy_ ~name:"prepare-mounted-package" (fun () ->
-          let+ loaded = Memo.collect_user_errors (prepare candidates candidate) in
+          let+ loaded = Memo.collect_user_errors (prepare context candidates candidate) in
           { Mounted.candidate; loaded })
       in
       Candidate.name candidate, loaded))
@@ -632,17 +645,7 @@ let find_mounted context name =
   | Some mounted -> Memo.Lazy.force mounted >>| Option.some
 ;;
 
-let script_source context name =
-  Path.Build.L.relative
-    Private_context.t.build_dir
-    [ Context_name.to_string context
-    ; ".dune-source"
-    ; Package.Name.to_string name
-    ; "source"
-    ]
-;;
-
-let script_source_rule tree ~target =
+let prepared_source_rule tree ~target =
   let* files, directories = Source_tree.Rules.Mounted.files_and_directories tree in
   let* copies =
     Memo.List.map files ~f:(fun file ->
@@ -658,22 +661,7 @@ let script_source_rule tree ~target =
         Code_error.raise
           "Prepared script source has no materialization"
           [ "file", Source_path.to_dyn (Source_tree.Rules.File.source_path file) ]
-      | Some (Copy src) -> Action_builder.copy ~src ~dst
-      | Some (Write { contents; executable; dependencies }) ->
-        let perm =
-          if executable
-          then Dune_lang.Action.File_perm.Executable
-          else Dune_lang.Action.File_perm.Normal
-        in
-        let { Action_builder.With_targets.build; targets } =
-          Action_builder.write_file ~perm dst contents
-        in
-        let build =
-          let open Action_builder.O in
-          let* () = Action_builder.paths dependencies in
-          build
-        in
-        { Action_builder.With_targets.build; targets })
+      | Some source -> Source_file_dir.materialize ~dst source)
   in
   let mkdirs =
     List.map directories ~f:(fun local ->
@@ -692,7 +680,7 @@ let script_source_rule tree ~target =
   Rules.Produce.rule (Rule.make ~targets build)
 ;;
 
-let gen_script_source_rules context ~dir components =
+let gen_prepared_source_rules context ~dir components =
   let module G = Build_config.Gen_rules in
   match components with
   | [] -> G.make_empty ~dir Subdir_set.all |> Memo.return
@@ -702,9 +690,9 @@ let gen_script_source_rules context ~dir components =
     (match Option.bind mounted ~f:Mounted.tree with
      | None -> G.no_rules
      | Some tree ->
-       let target = script_source context name in
+       let target = prepared_source context name in
        G.make
          ~directory_targets:(Path.Build.Map.singleton target Loc.none)
-         (Rules.collect_unit (fun () -> script_source_rule tree ~target)))
+         (Rules.collect_unit (fun () -> prepared_source_rule tree ~target)))
   | _ -> G.Redirect_to_parent G.Rules.empty |> Memo.return
 ;;

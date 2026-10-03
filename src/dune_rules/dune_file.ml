@@ -124,7 +124,10 @@ let parse_stanzas ~file ~(eval : eval) sexps =
     let file =
       Option.value
         file
-        ~default:(Source_tree.Rules.Dir.file eval.source_dir Source.Dune_file.fname)
+        ~default:
+          (Source_tree.Rules.Dir.file
+             eval.source_dir
+             (Path.Local.relative_fname Path.Local.root Source.Dune_file.fname))
     in
     let stanza_parser =
       Dune_project.stanza_parser ~dir:(eval_source_path eval) eval.project
@@ -338,27 +341,9 @@ module Script = struct
   let eval_one ~context { file; contents; from_parent; eval } =
     let source_path = Source_tree.Rules.File.source_path file in
     let generated_dune_file =
-      match source_path with
-      | Source_path.Workspace file ->
-        Path.Build.append_source
-          (Path.Build.relative generated_dune_files_dir (Context_name.to_string context))
-          file
-      | Build file ->
-        let identity =
-          Loaded_project.identity eval.loaded_project
-          |> Loaded_project.Identity.digest
-          |> Dune_digest.to_string
-        in
-        let local =
-          Source_path.descendant
-            (Source_path.build file)
-            ~of_:(Loaded_project.source_root eval.loaded_project)
-          |> Option.value_exn
-        in
-        Path.Build.L.relative
-          (Path.Build.relative generated_dune_files_dir (Context_name.to_string context))
-          [ "loaded"; identity ]
-        |> fun root -> Path.Build.append_local root local
+      Loaded_project.output_path eval.loaded_project source_path
+      |> Option.value_exn
+      |> Path.Build.append generated_dune_files_dir
     in
     let wrapper =
       Path.Build.extend_basename
@@ -367,23 +352,7 @@ module Script = struct
     in
     generated_dune_file |> Path.build |> Path.parent |> Option.iter ~f:Path.mkdir_p;
     let plugin = Source_tree.Rules.File.path file in
-    let* exec_dir =
-      match source_path with
-      | Workspace _ -> Memo.return (Source_tree.Rules.Dir.path eval.source_dir)
-      | Build path ->
-        let package = Pkg_sources.package_of_artifact_path path |> Option.value_exn in
-        let source = Pkg_sources.script_source context package in
-        let* () = Build_system.build_file (Path.build source) in
-        let root =
-          Loaded_project.partition eval.loaded_project |> Build_partition.output_root
-        in
-        let local =
-          Path.drop_prefix_exn
-            (Source_tree.Rules.Dir.path eval.source_dir)
-            ~prefix:(Path.build root)
-        in
-        Memo.return (Path.build (Path.Build.append_local source local))
-    in
+    let* exec_dir = Source_tree.Rules.Dir.materialize eval.source_dir in
     let* context = Context.DB.get context in
     let* ocaml = Context.ocaml context in
     let* () =
@@ -457,7 +426,10 @@ module Eval = struct
   let context_independent ~(eval : eval) dune_file =
     let file =
       Source.Dune_file.filename dune_file
-      |> Option.map ~f:(Source_tree.Rules.Dir.file eval.source_dir)
+      |> Option.map ~f:(fun name ->
+        Source_tree.Rules.Dir.file
+          eval.source_dir
+          (Path.Local.relative_fname Path.Local.root name))
     in
     let static = Source.Dune_file.get_static_sexp dune_file in
     match Source.Dune_file.kind dune_file with

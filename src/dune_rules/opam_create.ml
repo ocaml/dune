@@ -370,17 +370,17 @@ let build_path ~build_dir pkg =
   | Exists _ | Generated -> opam_path
 ;;
 
-let source_file_exists pkg =
-  match Package.opam_file pkg with
-  | Workspace path -> Build_system.file_exists (Path.source path)
-  | Build path ->
-    let* dir = Dune_load.source_tree_dir ~dir:(Path.Build.parent_exn path) in
-    (match dir with
-     | None -> Memo.return false
-     | Some dir ->
-       Source_tree.Rules.Dir.file dir (Path.Build.basename path)
-       |> Source_tree.Rules.File.read
-       >>| Option.is_some)
+let source_file_exists ~build_dir pkg =
+  let dir = Source_path.to_build_dir (Package.dir pkg) ~workspace_build_dir:build_dir in
+  let* dir = Dune_load.source_tree_dir ~dir in
+  match dir with
+  | None -> Memo.return false
+  | Some dir ->
+    let local =
+      Source_path.descendant (Package.opam_file pkg) ~of_:(Package.dir pkg)
+      |> Option.value_exn
+    in
+    Source_tree.Rules.Dir.file dir local |> Source_tree.Rules.File.exists
 ;;
 
 let opam_template ~opam_path =
@@ -431,7 +431,7 @@ let add_alias_rule (ctx : Build_context.t) ~profile ~project ~pkg =
   in
   let generated_opam_path = build_path ~build_dir pkg in
   let opam_alias = Alias.make Alias0.opam ~dir in
-  let has_source_opam = source_file_exists pkg in
+  let has_source_opam = source_file_exists ~build_dir pkg in
   let* use_source_opam =
     if Profile.is_release profile then has_source_opam else Memo.return false
   in

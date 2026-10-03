@@ -10,7 +10,7 @@ val build_path : build_dir:Path.Build.t -> Package.t -> Path.Build.t
 
 (** Whether the authored source view contains an opam file, without consulting
     the rules that generate its build-directory counterpart. *)
-val source_file_exists : Package.t -> bool Memo.t
+val source_file_exists : build_dir:Path.Build.t -> Package.t -> bool Memo.t
 
 (** Generate the contents of an opam file. [template] is the filename and
     contents of the template file. *)

@@ -61,6 +61,7 @@ module File : sig
   val as_workspace : t -> Path.Source.t option
   val relative : t -> Loc.t -> string -> t
   val materialization : t -> materialization option Memo.t
+  val exists : t -> bool Memo.t
   val read_with_perm : t -> contents option Memo.t
   val read : t -> string option Memo.t
   val equal : t -> t -> bool

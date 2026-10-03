@@ -428,6 +428,7 @@ module Rules = struct
     type loaded =
       { logical_path : Path.Build.t
       ; backing_path : Path.Build.t
+      ; materialized_root : Path.Build.t
       ; layers : Source_tree_file.Mounted_layer.t list
       ; relative_dir : Path.Local.t
       ; status : Source_dir_status.t
@@ -452,6 +453,7 @@ module Rules = struct
     let make_loaded
           ~logical_path
           ~backing_path
+          ~materialized_root
           ~layers
           ~relative_dir
           ~status
@@ -462,6 +464,7 @@ module Rules = struct
       =
       { logical_path
       ; backing_path
+      ; materialized_root
       ; layers
       ; relative_dir
       ; status
@@ -487,12 +490,19 @@ module Rules = struct
       | Mounted { backing_path; _ } -> Path.build backing_path
     ;;
 
-    let file t filename =
+    let file t local =
       match t with
       | Source dir ->
-        Path.Source.relative_fname (Workspace_dir.path dir) filename |> File.workspace
+        Path.Source.append_local (Workspace_dir.path dir) local |> File.workspace
       | Mounted { logical_path; layers; _ } ->
-        File.mounted ~logical:(Path.Build.relative_fname logical_path filename) ~layers
+        File.mounted ~logical:(Path.Build.append_local logical_path local) ~layers
+    ;;
+
+    let materialize = function
+      | Source dir -> Memo.return (Path.source (Workspace_dir.path dir))
+      | Mounted { materialized_root; relative_dir; _ } ->
+        let+ () = Build_system.build_file (Path.build materialized_root) in
+        Path.build (Path.Build.append_local materialized_root relative_dir)
     ;;
 
     let relative_dir = function
@@ -693,7 +703,7 @@ module Rules = struct
       loop Path.Local.root
     ;;
 
-    let load_impl (logical_root, layers) =
+    let load_impl (logical_root, materialized_root, layers) =
       let backing_root =
         List.find_map layers ~f:(function
           | Layer.Directory { logical_root = layer_root; backing_root }
@@ -818,6 +828,7 @@ module Rules = struct
           Dir.make_loaded
             ~logical_path
             ~backing_path
+            ~materialized_root
             ~layers
             ~relative_dir
             ~status
@@ -844,15 +855,22 @@ module Rules = struct
 
     let load =
       let module Input = struct
-        type t = Path.Build.t * Layer.t list
+        type t = Path.Build.t * Path.Build.t * Layer.t list
 
-        let equal = Tuple.T2.equal Path.Build.equal (List.equal Layer.equal)
-        let hash = Tuple.T2.hash Path.Build.hash (List.hash Layer.hash)
-        let to_dyn = Tuple.T2.to_dyn Path.Build.to_dyn (Dyn.list Layer.to_dyn)
+        let equal =
+          Tuple.T3.equal Path.Build.equal Path.Build.equal (List.equal Layer.equal)
+        ;;
+
+        let hash = Tuple.T3.hash Path.Build.hash Path.Build.hash (List.hash Layer.hash)
+
+        let to_dyn =
+          Tuple.T3.to_dyn Path.Build.to_dyn Path.Build.to_dyn (Dyn.list Layer.to_dyn)
+        ;;
       end
       in
       let memo = Memo.create "mounted-source-tree" ~input:(module Input) load_impl in
-      fun ~logical_root ~layers -> Memo.exec memo (logical_root, layers)
+      fun ~logical_root ~materialized_root ~layers ->
+        Memo.exec memo (logical_root, materialized_root, layers)
     ;;
   end
 end

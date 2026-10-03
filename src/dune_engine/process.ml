@@ -1268,7 +1268,7 @@ let run_internal
   let cancellation =
     Option.map build ~f:(fun { Build.cancellation; _ } -> cancellation)
   in
-  Scheduler.with_job_slot ?cancellation (fun () ->
+  Scheduler.with_job_slot ?cancellation ~job_slots:metadata.job_slots (fun () ->
     let queued = Time.diff (Time.now ()) start in
     let dir =
       match dir with

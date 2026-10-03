@@ -364,6 +364,13 @@ module Throttle : sig
   (** Execute a fiber, waiting if too many jobs are already running *)
   val run : t -> f:(unit -> 'a fiber) -> 'a fiber
 
+  (** Like [run], but the job takes [weight] slots instead of one. This lets a
+      job that runs its own parallel work reserve the capacity that it uses.
+      A [weight] larger than [size t] is reduced to [size t], so that the job
+      can always start. Jobs start in the order in which they arrive, so that
+      a job with a large weight does not wait forever. *)
+  val run_weighted : t -> weight:int -> f:(unit -> 'a fiber) -> 'a fiber
+
   (** Return the number of jobs currently running *)
   val running : t -> int
 end

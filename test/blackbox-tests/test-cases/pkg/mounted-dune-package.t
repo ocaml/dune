@@ -310,6 +310,32 @@ both lib and libexec pforms.
   installed-name
   $ test ! -e _build/default/.lockfile/pkg/foo/src/unrelated
 
+Public files and binaries must also have ordinary installation rules. A special
+pform-only route is not a substitute for these targets.
+
+  $ cat > _foo/support/tool <<'EOF'
+  > #!/bin/sh
+  > echo native-tool
+  > EOF
+  $ chmod +x _foo/support/tool
+  $ cat >> _foo/support/dune <<'EOF'
+  > (install (section bin) (files (tool as foo-tool)))
+  > EOF
+  $ (cd _foo && dune build --root . \
+  >   _build/install/default/lib/foo/support/renamed.txt \
+  >   _build/install/default/bin/foo-tool)
+  $ _foo/_build/install/default/bin/foo-tool
+  native-tool
+  $ test ! -e _foo/_build/default/src/unrelated
+  $ dune build _build/install/default/lib/foo/support/renamed.txt 2>error
+  [1]
+  $ grep '^Error:' error
+  Error: Don't know how to build
+  $ dune build _build/install/default/bin/foo-tool 2>error
+  [1]
+  $ grep '^Error:' error
+  Error: Don't know how to build _build/install/default/bin/foo-tool
+
 Generated installation metadata uses the same rules as an ordinary workspace.
 Neither a generated opam file nor an odoc configuration requires an opaque build.
 

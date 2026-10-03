@@ -4,9 +4,12 @@ open Memo.O
 module Context = struct
   type t =
     | Source_dir_or_enable of Path.Source.t option
-    | Project of Dune_project.t
+    | Project of
+        { project : Dune_project.t
+        ; vendored : bool
+        }
 
-  let project p = Project p
+  let project project ~vendored = Project { project; vendored }
   let source_dir_or_enable p = Source_dir_or_enable p
 end
 
@@ -37,75 +40,44 @@ let maybe_emit warning f = function
 ;;
 
 let emit t context f =
-  (let+ dir =
-     match
-       match (context : Context.t) with
-       | Source_dir_or_enable dir -> dir
-       | Project project -> Source_path.as_workspace (Dune_project.root project)
-     with
-     | None -> Memo.return None
-     | Some dir -> Source_tree.nearest_dir dir >>| Option.some
-   in
-   match dir with
-   | None -> `Enabled
-   | Some dir ->
+  (match (context : Context.t) with
+   | Project { project; vendored } ->
+     Memo.return (if vendored then `Disabled else check_project t project)
+   | Source_dir_or_enable None -> Memo.return `Enabled
+   | Source_dir_or_enable (Some dir) ->
+     let+ dir = Source_tree.nearest_dir dir in
      (match Source_tree.Dir.status dir with
       | Vendored -> `Disabled
-      | _ -> check_project t (Source_tree.Dir.project dir)))
+      | Normal | Data_only -> check_project t (Source_tree.Dir.project dir)))
   >>= maybe_emit t f
 ;;
 
 module Bag = struct
   type decode =
-    { active : Toggle.t
-    ; warning : Warning.t
-    ; project_root : Path.Source.t option
+    { warning : Warning.t
     ; produce : unit -> User_message.t Memo.t
     }
 
-  let decode warning produce =
-    let open Dune_sexp.Decoder in
-    Dune_project.get ()
-    >>| function
-    | None -> { warning; active = `Enabled; project_root = None; produce }
-    | Some project ->
-      { active = check_project warning project
-      ; project_root = Source_path.as_workspace (Dune_project.root project)
-      ; produce
-      ; warning
-      }
-  ;;
+  type t =
+    { context : Context.t
+    ; warnings : decode list ref
+    }
 
-  let emit_decode { warning; active; project_root; produce } =
-    (match project_root with
-     | None -> Memo.return active
-     | Some project_root ->
-       Source_tree.nearest_dir project_root
-       >>| Source_tree.Dir.status
-       >>| (function
-        | Vendored -> `Disabled
-        | _ -> active))
-    >>= maybe_emit warning produce
-  ;;
-
-  type t = decode list ref
-
-  let create () = ref []
+  let create context = { context; warnings = ref [] }
   let key = Univ_map.Key.create ~name:"warning-bag" Dyn.opaque
 
   let decode w produce =
     let open Dune_sexp.Decoder in
-    let* decode = decode w produce in
     Dune_sexp.Decoder.get key
     >>| function
     | None -> Code_error.raise "no warning bag in context" []
-    | Some p -> p := decode :: !p
+    | Some { warnings; _ } -> warnings := { warning = w; produce } :: !warnings
   ;;
 
-  let emit_all t =
-    let all = !t in
-    t := [];
-    Memo.parallel_iter all ~f:emit_decode
+  let emit_all { context; warnings } =
+    let all = !warnings in
+    warnings := [];
+    Memo.parallel_iter all ~f:(fun { warning; produce } -> emit warning context produce)
   ;;
 
   let set t decoder = Dune_sexp.Decoder.set key t decoder

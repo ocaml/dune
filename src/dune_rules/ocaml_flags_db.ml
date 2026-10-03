@@ -30,7 +30,7 @@ let ocaml_flags sctx ~dir (spec : Dune_lang.Ocaml_flags.Spec.t) =
       ~default:ocaml_flags
       ~eval:(Expander.expand_and_eval_set expander)
   in
-  Dune_load.is_vendored ~dir
+  Dune_load.vendored_warnings ~dir
   >>= function
   | false -> Memo.return flags
   | true ->

@@ -432,6 +432,11 @@ let gen_project_rules =
         Dune_project.filter_packages project ~f:(Package.Name.Set.mem packages)
     in
     let dune_version = Dune_project.dune_version project in
+    let warning_context =
+      Warning_emit.Context.project
+        project
+        ~vendored:(Loaded_project.vendored_warnings loaded_project)
+    in
     let+ () = Install_rules.gen_project_rules sctx project
     and+ () = Odoc.gen_project_rules sctx project
     and+ () = Odoc_new.gen_project_rules sctx project
@@ -443,7 +448,7 @@ let gen_project_rules =
       | Some _ when dune_version < version -> Memo.return ()
       | Some loc ->
         let+ vendored =
-          Dune_load.is_vendored ~dir:(Loaded_project.output_root loaded_project)
+          Dune_load.vendored_warnings ~dir:(Loaded_project.output_root loaded_project)
         in
         if not vendored
         then
@@ -465,19 +470,16 @@ let gen_project_rules =
          with
          | None -> Memo.return ()
          | Some project_file ->
-           Warning_emit.emit
-             missing_project_name
-             (Warning_emit.Context.project project)
-             (fun () ->
-                let+ () = Memo.return () in
-                let loc = Loc.in_file (Source_path.to_path project_file) in
-                User_message.make
-                  ~loc
-                  [ Pp.text
-                      "Project name is not specified. Add a (name <project-name>) field \
-                       to your dune-project file to make sure that $ dune subst works in \
-                       release or pinned builds"
-                  ]))
+           Warning_emit.emit missing_project_name warning_context (fun () ->
+             let+ () = Memo.return () in
+             let loc = Loc.in_file (Source_path.to_path project_file) in
+             User_message.make
+               ~loc
+               [ Pp.text
+                   "Project name is not specified. Add a (name <project-name>) field to \
+                    your dune-project file to make sure that $ dune subst works in \
+                    release or pinned builds"
+               ]))
     and+ () =
       (* Emit warnings for duplicate dependencies in packages *)
       let packages = Dune_project.packages project in
@@ -485,10 +487,7 @@ let gen_project_rules =
       |> Memo.parallel_iter ~f:(fun pkg ->
         Dune_lang.Package.duplicate_dep_warnings pkg
         |> Memo.parallel_iter ~f:(fun message ->
-          Warning_emit.emit
-            duplicate_deps
-            (Warning_emit.Context.project project)
-            (fun () -> Memo.return message)))
+          Warning_emit.emit duplicate_deps warning_context (fun () -> Memo.return message)))
     in
     ()
   in

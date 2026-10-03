@@ -539,7 +539,7 @@ let eval
       ~standard:all_modules_by_path
       settings.modules
   in
-  let* is_vendored = Dune_load.is_vendored ~dir:src_dir in
+  let* is_vendored = Dune_load.vendored_warnings ~dir:src_dir in
   eval
     ~expander
     ~modules:all_modules_by_path

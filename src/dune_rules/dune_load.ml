@@ -78,6 +78,7 @@ let load_mounted context =
                      ~output_root:(Path.Build.append_local artifact_root project_root)
                      ~visible_packages:(Some visible_packages)
                      ~stanza_mask:(Some visible_packages)
+                     ~vendored_warnings:true
                    |> Memo.return)
                in
                let projects_by_root =
@@ -227,7 +228,8 @@ let loaded =
               ~partition
               ~output_root:(Path.Build.append_source (Context.build_dir context) root)
               ~visible_packages:None
-              ~stanza_mask)
+              ~stanza_mask
+              ~vendored_warnings:false)
         in
         let projects_by_root =
           Source_path.Map.of_list_map_exn projects ~f:(fun project ->
@@ -518,11 +520,25 @@ let find_loaded_project_by_identity ~context ~identity =
     Loaded_project.Identity.equal identity (Loaded_project.identity project))
 ;;
 
-let is_vendored ~dir =
+let vendored_warnings ~dir =
   let* project = find_loaded_project ~dir in
-  match Build_partition.purpose (Loaded_project.partition project) with
-  | Mounted -> Memo.return true
-  | Workspace -> Source_tree.is_vendored (Path.Build.drop_build_context_exn dir)
+  if Loaded_project.vendored_warnings project
+  then Memo.return true
+  else (
+    let rec loop dir =
+      let* source_dir = Loaded_project.source_tree_dir project dir in
+      match source_dir with
+      | Some dir ->
+        Memo.return
+          (match Source_tree.Rules.Dir.status dir with
+           | Vendored -> true
+           | Normal | Data_only -> false)
+      | None ->
+        (match Path.Build.parent dir with
+         | None -> Memo.return false
+         | Some dir -> loop dir)
+    in
+    loop dir)
 ;;
 
 let projects () =

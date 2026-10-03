@@ -470,10 +470,8 @@ in recent language versions; authored vendoring suppresses it.
   $ grep '^no_keep_locs' workspace-syntax
   no_keep_locs is a no-op. Please delete it.
   $ (cd _vendor && dune build --root . dep/syntax/syntax.cma)
-  $ dune build "$mounted/syntax/syntax.cma" 2>mounted-syntax
-  [1]
-  $ grep '^no_keep_locs' mounted-syntax
-  no_keep_locs is a no-op. Please delete it.
+  $ dune build "$mounted/syntax/syntax.cma"
+  $ test ! -e "$mounted/.opam/dep/target"
 
 Warnings emitted by generated project rules must use that same context.
 
@@ -498,7 +496,8 @@ Warnings emitted by generated project rules must use that same context.
   [1]
   $ dune build "$mounted/probe" 2>mounted-project
   $ grep -c 'Duplicate dependency' mounted-project
-  1
+  0
+  [1]
 
 Recursive globs can reach a sibling directory, even above the current project
 root. Rule dependencies and install entries must traverse the same input tree.

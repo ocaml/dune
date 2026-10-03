@@ -22,6 +22,7 @@ val create
   -> output_root:Path.Build.t
   -> visible_packages:Package.Name.Set.t option
   -> stanza_mask:Package.Name.Set.t option
+  -> vendored_warnings:bool
   -> t
 
 val project : t -> Dune_project.t
@@ -36,6 +37,10 @@ val visible_packages : t -> Package.Name.Set.t option
 (** Build selection is separate from admitted package definitions: for example,
     disabled packages still need their opam metadata generated. *)
 val stanza_mask : t -> Package.Name.Set.t option
+
+(** Dependency warning defaults, independent of authored directory status and
+    package admission. Authored vendored project roots also enable this policy. *)
+val vendored_warnings : t -> bool
 
 val hide_packages : t -> t
 

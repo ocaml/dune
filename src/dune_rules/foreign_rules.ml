@@ -342,7 +342,7 @@ let build_c ~sctx ~dir ~expander ~include_flags (loc, (src : Foreign.Source.t), 
       let has_standard = Ordered_set_lang.Unexpanded.has_standard flags in
       let* project = Dune_load.find_project ~dir in
       let use_standard_flags = Dune_project.use_standard_c_and_cxx_flags project in
-      let+ is_vendored = Dune_load.is_vendored ~dir in
+      let+ is_vendored = Dune_load.vendored_warnings ~dir in
       if
         Dune_project.dune_version project >= (2, 8)
         && Option.is_none use_standard_flags

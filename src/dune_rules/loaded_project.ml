@@ -59,6 +59,7 @@ type t =
   ; output_root : Path.Build.t
   ; visible_packages : Package.Name.Set.t option
   ; stanza_mask : Package.Name.Set.t option
+  ; vendored_warnings : bool
   }
 
 let create
@@ -70,6 +71,7 @@ let create
       ~output_root
       ~visible_packages
       ~stanza_mask
+      ~vendored_warnings
   =
   if
     not
@@ -91,6 +93,13 @@ let create
       [ "output_root", Path.Build.to_dyn output_root
       ; "partition", Build_partition.to_dyn partition
       ];
+  let vendored_warnings =
+    vendored_warnings
+    ||
+    match Source_tree.Rules.Dir.status source_tree_root with
+    | Vendored -> true
+    | Normal | Data_only -> false
+  in
   { project
   ; identity
   ; source_root
@@ -99,6 +108,7 @@ let create
   ; output_root
   ; visible_packages
   ; stanza_mask
+  ; vendored_warnings
   }
 ;;
 
@@ -110,6 +120,7 @@ let partition t = t.partition
 let output_root t = t.output_root
 let visible_packages t = t.visible_packages
 let stanza_mask t = t.stanza_mask
+let vendored_warnings t = t.vendored_warnings
 
 let hide_packages t =
   { t with
@@ -164,5 +175,6 @@ let to_dyn t =
     ; "output_root", Path.Build.to_dyn t.output_root
     ; "visible_packages", Dyn.option Package.Name.Set.to_dyn t.visible_packages
     ; "stanza_mask", Dyn.option Package.Name.Set.to_dyn t.stanza_mask
+    ; "vendored_warnings", Dyn.bool t.vendored_warnings
     ]
 ;;

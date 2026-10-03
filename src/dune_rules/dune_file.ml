@@ -106,7 +106,12 @@ type eval =
 let eval_source_path eval = Source_tree.Rules.Dir.source_path eval.source_dir
 
 let parse_stanzas ~file ~(eval : eval) sexps =
-  let warnings = Warning_emit.Bag.create () in
+  let warnings =
+    Warning_emit.Context.project
+      eval.project
+      ~vendored:(Loaded_project.vendored_warnings eval.loaded_project)
+    |> Warning_emit.Bag.create
+  in
   let* stanzas =
     let file =
       Option.value

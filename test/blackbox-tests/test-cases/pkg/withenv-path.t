@@ -76,7 +76,7 @@ Printing out PATH without setting it when the package has a dependency:
   > EOF
   $ dune clean
   $ OCAMLRUNPARAM=b PATH=$DUNE_PATH:/bin build_pkg test 2>&1 | $DUNE_CMD subst "$DUNE_PATH" 'DUNE_PATH' | censor
-  PATH=$PWD/_build/_private/default/.pkg/hello2.0.0.1-$DIGEST1/target/bin:$PWD/_build/_private/default/.pkg/hello1.0.0.1-$DIGEST2/target/bin:DUNE_PATH:/bin
+  PATH=$PWD/_build/_private/default/.pkg/hello2/target/bin:$PWD/_build/_private/default/.pkg/hello1/target/bin:DUNE_PATH:/bin
 
 Setting PATH to a specific value:
   $ make_lockpkg test <<'EOF'
@@ -102,7 +102,7 @@ Attempting to add a path to PATH replaces the entire PATH:
   > EOF
   $ dune clean
   $ PATH=$DUNE_PATH:/bin build_pkg test 2>&1 | $DUNE_CMD subst "$DUNE_PATH" 'DUNE_PATH' | censor
-  PATH=/tmp/bin:$PWD/_build/_private/default/.pkg/hello2.0.0.1-$DIGEST1/target/bin:$PWD/_build/_private/default/.pkg/hello1.0.0.1-$DIGEST2/target/bin:DUNE_PATH:/bin
+  PATH=/tmp/bin:$PWD/_build/_private/default/.pkg/hello2/target/bin:$PWD/_build/_private/default/.pkg/hello1/target/bin:DUNE_PATH:/bin
 
 Try adding multiple paths to PATH:
   $ make_lockpkg test <<'EOF'
@@ -117,4 +117,4 @@ Try adding multiple paths to PATH:
   > EOF
   $ dune clean
   $ PATH=$DUNE_PATH:/bin build_pkg test 2>&1 | $DUNE_CMD subst "$DUNE_PATH" 'DUNE_PATH' | censor
-  PATH=/bar/bin:/foo/bin:/tmp/bin:$PWD/_build/_private/default/.pkg/hello2.0.0.1-$DIGEST1/target/bin:$PWD/_build/_private/default/.pkg/hello1.0.0.1-$DIGEST2/target/bin:DUNE_PATH:/bin
+  PATH=/bar/bin:/foo/bin:/tmp/bin:$PWD/_build/_private/default/.pkg/hello2/target/bin:$PWD/_build/_private/default/.pkg/hello1/target/bin:DUNE_PATH:/bin

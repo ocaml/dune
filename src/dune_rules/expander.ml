@@ -51,6 +51,7 @@ type t =
   { dir : Path.Build.t
   ; source_dir : Source_path.t
   ; source_tree_dir : Source_tree.Rules.Dir.t option
+  ; source_tree_root : Source_tree.Rules.Dir.t
   ; env : Env.t Memo.t
   ; local_env : string Action_builder.t Env.Var.Map.t
   ; artifacts_host : Artifacts.t Memo.t
@@ -66,6 +67,7 @@ let artifacts t = t.artifacts_host
 let dir t = t.dir
 let source_dir t = t.source_dir
 let source_tree_dir t = t.source_tree_dir
+let source_tree_root t = t.source_tree_root
 let project t = t.project
 let context t = Context.name t.context
 
@@ -78,8 +80,25 @@ let set_local_env_var t ~var ~value =
   { t with local_env = Env.Var.Map.set t.local_env var value }
 ;;
 
-let set_scope t ~dir ~source_dir ~source_tree_dir ~project ~scope ~scope_host =
-  { t with dir; source_dir; source_tree_dir; project; scope; scope_host }
+let set_scope
+      t
+      ~dir
+      ~source_dir
+      ~source_tree_dir
+      ~source_tree_root
+      ~project
+      ~scope
+      ~scope_host
+  =
+  { t with
+    dir
+  ; source_dir
+  ; source_tree_dir
+  ; source_tree_root
+  ; project
+  ; scope
+  ; scope_host
+  }
 ;;
 
 let for_package t = function
@@ -1165,6 +1184,7 @@ let make_root
       ~project
       ~source_dir
       ~source_tree_dir
+      ~source_tree_root
       ~scope
       ~scope_host
       ~(context : Context.t)
@@ -1174,6 +1194,7 @@ let make_root
   { dir = Context.build_dir context
   ; source_dir
   ; source_tree_dir
+  ; source_tree_root
   ; env
   ; local_env = Env.Var.Map.empty
   ; bindings = Pform.Map.empty

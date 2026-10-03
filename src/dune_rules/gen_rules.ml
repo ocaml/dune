@@ -18,7 +18,7 @@ let install_stanza_rules ~ctx_dir ~expander (install_conf : Install_conf.t) =
             ~expand
             ~dir:ctx_dir
             ~source_dir:(Expander.source_dir expander)
-            ~source_tree_dir:(Expander.source_tree_dir expander)
+            ~source_tree_root:(Expander.source_tree_root expander)
         and+ dirs_expanded =
           Install_entry.Dir.to_file_bindings_expanded
             install_conf.dirs

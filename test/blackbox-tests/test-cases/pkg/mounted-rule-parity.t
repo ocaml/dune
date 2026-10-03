@@ -494,11 +494,20 @@ root. Rule dependencies and install entries must traverse the same input tree.
   >  (target installed)
   >  (action (copy %{pkg:foo:share:data/nested/second.txt} %{target})))
   > EOF
-  $ dune build _build/default/.lockfile/pkg/foo/project/sub/result 2>error
-  [1]
-  $ grep '^Error:' error
-  Error: path outside the workspace: ../../data from .
-  $ dune build installed 2>error
-  [1]
-  $ grep '^Error:' error
-  Error: path outside the workspace: ../../data from .
+  $ dune build _build/default/.lockfile/pkg/foo/project/sub/result installed
+  $ cat _build/default/.lockfile/pkg/foo/project/sub/result
+  first
+  second
+  $ cat _build/default/installed
+  second
+  $ test ! -e _build/default/.lockfile/pkg/foo/.opam/foo/target
+
+Changes to sibling inputs invalidate both uses of the glob.
+
+  $ echo changed > _source/data/nested/second.txt
+  $ dune build _build/default/.lockfile/pkg/foo/project/sub/result installed
+  $ cat _build/default/.lockfile/pkg/foo/project/sub/result
+  first
+  changed
+  $ cat _build/default/installed
+  changed

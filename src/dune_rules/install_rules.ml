@@ -585,7 +585,7 @@ end = struct
         ~expand
         ~dir
         ~source_dir:(Expander.source_dir expander)
-        ~source_tree_dir:(Expander.source_tree_dir expander)
+        ~source_tree_root:(Expander.source_tree_root expander)
       >>= Memo.List.map ~f:(fun fb ->
         let+ entry = make_entry ~kind:File fb in
         let loc = File_binding.Expanded.src_loc fb in

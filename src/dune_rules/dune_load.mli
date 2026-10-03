@@ -17,6 +17,11 @@ val stanzas_of_package
 val projects_by_output_root : Context_name.t -> Loaded_project.t Path.Build.Map.t Memo.t
 val package_errors : Context_name.t -> User_message.t list Package.Name.Map.t Memo.t
 val check_package : Context_name.t -> Package.Name.t -> unit Memo.t
+
+(** The complete input tree enclosing [dir], without loading generated stanzas.
+    This root may enclose several projects. *)
+val source_tree_root : dir:Path.Build.t -> Source_tree.Rules.Dir.t option Memo.t
+
 val source_tree_dir : dir:Path.Build.t -> Source_tree.Rules.Dir.t option Memo.t
 
 val find_loaded_project_by_identity

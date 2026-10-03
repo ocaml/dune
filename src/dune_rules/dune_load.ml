@@ -472,28 +472,38 @@ let stanzas_of_package =
     Package.Name.Map.Multi.find stanzas package
 ;;
 
-let source_tree_dir ~dir =
+let source_tree_root ~dir =
   match Path.Build.extract_build_context dir with
   | None -> Memo.return None
-  | Some (context, source) ->
+  | Some (context, _) ->
     let context = Context_name.of_string (Filename.to_string context) in
     let* valid = Per_context.valid context in
     if not valid
     then Memo.return None
     else (
       match Pkg_sources.package_of_artifact_path dir with
-      | None -> Source_tree.find_dir source >>| Option.map ~f:Source_tree.Rules.Dir.source
+      | None ->
+        Source_tree.root () >>| fun root -> Some (Source_tree.Rules.Dir.source root)
       | Some package ->
-        let* mounted = Pkg_sources.find_mounted context package in
-        (match Option.bind mounted ~f:Pkg_sources.Mounted.tree with
-         | None -> Memo.return None
-         | Some tree ->
-           let local =
-             Path.drop_prefix_exn
-               (Path.build dir)
-               ~prefix:(Path.build (Source_tree.Rules.Mounted.source_root tree))
-           in
-           Source_tree.Rules.Dir.find_dir (Source_tree.Rules.Mounted.root tree) local))
+        let+ mounted = Pkg_sources.find_mounted context package in
+        Option.bind mounted ~f:Pkg_sources.Mounted.tree
+        |> Option.map ~f:Source_tree.Rules.Mounted.root)
+;;
+
+let source_tree_dir ~dir =
+  let* root = source_tree_root ~dir in
+  match root with
+  | None -> Memo.return None
+  | Some root ->
+    let output_root =
+      Source_tree.Rules.Dir.source_path root
+      |> Source_path.to_build_dir
+           ~workspace_build_dir:(Context_name.build_dir (context_of_dir dir))
+    in
+    let local = Path.drop_prefix (Path.build dir) ~prefix:(Path.build output_root) in
+    (match local with
+     | None -> Memo.return None
+     | Some local -> Source_tree.Rules.Dir.find_dir root local)
 ;;
 
 let find_loaded_project_by_identity ~context ~identity =

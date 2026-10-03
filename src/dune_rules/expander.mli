@@ -7,6 +7,7 @@ type t
 val dir : t -> Path.Build.t
 val source_dir : t -> Source_path.t
 val source_tree_dir : t -> Source_tree.Rules.Dir.t option
+val source_tree_root : t -> Source_tree.Rules.Dir.t
 val context : t -> Context_name.t
 val project : t -> Dune_project.t
 
@@ -24,6 +25,7 @@ val make_root
   :  project:Dune_project.t
   -> source_dir:Source_path.t
   -> source_tree_dir:Source_tree.Rules.Dir.t option
+  -> source_tree_root:Source_tree.Rules.Dir.t
   -> scope:Scope.t Memo.t
   -> scope_host:Scope.t Memo.t
   -> context:Context.t
@@ -44,6 +46,7 @@ val set_scope
   -> dir:Path.Build.t
   -> source_dir:Source_path.t
   -> source_tree_dir:Source_tree.Rules.Dir.t option
+  -> source_tree_root:Source_tree.Rules.Dir.t
   -> project:Dune_project.t
   -> scope:Scope.t Memo.t
   -> scope_host:Scope.t Memo.t

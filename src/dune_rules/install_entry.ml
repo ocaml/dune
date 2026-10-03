@@ -83,7 +83,7 @@ module File = struct
           ~expand
           ~dir
           ~source_dir
-          ~source_tree_dir
+          ~source_tree_root
           ~dune_syntax
       =
       match t with
@@ -95,7 +95,7 @@ module File = struct
             ~f:expand
             ~base_dir:dir
             ~source_dir
-            ~source_tree_dir
+            ~source_tree_root
         in
         let glob_loc = String_with_vars.loc glob_files.glob in
         let glob_prefix = Glob_files_expand.Expanded.prefix glob_expanded in
@@ -131,9 +131,21 @@ module File = struct
             ~dir:(Some (Path.Build.drop_build_context_exn dir)))
     ;;
 
-    let to_file_bindings_expanded t ~expand ~dir ~source_dir ~source_tree_dir ~dune_syntax
+    let to_file_bindings_expanded
+          t
+          ~expand
+          ~dir
+          ~source_dir
+          ~source_tree_root
+          ~dune_syntax
       =
-      to_file_bindings_unexpanded t ~expand ~dir ~source_dir ~source_tree_dir ~dune_syntax
+      to_file_bindings_unexpanded
+        t
+        ~expand
+        ~dir
+        ~source_dir
+        ~source_tree_root
+        ~dune_syntax
       |> Memo.bind
            ~f:
              (Memo.List.map
@@ -177,7 +189,7 @@ module File = struct
       List.map entries ~f:(fun entry -> entry, dune_syntax))
   ;;
 
-  let to_file_bindings_unexpanded ts ~expand ~dir ~source_dir ~source_tree_dir =
+  let to_file_bindings_unexpanded ts ~expand ~dir ~source_dir ~source_tree_root =
     expand_includes ts ~expand ~dir
     |> Memo.bind
          ~f:
@@ -186,12 +198,12 @@ module File = struct
                 ~expand
                 ~dir
                 ~source_dir
-                ~source_tree_dir
+                ~source_tree_root
                 ~dune_syntax
                 entry))
   ;;
 
-  let to_file_bindings_expanded ts ~expand ~dir ~source_dir ~source_tree_dir =
+  let to_file_bindings_expanded ts ~expand ~dir ~source_dir ~source_tree_root =
     let* file_bindings_expanded =
       expand_includes ts ~expand ~dir
       |> Memo.bind
@@ -201,7 +213,7 @@ module File = struct
                   ~expand
                   ~dir
                   ~source_dir
-                  ~source_tree_dir
+                  ~source_tree_root
                   ~dune_syntax
                   entry))
     in

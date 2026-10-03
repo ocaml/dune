@@ -350,7 +350,7 @@ let rec dep expander : Dep_conf.t -> _ = function
          ~f:(Expander.expand ~mode:Single expander)
          ~base_dir:dir
          ~source_dir:(Expander.source_dir expander)
-         ~source_tree_dir:(Expander.source_tree_dir expander)
+         ~source_tree_root:(Expander.source_tree_root expander)
        >>| Glob_files_expand.Expanded.matches
        >>| List.map ~f:(fun path ->
          if Filename.is_relative path

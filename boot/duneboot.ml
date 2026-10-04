@@ -52,6 +52,7 @@ module Map = struct
   module type S = sig
     include Map.S
 
+    val is_singleton : 'a t -> bool
     val of_list : (key * 'a) list -> 'a t
     val of_list_reduce : (key * 'a) list -> f:('a -> 'a -> 'a) -> 'a t
     val to_list : 'a t -> (key * 'a) list
@@ -60,6 +61,18 @@ module Map = struct
 
   module Make (S : Map.OrderedType) : S with type key = S.t = struct
     include Map.Make (S)
+
+    let is_singleton t =
+      (* [for_all] visits the root first, so this examines at most two nodes. *)
+      let seen = ref false in
+      for_all t ~f:(fun _ _ ->
+        match !seen with
+        | true -> false
+        | false ->
+          seen := true;
+          true)
+      && !seen
+    ;;
 
     let of_list_reduce xs ~f =
       List.fold_left xs ~init:empty ~f:(fun acc (key, v) ->
@@ -1449,7 +1462,7 @@ module Group = struct
     let name = List.hd names in
     let path = Module.Path.of_list names in
     match
-      if Module.Name.Map.cardinal modules = 1
+      if Module.Name.Map.is_singleton modules
       then (
         let name, first = Module.Name.Map.choose modules in
         match first with

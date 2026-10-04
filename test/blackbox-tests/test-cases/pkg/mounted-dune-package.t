@@ -463,3 +463,94 @@ that consumer's native foreign library dependency.
   ready
   $ test ! -e _build/default/.lockfile/pkg/native/.opam/native/target
   $ test ! -e _build/default/.lockfile/pkg/unrelated/.opam/unrelated/target
+
+A JavaScript executable selects a compiler for its build. Compiling its library
+dependencies must not silently switch to an ambient compiler. Fake compilers
+make selection observable without depending on a particular JSOO version.
+
+  $ mkdir ../js-compiler-scope
+  $ cd ../js-compiler-scope
+  $ cat > dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package
+  >  (name main)
+  >  (dir .)
+  >  (depends foo js_of_ocaml-compiler))
+  > EOF
+  $ echo '(executable (name main) (modes js) (libraries foo))' > dune
+  $ echo 'let () = print_int Foo.value' > main.ml
+  $ mkdir -p _workspace/foo _workspace/compiler _ambient
+  $ cp dune-project dune main.ml _workspace/
+  $ cat > _workspace/foo/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name foo))
+  > EOF
+  $ echo '(library (public_name foo))' > _workspace/foo/dune
+  $ echo 'let value = 42' > _workspace/foo/foo.ml
+  $ cat > _workspace/compiler/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name js_of_ocaml-compiler))
+  > EOF
+  $ cat > _workspace/compiler/dune <<'EOF'
+  > (executable
+  >  (name driver)
+  >  (public_name js_of_ocaml)
+  >  (package js_of_ocaml-compiler))
+  > EOF
+  $ cat > _workspace/compiler/driver.ml <<'EOF'
+  > let () =
+  >   match Array.to_list Sys.argv with
+  >   | [_; "--version"] -> print_endline "4.0.0"
+  >   | args ->
+  >     let rec output = function
+  >       | "-o" :: path :: _ ->
+  >         let out = open_out path in
+  >         output_string out "selected JS compiler\n";
+  >         close_out out
+  >       | _ :: rest -> output rest
+  >       | [] -> exit 1
+  >     in
+  >     output args
+  > EOF
+  $ cat > _ambient/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name ambient))
+  > EOF
+  $ cat > _ambient/dune <<'EOF'
+  > (executable (name wrong) (public_name js_of_ocaml) (package ambient))
+  > EOF
+  $ echo 'let () = prerr_endline "ambient JS compiler"; exit 1' > _ambient/wrong.ml
+  $ (cd _ambient && dune build --root . @install)
+  $ export PATH="$PWD/_ambient/_build/install/default/bin:$PATH"
+  $ (cd _workspace && make_lockdir)
+  $ (cd _workspace && dune build --root . main.bc.js)
+  $ cat _workspace/_build/default/main.bc.js
+  selected JS compiler
+  $ make_lockdir
+  $ make_lockpkg foo <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_workspace/foo))
+  > (build (run false))
+  > EOF
+  $ make_lockpkg js_of_ocaml-compiler <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_workspace/compiler))
+  > (build (run false))
+  > EOF
+  $ dune build main.bc.js >output 2>&1
+  [1]
+  $ grep 'ambient JS compiler' output | sort -u
+  ambient JS compiler
+
+Giving the workspace library an explicit package scope exposes the same bug.
+The implicit compiler invocation is resolved in the library's scope rather
+than the executable's, even though the executable declared the compiler.
+
+  $ cat > _workspace/foo/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name foo) (dir .))
+  > EOF
+  $ (cd _workspace && dune build --root . main.bc.js) >output 2>&1
+  [1]
+  $ grep 'ambient JS compiler' output | sort -u
+  ambient JS compiler

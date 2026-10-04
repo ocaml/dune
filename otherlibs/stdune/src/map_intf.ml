@@ -10,6 +10,10 @@ module type S = sig
 
   val empty : 'a t
   val is_empty : 'a t -> bool
+
+  (** Whether the map contains exactly one binding. *)
+  val is_singleton : 'a t -> bool
+
   val mem : 'a t -> key -> bool
   val set : 'a t -> key -> 'a -> 'a t
   val add : 'a t -> key -> 'a -> ('a t, 'a) Result.t

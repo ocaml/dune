@@ -374,23 +374,23 @@ type sub_command =
   | Link
   | Build_runtime
 
-let js_of_ocaml_flags t ~dir ~mode (spec : Js_of_ocaml.Flags.Spec.t) =
-  Action_builder.of_memo
+let js_of_ocaml_flags t ~dir ~mode ~sub_command (spec : Js_of_ocaml.Flags.Spec.t) =
+  Action_builder.of_memo_join
   @@
   let+ expander = Super_context.expander t ~dir
   and+ js_of_ocaml = jsoo_env ~dir ~mode in
-  Js_of_ocaml.Flags.make
-    ~spec
-    ~default:js_of_ocaml.flags
-    ~eval:(Expander.expand_and_eval_set expander)
+  let spec, standard =
+    match sub_command with
+    | Compile -> spec.compile, js_of_ocaml.flags.compile
+    | Link -> spec.link, js_of_ocaml.flags.link
+    | Build_runtime -> spec.build_runtime, js_of_ocaml.flags.build_runtime
+  in
+  Expander.expand_and_eval_set expander spec ~standard
 ;;
 
 let resolve_config sctx ~dir ~(mode : Js_of_ocaml.Mode.t) flags =
   let open Action_builder.O in
-  let* compile_flags =
-    js_of_ocaml_flags sctx ~dir ~mode flags
-    |> Action_builder.bind ~f:(fun (x : _ Js_of_ocaml.Flags.t) -> x.compile)
-  in
+  let* compile_flags = js_of_ocaml_flags sctx ~dir ~mode ~sub_command:Compile flags in
   let* jsoo = compiler ~dir sctx ~mode in
   let* jsoo_version = Action_builder.of_memo (Version.jsoo_version jsoo) in
   if jsoo_has_build_config jsoo_version
@@ -414,13 +414,7 @@ let js_of_ocaml_rule
   =
   let open Action_builder.O in
   let jsoo = compiler ~dir sctx ~mode in
-  let flags =
-    let* flags = js_of_ocaml_flags sctx ~dir ~mode flags in
-    match sub_command with
-    | Compile -> flags.compile
-    | Link -> flags.link
-    | Build_runtime -> flags.build_runtime
-  in
+  let flags = js_of_ocaml_flags sctx ~dir ~mode ~sub_command flags in
   let flags =
     (* Avoid duplicating flags that are covered by the config *)
     Action_builder.map flags ~f:(fun flags ->

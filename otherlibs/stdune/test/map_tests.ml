@@ -3,6 +3,48 @@ open Dune_tests_common
 
 let () = init ()
 
+let%expect_test "is_singleton" =
+  let check keys =
+    Int.Map.of_list_unit keys |> Int.Map.is_singleton |> Dyn.bool |> print_dyn
+  in
+  check [];
+  check [ 1 ];
+  check [ 1; 2 ];
+  check [ 2; 1 ];
+  check [ 1; 2; 3 ];
+  check [ 3; 2; 1 ];
+  check (List.init 1_000 ~f:Fun.id);
+  [%expect
+    {|
+    false
+    true
+    false
+    false
+    false
+    false
+    false
+    |}]
+;;
+
+let%expect_test "is_singleton after updates" =
+  let check map = Int.Map.is_singleton map |> Dyn.bool |> print_dyn in
+  let map = Int.Map.singleton 1 "first" in
+  let map = Int.Map.set map 1 "replacement" in
+  check map;
+  let map = Int.Map.set map 2 "second" in
+  check map;
+  let map = Int.Map.remove map 1 in
+  check map;
+  check (Int.Map.remove map 2);
+  [%expect
+    {|
+    true
+    false
+    true
+    false
+    |}]
+;;
+
 (* Check that [of_alist_multi] groups elements in the right order *)
 let%expect_test _ =
   let open Dyn in

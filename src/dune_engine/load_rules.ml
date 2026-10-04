@@ -370,16 +370,11 @@ end = struct
           Alias.Name.Map.set
             aliases
             Alias.Name.default
-            { expansions =
-                Appendable_list.singleton
-                  (Loc.none, Rules.Dir_rules.Alias_spec.Deps expansion)
-            }
+            (Rules.Dir_rules.Alias_spec.singleton
+               Loc.none
+               (Rules.Dir_rules.Alias_spec.Deps expansion))
     in
-    Alias.Name.Map.map aliases ~f:(fun { Rules.Dir_rules.Alias_spec.expansions } ->
-      (* CR-soon rgrinberg: hide this reversal behind the interface from
-         [Alias_spec]. The order doesn't really matter, as we're just
-         collecting the dependencies that are attached to the alias *)
-      Appendable_list.to_list_rev expansions)
+    Alias.Name.Map.map aliases ~f:Rules.Dir_rules.Alias_spec.to_list
   ;;
 
   let add_non_fallback_rules ~init ~dir ~source_filenames rules =

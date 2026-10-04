@@ -9,7 +9,9 @@ module Dir_rules = struct
 
     type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
 
+    let singleton loc item = { expansions = Appendable_list.singleton (loc, item) }
     let union x y = { expansions = Appendable_list.( @ ) x.expansions y.expansions }
+    let to_list t = Appendable_list.to_list_rev t.expansions
   end
 
   type alias =
@@ -146,10 +148,7 @@ module Produce = struct
     ;;
 
     let add_deps t ?(loc = Loc.none) expansion =
-      alias
-        t
-        { expansions = Appendable_list.singleton (loc, Dir_rules.Alias_spec.Deps expansion)
-        }
+      alias t (Dir_rules.Alias_spec.singleton loc (Dir_rules.Alias_spec.Deps expansion))
     ;;
 
     (* All aliases in [ts] are expected to share a directory: the shared
@@ -162,10 +161,7 @@ module Produce = struct
       in
       let anon = Rule.Anonymous_action.make ~loc ~dir:(Alias.dir representative) action in
       Memo.parallel_iter ts ~f:(fun t ->
-        alias
-          t
-          { expansions = Appendable_list.singleton (loc, Dir_rules.Alias_spec.Action anon)
-          })
+        alias t (Dir_rules.Alias_spec.singleton loc (Dir_rules.Alias_spec.Action anon)))
     ;;
   end
 end

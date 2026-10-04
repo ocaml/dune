@@ -200,9 +200,14 @@ let make_request ~scontexts ~to_cwd ~test_paths =
           match Context_name.Map.find scontexts Context_name.default with
           | Some sctx -> sctx
           | None ->
-            (match Context_name.Map.to_list scontexts with
-             | [ (_, sctx) ] -> sctx
-             | _ ->
+            let only_context =
+              match Context_name.Map.is_singleton scontexts with
+              | false -> None
+              | true -> Context_name.Map.choose scontexts
+            in
+            (match only_context with
+             | Some (_, sctx) -> sctx
+             | None ->
                User_error.raise
                  [ Pp.text
                      "Multiple contexts are defined but no default context was found. \

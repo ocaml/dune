@@ -9,6 +9,7 @@ let roots : string option Install.Roots.t =
   ; bin = None
   ; sbin = None
   ; libexec_root = None
+  ; prefix = None
   }
 
 let prefix : string option = None

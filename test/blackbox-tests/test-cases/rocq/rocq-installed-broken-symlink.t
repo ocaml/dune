@@ -63,14 +63,6 @@ prevent the build.
   > EOF
 
   $ dune build
-  File "theories/dune", lines 1-3, characters 0-44:
-  1 | (rocq.theory
-  2 |  (name repro)
-  3 |  (theories Good))
-  Error: File unavailable:
-  $TESTCASE_ROOT/fake-prefix/lib/coq/user-contrib/Unrelated/Broken.vo
-  Broken symbolic link
-  [1]
 
   $ unlink fake-prefix/lib/coq/user-contrib/Unrelated/Broken.vo
   $ dune build
@@ -245,7 +237,7 @@ removing it recovers the build, while Unrelated remains broken.
 Now invoke a separate child project with the exact same compiler executable.
 The compiler and its configured installation are outside the child's build
 directory, even though both are in the parent's _build. The child discovers
-Good through of_rocq_install. The original Corelib scan includes Unrelated here.
+Good through of_rocq_install. Implicit Corelib must ignore Unrelated here too.
 
   $ mkdir -p _build/install/default/lib
   $ cp -R fake-prefix/lib/coq _build/install/default/lib/coq
@@ -260,14 +252,6 @@ Good through of_rocq_install. The original Corelib scan includes Unrelated here.
   > EOF
   $ (cd child && PATH="$outer_bin:$PATH" \
   >   FAKE_ROCQ_PREFIX="$outer_prefix" build_result)
-  File "theories/dune", lines 1-3, characters 0-44:
-  1 | (rocq.theory
-  2 |  (name repro)
-  3 |  (theories Good))
-  Error: File unavailable:
-  $TESTCASE_ROOT/_build/install/default/lib/coq/user-contrib/Unrelated/Broken.vo
-  Broken symbolic link
-  [1]
 
 Disable Corelib in the child, without setting ROCQPATH. Good is available
 from the parent's installation and the unrelated link no longer blocks it.

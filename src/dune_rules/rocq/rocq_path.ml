@@ -128,13 +128,20 @@ let scan_user_path root_path =
   scan_path ~f ~acc:Rocq_lib_name.append ~prefix:Rocq_lib_name.empty root_path
 ;;
 
-let scan_vo root_path =
+let scan_vo root =
   let f ~dir ~prefix:() ~subresults dir_contents =
     let vo = scan_vo ~dir dir_contents in
     Memo.return (vo @ subresults)
   in
   let acc _ _ = () in
-  scan_path ~f ~acc ~prefix:() root_path
+  let open Memo.O in
+  let* contents = Fs_memo.dir_contents (Path.as_outside_build_dir_exn root) in
+  match contents with
+  | Error _ -> Memo.return []
+  | Ok contents ->
+    let contents = Fs_memo.Dir_contents.to_list contents in
+    let* subresults = scan_path ~f ~acc ~prefix:() root in
+    f ~dir:root ~prefix:() ~subresults contents
 ;;
 
 let of_rocq_install rocq =
@@ -165,13 +172,10 @@ let of_rocq_install rocq =
   | Ok rocq_config ->
     (* Now we query for rocqlib *)
     let rocqlib_path = config_path_exn rocq_config "rocqlib" in
-    let* vo = scan_vo rocqlib_path in
+    let corelib_path = Path.relative rocqlib_path "theories" in
+    let* vo = scan_vo corelib_path in
     let corelib =
-      { name = Rocq_lib_name.corelib
-      ; path = Path.relative rocqlib_path "theories"
-      ; vo
-      ; corelib = true
-      }
+      { name = Rocq_lib_name.corelib; path = corelib_path; vo; corelib = true }
     in
     let* user_contrib =
       let contrib_path = Path.relative rocqlib_path "user-contrib" in

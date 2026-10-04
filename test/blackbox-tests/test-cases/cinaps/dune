@@ -1,4 +1,9 @@
+(env
+ (_
+  (binaries ../../utils/ocamlformat.exe)))
+
 (cram
  (applies_to :whole_subtree)
  (deps
-  (package cinaps)))
+  (package cinaps)
+  %{bin:ocamlformat}))

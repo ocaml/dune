@@ -286,3 +286,30 @@ It should be possible to get its merlin configuration as well:
    (UNIT_NAME dune__exe__Generatedx)
    (SUFFIX ".mlx .mlx")
    (READER (mlx)))
+
+An unconventional source keeps its configuration after adding an interface.
+
+  $ printf 'val x : string\n' > wrongext.mli
+  $ dune build @check
+  $ ./merlin_conf.sh wrongext.ml > with-interface.out
+  $ ./merlin_conf.sh wrongext.mli | diff with-interface.out -
+  $ ./merlin_conf.sh wrongext.cppo.cml | diff with-interface.out -
+  $ ./merlin_conf.sh wrongext | diff with-interface.out -
+
+A copy-line directive can lead through a filename without an extension.
+
+  $ mkdir copied
+  $ cat > copied/dune-project <<EOF
+  > (lang dune 3.16)
+  > EOF
+  $ cat > copied/dune <<EOF
+  > (library
+  >  (name copied)
+  >  (modules actual))
+  > (rule (action (copy# input.txt actual)))
+  > (rule (action (copy actual actual.ml)))
+  > EOF
+  $ printf 'let value = 1\n' > copied/input.txt
+  $ dune build --root copied @check
+  $ query_ocaml_merlin_pp "$PWD/copied/actual.ml" --root copied > copied.out
+  $ query_ocaml_merlin_pp "$PWD/copied/input.txt" --root copied | diff copied.out -

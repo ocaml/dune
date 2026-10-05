@@ -537,23 +537,21 @@ make selection observable without depending on a particular JSOO version.
   > (source (copy $PWD/_workspace/compiler))
   > (build (run false))
   > EOF
-  $ dune build main.bc.js >output 2>&1
-  [1]
-  $ grep 'ambient JS compiler' output | sort -u
-  ambient JS compiler
+  $ dune build main.bc.js
+  $ cat _build/default/main.bc.js
+  selected JS compiler
+  $ test ! -e _build/default/.lockfile/pkg/foo/.opam/foo/target
 
-Giving the workspace library an explicit package scope exposes the same bug.
-The implicit compiler invocation is resolved in the library's scope rather
-than the executable's, even though the executable declared the compiler.
+An explicit package scope on the workspace library must also retain the
+executable's compiler selection, without broadening the library's tool scope.
 
   $ cat > _workspace/foo/dune-project <<'EOF'
   > (lang dune 3.25)
   > (package (name foo) (dir .))
   > EOF
-  $ (cd _workspace && dune build --root . main.bc.js) >output 2>&1
-  [1]
-  $ grep 'ambient JS compiler' output | sort -u
-  ambient JS compiler
+  $ (cd _workspace && dune build --root . main.bc.js)
+  $ cat _workspace/_build/default/main.bc.js
+  selected JS compiler
 
 An optional linter in a library directory must not make binary discovery
 re-enter that library's rules. The package itself is legitimately visible;
@@ -714,15 +712,28 @@ files produced by the other compiler, including shapes and shared runtimes.
   $ cat _build/default/a/main.bc.js
   first
 
-The second consumer currently reuses shared objects compiled with the first
-compiler. Merely picking the context-root compiler everywhere is not a fix.
+The consumers get distinct shared objects despite identical build-config
+strings. This covers library archives, standard-library shapes, and runtimes.
 
-  $ dune build a/main.bc.js b/main.bc.js >output 2>&1
-  [1]
-  $ grep '^compiler mismatch:' output | sort -u
-  compiler mismatch: second
+  $ dune build a/main.bc.js b/main.bc.js
+  $ cat _build/default/a/main.bc.js _build/default/b/main.bc.js
+  first
+  second
   $ find _build/default/lib/.shared.objs/jsoo -name shared.cma.js -exec cat {} \; | sort
   first
+  second
+  $ find _build/default/.js -name stdlib.cma.js -exec cat {} \; | sort
+  first
+  second
+  $ find _build/default/.js -name runtime.bc.runtime.js -exec cat {} \; | sort
+  first
+  second
+  $ dune build b/main.bc.js a/main.bc.js
+  $ dune trace cat | jq_dune -s '
+  >   [.[] | processes
+  >    | select(.args.prog | endswith("js_of_ocaml"))
+  >    | select(.args.process_args | index("-o"))] | length'
+  0
 
 Changing the binding at the same path must invalidate compilation, even if the
 compiler version and build configuration do not change.
@@ -734,3 +745,25 @@ compiler version and build configuration do not change.
   $ dune build b/main.bc.js a/main.bc.js
   $ cat _build/default/b/main.bc.js
   first
+
+The compiler remains a host tool when JS artifacts are produced in a target
+context. Each consumer retains its host-side binding for shared compilation.
+
+  $ cat > b/dune <<'EOF'
+  > (env (_ (binaries (../tools/second.exe as js_of_ocaml))))
+  > (executable (name main) (modes js) (libraries shared))
+  > EOF
+  $ cat > dune-workspace <<'EOF'
+  > (lang dune 3.25)
+  > (context (default (name host)))
+  > (context (default (name target) (host host)))
+  > EOF
+  $ dune build _build/target/a/main.bc.js _build/target/b/main.bc.js
+  $ cat _build/target/a/main.bc.js _build/target/b/main.bc.js
+  first
+  second
+  $ dune trace cat | jq_dune -r '
+  >   processes | select(.args.prog | endswith("js_of_ocaml"))
+  >   | .args.prog | sub("^.*host/"; "host/")' | sort -u
+  host/.bin/js_of_ocaml
+  host/b/.bin/js_of_ocaml

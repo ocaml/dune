@@ -133,7 +133,7 @@ let lib_archive_rules_memo =
          let config = Jsoo_rules.Config.of_string config in
          let+ rules =
            Rules.collect_unit (fun () ->
-             Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
+             Memo.parallel_iter (Jsoo_rules.Config.modes config) ~f:(fun mode ->
                let in_context = Js_of_ocaml.Mode.Pair.select ~mode in_context in
                Jsoo_rules.build_cm
                  cctx

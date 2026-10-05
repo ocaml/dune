@@ -592,14 +592,15 @@ The ordinary workspace control has the same explicit package scope and an
 active, empty lock directory.
 
   $ cp -R _source _workspace
-  $ (cd _workspace && make_lockdir && dune build src/foo.cma src/available tool-output)
+  $ (cd _workspace &&
+  >  make_lockdir && dune build src/foo.cma src/available tool-output)
   $ cat _workspace/_build/default/src/available
   false
   $ cat _workspace/_build/default/tool-output
   native tool
 
-Importing the same sources currently makes the missing linter lookup enumerate
-all install entries of foo, which requires evaluating its directory again.
+The imported copy uses the same native binary declarations. An unsuccessful
+lookup must not fall back to enumerating foo's library installation entries.
 
   $ make_dune_project 3.25
   $ make_lockdir
@@ -615,10 +616,13 @@ all install entries of foo, which requires evaluating its directory again.
   $ dune build \
   >   _build/default/.lockfile/pkg/foo/src/foo.cma \
   >   _build/default/.lockfile/pkg/foo/src/available \
-  >   _build/default/.lockfile/pkg/foo/tool-output >output 2>&1
-  [1]
-  $ grep '^Error: Dependency cycle between:' output
-  Error: Dependency cycle between:
+  >   _build/default/.lockfile/pkg/foo/tool-output
+  $ cat _build/default/.lockfile/pkg/foo/src/available
+  false
+  $ cat _build/default/.lockfile/pkg/foo/tool-output
+  native tool
+  $ test ! -e _build/default/.lockfile/pkg/foo/.opam/foo/target
+  $ test ! -e _build/default/.lockfile/pkg/unrelated/.opam/unrelated/target
 
 A declared opaque dependency must still be searched when no native declaration
 matches. That fallback must not enumerate the native library's installs either.
@@ -639,7 +643,8 @@ matches. That fallback must not enumerate the native library's installs either.
   $ cat >> _source/dune <<'EOF'
   > (rule (with-stdout-to opaque-output (run %{bin:scoped-opaque-tool})))
   > EOF
-  $ dune build _build/default/.lockfile/pkg/foo/opaque-output >output 2>&1
-  [1]
-  $ grep '^Error: Dependency cycle between:' output
-  Error: Dependency cycle between:
+  $ dune build _build/default/.lockfile/pkg/foo/opaque-output
+  $ cat _build/default/.lockfile/pkg/foo/opaque-output
+  opaque tool
+  $ test ! -e _build/default/.lockfile/pkg/foo/.opam/foo/target
+  $ test ! -e _build/default/.lockfile/pkg/unrelated/.opam/unrelated/target

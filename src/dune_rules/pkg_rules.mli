@@ -24,7 +24,8 @@ val lock_dir_active : Context_name.t -> bool Memo.t
 val ocaml_toolchain : Context_name.t -> Ocaml_toolchain.t Action_builder.t option Memo.t
 
 (** [which ~packages context program] looks [program] up among the binaries
-    installed by [packages] in the lock directory. The caller supplies the
+    installed by opaque [packages] in the lock directory. Native declarations
+    are resolved by [Artifacts] before this fallback. The caller supplies the
     packages visible to the requester, including any explicit dependencies. *)
 val which
   :  packages:Package.Name.Set.t

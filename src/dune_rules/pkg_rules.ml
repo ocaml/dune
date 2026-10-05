@@ -1476,21 +1476,16 @@ let lock_dir_binaries =
            (Context_name.to_string context)))
     (fun (context, packages) ->
        let* packages = project_deps ~packages:(Only packages) context in
-       let native, opaque =
-         List.filter_partition_map packages ~f:(fun (pkg : Pkg.t) ->
+       let opaque =
+         List.filter packages ~f:(fun (pkg : Pkg.t) ->
            match pkg.builder with
-           | Ok `Dune -> Left pkg
-           | Ok `Opam -> Right pkg
-           | Error _ -> Skip)
+           | Ok `Opam -> true
+           | Ok `Dune | Error _ -> false)
        in
-       let* { binaries; dep_info = _ } =
+       let+ { binaries; dep_info = _ } =
          Action_expander.Artifacts_and_deps.of_closure opaque
        in
-       let+ native =
-         Package.Name.Set.of_list_map native ~f:(fun (pkg : Pkg.t) -> pkg.info.name)
-         |> Install_layout.binaries context
-       in
-       Filename.Map.superpose native binaries)
+       binaries)
 ;;
 
 let which ~packages context program =

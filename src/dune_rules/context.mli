@@ -70,7 +70,8 @@ val name : t -> Context_name.t
 (** Look up a binary on the context's ambient [PATH], without loading packages. *)
 val which : t -> Filename.t -> Path.t option Memo.t
 
-(** Search the supplied lock directory packages before the ambient [PATH].
+(** Search the supplied opaque lock directory packages before the ambient
+    [PATH]. Native binaries are resolved by [Artifacts] before this fallback.
     The caller supplies the packages visible to the requester. *)
 val which_narrowed_to_packages
   :  t

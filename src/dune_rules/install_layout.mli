@@ -11,9 +11,6 @@ type t
 (** Root of the materialized install layout for the package set. *)
 val root : Context_name.t -> Package.Name.Set.t -> Path.Build.t
 
-(** Enumerate binary paths without building the package's other install entries. *)
-val binaries : Context_name.t -> Package.Name.Set.t -> Path.t Filename.Map.t Memo.t
-
 (** Materialize selected providers and register dependencies on installed files,
     without applying exports. Preserve the supplied order for applying exports. *)
 val materialize : Context_name.t -> Opam_build.Dependency.t list -> t Action_builder.t

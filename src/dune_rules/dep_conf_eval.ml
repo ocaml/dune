@@ -88,7 +88,9 @@ let expand_include =
          (Pform.Env.initial ~stanza:Stanza.latest_version ~extensions:[])
          Dep_conf.decode_bindings)
   in
-  fun ~dir ~project s ->
+  fun ~expander s ->
+    let dir = Expander.dir expander in
+    let project = Expander.project expander in
     Path.Build.relative dir s
     |> Path.build
     |> Action_builder.read_sexp
@@ -265,12 +267,8 @@ let rec dep expander : Dep_conf.t -> _ = function
   | Include s ->
     (* TODO this is wrong. we shouldn't allow bindings here if we are in an
        unnamed expansion *)
-    let dir = Expander.dir expander in
     let pair =
-      let* deps =
-        let* project = Action_builder.of_memo @@ Dune_load.find_project ~dir in
-        expand_include ~dir ~project s
-      in
+      let* deps = expand_include ~expander s in
       let builder, _bindings, action_env = named_paths_builder ~expander deps in
       let+ paths = builder
       and+ env = action_env in
@@ -559,11 +557,7 @@ let named sandbox ~expander l =
     let open Action_builder.O in
     let rec sandbox_dep acc = function
       | Dep_conf.Include s ->
-        let* deps =
-          let dir = Expander.dir expander in
-          let* project = Action_builder.of_memo (Dune_load.find_project ~dir) in
-          expand_include ~dir ~project s
-        in
+        let* deps = expand_include ~expander s in
         sandbox_bindings acc deps
       | dep -> Action_builder.return (add_sandbox_config acc dep)
     and sandbox_bindings acc deps =

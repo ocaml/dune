@@ -793,9 +793,9 @@ the original input now.
   input.txt: melange false impl -
   alternate.txt: ocaml true impl -
 
-Compound dialect suffixes also lose their readers in conditional sources.
-Exact queries select the right mode and kind, but filename fallback cannot
-distinguish the implementation from the interface in either mode.
+Compound dialect suffixes retain their readers and distinguish source kinds in
+both modes. Exact conditional source paths select one mode; untracked filenames
+use the fallback in both modes, even when their names contain `.melange`.
 
   $ mkdir compound
   $ cat > compound/dune-project <<EOF
@@ -831,17 +831,21 @@ distinguish the implementation from the interface in either mode.
   sample.intf.ml: ocaml true intf sample.impl.ml
   sample.melange.impl.ml: melange false impl sample.melange.intf.ml
   sample.melange.intf.ml: melange false intf sample.melange.impl.ml
-  sample.pp.impl.ml: none
-  sample.pp.intf.ml: none
-  sample.melange.pp.impl.ml: none
-  sample.melange.pp.intf.ml: none
+  sample.pp.impl.ml: ocaml true impl sample.intf.ml
+  sample.pp.impl.ml: melange false impl sample.melange.intf.ml
+  sample.pp.intf.ml: ocaml true intf sample.impl.ml
+  sample.pp.intf.ml: melange false intf sample.melange.impl.ml
+  sample.melange.pp.impl.ml: ocaml true impl sample.intf.ml
+  sample.melange.pp.impl.ml: melange false impl sample.melange.intf.ml
+  sample.melange.pp.intf.ml: ocaml true intf sample.impl.ml
+  sample.melange.pp.intf.ml: melange false intf sample.melange.impl.ml
   $ for file in sample.impl.ml sample.intf.ml \
   >   sample.melange.impl.ml sample.melange.intf.ml; do
   >   printf '%s: ' "$file"
   >   query_ocaml_merlin_pp "$PWD/compound/$file" --root compound \
   >     | grep -Eo '\(READER \([^)]*\)\)' || echo no-reader
   > done
-  sample.impl.ml: no-reader
-  sample.intf.ml: no-reader
-  sample.melange.impl.ml: no-reader
-  sample.melange.intf.ml: no-reader
+  sample.impl.ml: (READER (implementation))
+  sample.intf.ml: (READER (interface))
+  sample.melange.impl.ml: (READER (implementation))
+  sample.melange.intf.ml: (READER (interface))

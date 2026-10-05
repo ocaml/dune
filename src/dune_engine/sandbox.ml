@@ -374,7 +374,7 @@ let create_real
   let t =
     { dir = sandbox_dir
     ; snapshot = None
-    ; deps
+    ; deps = Path.Set.empty
     ; mutex = Fiber.Mutex.create ()
     ; mode
     ; loc = rule_loc
@@ -386,8 +386,19 @@ let create_real
     maybe_async (fun () ->
       Path.rm_rf (Path.build sandbox_dir);
       create_dir t rule_dir;
+      let unlinked = unlinked_deps t deps in
+      (* Other required directories may lie inside a directory dependency, so
+         create only the parents of the entries we are about to link. *)
+      let parents =
+        Path.Set.fold unlinked ~init:Path.Build.Set.empty ~f:(fun path dirs ->
+          match Path.as_in_build_dir path with
+          | None -> dirs
+          | Some path -> Path.Build.Set.add dirs (Path.Build.parent_exn path))
+      in
+      create_dirs t parents;
+      link_deps t ~deps:unlinked;
       create_dirs t dirs;
-      link_deps t ~deps)
+      t.deps <- deps)
   in
   Dune_trace.emit ~buffered:true Sandbox (fun () ->
     Dune_trace.Event.sandbox `Create ~start ~stop ~queued t.loc ~dir:t.dir);

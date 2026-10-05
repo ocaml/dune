@@ -316,15 +316,16 @@ let rec dep expander : Dep_conf.t -> _ = function
        let+ () = dep_on_alias_rec ~loc:(String_with_vars.loc s) a in
        [])
   | Glob_files glob_files ->
+    let dir = Expander.dir expander in
     Other
       (Glob_files_expand.action_builder
          glob_files
          ~f:(Expander.expand ~mode:Single expander)
-         ~base_dir:(Expander.dir expander)
+         ~base_dir:dir
        >>| Glob_files_expand.Expanded.matches
        >>| List.map ~f:(fun path ->
          if Filename.is_relative path
-         then Path.Build.relative (Expander.dir expander) path |> Path.build
+         then Path.Build.relative dir path |> Path.build
          else Path.of_string path))
   | Source_tree s ->
     Other

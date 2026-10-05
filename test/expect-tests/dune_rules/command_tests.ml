@@ -169,3 +169,85 @@ let%expect_test "singleton list maps preserve evaluation and dependencies" =
   print_endline "singleton map invariants hold";
   [%expect {| singleton map invariants hold |}]
 ;;
+
+let%expect_test "literal dynamic arguments match the general dynamic oracle" =
+  let module Dep = Dune_engine.Dep in
+  let open Command.Args in
+  let run memo =
+    Fiber.run (Memo.run memo) ~iter:(fun () -> failwith "unexpected suspension")
+  in
+  let dir = Path.Build.relative Path.Build.root "default/literal-dynamic-args" in
+  let target name = Path.Build.relative dir name in
+  let targets_are targets name =
+    match Targets.validate targets with
+    | Valid targets ->
+      Path.Build.equal targets.root dir
+      && Filename.Set.equal
+           targets.files
+           (Filename.Set.singleton (Filename.of_string_exn name))
+      && Filename.Set.is_empty targets.dirs
+    | _ -> false
+  in
+  let env = Dep.env (Env.Var.of_string "LITERAL_DYNAMIC_ARGS") in
+  let deps = Dep.Set.of_list [ env; Dep.universe ] in
+  let facts =
+    Dep.Facts.union
+      (Dep.Facts.singleton env Dep.Fact.nothing)
+      (Dep.Facts.singleton Dep.universe Dep.Fact.nothing)
+  in
+  List.iter
+    [ []; [ "one" ]; [ "two"; ""; "words with spaces" ] ]
+    ~f:(fun strings ->
+      let calls = ref 0 in
+      let args =
+        Action_builder.map (Action_builder.deps deps) ~f:(fun () ->
+          incr calls;
+          strings)
+      in
+      let dynamic = Command.Args.dyn args in
+      let first =
+        Command.expand ~dir:(Path.build dir) (S [ Target (target "first"); dynamic ])
+      in
+      let second =
+        Command.expand ~dir:Path.root (S [ Hidden_targets [ target "second" ]; dynamic ])
+      in
+      let legacy =
+        Command.expand_no_targets
+          ~dir:Path.root
+          (Dyn (Action_builder.map args ~f:(fun args -> As args)))
+      in
+      let delayed = !calls = 0 in
+      let first_args, first_deps =
+        run (Action_builder.evaluate_and_collect_deps first.build)
+      in
+      let old_args, old_deps = run (Action_builder.evaluate_and_collect_deps legacy) in
+      let second_args, second_facts =
+        run (Action_builder.evaluate_and_collect_facts second.build)
+      in
+      let old_eager_args, old_facts =
+        run (Action_builder.evaluate_and_collect_facts legacy)
+      in
+      let same_args args =
+        List.equal String.equal (Appendable_list.to_list args) strings
+      in
+      printfn
+        "%d literals: delayed %b; lazy %b; eager %b; targets %b; evaluations %d"
+        (List.length strings)
+        delayed
+        (List.equal String.equal (Appendable_list.to_list first_args) ("first" :: strings)
+         && same_args old_args
+         && Dep.Set.equal first_deps deps
+         && Dep.Set.equal first_deps old_deps)
+        (same_args second_args
+         && same_args old_eager_args
+         && Dep.Facts.equal second_facts facts
+         && Dep.Facts.equal second_facts old_facts)
+        (targets_are first.targets "first" && targets_are second.targets "second")
+        !calls);
+  [%expect
+    {|
+    0 literals: delayed true; lazy true; eager true; targets true; evaluations 4
+    1 literals: delayed true; lazy true; eager true; targets true; evaluations 4
+    3 literals: delayed true; lazy true; eager true; targets true; evaluations 4
+    |}]
+;;

@@ -30,26 +30,54 @@ module Static = struct
     | _ :: _ :: _ -> Seq (Array.Immutable.of_list flat)
   ;;
 
-  (* Flatten a parallel section of [num_threads] threads, where thread [i]'s section is
-     [f i], flattening nested [Par]s: (x | (y | z)) = (x | y | z). Building the flattened
-     list directly from [f] avoids allocating an intermediate list of the threads' sections. *)
-  let flatten_pars_init num_threads ~f =
-    let rec loop i acc =
-      if i < 0
-      then acc
+  let par_section_length = function
+    | Empty -> 0
+    | Par arr -> Array.Immutable.length arr
+    | Singleton _ | Seq _ -> 1
+  ;;
+
+  let first_par_element sections =
+    let rec loop i =
+      if i = Array.length sections
+      then Code_error.raise "Deps.Static.flatten_pars_init: nonempty section expected" []
       else (
-        let elements =
-          match f i with
-          | Empty -> []
-          | Par arr -> Array.Immutable.to_list arr
-          | (Singleton _ | Seq _) as t -> [ t ]
-        in
-        loop (i - 1) (elements @ acc))
+        match sections.(i) with
+        | Empty -> loop (i + 1)
+        | Par arr -> Array.Immutable.get arr 0
+        | (Singleton _ | Seq _) as section -> section)
     in
-    match loop (num_threads - 1) [] with
-    | [] -> Empty
-    | [ t ] -> t
-    | _ :: _ :: _ as flat -> Par (Array.Immutable.of_list flat)
+    loop 0
+  ;;
+
+  let copy_par_section section ~dst ~pos =
+    match section with
+    | Empty -> ()
+    | Par arr ->
+      Stdlib.Array.blit
+        (Array.Immutable.to_array_unsafe arr)
+        0
+        dst
+        pos
+        (Array.Immutable.length arr)
+    | (Singleton _ | Seq _) as section -> dst.(pos) <- section
+  ;;
+
+  (* Flatten a parallel section of [num_threads] threads, where thread [i]'s section is
+     [f i], flattening nested [Par]s: (x | (y | z)) = (x | y | z). *)
+  let flatten_pars_init num_threads ~f =
+    let sections = Array.init num_threads ~f in
+    let length = ref 0 in
+    Array.iter sections ~f:(fun section -> length := !length + par_section_length section);
+    match !length with
+    | 0 -> Empty
+    | 1 -> first_par_element sections
+    | length ->
+      let flat = Array.make length (first_par_element sections) in
+      let pos = ref 0 in
+      Array.iter sections ~f:(fun section ->
+        copy_par_section section ~dst:flat ~pos:!pos;
+        pos := !pos + par_section_length section);
+      Par (Array.Immutable.of_array_unsafe flat)
   ;;
 end
 

@@ -11,7 +11,7 @@ module DB = struct
 
       let name = "COPY-LINE-DIRECTIVE-MAP"
       let sharing = true
-      let version = 3
+      let version = 4
       let repr = Repr.abstract (Path.Build.Table.to_dyn Path.Build.to_dyn)
     end)
 
@@ -35,20 +35,43 @@ module DB = struct
 
   let () = At_exit.at_exit_ignore Dune_trace.at_exit dump
 
-  let rec follow_while path ~f =
-    let t = Lazy.force t in
-    match Path.Build.Table.find t path with
-    | None -> None
-    | Some p ->
-      (match f p with
-       | None -> follow_while p ~f
-       | Some p -> Some p)
+  let destinations =
+    lazy
+      (Path.Build.Table.foldi
+         (Lazy.force t)
+         ~init:Path.Build.Map.empty
+         ~f:(fun dst src acc -> Path.Build.Map.add_multi acc src dst)
+       |> Path.Build.Map.map ~f:(List.sort ~compare:Path.Build.compare))
+  ;;
+
+  let follow =
+    let rec loop destinations visited acc = function
+      | [] -> List.rev acc
+      | path :: rest ->
+        if Path.Build.Set.mem visited path
+        then loop destinations visited acc rest
+        else (
+          let visited = Path.Build.Set.add visited path in
+          let rest =
+            match Path.Build.Map.find destinations path with
+            | None -> rest
+            | Some paths -> paths @ rest
+          in
+          loop destinations visited (path :: acc) rest)
+    in
+    fun path ->
+      let destinations = Lazy.force destinations in
+      let paths = Path.Build.Map.find destinations path |> Option.value ~default:[] in
+      loop destinations (Path.Build.Set.singleton path) [] paths
   ;;
 
   let set ~src ~dst =
     let t = Lazy.force t in
+    let _, src = Path.Build.split_sandbox_root src in
+    let _, dst = Path.Build.split_sandbox_root dst in
     needs_dumping := true;
-    Path.Build.Table.set t src dst
+    (* A destination can change sources without retaining its old mapping. *)
+    Path.Build.Table.set t dst src
   ;;
 end
 
@@ -70,7 +93,7 @@ module Spec = struct
   type ('path, 'target) t = 'path * 'target * merlin
 
   let name = "copy-line-directive"
-  let version = 2
+  let version = 3
   let runs_process = false
   let can_run_in_action_runner = false
   let bimap (src, dst, merlin) f g = f src, g dst, merlin

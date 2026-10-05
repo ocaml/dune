@@ -413,8 +413,24 @@ module Processed = struct
               This is too rough but, really, preprocessors should emit copy
               line directives instead and then Dune should have the database
               similar to Copy_line_directive to handle this. *)
-           Path.Build.Map.find per_file_config (remove_extension file)
-           |> Option.map ~f:(fun config -> Without_extension, config))
+           let+ ({ module_; _ } as fallback) = find (remove_extension file) in
+           let extension =
+             Path.Build.extension file |> Filename.Extension.Or_empty.to_string
+           in
+           let matching_sources =
+             Module.sources_without_pp module_
+             |> List.filter ~f:(fun source ->
+               String.equal
+                 extension
+                 (Path.extension source |> Filename.Extension.Or_empty.to_string))
+           in
+           let config =
+             match matching_sources with
+             | [ source ] ->
+               find (Path.as_in_build_dir_exn source) |> Option.value ~default:fallback
+             | _ -> fallback
+           in
+           Without_extension, config)
     in
     let pp = Module_reference.Per_item.find pp_config (Module.path module_) in
     let unit_name = Module_name.Unique.to_string (Module.obj_name module_) in

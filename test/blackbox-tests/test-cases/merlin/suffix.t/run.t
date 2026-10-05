@@ -44,8 +44,8 @@ Use different readers to distinguish implementation and interface configurations
   > EOF
   $ dune build .merlin-conf/exe-alterexe
 
-The fallback keeps only one source per basename, so the preprocessed
-implementation selects the interface's reader.
+The fallback uses the extension to distinguish implementation and interface
+configurations, just like exact lookups.
 
   $ for file in alterexe.aml alterexe.amli alterexe.pp.aml alterexe.pp.amli; do
   >   printf '%s: ' "$file"
@@ -53,10 +53,10 @@ implementation selects the interface's reader.
   > done
   alterexe.aml: (READER (implementation))
   alterexe.amli: (READER (interface))
-  alterexe.pp.aml: (READER (interface))
+  alterexe.pp.aml: (READER (implementation))
   alterexe.pp.amli: (READER (interface))
 
-Ambiguous queries also select the interface instead of rejecting the match.
+Queries without a matching extension keep the legacy fallback.
 
   $ for file in alterexe.pp alterexe; do
   >   printf '%s: ' "$file"

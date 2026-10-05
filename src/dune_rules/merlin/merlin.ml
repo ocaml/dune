@@ -524,11 +524,11 @@ module Processed = struct
            in
            Without_extension, config)
     in
-    if (not allow_ambiguous) && Option.is_none kind
-    then None
-    else (
+    match allow_ambiguous, kind with
+    | false, None -> None
+    | true, _ | false, Some _ ->
       let pp = Module_reference.Per_item.find pp_config module_path in
-      Some (match_kind, module_config, to_sexp ~unit_name ~opens ~pp ~reader config))
+      Some (match_kind, module_config, to_sexp ~unit_name ~opens ~pp ~reader config)
   ;;
 
   let matching_configurations =

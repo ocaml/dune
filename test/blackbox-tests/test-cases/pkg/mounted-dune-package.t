@@ -554,3 +554,92 @@ than the executable's, even though the executable declared the compiler.
   [1]
   $ grep 'ambient JS compiler' output | sort -u
   ambient JS compiler
+
+An optional linter in a library directory must not make binary discovery
+re-enter that library's rules. The package itself is legitimately visible;
+finding its declared tools does not require enumerating its library installs.
+
+  $ mkdir ../native-binary-inventory
+  $ cd ../native-binary-inventory
+  $ mkdir -p _source/src _source/tools
+  $ cat > _source/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name foo) (dir .))
+  > EOF
+  $ cat > _source/src/dune <<'EOF'
+  > (library (public_name foo))
+  > (rule
+  >  (alias runtest)
+  >  (enabled_if %{bin-available:missing-native-linter})
+  >  (action (run false)))
+  > (rule
+  >  (with-stdout-to available (echo %{bin-available:missing-native-linter})))
+  > EOF
+  $ echo 'let value = 42' > _source/src/foo.ml
+  $ cat > _source/tools/dune <<'EOF'
+  > (install (section bin) (files (tool.sh as scoped-native-tool)))
+  > EOF
+  $ cat > _source/tools/tool.sh <<'EOF'
+  > #!/bin/sh
+  > echo native tool
+  > EOF
+  $ chmod +x _source/tools/tool.sh
+  $ cat > _source/dune <<'EOF'
+  > (rule (with-stdout-to tool-output (run %{bin:scoped-native-tool})))
+  > EOF
+
+The ordinary workspace control has the same explicit package scope and an
+active, empty lock directory.
+
+  $ cp -R _source _workspace
+  $ (cd _workspace && make_lockdir && dune build src/foo.cma src/available tool-output)
+  $ cat _workspace/_build/default/src/available
+  false
+  $ cat _workspace/_build/default/tool-output
+  native tool
+
+Importing the same sources currently makes the missing linter lookup enumerate
+all install entries of foo, which requires evaluating its directory again.
+
+  $ make_dune_project 3.25
+  $ make_lockdir
+  $ make_lockpkg foo <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_source))
+  > (build (run false))
+  > EOF
+  $ make_lockpkg unrelated <<'EOF'
+  > (version 1.0)
+  > (build (run false))
+  > EOF
+  $ dune build \
+  >   _build/default/.lockfile/pkg/foo/src/foo.cma \
+  >   _build/default/.lockfile/pkg/foo/src/available \
+  >   _build/default/.lockfile/pkg/foo/tool-output >output 2>&1
+  [1]
+  $ grep '^Error: Dependency cycle between:' output
+  Error: Dependency cycle between:
+
+A declared opaque dependency must still be searched when no native declaration
+matches. That fallback must not enumerate the native library's installs either.
+
+  $ make_lockpkg provider <<'EOF'
+  > (version 1.0)
+  > (install
+  >  (progn
+  >   (write-file %{bin}/scoped-opaque-tool "#!/bin/sh\necho opaque tool")
+  >   (run chmod +x %{bin}/scoped-opaque-tool)))
+  > EOF
+  $ make_lockpkg foo <<EOF
+  > (version 1.0)
+  > (depends provider)
+  > (source (copy $PWD/_source))
+  > (build (run false))
+  > EOF
+  $ cat >> _source/dune <<'EOF'
+  > (rule (with-stdout-to opaque-output (run %{bin:scoped-opaque-tool})))
+  > EOF
+  $ dune build _build/default/.lockfile/pkg/foo/opaque-output >output 2>&1
+  [1]
+  $ grep '^Error: Dependency cycle between:' output
+  Error: Dependency cycle between:

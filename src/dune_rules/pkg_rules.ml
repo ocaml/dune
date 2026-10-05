@@ -1456,15 +1456,26 @@ end
 let lock_dir_binaries =
   Memo.create
     "lock-directory-binaries"
-    ~input:(module Context_and_packages)
+    ~input:
+      (module struct
+        type t = Context_name.t * Package.Name.Set.t
+
+        let to_dyn = Tuple.T2.to_dyn Context_name.to_dyn Package.Name.Set.to_dyn
+        let equal = Tuple.T2.equal Context_name.equal Package.Name.Set.equal
+
+        let hash =
+          let set_hash s = List.hash Package.Name.hash (Package.Name.Set.to_list s) in
+          Tuple.T2.hash Context_name.hash set_hash
+        ;;
+      end)
     ~human_readable_description:(fun (context, packages) ->
       Some
         (Pp.textf
            "Loading the binaries of %s in the lock directory for %S"
-           (describe_packages packages)
+           (describe_packages (Only packages))
            (Context_name.to_string context)))
     (fun (context, packages) ->
-       let* packages = project_deps ~packages context in
+       let* packages = project_deps ~packages:(Only packages) context in
        let native, opaque =
          List.filter_partition_map packages ~f:(fun (pkg : Pkg.t) ->
            match pkg.builder with
@@ -1483,8 +1494,11 @@ let lock_dir_binaries =
 ;;
 
 let which ~packages context program =
-  let+ binaries = Memo.exec lock_dir_binaries (context, packages) in
-  Filename.Map.find binaries program
+  if Package.Name.Set.is_empty packages
+  then Memo.return None
+  else
+    let+ binaries = Memo.exec lock_dir_binaries (context, packages) in
+    Filename.Map.find binaries program
 ;;
 
 let ocamlpath universe =

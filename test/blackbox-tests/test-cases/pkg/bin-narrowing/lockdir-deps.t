@@ -37,9 +37,8 @@ Another lockdir package [check-env] that installs a binary [check-env]:
   >  ))
   > EOF
 
-With the default full-lockdir lookup, [check-env] is found and the rule is
-enabled & [mybin] is found and executed, without the need for explicitly
-declaring any package dependencies:
+Without a package scope, binary discovery does not build opaque packages.
+The optional [check-env] tool is unavailable and the rules stay disabled:
 
   $ make_dune_project 3.24
 
@@ -65,22 +64,13 @@ declaring any package dependencies:
 
   $ dune build @all
 
-  $ cat _build/default/mybin-output
-  from provider
-
-The rule depends on the binary from the provider lockdir package:
-
-  $ dune rules --format=json @test | jq_dune '.[] | ruleDepFilePaths' | censor
-  "_build/default/.lockfile/pkg/provider/.opam/provider/target/bin/mybin"
-
-All the packages' bin directories are added to $PATH:
-
-  $ cat _build/default/system-mybin-output
-  from provider
-
-  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/default/.lockfile/pkg/provider/.opam/provider/target/bin
-  $PWD/_build/default/.lockfile/pkg/check-env/.opam/check-env/target/bin
+  $ test ! -e _build/default/mybin-output
+  $ test ! -e _build/default/system-mybin-output
+  $ test ! -e _build/default/path-output
+  $ test ! -e _build/default/.lockfile/pkg/provider/.opam/provider/target
+  $ test ! -e _build/default/.lockfile/pkg/check-env/.opam/check-env/target
+  $ dune rules --format=json @test | jq_dune 'length'
+  0
 
 With a package defined in the project, *without a dir field*, the behavior is
 the same.
@@ -95,17 +85,11 @@ the same.
   $ dune clean
   $ dune build @all
 
-  $ cat _build/default/mybin-output
-  from provider
-
-All the packages' bin directories are added to $PATH:
-
-  $ cat _build/default/system-mybin-output
-  from provider
-
-  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/default/.lockfile/pkg/provider/.opam/provider/target/bin
-  $PWD/_build/default/.lockfile/pkg/check-env/.opam/check-env/target/bin
+  $ test ! -e _build/default/mybin-output
+  $ test ! -e _build/default/system-mybin-output
+  $ test ! -e _build/default/path-output
+  $ test ! -e _build/default/.lockfile/pkg/provider/.opam/provider/target
+  $ test ! -e _build/default/.lockfile/pkg/check-env/.opam/check-env/target
 
 With a package defined in the project, *with a dir field, but no dependencies*,
 the program mybin is not found in PATH or via the bin pform, since the rule for

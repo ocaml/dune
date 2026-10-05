@@ -40,10 +40,11 @@ Test that executables from dependencies are located correctly:
   > EOF
 
   $ cat > dune-project << EOF
-  > (lang dune 3.20)
+  > (lang dune 3.24)
   > 
   > (package
   >  (name foo)
+  >  (dir .)
   >  (depends bar))
   > EOF
 

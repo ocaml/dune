@@ -12,6 +12,13 @@ beside that executable changes.
   > EOF
 
   $ make_dune_project 3.24
+  $ cat >>dune-project <<'EOF'
+  > (package
+  >  (name consumer)
+  >  (allow_empty)
+  >  (dir .)
+  >  (depends provider))
+  > EOF
   $ provider_target="$(get_build_pkg_dir provider)/target"
   $ provider_data="$PWD/$provider_target/share/provider/data.txt"
 

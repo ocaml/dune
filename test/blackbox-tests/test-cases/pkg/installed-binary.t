@@ -60,9 +60,16 @@ Test that installed binaries are visible in dependent packages
   ; variables = []
   }
 
-It should also be visible in the workspace:
+It should also be visible in a workspace package that declares the dependency:
 
-  $ make_dune_project 3.9
+  $ make_dune_project 3.24
+  $ cat >>dune-project <<'EOF'
+  > (package
+  >  (name consumer)
+  >  (allow_empty)
+  >  (dir .)
+  >  (depends test))
+  > EOF
 
   $ cat >dune <<EOF
   > (rule

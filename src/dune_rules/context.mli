@@ -67,16 +67,14 @@ val to_dyn : t -> Dyn.t
 val to_dyn_concise : t -> Dyn.t
 val name : t -> Context_name.t
 
-(** Look [program] up in the context. This is not narrowed: it is for lookups
-    that are not tied to a directory, and so have no owning package. *)
+(** Look up a binary on the context's ambient [PATH], without loading packages. *)
 val which : t -> Filename.t -> Path.t option Memo.t
 
-(** Like [which], but in a context with a lock directory only the binaries
-    installed by [packages] are considered, not their dependencies. The
-    ambient [PATH] is still searched if none of them provide the program. *)
+(** Search the supplied lock directory packages before the ambient [PATH].
+    The caller supplies the packages visible to the requester. *)
 val which_narrowed_to_packages
   :  t
-  -> packages:Package.Name.Selection.t
+  -> packages:Package.Name.Set.t
   -> Filename.t
   -> Path.t option Memo.t
 

@@ -98,20 +98,25 @@ package. A missing optional tool should simply disable its rule.
   > EOF
 
 First with no workspace package, then with a package that has no directory
-scope. Both currently force the unrelated opaque package.
+scope. Neither builds any opaque package.
 
   $ make_dune_project 3.25
-  $ PATH="$PWD/fakebin:$PATH" dune build @all >output 2>&1
-  [1]
-  $ grep '^unexpected-unscoped-lookup$' output
-  unexpected-unscoped-lookup
+  $ PATH="$PWD/fakebin:$PATH" dune build @all
+  $ cat _build/default/mybin-out _build/default/native-output _build/default/missing-available
+  from system
+  from native
+  false
+  $ test ! -e _build/default/disabled
+  $ test ! -e _build/default/.lockfile/pkg/provider/.opam/provider/target
+  $ test ! -e _build/default/.lockfile/pkg/unrelated/.opam/unrelated/target
   $ cat >>dune-project <<'EOF'
   > (package (name mypkg) (allow_empty))
   > EOF
-  $ PATH="$PWD/fakebin:$PATH" dune build @all >output 2>&1
-  [1]
-  $ grep '^unexpected-unscoped-lookup$' output
-  unexpected-unscoped-lookup
+  $ PATH="$PWD/fakebin:$PATH" dune build @all
+  $ cat _build/default/mybin-out
+  from system
+  $ test ! -e _build/default/.lockfile/pkg/provider/.opam/provider/target
+  $ test ! -e _build/default/.lockfile/pkg/unrelated/.opam/unrelated/target
 
 An explicit package scope restricts the search, so this succeeds. The ambient
 and native tools remain usable; the undeclared opaque package is not forced.
@@ -155,21 +160,21 @@ scope. Its opaque tool must take precedence over the ambient copy.
   >  (deps (package provider))
   >  (action (with-stdout-to explicit-output (run %{bin:mybin}))))
   > EOF
-  $ PATH="$PWD/fakebin:$PATH" dune build explicit-output >output 2>&1
-  [1]
-  $ grep '^unexpected-unscoped-lookup$' output
-  unexpected-unscoped-lookup
+  $ PATH="$PWD/fakebin:$PATH" dune build explicit-output
+  $ cat _build/default/explicit-output
+  from lockdir
+  $ test ! -e _build/default/.lockfile/pkg/unrelated/.opam/unrelated/target
 
-Building the provider must not change subsequent unscoped lookup. Both the
-pform and the shell should select the ambient tool, independently of build
-history. Currently, even with the provider already built, lookup still tries
-to build every other opaque package.
+Building the provider must not make unscoped binary discovery force other
+packages. The pform still selects the ambient tool. The shell can use the
+already-built provider through its existing PATH, without any discovery build.
 
   $ cat >dune <<'EOF'
   > (rule (with-stdout-to after-bin (run %{bin:mybin})))
   > (rule (with-stdout-to after-system (system mybin)))
   > EOF
-  $ PATH="$PWD/fakebin:$PATH" dune build after-bin after-system >output 2>&1
-  [1]
-  $ grep '^unexpected-unscoped-lookup$' output
-  unexpected-unscoped-lookup
+  $ PATH="$PWD/fakebin:$PATH" dune build after-bin after-system
+  $ cat _build/default/after-bin _build/default/after-system
+  from system
+  from lockdir
+  $ test ! -e _build/default/.lockfile/pkg/unrelated/.opam/unrelated/target

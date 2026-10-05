@@ -74,8 +74,8 @@ output so we can verify which binary actually ran:
   >     (bash "echo $PATH")))
   > EOF
 
-With the current full-lockdir lookup, the fake ocamllex and fake menhir are
-picked up despite no explicit dependency declaration:
+Without a package list, lookup uses ambient tools without building the opaque
+provider:
 
   $ make_dune_project 3.24
   $ cat >> dune-project << 'EOF'
@@ -84,21 +84,22 @@ picked up despite no explicit dependency declaration:
   $ dune build foo.ml bar.ml path-output 2>/dev/null
 
   $ grep -c "fake ocamllex" _build/default/foo.ml
-  1
+  0
+  [1]
   $ grep -c "fake menhir" _build/default/bar.ml
-  1
+  0
+  [1]
+  $ test ! -e _build/default/.lockfile/pkg/tool_provider/.opam/tool_provider/target
 
-The rules depend on the ocamllex and menhir binaries from the tool_provider
-lockdir package:
+The rules have no lockdir artifact dependencies:
 
-  $ dune rules --format=json foo.ml | jq_dune '.[] | ruleDepFilePaths' | censor
-  "_build/default/.lockfile/pkg/tool_provider/.opam/tool_provider/target/bin/ocamllex"
+  $ dune rules --format=json foo.ml | jq_dune '.[] | ruleDepFilePaths | select(startswith("_build/"))'
   "_build/default/foo.mll"
-  $ dune rules --format=json bar.ml | jq_dune '.[] | ruleDepFilePaths' | censor
-  "_build/default/.lockfile/pkg/tool_provider/.opam/tool_provider/target/bin/menhir"
+  $ dune rules --format=json bar.ml | jq_dune '.[] | ruleDepFilePaths | select(startswith("_build/"))'
   "_build/default/bar.mly"
 
-The tool_provider bin directory is added to $PATH:
+The action PATH still includes the package's install directory, but constructing
+that PATH does not build the package:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/default/.lockfile/pkg/tool_provider/.opam/tool_provider/target/bin
@@ -118,9 +119,12 @@ same.
   $ dune build foo.ml bar.ml path-output 2>/dev/null
 
   $ grep -c "fake ocamllex" _build/default/foo.ml
-  1
+  0
+  [1]
   $ grep -c "fake menhir" _build/default/bar.ml
-  1
+  0
+  [1]
+  $ test ! -e _build/default/.lockfile/pkg/tool_provider/.opam/tool_provider/target
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/default/.lockfile/pkg/tool_provider/.opam/tool_provider/target/bin
@@ -175,3 +179,12 @@ With a package defined in the project, *with a dir field, and explicit depends o
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/default/.lockfile/pkg/tool_provider/.opam/tool_provider/target/bin
+
+The scoped rules depend on the selected lockdir binaries:
+
+  $ dune rules --format=json foo.ml | jq_dune '.[] | ruleDepFilePaths' | censor
+  "_build/default/.lockfile/pkg/tool_provider/.opam/tool_provider/target/bin/ocamllex"
+  "_build/default/foo.mll"
+  $ dune rules --format=json bar.ml | jq_dune '.[] | ruleDepFilePaths' | censor
+  "_build/default/.lockfile/pkg/tool_provider/.opam/tool_provider/target/bin/menhir"
+  "_build/default/bar.mly"

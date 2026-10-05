@@ -104,20 +104,7 @@ let analyze_binary t ~dir name =
         let* opaque = find_opaque (Package.Name.Set.to_list packages) in
         (match opaque with
          | Some path -> Memo.return (Some path)
-         | None ->
-           let* path =
-             Context.which_narrowed_to_packages
-               t.context
-               ~packages:t.visible_packages
-               lookup_name
-           in
-           (match path, t.visible_packages with
-            | Some _, _ | None, Only _ -> Memo.return path
-            | None, All ->
-              let* opaque = Opam_package.all (Context.name t.context) in
-              Package.Name.Map.keys opaque
-              |> List.filter ~f:(fun name -> not (Package.Name.Set.mem packages name))
-              |> find_opaque))
+         | None -> Context.which_narrowed_to_packages t.context ~packages lookup_name)
         >>| (function
          | None -> `None
          | Some path -> `Resolved path)

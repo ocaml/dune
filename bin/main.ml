@@ -1,5 +1,9 @@
 open Import
 
+external restore_runtime_environment : unit -> unit = "dune_restore_runtime_environment"
+
+let () = restore_runtime_environment ()
+
 let () =
   if
     Option.is_none (Sys.getenv_opt "OCAMLRUNPARAM")

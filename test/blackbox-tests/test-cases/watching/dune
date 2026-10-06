@@ -42,6 +42,10 @@
   (package xdg)))
 
 (cram
+ (applies_to rpc-registry-process-id.t)
+ (alias runtest-windows))
+
+(cram
  (applies_to
   promotion-event-suppression.t
   promotion-executable-bit.t

@@ -528,3 +528,15 @@ Conflict between a target directory and a source file.
   - dune:1
   Hint: rm -f output
   [1]
+
+Directories declared as file targets are currently accepted, even when empty.
+
+  $ mkdir file-target-kinds
+  $ cd file-target-kinds
+  $ make_dune_project 3.25
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (targets foo empty)
+  >  (action (bash "mkdir foo empty; echo contents > foo/bar")))
+  > EOF
+  $ dune build foo empty

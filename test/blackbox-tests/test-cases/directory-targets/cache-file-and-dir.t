@@ -45,3 +45,23 @@ the resulting file from the cache.
   running command
   $ is_linked _build/default/dir_out/a
   linked
+
+Changing only a target's declared kind currently reuses the cached directory,
+even though the new rule declares a file target.
+
+  $ export DUNE_TRACE=cache
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target (dir foo))
+  >  (action (bash "mkdir foo; echo contents > foo/bar")))
+  > EOF
+  $ dune build foo
+
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target foo)
+  >  (action (bash "mkdir foo; echo contents > foo/bar")))
+  > EOF
+  $ dune build foo
+  $ dune trace cat | jq_dune -s '[cacheHitsMatching("/foo$")] | length'
+  1

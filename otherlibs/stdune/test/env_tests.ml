@@ -56,3 +56,68 @@ let%expect_test "setting an unchanged variable reuses the environment" =
     true
     false |}]
 ;;
+
+let path_env dirs =
+  let value = List.map dirs ~f:Path.to_absolute_filename |> Bin.encode_strings in
+  Env.add Env.empty ~var:Env_path.var ~value
+;;
+
+let%expect_test "bulk PATH assembly preserves ordered prepending" =
+  let first = Path.of_filename_relative_to_initial_cwd "first" in
+  let second = Path.of_filename_relative_to_initial_cwd "second" in
+  let old = Bin.encode_strings [ "old"; ""; "tail" ] in
+  let cases =
+    [ [], None
+    ; [], Some ""
+    ; [], Some old
+    ; [ first ], None
+    ; [ first ], Some ""
+    ; [ first; second ], Some old
+    ; [ first; second; first ], Some old
+    ]
+  in
+  List.iter cases ~f:(fun (dirs, path) ->
+    let env = Env.add Env.empty ~var:a ~value:"keep" in
+    let env =
+      match path with
+      | None -> env
+      | Some value -> Env.add env ~var:Env_path.var ~value
+    in
+    let expected =
+      List.fold_right dirs ~init:env ~f:(fun dir env -> Env_path.cons env ~dir)
+    in
+    let actual = Env_path.extend_env_concat_path env (path_env dirs) in
+    print_endline (Bool.to_string (Env.equal expected actual)));
+  [%expect
+    {|
+    true
+    true
+    true
+    true
+    true
+    true
+    true |}]
+;;
+
+let%expect_test "bulk PATH allocation grows linearly" =
+  let dir = Path.of_filename_relative_to_initial_cwd "directory" in
+  let allocated dirs =
+    let prefix = path_env dirs in
+    let words () =
+      let { Gc.minor_words; major_words; promoted_words; _ } = Gc.quick_stat () in
+      minor_words +. major_words -. promoted_words
+    in
+    let before = words () in
+    ignore (Sys.opaque_identity (Env_path.extend_env_concat_path Env.empty prefix));
+    words () -. before
+  in
+  let small = allocated (List.init 1000 ~f:(fun _ -> dir)) in
+  let large = allocated (List.init 2000 ~f:(fun _ -> dir)) in
+  let linear =
+    match Float.compare large (3. *. small) with
+    | Lt -> true
+    | Eq | Gt -> false
+  in
+  print_endline (Bool.to_string linear);
+  [%expect {| false |}]
+;;

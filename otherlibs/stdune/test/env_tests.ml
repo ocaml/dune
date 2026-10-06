@@ -103,13 +103,10 @@ let%expect_test "bulk PATH allocation grows linearly" =
   let dir = Path.of_filename_relative_to_initial_cwd "directory" in
   let allocated dirs =
     let prefix = path_env dirs in
-    let words () =
-      let { Gc.minor_words; major_words; promoted_words; _ } = Gc.quick_stat () in
-      minor_words +. major_words -. promoted_words
-    in
-    let before = words () in
+    Gc.full_major ();
+    let before = Gc.allocated_bytes () in
     ignore (Sys.opaque_identity (Env_path.extend_env_concat_path Env.empty prefix));
-    words () -. before
+    Gc.allocated_bytes () -. before
   in
   let small = allocated (List.init 1000 ~f:(fun _ -> dir)) in
   let large = allocated (List.init 2000 ~f:(fun _ -> dir)) in
@@ -119,5 +116,5 @@ let%expect_test "bulk PATH allocation grows linearly" =
     | Eq | Gt -> false
   in
   print_endline (Bool.to_string linear);
-  [%expect {| false |}]
+  [%expect {| true |}]
 ;;

@@ -74,8 +74,10 @@ The patched script retains its executable bit.
   $ dune trace cat | jq -rs '
   >   [.[] | select(.cat == "log") | .args
   >    | select(.message == "Package source candidates"
+  >             or .message == "Package digest index"
   >             or (.message == "Prepare package sources" and .package == "foo"))]
   >   | group_by(.message) | .[] | "\(.[0].message) evaluated once: \(length == 1)"'
+  Package digest index evaluated once: false
   Package source candidates evaluated once: true
   Prepare package sources evaluated once: true
   $ _build/default/main.exe

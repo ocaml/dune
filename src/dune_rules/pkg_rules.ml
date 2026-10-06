@@ -487,6 +487,9 @@ module DB = struct
           ~local_packages
       =
       let pkgs_by_name = Dune_pkg.Lock_dir.packages_on_platform lock_dir ~platform in
+      Log.info
+        "Package digest index"
+        [ "packages", Dyn.int (Package.Name.Map.cardinal pkgs_by_name) ];
       let cache =
         (* Cache so that the digest of each package is only computed once *)
         Package.Name.Table.create 10

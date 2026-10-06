@@ -1398,7 +1398,13 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
       let stat = Gc.stat () in
       let path = Path.external_ file in
       Dune_util.Gc.serialize ~path stat);
-  let where = lazy (Dune_rpc_impl.Where.default ()) in
+  let where =
+    lazy
+      (let where = Dune_rpc_impl.Where.default () in
+       match where with
+       | `Ip (host, _) when Sys.win32 -> `Ip (host, `Port 0)
+       | where -> where)
+  in
   let action_runner =
     lazy
       (if action_runner_requested c

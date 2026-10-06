@@ -435,11 +435,21 @@ let create ~registry ~root ~build ~where ~action_runner watch_mode =
          Path.mkdir_p (Path.build (Path.Build.parent_exn socket_file));
          match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:100 with
          | Ok s ->
+           let where =
+             match Csexp_rpc.Server.listening_address s with
+             | [ Unix.ADDR_INET (host, port) ] ->
+               `Ip (`Host (Unix.string_of_inet_addr host), `Port port)
+             | [ Unix.ADDR_UNIX path ] -> `Unix path
+             | addresses ->
+               Code_error.raise
+                 "Expected one RPC listening address"
+                 [ "addresses", Dyn.int (List.length addresses) ]
+           in
            (match where with
             | `Ip _ -> Io.write_file_exn (Path.build socket_file) (Where.to_string where)
             | `Unix _ -> ());
            at_exit (fun () -> Fpath.unlink_no_err (Path.Build.to_string socket_file));
-           s
+           s, where
          | Error `Already_in_use ->
            User_error.raise
              [ Pp.textf
@@ -449,7 +459,7 @@ let create ~registry ~root ~build ~where ~action_runner watch_mode =
              ])
     in
     let handler = Rpc.Server.make (handler t) in
-    let server = Lazy.force server in
+    let server, where = Lazy.force server in
     let lifecycle = Rpc.Server.Lifecycle.create ~handler ~root ~where ~registry ~server in
     action_runner, lifecycle
   in

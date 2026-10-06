@@ -28,6 +28,10 @@
  (setup_scripts cached-failed-actions-helpers.sh))
 
 (cram
+ (applies_to rpc-workspace-isolation.t)
+ (alias runtest-windows))
+
+(cram
  (applies_to rpc-flush-file-watcher.t rpc-registry.t)
  (deps
   %{bin:action_plugin_helper}

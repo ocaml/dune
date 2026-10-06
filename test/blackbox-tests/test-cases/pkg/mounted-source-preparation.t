@@ -290,3 +290,28 @@ recipe. Repairing the script makes the native rules available again.
   $ dune build result
   $ cat _build/default/result
   updated/1.0/original/false
+
+Doubling a large prepared snapshot should not quadruple allocation. These are
+excluded inputs read through the script snapshot, not individual rule targets.
+We compare allocated words, not wall-clock timings, with room for linear work.
+
+  $ mkdir _source/ignored/bulk
+  $ i=0; while [ "$i" -lt 4096 ]; do
+  >   echo payload > _source/ignored/bulk/file$i
+  >   i=$((i + 1))
+  > done
+  $ dune build result
+  $ dune trace cat | jq '
+  >   select(.cat == "config" and .name == "exit") | .args.gc
+  >   | .minor_words + .major_words - .promoted_words' > small-alloc
+  $ while [ "$i" -lt 8192 ]; do
+  >   echo payload > _source/ignored/bulk/file$i
+  >   i=$((i + 1))
+  > done
+  $ dune build result
+  $ dune trace cat | jq --slurpfile small small-alloc '
+  >   select(.cat == "config" and .name == "exit") | .args.gc
+  >   | (.minor_words + .major_words - .promoted_words) < 3 * $small[0]'
+  false
+  $ cat _build/default/result
+  updated/1.0/original/false

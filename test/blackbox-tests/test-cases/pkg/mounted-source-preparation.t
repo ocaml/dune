@@ -76,8 +76,8 @@ The patched script retains its executable bit.
   >    | select(.message == "Package source candidates"
   >             or (.message == "Prepare package sources" and .package == "foo"))]
   >   | group_by(.message) | .[] | "\(.[0].message) evaluated once: \(length == 1)"'
-  Package source candidates evaluated once: false
-  Prepare package sources evaluated once: false
+  Package source candidates evaluated once: true
+  Prepare package sources evaluated once: true
   $ _build/default/main.exe
   foo/extra/1.0/2.0/patched script
   $ test ! -e _build/default/.lockfile/pkg/metadata/.opam/metadata/target

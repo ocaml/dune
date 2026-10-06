@@ -65,30 +65,32 @@ end
 
 let candidates =
   Per_context.create_by_name ~name:"mounted-package-candidates" (fun context ->
-    let* active = Lock_dir.lock_dir_active context in
-    if not active
-    then Memo.return []
-    else
-      let+ lock_dir = Lock_dir.get_exn context
-      and+ lock_dir_path = Lock_dir.get_path context >>| Option.value_exn
-      and+ platform = Lock_dir.Sys_vars.solver_env in
-      Log.info "Package source candidates" [ "context", Context_name.to_dyn context ];
-      Dune_pkg.Lock_dir.packages_on_platform lock_dir ~platform
-      |> Package.Name.Map.values
-      |> List.map ~f:(fun (lock_pkg : Dune_pkg.Lock_dir.Pkg.t) ->
-        let version =
-          Option.some_if
-            (Dune_pkg.Lock_dir.uses_versioned_paths lock_dir)
-            lock_pkg.info.version
-        in
-        let files_dir =
-          Dune_pkg.Lock_dir.Pkg.files_dir
-            lock_pkg.info.name
-            version
-            ~lock_dir:lock_dir_path
-          |> Path.as_in_build_dir_exn
-        in
-        Candidate.make context lock_pkg ~files_dir))
+    Memo.lazy_ ~name:"mounted-package-candidates" (fun () ->
+      let* active = Lock_dir.lock_dir_active context in
+      if not active
+      then Memo.return []
+      else
+        let+ lock_dir = Lock_dir.get_exn context
+        and+ lock_dir_path = Lock_dir.get_path context >>| Option.value_exn
+        and+ platform = Lock_dir.Sys_vars.solver_env in
+        Log.info "Package source candidates" [ "context", Context_name.to_dyn context ];
+        Dune_pkg.Lock_dir.packages_on_platform lock_dir ~platform
+        |> Package.Name.Map.values
+        |> List.map ~f:(fun (lock_pkg : Dune_pkg.Lock_dir.Pkg.t) ->
+          let version =
+            Option.some_if
+              (Dune_pkg.Lock_dir.uses_versioned_paths lock_dir)
+              lock_pkg.info.version
+          in
+          let files_dir =
+            Dune_pkg.Lock_dir.Pkg.files_dir
+              lock_pkg.info.name
+              version
+              ~lock_dir:lock_dir_path
+            |> Path.as_in_build_dir_exn
+          in
+          Candidate.make context lock_pkg ~files_dir))
+    |> Memo.Lazy.force)
   |> Staged.unstage
 ;;
 
@@ -628,14 +630,18 @@ let prepare context candidates candidate =
 
 let mounted_by_name =
   Per_context.create_by_name ~name:"mounted-packages" (fun context ->
-    let+ candidates = candidates context in
-    Package.Name.Map.of_list_map_exn candidates ~f:(fun candidate ->
-      let loaded =
-        Memo.lazy_ ~name:"prepare-mounted-package" (fun () ->
-          let+ loaded = Memo.collect_user_errors (prepare context candidates candidate) in
-          { Mounted.candidate; loaded })
-      in
-      Candidate.name candidate, loaded))
+    Memo.lazy_ ~name:"mounted-packages" (fun () ->
+      let+ candidates = candidates context in
+      Package.Name.Map.of_list_map_exn candidates ~f:(fun candidate ->
+        let loaded =
+          Memo.lazy_ ~name:"prepare-mounted-package" (fun () ->
+            let+ loaded =
+              Memo.collect_user_errors (prepare context candidates candidate)
+            in
+            { Mounted.candidate; loaded })
+        in
+        Candidate.name candidate, loaded))
+    |> Memo.Lazy.force)
   |> Staged.unstage
 ;;
 

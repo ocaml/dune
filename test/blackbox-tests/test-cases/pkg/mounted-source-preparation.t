@@ -71,6 +71,13 @@ The dependency's version is metadata, not a reason to execute its recipe.
 The patched script retains its executable bit.
 
   $ dune build main.exe
+  $ dune trace cat | jq -rs '
+  >   [.[] | select(.cat == "log") | .args
+  >    | select(.message == "Package source candidates"
+  >             or (.message == "Prepare package sources" and .package == "foo"))]
+  >   | group_by(.message) | .[] | "\(.[0].message) evaluated once: \(length == 1)"'
+  Package source candidates evaluated once: false
+  Prepare package sources evaluated once: false
   $ _build/default/main.exe
   foo/extra/1.0/2.0/patched script
   $ test ! -e _build/default/.lockfile/pkg/metadata/.opam/metadata/target

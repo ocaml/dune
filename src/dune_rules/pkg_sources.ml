@@ -72,6 +72,7 @@ let candidates =
       let+ lock_dir = Lock_dir.get_exn context
       and+ lock_dir_path = Lock_dir.get_path context >>| Option.value_exn
       and+ platform = Lock_dir.Sys_vars.solver_env in
+      Log.info "Package source candidates" [ "context", Context_name.to_dyn context ];
       Dune_pkg.Lock_dir.packages_on_platform lock_dir ~platform
       |> Package.Name.Map.values
       |> List.map ~f:(fun (lock_pkg : Dune_pkg.Lock_dir.Pkg.t) ->
@@ -542,6 +543,11 @@ let prepared_source context name =
 
 let prepare context candidates candidate =
   let* direct = Candidate.dependencies candidate in
+  Log.info
+    "Prepare package sources"
+    [ "context", Context_name.to_dyn context
+    ; "package", Package.Name.to_dyn (Candidate.name candidate)
+    ];
   let candidates =
     List.filter candidates ~f:(fun other ->
       let name = Candidate.name other in

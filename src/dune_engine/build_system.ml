@@ -223,10 +223,9 @@ module Internal = struct
             ~separator:"/"
             (Filename.to_string name)
     in
-    Digest.Manual.int
-      d
-      (Filename.Set.cardinal rule.targets.files + Filename.Set.cardinal rule.targets.dirs);
+    Digest.Manual.int d (Filename.Set.cardinal rule.targets.files);
     Filename.Set.iter rule.targets.files ~f:digest_target_path;
+    Digest.Manual.int d (Filename.Set.cardinal rule.targets.dirs);
     Filename.Set.iter rule.targets.dirs ~f:digest_target_path
   ;;
 
@@ -266,7 +265,7 @@ module Internal = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 35
+  let rule_digest_version = 36
 
   let compute_rule_digest
         (rule : Rule.t)

@@ -77,7 +77,7 @@ The patched script retains its executable bit.
   >             or .message == "Package digest index"
   >             or (.message == "Prepare package sources" and .package == "foo"))]
   >   | group_by(.message) | .[] | "\(.[0].message) evaluated once: \(length == 1)"'
-  Package digest index evaluated once: false
+  Package digest index evaluated once: true
   Package source candidates evaluated once: true
   Prepare package sources evaluated once: true
   $ _build/default/main.exe

@@ -562,10 +562,29 @@ module DB = struct
     (* Associate each package's digest with the package and its dependencies. *)
     type t = entry Pkg_digest.Map.t
 
+    let of_entries_by_name entries =
+      Package.Name.Map.values entries
+      |> Pkg_digest.Map.of_list_map_exn ~f:(fun entry -> entry.pkg_digest, entry)
+    ;;
+
     let of_lock_dir lock_dir ~platform ~system_provided ~local_packages =
       entries_by_name_of_lock_dir lock_dir ~platform ~system_provided ~local_packages
-      |> Package.Name.Map.values
-      |> Pkg_digest.Map.of_list_map_exn ~f:(fun entry -> entry.pkg_digest, entry)
+      |> of_entries_by_name
+    ;;
+
+    let project_entries =
+      Memo.create
+        "project-package-digest-index"
+        ~input:(module Context_name)
+        (fun ctx ->
+           let+ lock_dir = Lock_dir.get_exn ctx
+           and+ platform = Lock_dir.Sys_vars.solver_env
+           and+ { Dune_load_workspace.packages; _ } = Dune_load_workspace.load () in
+           entries_by_name_of_lock_dir
+             lock_dir
+             ~platform
+             ~system_provided:default_system_provided
+             ~local_packages:(Package.Name.Set.of_keys packages))
     ;;
 
     (* Helper which is called when both tables have an entry with the same
@@ -632,26 +651,21 @@ module DB = struct
   type t =
     { id : Id.t
     ; pkg_digest_table : Pkg_table.t
-    ; system_provided : Package.Name.Set.t
-    ; local_packages : Package.Name.Set.t
     }
 
   let equal x y = Id.equal x.id y.id
+  let create ~pkg_digest_table = { id = Id.gen (); pkg_digest_table }
 
-  let create ~pkg_digest_table ~system_provided ~local_packages =
-    { id = Id.gen (); pkg_digest_table; system_provided; local_packages }
+  let pkg_digest_of_name entries_by_name pkg_name =
+    let { Pkg_table.pkg_digest; _ } =
+      Package.Name.Map.find_exn entries_by_name pkg_name
+    in
+    pkg_digest
   ;;
 
-  let pkg_digest_of_name lock_dir platform pkg_name ~system_provided ~local_packages =
-    let entries_by_name =
-      Pkg_table.entries_by_name_of_lock_dir
-        lock_dir
-        ~platform
-        ~system_provided
-        ~local_packages
-    in
-    let entry = Package.Name.Map.find_exn entries_by_name pkg_name in
-    entry.pkg_digest
+  let project_pkg_digest ctx pkg_name =
+    let+ entries = Memo.exec Pkg_table.project_entries ctx in
+    pkg_digest_of_name entries pkg_name
   ;;
 
   let of_ctx =
@@ -676,24 +690,16 @@ module DB = struct
                 dependencies to be shared with the project's if it too is being
                 built in the default context. *)
              let allow_sharing = allow_sharing && Context_name.is_default ctx in
-             (* Is this value anything other than [default_system_provided]? *)
-             let system_provided = default_system_provided in
-             let* { Dune_load_workspace.packages; _ } = Dune_load_workspace.load () in
-             let local_packages = Package.Name.Set.of_keys packages in
-             let+ pkg_digest_table =
-               let* lock_dir = Lock_dir.get_exn ctx
-               and* platform = Lock_dir.Sys_vars.solver_env in
-               (if allow_sharing
-                then Memo.Lazy.force Pkg_table.all_existing_dev_tools
-                else Memo.return Pkg_table.empty)
-               >>| Pkg_table.union
-                     (Pkg_table.of_lock_dir
-                        lock_dir
-                        ~platform
-                        ~system_provided
-                        ~local_packages)
+             let* entries = Memo.exec Pkg_table.project_entries ctx in
+             let+ dev_tools =
+               if allow_sharing
+               then Memo.Lazy.force Pkg_table.all_existing_dev_tools
+               else Memo.return Pkg_table.empty
              in
-             create ~pkg_digest_table ~system_provided ~local_packages)
+             let pkg_digest_table =
+               Pkg_table.union (Pkg_table.of_entries_by_name entries) dev_tools
+             in
+             create ~pkg_digest_table)
     in
     fun ctx ~allow_sharing -> Memo.exec of_ctx_memo (ctx, allow_sharing)
   ;;
@@ -701,16 +707,9 @@ module DB = struct
   (* Returns the db for the given context and the digest of the given package
      within that context. *)
   let of_project_pkg ctx pkg_name =
-    let* lock_dir = Lock_dir.get_exn ctx
-    and* platform = Lock_dir.Sys_vars.solver_env in
-    let+ t = of_ctx ctx ~allow_sharing:true in
-    ( t
-    , pkg_digest_of_name
-        lock_dir
-        platform
-        pkg_name
-        ~system_provided:t.system_provided
-        ~local_packages:t.local_packages )
+    let* t = of_ctx ctx ~allow_sharing:true in
+    let+ pkg_digest = project_pkg_digest ctx pkg_name in
+    t, pkg_digest
   ;;
 
   (* Returns the db for all dev tools combined with the default context, and
@@ -720,19 +719,21 @@ module DB = struct
     let inactive_lockdir =
       Memo.lazy_ ~name:"inactive-lockdir-package-db" (fun () ->
         let+ pkg_digest_table = Memo.Lazy.force Pkg_table.all_existing_dev_tools in
-        create ~pkg_digest_table ~system_provided ~local_packages:Package.Name.Set.empty)
+        create ~pkg_digest_table)
     in
     let of_dev_tool_memo =
       Memo.create "pkg-db-dev-tool" ~input:(module Dune_pkg.Dev_tool)
       @@ fun dev_tool ->
       let+ lock_dir = Lock_dir.of_dev_tool dev_tool
       and+ platform = Lock_dir.Sys_vars.solver_env in
-      pkg_digest_of_name
-        lock_dir
-        platform
-        (Pkg_dev_tool.package_name dev_tool)
-        ~system_provided
-        ~local_packages:Package.Name.Set.empty
+      let entries =
+        Pkg_table.entries_by_name_of_lock_dir
+          lock_dir
+          ~platform
+          ~system_provided
+          ~local_packages:Package.Name.Set.empty
+      in
+      pkg_digest_of_name entries (Pkg_dev_tool.package_name dev_tool)
     in
     fun dev_tool ->
       let+ db =
@@ -860,15 +861,7 @@ end = struct
           (match candidate with
            | None -> Memo.return None
            | Some candidate ->
-             let+ lock_dir = Lock_dir.get_exn context in
-             let selected =
-               DB.pkg_digest_of_name
-                 lock_dir
-                 platform
-                 info.name
-                 ~system_provided:db.system_provided
-                 ~local_packages:db.local_packages
-             in
+             let+ selected = DB.project_pkg_digest context info.name in
              Option.some_if (Pkg_digest.equal pkg_digest selected) candidate)
       in
       let context = Package_universe.context_name package_universe in

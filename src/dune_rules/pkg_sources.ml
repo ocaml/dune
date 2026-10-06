@@ -682,8 +682,10 @@ let prepared_source_rule tree ~target =
     |> Action.Full.make
     |> Action_builder.With_targets.return
   in
-  let { Action_builder.With_targets.build; targets = _ } =
-    Action_builder.progn (mkdirs :: copies)
+  let build =
+    List.map (mkdirs :: copies) ~f:(fun { Action_builder.With_targets.build; _ } -> build)
+    |> Action_builder.all
+    |> Action_builder.map ~f:Action.Full.reduce
   in
   let { Action_builder.With_targets.build; targets } =
     Action_builder.with_no_targets build

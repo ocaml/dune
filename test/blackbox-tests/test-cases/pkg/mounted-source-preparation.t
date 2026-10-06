@@ -312,6 +312,6 @@ We compare allocated words, not wall-clock timings, with room for linear work.
   $ dune trace cat | jq --slurpfile small small-alloc '
   >   select(.cat == "config" and .name == "exit") | .args.gc
   >   | (.minor_words + .major_words - .promoted_words) < 3 * $small[0]'
-  false
+  true
   $ cat _build/default/result
   updated/1.0/original/false

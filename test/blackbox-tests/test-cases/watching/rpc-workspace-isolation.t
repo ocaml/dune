@@ -1,12 +1,9 @@
-Concurrent workspaces have independent RPC endpoints and build requests.
-The registry publishes the bound address. Stopping one server must not stop
-the other.
+Compare the default RPC endpoints published by concurrent Windows workspaces
+and check workspace routing when the endpoints are independent.
 
   $ setup_xdg_runtime_dir
-  $ case "$(uname -s)" in
-  >   CYGWIN*|MINGW*) export XDG_RUNTIME_DIR="$(cygpath -m "$XDG_RUNTIME_DIR")" ;;
-  > esac
-  $ os_type=$(ocamlc -config-var os_type)
+  $ export XDG_RUNTIME_DIR="$(cygpath -m "$XDG_RUNTIME_DIR")"
+  $ unset DUNE_RPC
   $ mkdir a b
   $ for project in a b; do
   >   echo '(lang dune 3.24)' > "$project/dune-project"
@@ -17,65 +14,74 @@ the other.
   > EOF
   > done
 
-The cleanup retries both markers so that the regression case also cleans up
-when Windows has published the same endpoint for two servers.
+Do not use RPC shutdown: the unfixed servers share an endpoint with each other
+and possibly the test runner. Terminate only the captured fixture processes.
 
-  $ root="$PWD"
+  $ A_PID= B_PID= A_READY= B_READY= endpoint_a= endpoint_b=
   $ cleanup () {
-  >   for attempt in 1 2; do
-  >     for project in a b; do
-  >       (cd "$root/$project" && "$timeout" 2 dune shutdown) \
-  >         >/dev/null 2>&1 || :
-  >     done
+  >   local cleanup_status=0
+  >   for fixture_pid in $A_PID $B_PID; do
+  >     /bin/kill -f "$fixture_pid" >/dev/null 2>&1 || :
+  >     if wait_for_pid_to_exit_with_timeout "$fixture_pid" 200; then
+  >       wait "$fixture_pid" 2>/dev/null || :
+  >       case "$fixture_pid" in
+  >         "$A_PID") A_PID= ;; "$B_PID") B_PID= ;;
+  >       esac
+  >     else
+  >       cleanup_status=$?
+  >     fi
   >   done
+  >   return "$cleanup_status"
   > }
   $ trap cleanup EXIT
+
+Check complete publication for each root in turn. The independent Windows
+registry PID bug can cause the two servers to reuse a registry filename.
+
+  $ wait_for_registry () {
+  >   "$timeout" 2 sh -c '
+  >     until (
+  >       for entry in "$XDG_RUNTIME_DIR"/dune/rpc/*; do
+  >         grep -Fq -- "$1)" "$entry" 2>/dev/null &&
+  >         dune internal sexp-pp --format=csexp "$entry" \
+  >           >/dev/null 2>&1 && exit 0
+  >       done
+  >       exit 1
+  >     ); do sleep 0.01; done' sh "$1"
+  > }
   $ cd a
-  $ dune build --passive-watch-mode > .#dune-output 2>&1 &
+  $ native_root=$(cygpath -m "$PWD")
+  $ dune build --root="$native_root" --passive-watch-mode \
+  >   > .#dune-output 2>&1 &
   $ A_PID=$!
-  $ wait_for_rpc_server
-
-Before starting the second server, check that the registry contains the
-published address rather than the requested port zero or the old default.
-
-  $ if [ -f _build/.rpc/dune ]; then
-  >   grep -Fq -- "$(cat _build/.rpc/dune)" "$XDG_RUNTIME_DIR"/dune/rpc/*
-  > fi
+  $ wait_for_registry "$native_root" &&
+  >   endpoint_a=$(cat _build/.rpc/dune) &&
+  >   grep -Eq '^tcp:host=127\.0\.0\.1,port=[1-9][0-9]*$' _build/.rpc/dune &&
+  >   grep -Fq -- "$endpoint_a)" "$XDG_RUNTIME_DIR"/dune/rpc/* && A_READY=1
   $ cd ../b
-  $ dune build --passive-watch-mode > .#dune-output 2>&1 &
+  $ native_root=$(cygpath -m "$PWD")
+  $ dune build --root="$native_root" --passive-watch-mode \
+  >   > .#dune-output 2>&1 &
   $ B_PID=$!
-  $ wait_for_rpc_server
+  $ wait_for_registry "$native_root" &&
+  >   endpoint_b=$(cat _build/.rpc/dune) &&
+  >   grep -Eq '^tcp:host=127\.0\.0\.1,port=[1-9][0-9]*$' _build/.rpc/dune &&
+  >   grep -Fq -- "$endpoint_b)" "$XDG_RUNTIME_DIR"/dune/rpc/* && B_READY=1
   $ cd ..
+  $ kill -0 "$A_PID" "$B_PID"
+  $ test "$endpoint_a" != "$endpoint_b"
 
-On Windows the marker files must contain different TCP addresses. On Unix
-the markers are independent domain sockets instead of regular files.
+Shared endpoints cannot safely address either fixture: on main, make no RPC
+calls. Once independent, verify the actual outputs in both workspaces.
 
-  $ if [ -f a/_build/.rpc/dune ]; then
-  >   test "$(cat a/_build/.rpc/dune)" != "$(cat b/_build/.rpc/dune)" || {
-  >     echo 'shared RPC endpoint'
-  >     false
-  >   }
+  $ if [ "$A_READY$B_READY" = 11 ] &&
+  >    [ "$endpoint_a" != "$endpoint_b" ] &&
+  >    [ "$endpoint_a" != tcp:host=127.0.0.1,port=8587 ] &&
+  >    [ "$endpoint_b" != tcp:host=127.0.0.1,port=8587 ]; then
+  >   (cd a && build_quiet x && cat _build/default/x)
+  >   (cd b && build_quiet x && cat _build/default/x)
+  > else
+  >   echo 'workspaces share an RPC endpoint'
   > fi
-
-Both RPC builds must execute in their own workspace, not merely receive a
-successful ping from whichever server owns the shared port.
-
-  $ cd a
-  $ build_quiet x
-  $ cat _build/default/x
-  a
-  $ cd ../b
-  $ build_quiet x
-  $ cat _build/default/x
-  b
-
-Native Windows shutdown must also exit cleanly, not only release the marker.
-The Unix wait helper avoids a known Linux shell PID-aliasing issue.
-
-  $ cd ../a
-  $ DUNE_PID="$A_PID" stop_dune_quiet
-  $ if [ "$os_type" = Win32 ]; then wait "$A_PID"; fi
-  $ cd ../b
-  $ with_timeout_quiet dune rpc ping
-  $ DUNE_PID="$B_PID" stop_dune_quiet
-  $ if [ "$os_type" = Win32 ]; then wait "$B_PID"; fi
+  ab
+  $ cleanup

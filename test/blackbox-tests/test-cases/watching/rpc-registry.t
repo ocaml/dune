@@ -23,22 +23,19 @@ Batch builds do not write to the RPC registry.
   >    (write-file %{target} ok))))
   > EOF
 
-  $ echo batch > input
-
   $ dune build x
 
   $ dune trace cat | jq -r 'select(.cat == "rpc" and .name == "registry-write") | .name'
 
 Batch builds that start the RPC server for a dynamic action still do not write
-to the RPC registry. The action connects to this build's server even if the
-parent process has an invalid RPC address in its environment.
+to the RPC registry.
 
+  $ echo batch > input
   $ DUNE_RPC=invalid-inherited-address dune build dynamic-target
 
   $ dune trace cat | jq -r 'select(.cat == "rpc" and .name == "registry-write") | .name'
 
-Watch mode writes a registry entry when the RPC server starts. A dynamic action
-also connects to that server, using its published address.
+Watch mode writes a registry entry when the RPC server starts.
 
   $ echo watch > input
   $ start_dune

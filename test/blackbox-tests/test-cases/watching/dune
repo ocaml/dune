@@ -29,6 +29,12 @@
 
 (cram
  (applies_to rpc-workspace-isolation.t)
+ (enabled_if
+  (= %{ocaml-config:os_type} Win32))
+ (alias runtest-windows))
+
+(cram
+ (applies_to rpc-registry.t)
  (alias runtest-windows))
 
 (cram

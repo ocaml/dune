@@ -414,7 +414,11 @@ let ml_flags_and_plugin_ocamlpath
   let plugin_ocamlpath =
     let open Action_builder.O in
     let* _, plugin_packages = Resolve.Memo.read res in
-    Install_layout.For_rocq_only.lib_root context plugin_packages
+    if Package.Name.Set.is_empty plugin_packages
+    then Action_builder.return None
+    else
+      let+ lib_root = Install_layout.For_rocq_only.lib_root context plugin_packages in
+      Some lib_root
   in
   Resolve.Memo.map ~f:fst res, plugin_ocamlpath
 ;;
@@ -479,6 +483,7 @@ let setup_rocqproject_for_theory_rule
       ~wrapper_name
       ~use_corelib
       ~ml_flags
+      ~plugin_ocamlpath
       ~stanza_flags
       ~theory_dirs
       rocq_modules
@@ -496,6 +501,13 @@ let setup_rocqproject_for_theory_rule
       ~theories_deps
       ~theory_dirs
   in
+  let plugin_ml_flags =
+    Action_builder.map plugin_ocamlpath ~f:(function
+      | None -> Command.Args.empty
+      | Some path ->
+        Command.Args.S [ Command.Args.A "-I"; Command.Args.Path (Path.build path) ])
+  in
+  let args = Command.Args.Dyn plugin_ml_flags :: args in
   let contents : string With_targets.t =
     let open With_targets.O in
     let dir = Path.build dir in
@@ -561,11 +573,14 @@ let setup_rocqproject_for_theory_rule
    environment already carries (e.g. layout entries from [(deps (package ...))])
    rather than overwriting it. *)
 let add_plugin_ocamlpath ~lib_root (action : Action.Full.t) =
-  let action_env = action.props.env in
-  let env =
-    Install.Roots.cons_path action_env ~var:Findlib_config.ocamlpath_var lib_root
-  in
-  Action.Full.add_env env action
+  match lib_root with
+  | None -> action
+  | Some lib_root ->
+    let action_env = action.props.env in
+    let env =
+      Install.Roots.cons_path action_env ~var:Findlib_config.ocamlpath_var lib_root
+    in
+    Action.Full.add_env env action
 ;;
 
 let setup_rocqdep_for_theory_rule
@@ -1104,6 +1119,7 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
        ~wrapper_name
        ~use_corelib
        ~ml_flags
+       ~plugin_ocamlpath
        ~stanza_flags
        ~theory_dirs
        rocq_modules)

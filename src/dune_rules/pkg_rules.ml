@@ -263,6 +263,27 @@ module Pkg = struct
     | Some root -> loop root Path.Local.Set.empty Path.Local.root
   ;;
 
+  let native_dependencies context packages =
+    match packages with
+    | [] -> Action_builder.return []
+    | _ ->
+      let names = Package.Name.Set.of_list_map packages ~f:(fun t -> t.info.name) in
+      let prefix = Install_layout.root context names |> Path.build in
+      let dependencies =
+        List.map packages ~f:(fun t ->
+          let paths = Paths.with_prefix t.paths prefix in
+          { Opam_build.Dependency.paths
+          ; files = Section.Map.empty
+          ; variables = Pkg_info.variables t.info
+          ; exported_env = t.recipe.exported_env
+          ; export_paths = paths
+          })
+      in
+      let open Action_builder.O in
+      let+ layout = Install_layout.materialize context dependencies in
+      Install_layout.dependencies layout
+  ;;
+
   let dependency t =
     match t.builder with
     | Error messages ->
@@ -278,18 +299,20 @@ module Pkg = struct
         ~exported_env:t.recipe.exported_env
     | Ok `Dune ->
       let open Action_builder.O in
-      let+ layout =
-        Install_layout.materialize
-          t.context
-          [ { Opam_build.Dependency.paths = t.paths
-            ; files = Section.Map.empty
-            ; variables = Pkg_info.variables t.info
-            ; exported_env = t.recipe.exported_env
-            ; export_paths = t.paths
-            }
-          ]
-      in
-      Install_layout.dependencies layout |> List.hd
+      let+ dependencies = native_dependencies t.context [ t ] in
+      List.hd dependencies
+  ;;
+
+  let is_native t =
+    match t.builder with
+    | Ok `Dune -> true
+    | Ok `Opam | Error _ -> false
+  ;;
+
+  let is_opaque t =
+    match t.builder with
+    | Ok `Opam -> true
+    | Ok `Dune | Error _ -> false
   ;;
 
   let dep t =
@@ -298,7 +321,29 @@ module Pkg = struct
     | Ok `Dune | Error _ -> Action_builder.ignore (dependency t)
   ;;
 
-  let package_deps t = Action_builder.List.iter (deps_closure t) ~f:dep
+  let deps context packages =
+    let native, opaque =
+      List.partition_map packages ~f:(fun t -> if is_native t then Left t else Right t)
+    in
+    let open Action_builder.O in
+    let* (_ : Opam_build.Dependency.t list) = native_dependencies context native in
+    Action_builder.List.iter opaque ~f:dep
+  ;;
+
+  let dependencies context packages =
+    let open Action_builder.O in
+    let* native = native_dependencies context (List.filter packages ~f:is_native) in
+    let native =
+      Package.Name.Map.of_list_map_exn native ~f:(fun dependency ->
+        dependency.paths.name, dependency)
+    in
+    Action_builder.List.map packages ~f:(fun t ->
+      match Package.Name.Map.find native t.info.name with
+      | Some dependency -> Action_builder.return dependency
+      | None -> dependency t)
+  ;;
+
+  let package_deps t = deps t.context (deps_closure t)
 
   let install_roots t =
     let default_install_roots = Paths.install_roots t.paths in
@@ -319,15 +364,29 @@ module Pkg = struct
      (equivalent to opam's `setenv` field) are applied for each
      package in the same order as the argument list. *)
   let build_env_of_deps ts =
-    List.fold_left ts ~init:Env.Map.empty ~f:(fun env t ->
-      let env =
-        let roots = install_roots t in
-        let init = Value_list_env.add_path env Env_path.var roots.bin in
-        let vars = Install.Roots.to_env_without_path roots ~relative:Path.relative in
-        List.fold_left vars ~init ~f:(fun acc (var, path) ->
-          Value_list_env.add_path acc var path)
+    let native_roots =
+      match List.filter ts ~f:is_native with
+      | [] -> None
+      | first :: _ as native ->
+        let names = Package.Name.Set.of_list_map native ~f:(fun t -> t.info.name) in
+        let prefix = Install_layout.root first.context names |> Path.build in
+        Some (Install.Roots.opam_from_prefix prefix ~relative:Path.relative)
+    in
+    List.fold_left ts ~init:(Env.Map.empty, native_roots) ~f:(fun (env, native_roots) t ->
+      let roots, native_roots =
+        if is_native t then native_roots, None else Some (install_roots t), native_roots
       in
-      List.fold_left t.exported_env ~init:env ~f:Env_update.set)
+      let env =
+        match roots with
+        | None -> env
+        | Some roots ->
+          let init = Value_list_env.add_path env Env_path.var roots.bin in
+          let vars = Install.Roots.to_env_without_path roots ~relative:Path.relative in
+          List.fold_left vars ~init ~f:(fun acc (var, path) ->
+            Value_list_env.add_path acc var path)
+      in
+      List.fold_left t.exported_env ~init:env ~f:Env_update.set, native_roots)
+    |> fst
   ;;
 
   (* [build_env t] returns an env containing paths containing all the
@@ -395,8 +454,12 @@ module Action_expander = struct
     let empty = { binaries = Filename.Map.empty; dep_info = Package.Name.Map.empty }
 
     let of_closure closure =
-      Memo.parallel_map closure ~f:(fun (pkg : Pkg.t) ->
-        Action_builder.evaluate_and_collect_facts (Pkg.dependency pkg) >>| fst)
+      (match closure with
+       | [] -> Memo.return []
+       | (first : Pkg.t) :: _ ->
+         Action_builder.evaluate_and_collect_facts
+           (Pkg.dependencies first.context closure)
+         >>| fst)
       |> Memo.map ~f:(fun dependencies ->
         List.fold_left
           dependencies
@@ -895,10 +958,7 @@ end = struct
         in
         if native
         then (
-          let prefix =
-            Install_layout.root context (Package.Name.Set.singleton info.name)
-            |> Path.build
-          in
+          let prefix = Install.Context.dir ~context |> Path.build in
           let paths = Paths.with_prefix paths prefix in
           let candidate = Option.value_exn mounted in
           { paths with
@@ -1228,8 +1288,7 @@ let setup_pkg_install_alias =
          |> Memo.parallel_map ~f:(fun { DB.Pkg_table.pkg_digest; _ } ->
            Resolve.resolve db Loc.none pkg_digest (Dependencies ctx_name)))
     in
-    Action_builder.List.iter packages ~f:(fun pkg ->
-      Action_builder.ignore (Pkg.dependency pkg))
+    Pkg.deps ctx_name packages
   in
   fun ~dir ctx_name ->
     (* We only need to build when the build_dir is the root of the context *)
@@ -1530,7 +1589,7 @@ let exported_env context =
     Pp.textf "lock directory environment for context %S" (Context_name.to_string context))
   @@ fun () ->
   let+ all_project_deps = all_project_deps context in
-  let env = Pkg.build_env_of_deps all_project_deps in
+  let env = List.filter all_project_deps ~f:Pkg.is_opaque |> Pkg.build_env_of_deps in
   let vars = Env.Map.map env ~f:Value_list_env.string_of_env_values in
   Env.extend Env.empty ~vars
 ;;
@@ -1552,7 +1611,8 @@ let lock_dir_package_env =
        | true ->
          let+ deps = project_deps ~packages context in
          let vars =
-           Pkg.build_env_of_deps deps
+           List.filter deps ~f:Pkg.is_opaque
+           |> Pkg.build_env_of_deps
            |> Env.Map.map ~f:Value_list_env.string_of_env_values
          in
          Env.extend Env.empty ~vars)
@@ -1573,10 +1633,15 @@ let find_package ctx pkg =
   | false -> Memo.return None
   | true ->
     let+ pkg = resolve_pkg_dep ctx (Loc.none, pkg) in
+    let dependencies =
+      Pkg.deps_closure pkg
+      |> Package.Name.Set.of_list_map ~f:(fun (pkg : Pkg.t) -> pkg.info.name)
+    in
     Some
-      (let open Action_builder.O in
-       let* () = Pkg.package_deps pkg in
-       Pkg.dep pkg)
+      ( dependencies
+      , let open Action_builder.O in
+        let* () = Pkg.package_deps pkg in
+        Pkg.dep pkg )
 ;;
 
 let package_prefixes ctx =
@@ -1585,6 +1650,7 @@ let package_prefixes ctx =
   | false -> Memo.return []
   | true ->
     all_project_deps ctx
+    >>| List.filter ~f:Pkg.is_opaque
     >>| List.map ~f:(fun { Pkg.info = { name; _ }; paths = { Paths.prefix; _ }; _ } ->
       prefix, name)
 ;;

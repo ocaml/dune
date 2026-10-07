@@ -15,11 +15,8 @@ let find_package ctx pkg =
   | Some opaque -> Memo.return (Some (Opam opaque))
   | None ->
     let* local =
-      let+ packages = Dune_load.packages_for_context ctx
-      and+ candidate = Pkg_sources.find_candidate ctx pkg in
-      match candidate with
-      | Some _ -> None
-      | None -> Package.Name.Map.find packages pkg
+      let+ packages = Dune_load.packages_for_context ctx in
+      Package.Name.Map.find packages pkg
     in
     (match local with
      | Some p -> Memo.return (Some (Local p))
@@ -30,7 +27,7 @@ let find_package ctx pkg =
           Pkg_rules.find_package ctx pkg
           >>| (function
            | None -> None
-           | Some b -> Some (Build b))
+           | Some (_dependencies, build) -> Some (Build build))
         | false ->
           let* findlib = Findlib.create ctx in
           Findlib.find_root_package findlib pkg

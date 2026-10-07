@@ -797,6 +797,11 @@ must not contribute singleton layouts to the context environment.
   > (rule (target unavailable) (action (run false)))
   > (install (section share) (files unavailable))
   > EOF
+  $ cat >> dune.lock/alpha.pkg <<'EOF'
+  > (exported_env
+  >  (= ALPHA_LIB %{pkg-self:lib})
+  >  (= ALPHA_BUILD %{pkg-self:build}))
+  > EOF
   $ make_lockpkg opaque <<'EOF'
   > (version 1.0)
   > (install (write-file %{pkg-self:lib}/payload opaque))
@@ -807,7 +812,7 @@ must not contribute singleton layouts to the context environment.
   >  (deps (package local) (package alpha) (package beta) (package opaque))
   >  (action
   >   (progn
-  >    (with-stdout-to paths (run sh -c "printf '%s\n' \"$OCAMLPATH\""))
+  >    (with-stdout-to paths (run sh -c "test -f \"$ALPHA_LIB/alpha.cmi\" && printf '%s\n' \"$OCAMLPATH\""))
   >    (with-stdout-to libraries (run ocamlfind query alpha beta local)))))
   > (rule
   >  (target reversed)
@@ -819,13 +824,12 @@ must not contribute singleton layouts to the context environment.
   $ cmp _build/default/libraries _build/default/reversed
 
 There should be one native layout in the environment, and all three native
-libraries should come from that layout, independent of declaration order.
-Currently native lock packages contribute singleton layouts, including unused.
+libraries come from that layout, independent of declaration order.
 
   $ jq -R 'split(":") | map(select(contains("/.packages/"))) | length' _build/default/paths
-  6
+  1
   $ jq -R -s 'split("\n") | map(select(length > 0) | sub("/[^/]+$"; "")) | unique | length' _build/default/libraries
-  3
+  1
   $ find _build/_private/default/.packages -path '*/lib/alpha/dune-package' | wc -l
   1
   $ test ! -e _build/default/.lockfile/pkg/unused/unused.cma
@@ -855,3 +859,55 @@ invalidate its output without using an opaque recipe or installing unused.
   $ cat _build/default/nested
   23
   $ test ! -e _build/default/.lockfile/pkg/unused/unused.cma
+
+Opaque recipes also get one layout for their native dependency set, including
+native package exports. This is a different set from the workspace consumer's.
+
+  $ make_lockpkg opaque-consumer <<'EOF'
+  > (version 1.0)
+  > (depends alpha beta)
+  > (build
+  >  (progn
+  >   (system "test -f \"$ALPHA_LIB/alpha.cmi\" && test -f \"$ALPHA_BUILD/alpha.cma\" && ocamlfind query alpha beta > libraries")
+  >   (write-file opaque-consumer.install "share: [ \"libraries\" ]")))
+  > EOF
+  $ build_pkg opaque-consumer
+  $ jq -R -s 'split("\n") | map(select(length > 0) | sub("/[^/]+$"; "")) | unique | length' _build/default/.lockfile/pkg/opaque-consumer/.opam/opaque-consumer/target/share/opaque-consumer/libraries
+  1
+  $ find _build/_private/default/.packages -path '*/lib/alpha/dune-package' | wc -l
+  2
+
+Materialising another native package separately must not make its library
+visible through the environment of the original package set.
+
+  $ echo '(library (public_name unused))' > _unused/dune
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target installed-unused)
+  >  (deps (package unused))
+  >  (action (write-file %{target} installed)))
+  > (rule
+  >  (target unused-visible)
+  >  (deps (package local) (package alpha) (package beta))
+  >  (action
+  >   (with-stdout-to %{target}
+  >    (run sh -c "if ocamlfind query unused >/dev/null 2>&1; then echo yes; else echo no; fi"))))
+  > EOF
+  $ dune build installed-unused
+  $ dune build unused-visible
+  $ cat _build/default/unused-visible
+  no
+
+Cross-context actions materialize the same set in the host context, rather
+than mixing host and target native prefixes.
+
+  $ cat > dune-workspace <<'EOF'
+  > (lang dune 3.25)
+  > (context (default (name host)))
+  > (context (default (name target) (host host)))
+  > EOF
+  $ dune build _build/target/paths _build/target/libraries
+  $ jq -R 'split(":") | map(select(contains("/.packages/"))) | length' _build/target/paths
+  1
+  $ jq -R -s 'split("\n") | map(select(length > 0)) | all(contains("/_private/host/.packages/"))' _build/target/libraries
+  true

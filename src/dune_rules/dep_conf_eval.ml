@@ -257,39 +257,51 @@ let package ~explicit loc pkg_name (context : Build_context.t) ~dune_version =
    packages that own those libraries. *)
 let expand_package_set context package_names =
   let open Memo.O in
-  let* source_packages = Dune_load.packages_for_context context in
-  Memo.map_reduce_seq
-    (Package.Name.Set.to_seq package_names)
-    ~empty:package_names
-    ~combine:Package.Name.Set.union
-    ~f:(fun package_name ->
-      (* Find all the libraries present in a given package. *)
-      let* libs =
-        let* db = Package_db.create context in
-        Package_db.find_package db package_name
-        >>= function
-        | None -> Memo.return []
-        | Some (Installed { entries; _ }) ->
-          let* lib_db = Scope.DB.public_libs context in
-          Lib_name.Map.keys entries |> Memo.List.filter_map ~f:(Lib.DB.find lib_db)
-        | (Some (Local _) | Some (Build _))
-          when Package.Name.Map.mem source_packages package_name ->
-          let* { Scope.DB.Lib_entry.Set.libraries; deprecated_library_names } =
-            Scope.DB.lib_entries_of_package context package_name
-          in
-          let+ redirected =
+  let* expanded =
+    Memo.map_reduce_seq
+      (Package.Name.Set.to_seq package_names)
+      ~empty:package_names
+      ~combine:Package.Name.Set.union
+      ~f:(fun package_name ->
+        (* Find all the libraries present in a given package. *)
+        let* libs =
+          let* db = Package_db.create context in
+          Package_db.find_package db package_name
+          >>= function
+          | None -> Memo.return []
+          | Some (Installed { entries; _ }) ->
             let* lib_db = Scope.DB.public_libs context in
-            Memo.List.filter_map deprecated_library_names ~f:(fun redirect ->
-              Lib.DB.find lib_db (Deprecated_library_name.old_public_name redirect))
-          in
-          List.map libraries ~f:Lib.Local.to_lib @ redirected
-        | Some (Local _) | Some (Opam _) | Some (Build _) ->
-          (* Opaque package dependencies already include their closure. *)
-          Memo.return []
-      in
-      Lib.descriptive_closure libs ~with_pps:false ~for_:Compilation_mode.Ocaml
-      >>| List.filter_map ~f:(fun lib -> Lib_info.package (Lib.info lib))
-      >>| Package.Name.Set.of_list)
+            Lib_name.Map.keys entries |> Memo.List.filter_map ~f:(Lib.DB.find lib_db)
+          | Some (Local _) ->
+            let* { Scope.DB.Lib_entry.Set.libraries; deprecated_library_names } =
+              Scope.DB.lib_entries_of_package context package_name
+            in
+            let+ redirected =
+              let* lib_db = Scope.DB.public_libs context in
+              Memo.List.filter_map deprecated_library_names ~f:(fun redirect ->
+                Lib.DB.find lib_db (Deprecated_library_name.old_public_name redirect))
+            in
+            List.map libraries ~f:Lib.Local.to_lib @ redirected
+          | Some (Opam _) | Some (Build _) ->
+            (* Opaque package dependencies already include their closure. *)
+            Memo.return []
+        in
+        Lib.descriptive_closure libs ~with_pps:false ~for_:Compilation_mode.Ocaml
+        >>| List.filter_map ~f:(fun lib -> Lib_info.package (Lib.info lib))
+        >>| Package.Name.Set.of_list)
+  in
+  let* candidates = Pkg_sources.candidates context in
+  let managed = Package.Name.Set.of_list_map candidates ~f:Pkg_sources.Candidate.name in
+  let roots = Package.Name.Set.inter expanded managed in
+  Memo.map_reduce_seq
+    (Package.Name.Set.to_seq roots)
+    ~empty:expanded
+    ~combine:Package.Name.Set.union
+    ~f:(fun name ->
+      let+ package = Pkg_rules.find_package context name in
+      match package with
+      | None -> Package.Name.Set.empty
+      | Some (dependencies, _build) -> dependencies)
 ;;
 
 let rec dep expander : Dep_conf.t -> _ = function

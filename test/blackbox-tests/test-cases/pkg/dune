@@ -43,8 +43,13 @@
  (deps %{bin:strace}))
 
 (cram
- (applies_to relocatable-compiler-sandbox)
- (deps %{bin:menhir}))
+ (applies_to relocatable-compiler-sandbox.t)
+ (deps
+  %{bin:menhir}
+  ../../../../vendor/sha/flags/dune
+  ../../../../vendor/sha/flags/c_flags.ml
+  ../../../../vendor/ocaml-lmdb/flags/dune
+  ../../../../vendor/ocaml-lmdb/flags/gen_c_flags.ml))
 
 (cram
  (deps %{bin:awk} %{bin:cmp})

@@ -767,3 +767,91 @@ context. Each consumer retains its host-side binding for shared compilation.
   >   | .args.prog | sub("^.*host/"; "host/")' | sort -u
   host/.bin/js_of_ocaml
   host/b/.bin/js_of_ocaml
+
+Workspace and imported native dependencies belong to one package-set layout.
+Opaque dependencies retain their producer prefixes; unrelated native packages
+must not contribute singleton layouts to the context environment.
+
+  $ mkdir package-set-layout
+  $ cd package-set-layout
+  $ make_lockdir
+  $ cat > dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name local))
+  > EOF
+  $ mkdir local
+  $ echo '(library (public_name local))' > local/dune
+  $ echo 'let value = 1' > local/local.ml
+  $ for package in alpha beta unused; do
+  >   mkdir "_$package"
+  >   printf '(lang dune 3.25)\n(package (name %s))\n' "$package" > "_$package/dune-project"
+  >   printf '(library (public_name %s))\n' "$package" > "_$package/dune"
+  >   echo 'let value = 2' > "_$package/$package.ml"
+  >   make_lockpkg "$package" <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_$package))
+  > (build (run false))
+  > EOF
+  > done
+  $ cat >> _unused/dune <<'EOF'
+  > (rule (target unavailable) (action (run false)))
+  > (install (section share) (files unavailable))
+  > EOF
+  $ make_lockpkg opaque <<'EOF'
+  > (version 1.0)
+  > (install (write-file %{pkg-self:lib}/payload opaque))
+  > EOF
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (targets paths libraries)
+  >  (deps (package local) (package alpha) (package beta) (package opaque))
+  >  (action
+  >   (progn
+  >    (with-stdout-to paths (run sh -c "printf '%s\n' \"$OCAMLPATH\""))
+  >    (with-stdout-to libraries (run ocamlfind query alpha beta local)))))
+  > (rule
+  >  (target reversed)
+  >  (deps (package opaque) (package beta) (package alpha) (package local))
+  >  (action
+  >   (with-stdout-to %{target} (run ocamlfind query alpha beta local))))
+  > EOF
+  $ dune build paths libraries reversed
+  $ cmp _build/default/libraries _build/default/reversed
+
+There should be one native layout in the environment, and all three native
+libraries should come from that layout, independent of declaration order.
+Currently native lock packages contribute singleton layouts, including unused.
+
+  $ jq -R 'split(":") | map(select(contains("/.packages/"))) | length' _build/default/paths
+  6
+  $ jq -R -s 'split("\n") | map(select(length > 0) | sub("/[^/]+$"; "")) | unique | length' _build/default/libraries
+  3
+  $ find _build/_private/default/.packages -path '*/lib/alpha/dune-package' | wc -l
+  1
+  $ test ! -e _build/default/.lockfile/pkg/unused/unused.cma
+  $ test ! -e _build/default/.lockfile/pkg/alpha/.opam/alpha/target
+  $ test -f _build/default/.lockfile/pkg/opaque/.opam/opaque/target/lib/opaque/payload
+
+A nested Dune can consume the same set, and changes to a native dependency
+invalidate its output without using an opaque recipe or installing unused.
+
+  $ mkdir consumer
+  $ echo '(lang dune 3.25)' > consumer/dune-project
+  $ echo '(executable (name main) (libraries alpha beta local))' > consumer/dune
+  $ echo 'let () = Printf.printf "%d\n" (Alpha.value + Beta.value + Local.value)' > consumer/main.ml
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target nested)
+  >  (deps (package alpha) (package local) (package beta) (source_tree consumer))
+  >  (action
+  >   (with-stdout-to %{target}
+  >    (chdir consumer (run %{bin:dune} exec ./main.exe)))))
+  > EOF
+  $ dune build nested
+  $ cat _build/default/nested
+  5
+  $ echo 'let value = 20' > _beta/beta.ml
+  $ dune build nested
+  $ cat _build/default/nested
+  23
+  $ test ! -e _build/default/.lockfile/pkg/unused/unused.cma

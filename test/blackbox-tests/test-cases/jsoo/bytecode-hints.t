@@ -13,4 +13,4 @@ the optimization hints of the compilation units are preserved.
 
   $ dune build --profile release main.bc-for-jsoo
   $ dune trace cat | jq_dune -c 'processes | select(.args | targets | any(endswith("main.bc-for-jsoo"))) | .args.process_args'
-  ["-w","-40","-g","-o","main.bc-for-jsoo","-no-check-prims","-noautolink",".main.eobjs/byte/dune__exe__Main.cmo"]
+  ["-w","-40","-g","-o","main.bc-for-jsoo","-no-check-prims","-noautolink","-bytecode-hints",".main.eobjs/byte/dune__exe__Main.cmo"]

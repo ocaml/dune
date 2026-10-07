@@ -345,7 +345,9 @@ include Sub_system.Register_end_point (struct
                 match (mode : Mode_conf.t) with
                 | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_is_whole_program
                 | Native | Best | Byte -> false)
-            then [ Exe.Linkage.byte_for_jsoo ]
+            then (
+              let ocaml = Compilation_context.ocaml cctx in
+              [ Exe.Linkage.byte_for_jsoo ocaml.version ])
             else []
           in
           jsoo

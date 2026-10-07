@@ -6,7 +6,6 @@ module Paths : sig
   val toplevel_index : Context.t -> Path.Build.t
 end
 
-val lib_unique_name : Lib.t -> string
 val odoc_program : Super_context.t -> Path.Build.t -> Action.Prog.t Action_builder.t
 val odoc_files_in_dirs : Path.t list -> _ Command.Args.t
 val is_documentation_relevant : Lib.t -> bool Memo.t

@@ -5,74 +5,6 @@ module Gen_rules = Build_config.Gen_rules
 let ( ++ ) = Path.Build.relative
 let mld_ext = Filename.Extension.of_string_exn ".mld"
 
-module Scope_key : sig
-  val of_string : Context_name.t -> string -> (Lib_name.t * Lib.DB.t) Memo.t
-  val to_string : Lib_name.t -> Dune_project.t -> string
-end = struct
-  let file_key project =
-    let name = Dune_project.name project in
-    let root = Dune_project.root project in
-    let digest =
-      Digest.repr Repr.(pair Dune_project_name.repr Path.Source.repr) (name, root)
-      |> Digest.to_string
-    in
-    String.take digest 12
-  ;;
-
-  let find_project_by_key =
-    let memo =
-      let make_map projects =
-        String.Map.of_list_map_exn projects ~f:(fun project -> file_key project, project)
-        |> Memo.return
-      in
-      let module Input = struct
-        type t = Dune_project.t list
-
-        let equal = List.equal Dune_project.equal
-        let hash = List.hash Dune_project.hash
-        let to_dyn = Dyn.list Dune_project.to_dyn
-      end
-      in
-      Memo.create "project-by-keys" ~input:(module Input) make_map
-    in
-    fun key ->
-      let* projects = Dune_load.projects () in
-      let+ map = Memo.exec memo projects in
-      String.Map.find_exn map key
-  ;;
-
-  let of_string context s =
-    match String.rsplit2 s ~on:'@' with
-    | None ->
-      let+ public_libs = Scope.DB.public_libs context in
-      Lib_name.parse_string_exn (Loc.none, s), public_libs
-    | Some (lib, key) ->
-      let+ scope = find_project_by_key key >>= Scope.DB.find_by_project context in
-      Lib_name.parse_string_exn (Loc.none, lib), Scope.libs scope
-  ;;
-
-  let to_string lib project =
-    let key = file_key project in
-    sprintf "%s@%s" (Lib_name.to_string lib) key
-  ;;
-end
-
-let lib_unique_name lib =
-  let name = Lib.name lib in
-  let info = Lib.info lib in
-  let status = Lib_info.status info in
-  match status with
-  | Installed_private _ | Installed _ -> assert false
-  | Public _ -> Lib_name.to_string name
-  | Private (project, _) -> Scope_key.to_string name project
-;;
-
-let pkg_or_lnu lib =
-  match Lib_info.package (Lib.info lib) with
-  | Some p -> Package.Name.to_string p
-  | None -> lib_unique_name lib
-;;
-
 type target =
   | Lib of Lib.Local.t
   | Pkg of Package.Name.t
@@ -102,7 +34,7 @@ module Paths = struct
     ++
     match m with
     | Pkg pkg -> Package.Name.to_string pkg
-    | Lib lib -> pkg_or_lnu (Lib.Local.to_lib lib)
+    | Lib lib -> Odoc_scope.pkg_or_lnu (Lib.Local.to_lib lib)
   ;;
 
   let html ctx m = add_pkg_lnu (html_root ctx) m
@@ -489,7 +421,7 @@ let link_odoc_rules sctx (odoc_file : Artifact.t) ~pkg ~requires =
 let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
   (* Using the proper package name doesn't actually work since odoc assumes that
      a package contains only 1 library *)
-  let pkg_or_lnu = pkg_or_lnu (Lib.Local.to_lib local_lib) in
+  let pkg_or_lnu = Odoc_scope.pkg_or_lnu (Lib.Local.to_lib local_lib) in
   let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
   let info = Lib.Local.info local_lib in
@@ -1324,7 +1256,7 @@ let gen_rules sctx ~dir rest =
        let* lib =
          let* lib, lib_db =
            let ctx = Super_context.context sctx in
-           Scope_key.of_string (Context.name ctx) lib_unique_name_or_pkg
+           Odoc_scope.Scope_key.of_string (Context.name ctx) lib_unique_name_or_pkg
          in
          Lib.DB.find lib_db lib >>| Option.bind ~f:Lib.Local.of_lib
        in

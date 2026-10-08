@@ -28,10 +28,33 @@ val expand
   -> expander:Expander.t
   -> Action.Full.t Action_builder.With_targets.t Memo.t
 
+val expand_with_formatted_diffs
+  :  Super_context.t
+  -> t
+  -> Sandbox_config.t
+  -> loc:Loc.t
+  -> chdir:Path.Build.t
+  -> deps:Dep_conf.t Bindings.t
+  -> targets_dir:Path.Build.t
+  -> targets:Path.Build.t Targets_spec.t
+  -> expander:Expander.t
+  -> Action.Full.t Action_builder.With_targets.t Memo.t
+
 (** [what] as the same meaning as the argument of
     [Expander.Expanding_what.User_action_without_targets] *)
 val expand_no_targets
   :  t
+  -> Sandbox_config.t
+  -> loc:Loc.t
+  -> chdir:Path.Build.t
+  -> deps:Dep_conf.t Bindings.t
+  -> expander:Expander.t
+  -> what:string
+  -> Action.Full.t Action_builder.t
+
+val expand_no_targets_with_formatted_diffs
+  :  Super_context.t
+  -> t
   -> Sandbox_config.t
   -> loc:Loc.t
   -> chdir:Path.Build.t

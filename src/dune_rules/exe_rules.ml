@@ -248,12 +248,21 @@ let executables_rules
     let* dep_graphs =
       (* Building an archive for foreign stubs, we link the corresponding object
        files directly to improve perf. *)
+      let buildable = exes.buildable in
       let env, sandbox =
         Dep_conf_eval.unnamed
           Sandbox_config.no_special_requirements
           ~expander
           exes.link_deps
       in
+      let ctypes_env, ctypes_sandbox = Ctypes_rules.link_deps ~expander ~buildable in
+      let env =
+        let open Action_builder.O in
+        let+ env = env
+        and+ ctypes_env = ctypes_env in
+        Env.extend_env env ctypes_env
+      in
+      let sandbox = Sandbox_config.inter sandbox ctypes_sandbox in
       let link_args : Command.Args.without_targets Command.Args.t Action_builder.t =
         Command.Args.S
           [ Dyn
@@ -297,7 +306,6 @@ let executables_rules
         |> Action_builder.return
         |> Check_rules.add_files sctx ~dir
       in
-      let buildable = exes.buildable in
       match buildable.ctypes with
       | None ->
         Exe.build_and_link_many

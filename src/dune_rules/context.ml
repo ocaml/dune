@@ -477,7 +477,12 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
          in
          Findlib_config.discover_from_env
            ~env
-           ~which:(which ~packages:Package.Name.Selection.All)
+             (* [discover_from_env] uses this to locate [ocamlfind] when it has
+                to locate [findlib.conf], which it only does when cross
+                compiling. Package management has no cross compilation support,
+                so we can avoid looking in the lock directory.
+              CR-someday punchagan: revisit when the two ever work together. *)
+           ~which:which_outside_lockdir
            ~ocamlpath
            ~findlib_toolchain)
   in

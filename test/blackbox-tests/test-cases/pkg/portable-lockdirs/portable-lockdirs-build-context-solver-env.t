@@ -1,5 +1,5 @@
-Build-time conditional package selection currently uses the host platform even
-when the selected lock stanza's solver environment overrides it.
+Build-time conditional package selection uses the selected lock stanza's solver
+environment rather than the host platform.
 
   $ mkrepo
   $ add_mock_repo_if_needed
@@ -23,16 +23,13 @@ Create a package whose build result records the selected operating system.
   >  (url "file://$(pwd)/mock-opam-repository"))
   > (lock_dir
   >  (repositories mock)
-  >  (solver_env (os macos))
-  >  (solve_for_platforms
-  >   ((arch x86_64) (os linux))
-  >   ((arch x86_64) (os macos))))
+  >  (solver_env (os macos)))
   > (pkg enabled)
   > EOF
 
-The lock stanza selects macOS, but the build context still selects Linux.
+Although the host is Linux, the build context selects the macOS package fields.
 
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock >/dev/null 2>&1
   $ dune build
   $ cat $pkg_root/$(dune pkg print-digest foo)/target/share/kernel
-  Linux
+  Darwin

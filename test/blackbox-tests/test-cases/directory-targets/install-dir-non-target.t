@@ -17,6 +17,8 @@ A plain source directory:
   3 |  (dirs assets))
              ^^^^^^
   Error: No rule found for assets
+  Hint: If this is a source file or directory, make sure it exists in the
+  source tree. If it is generated, add or fix the rule that produces assets.
   [1]
 
 A plain file (not a directory):

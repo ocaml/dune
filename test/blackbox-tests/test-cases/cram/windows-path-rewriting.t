@@ -10,16 +10,10 @@ See https://github.com/ocaml/dune/issues/4017
 and https://github.com/ocaml/dune/issues/4018
 and https://github.com/ocaml/dune/issues/10176
 
-CR-soon Alizter: this is wrong, the paths should be rewritten. Adding a
-native Windows path with a drive letter colon to the map crashes the
-decoder with an internal error, output whose separators do not match the
-mapped root exactly (e.g. escaped backslashes in JSON) is not rewritten,
-and malformed maps are reported as internal errors instead of user errors.
-
   $ make_dune_project 3.23
 
-A native Windows path with a drive letter colon crashes the decoder
-(issue #10176):
+A native Windows path with a drive letter colon can be added to the map
+directly, without encoding the colon; decoding must not fail:
 
   $ cat >t1.t <<'EOF'
   >   $ native_root=$(cygpath -m /)
@@ -28,25 +22,63 @@ A native Windows path with a drive letter colon crashes the decoder
   >   path is /NATIVEPATH/something
   > EOF
 
-  $ dune runtest t1.t > t1.out 2>&1
-  [1]
-  $ grep -c "Cannot decode build prefix map" t1.out
-  1
-
-Output containing escaped backslashes (JSON) is not rewritten to
-$TESTCASE_ROOT (issue #4017):
+The mappings that Dune adds itself (with encoded drive-letter colons) still
+rewrite native output, including JSON-escaped backslashes:
 
   $ cat >t2.t <<'EOF'
+  >   $ echo "$(cygpath -w "$PWD")/tcs"
+  >   $TESTCASE_ROOT/tcs
   >   $ printf '{"file": "%s\\\\file.ml"}\n' "$(cygpath -w "$PWD")"
   >   {"file": "$TESTCASE_ROOT/file.ml"}
   > EOF
 
-  $ dune runtest t2.t > t2.out 2>&1
-  [1]
-  $ grep -c 'File "t2.t"' t2.out
-  1
+Native backslash paths, forward-slash paths, mixed separators and
+JSON-escaped backslashes are all rewritten:
 
-A malformed map is reported as an internal error instead of a user error:
+  $ cat >t3.t <<'EOF'
+  >   $ export BUILD_PATH_PREFIX_MAP="/ROOT=C:/work/test:$BUILD_PATH_PREFIX_MAP"
+  >   $ echo 'C:\work\test\file.ml'
+  >   /ROOT/file.ml
+  >   $ echo 'C:/work/test/file.ml'
+  >   /ROOT/file.ml
+  >   $ echo 'C:\work/test\file.ml'
+  >   /ROOT/file.ml
+  >   $ echo 'C:/work\test\file.ml'
+  >   /ROOT/file.ml
+  >   $ printf '{"file": "C:\\\\work\\\\test\\\\file.ml"}\n'
+  >   {"file": "/ROOT/file.ml"}
+  >   $ printf '{"file": "C:\\\\work\\\\test\\\\n"}\n'
+  >   {"file": "/ROOT/n"}
+  >   $ echo 'C:\work\test\n'
+  >   /ROOT/n
+  > EOF
+
+Overlapping mappings: the longest mapped root matches, and the rightmost
+rule wins when several rules apply to the same path:
+
+  $ cat >t4.t <<'EOF'
+  >   $ export BUILD_PATH_PREFIX_MAP="/CROOT=C%.:/CWORK=C:/work:$BUILD_PATH_PREFIX_MAP"
+  >   $ echo "C:/work/file"
+  >   /CWORK/file
+  >   $ echo "C:/other"
+  >   /CROOT/other
+  >   $ export BUILD_PATH_PREFIX_MAP="$BUILD_PATH_PREFIX_MAP:/SECOND=C:/work"
+  >   $ echo "C:/work/file"
+  >   /SECOND/file
+  > EOF
+
+Mapped roots containing spaces remain valid:
+
+  $ cat >t5.t <<'EOF'
+  >   $ spaced_src="C:/work/sub dir"
+  >   $ export BUILD_PATH_PREFIX_MAP="/SPACED TARGET=$spaced_src:$BUILD_PATH_PREFIX_MAP"
+  >   $ echo "$spaced_src/file.txt"
+  >   /SPACED TARGET/file.txt
+  > EOF
+
+  $ dune runtest
+
+A malformed map is reported as a user error, not an internal error:
 
   $ cat >bad.t <<'EOF'
   >   $ export BUILD_PATH_PREFIX_MAP=":/NOEQUALS"
@@ -54,7 +86,8 @@ A malformed map is reported as an internal error instead of a user error:
   >   ok
   > EOF
 
-  $ dune runtest bad.t > bad.out 2>&1
+  $ dune runtest bad.t 2>&1
+  File "bad.t", line 1, characters 0-0:
+  Error: Invalid BUILD_PATH_PREFIX_MAP: invalid key/value pair "/NOEQUALS", no
+  '=' separator
   [1]
-  $ grep -c "Cannot decode build prefix map" bad.out
-  1

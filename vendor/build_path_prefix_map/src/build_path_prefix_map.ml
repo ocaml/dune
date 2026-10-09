@@ -1,3 +1,9 @@
+(* NOTE: this file contains local modifications with respect to upstream
+   (see vendor/update-build_path_prefix_map.sh): [decode_prefix] accepts
+   unescaped ':' characters and [decode_map] rejoins segments that contain
+   no '=' separator (merging a drive-letter prefix with the entry that
+   follows it), so that maps containing Windows drive letters such as
+   "C:\foo" can be decoded. *)
 type path = string
 type path_prefix = string
 type error_message = string
@@ -21,8 +27,8 @@ let decode_prefix str =
     if i >= String.length str
     then Ok (Buffer.contents buf)
     else match str.[i] with
-      | ('=' | ':') as c ->
-        errorf "invalid character '%c' in key or value" c
+      | '=' ->
+        errorf "invalid character '=' in key or value"
       | '%' ->
         let push c = Buffer.add_char buf c; loop (i + 2) in
         if i + 1 = String.length str then
@@ -75,10 +81,87 @@ let decode_map str =
         | Error err -> raise (Shortcut err)
       end
   in
-  let pairs = String.split_on_char ':' str in
-  match List.map decode_or_empty pairs with
+  (* An unescaped ':' inside a key/value pair (e.g. the drive letter of a
+     Windows path such as "C:\foo") is split by [String.split_on_char].
+     Rejoin the segments that contain no '=' separator with their neighbour
+     so that such pairs can be decoded. This is a leniency for maps that do
+     not follow the recommended encoding; properly encoded maps are
+     unaffected. A ':' at the very end of a value is ambiguous with an empty
+     entry and must be encoded (e.g. "C%."). A drive letter at the start of
+     a non-initial entry is merged with the entry that follows it (see
+     [merge_drive_letters]); other ':' in the target of a non-initial entry
+     must be encoded. *)
+  (* A drive-letter prefix (a single letter followed by a native path, e.g.
+     "C" in "C:\work=src") is split from its entry by
+     [String.split_on_char]. If the entry is not the first one, the letter
+     would be absorbed into the previous pair's value, so merge it with the
+     segment that follows it (a native path containing an '='). *)
+  let merge_drive_letters lst =
+    let is_drive_letter s =
+      String.length s = 1
+      &&
+      let c = s.[0] in
+      (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+    in
+    let is_native_entry s =
+      String.length s > 0
+      && (s.[0] = '\\' || s.[0] = '/')
+      && String.contains s '='
+    in
+    let rec loop = function
+      | [] | [ _ ] as l -> l
+      | x :: y :: rest ->
+        if is_drive_letter x && is_native_entry y
+        then (x ^ ":" ^ y) :: loop rest
+        else x :: loop (y :: rest)
+    in
+    loop lst
+  in
+  let split_pairs str =
+    (* Walk the ':'-split segments, accumulating entries in reverse. A
+       segment containing '=' opens a pair; a segment without '=' continues
+       the nearest preceding entry (before any pair it is a target prefix
+       and joins the pair that follows it). Empty segments are preserved as
+       empty entries. *)
+    let rec loop acc = function
+      | [] -> List.rev acc
+      | "" :: rest -> loop ("" :: acc) rest
+      | seg :: rest ->
+        if String.contains seg '='
+        then
+          (* join a pending target prefix, if any *)
+          let rec join_prefix = function
+            | e :: tl when e <> "" && not (String.contains e '=') ->
+              Some ((e ^ ":" ^ seg) :: tl)
+            | x :: tl ->
+              (match join_prefix tl with
+               | Some tl -> Some (x :: tl)
+               | None -> None)
+            | [] -> None
+          in
+          (match join_prefix acc with
+           | Some acc -> loop acc rest
+           | None -> loop (seg :: acc) rest)
+        else
+          (* continue the nearest preceding entry *)
+          let rec join_prev = function
+            | e :: tl when e <> "" -> Some ((e ^ ":" ^ seg) :: tl)
+            | x :: tl ->
+              (match join_prev tl with
+               | Some tl -> Some (x :: tl)
+               | None -> None)
+            | [] -> None
+          in
+          (match join_prev acc with
+           | Some acc -> loop acc rest
+           | None -> loop (seg :: acc) rest)
+    in
+    loop [] (merge_drive_letters (String.split_on_char ':' str))
+  in
+  match List.map decode_or_empty (split_pairs str) with
   | exception (Shortcut err) -> Error err
   | map -> Ok map
+;;
 
 let rewrite_opt prefix_map path =
   let is_prefix = function

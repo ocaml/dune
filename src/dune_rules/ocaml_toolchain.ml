@@ -21,6 +21,20 @@ let make_builtins ~stdlib_dir ~version =
     Meta.builtins ~stdlib_dir ~version)
 ;;
 
+(* [true] iff [path] lies inside the build directory of a context that was
+   registered with the engine. A path under [_build] whose first component
+   merely parses as a context name does not qualify. *)
+let is_in_registered_build_context path =
+  match Path.as_in_build_dir path with
+  | None -> Memo.return false
+  | Some dir ->
+    (match Build_context.of_build_path dir with
+     | None -> Memo.return false
+     | Some { Build_context.name; build_dir = _ } ->
+       let+ contexts = Memo.Lazy.force (Dune_engine.Build_config.get ()).contexts in
+       Context_name.Map.mem contexts name)
+;;
+
 let make_ocaml_config ~env ~ocamlc =
   let+ vars =
     Process.run_capture_lines ~display:Quiet ~env Strict ocamlc [ "-config" ]
@@ -95,9 +109,22 @@ let make name ~which ~env ~get_ocaml_tool =
   and* ocamldep = get_ocaml_tool "ocamldep"
   and* ocamlmklib = get_ocaml_tool "ocamlmklib"
   and* ocamlobjinfo = get_ocaml_tool "ocamlobjinfo" in
-  let lib_config = Lib_config.create ocaml_config ~ocamlopt in
+  let* stdlib_dir =
+    (* When a compiler is installed by package management, [ocamlc -config]
+       reports its stdlib as an external path that is in fact inside the
+       [_build] directory. Left external, it would not be copied into
+       sandboxes, so we localize it. We only do so when the path lies in a
+       registered build context: nothing but dune writes into those, so the
+       stdlib must then be a dune artifact. Anything else under [_build] was
+       put there by something other than dune and stays external. *)
+    let path = Path.of_string (Ocaml_config.standard_library ocaml_config) in
+    let localized = Path.Expert.try_localize_external path in
+    let+ registered = is_in_registered_build_context localized in
+    if registered then localized else path
+  in
+  let lib_config = Lib_config.create ocaml_config ~ocamlopt ~stdlib_dir in
   let version = Ocaml.Version.of_ocaml_config ocaml_config in
-  let builtins = make_builtins ~stdlib_dir:lib_config.stdlib_dir ~version in
+  let builtins = make_builtins ~stdlib_dir ~version in
   Memo.return
     { bin_dir = ocaml_bin
     ; ocaml

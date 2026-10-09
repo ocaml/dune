@@ -153,8 +153,9 @@ module Lock_dirs_arg = struct
                ~docv:"LOCKDIRS"
                ~doc:
                  (Some
-                    "Lock directories to check for outdated packages. Defaults to \
-                     dune.lock."))
+                    "Lock directories to check for outdated packages. Defaults to the \
+                     lock directory declared by (lock_dir) in the workspace, or \
+                     dune.lock if there is none."))
        in
        Selected (List.map arg ~f:Path.Source.of_string))
       (let+ _all =
@@ -170,6 +171,13 @@ module Lock_dirs_arg = struct
        All)
   ;;
 
+  let default_lock_dir_path_of_workspace (workspace : Workspace.t) =
+    let default_path = Dune_rules.Lock_dir.default_source_path in
+    match workspace.lock_dirs with
+    | [ { Workspace.Lock_dir.path; _ } ] -> path
+    | _ -> default_path
+  ;;
+
   let lock_dirs_of_workspace t (workspace : Workspace.t) =
     let module Set = Path.Source.Set in
     let default_path = Dune_rules.Lock_dir.default_source_path in
@@ -182,7 +190,7 @@ module Lock_dirs_arg = struct
     in
     match t with
     | All -> workspace_lock_dirs
-    | Selected [] -> [ default_path ]
+    | Selected [] -> [ default_lock_dir_path_of_workspace workspace ]
     | Selected chosen_lock_dirs ->
       let workspace_lock_dirs_set = Set.of_list workspace_lock_dirs in
       let chosen_lock_dirs_set = Set.of_list chosen_lock_dirs in

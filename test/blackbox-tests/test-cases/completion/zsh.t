@@ -32,9 +32,9 @@ results can be inspected outside the interactive line editor.
   runtest
   zsh.t
 
-Semantic directory candidates currently use Zsh's default trailing-space
-suffix. Use a synthetic completion response so this behavior is covered
-independently of any command-specific semantic completer.
+Semantic directory candidates suppress Zsh's default trailing-space suffix.
+Use a synthetic completion response so this behavior is covered independently
+of any command-specific semantic completer.
 
   $ cat > semantic-completion <<'EOF'
   > #!/bin/sh
@@ -64,4 +64,4 @@ independently of any command-specific semantic completer.
   > source <(dune completion zsh)
   > EOF
   tests/
-  trailing space
+  empty suffix

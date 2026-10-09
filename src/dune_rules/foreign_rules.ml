@@ -41,7 +41,8 @@ let default_context_flags (ctx : Build_context.t) ocaml_config ~project =
         in
         List.concat [ db_flags; cxxflags; warnings; fdiagnostics_color ]
       in
-      c, cxx
+      ( c >>= Cc_flags.add_unguarded_availability_error ctx
+      , cxx >>= Cc_flags.add_unguarded_availability_error ctx )
   in
   Foreign_language.Dict.make ~c ~cxx
 ;;

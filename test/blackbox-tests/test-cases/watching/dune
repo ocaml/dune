@@ -42,6 +42,12 @@
   (package xdg)))
 
 (cram
+ (applies_to rpc-registry-process-id.t)
+ (enabled_if
+  (= %{ocaml-config:os_type} Win32))
+ (alias runtest-windows))
+
+(cram
  (applies_to
   promotion-event-suppression.t
   promotion-executable-bit.t

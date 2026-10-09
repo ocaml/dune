@@ -1295,7 +1295,27 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
         Option.iter timing_section ~f:Console.Status_line.remove_section;
         Fiber.return ())
   in
-  Fiber.Mutex.with_lock State.build_mutex ~f:(fun () -> Process.Build.with_ build f)
+  Fiber.Mutex.with_lock State.build_mutex ~f:(fun () ->
+    Process.Build.with_ build (fun () ->
+      match Console.Backend.supports_status_line () with
+      | false -> f ()
+      | true ->
+        (* Periodicially wake the scheduler so that the status line updates
+           smoothly. *)
+        let cancellation = Fiber.Cancel.create () in
+        let status_line_refresh_interval = Time.Span.of_secs 0.1 in
+        let rec wake_for_status_line_refresh () =
+          let open Fiber.O in
+          Scheduler.sleep_or_cancel status_line_refresh_interval cancellation
+          >>= function
+          | `Cancelled -> Fiber.return ()
+          | `Elapsed ->
+            (* The scheduler refreshes the status line when it resumes waiting
+               for an event, so waking it is sufficient. *)
+            wake_for_status_line_refresh ()
+        in
+        Fiber.fork_and_join_unit wake_for_status_line_refresh (fun () ->
+          Fiber.finalize f ~finally:(fun () -> Fiber.Cancel.fire cancellation))))
 ;;
 
 let evaluate_action_builder request =

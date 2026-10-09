@@ -38,6 +38,17 @@ val files_of : dir:Path.t -> Filename_set.t Memo.t
 (** Execute an action and capture its stdout. The execution is cached. *)
 val execute_action_stdout : Rule.Anonymous_action.t -> string Memo.t
 
+(** The stamp file recording the successful execution of an anonymous action.
+    Its name is a digest of the evaluated action, so the stamp file identifies
+    the action: two actions with the same stamp file are executed once. This
+    assumes the action's stdout is not captured, which is the case for actions
+    attached to aliases; see [execute_action_stdout] for the other case. *)
+val anonymous_action_stamp_file
+  :  Rule.Anonymous_action.t
+  -> full_action:Action.Full.t
+  -> deps:Dep.Set.t
+  -> Path.Build.t
+
 type rule_execution_result =
   { facts : Dep.Fact.t Dep.Map.t
   ; targets : Digest.t Targets.Produced.t

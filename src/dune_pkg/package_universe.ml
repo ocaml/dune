@@ -7,6 +7,10 @@ type t =
   ; version_by_package_name : Package_version.t Package_name.Map.t
   }
 
+let local_packages t = t.local_packages
+let lock_dir t = t.lock_dir
+let platform t = t.platform
+
 let lockdir_regenerate_hints =
   [ Pp.concat
       ~sep:Pp.space

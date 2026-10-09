@@ -41,6 +41,3 @@ subdirectories of _build.
   $ mkdir inbuild && cd inbuild
   $ setup "$PWD/_build/_bootinstall/lib/ocaml"
   $ dune build ./main.exe 2>&1 | sed "s|$PWD|PWD|g"
-  Error: Trying to build _build/_bootinstall/lib/ocaml/unix/META but build
-  context _bootinstall doesn't exist.
-  [1]

@@ -71,7 +71,7 @@ declaring any package dependencies:
 The rule depends on the binary from the provider lockdir package:
 
   $ dune rules --format=json @test | jq_dune '.[] | ruleDepFilePaths' | censor
-  "_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target/bin/mybin"
+  "_build/_private/default/.pkg/provider/target/bin/mybin"
 
 All the packages' bin layouts are added to $PATH:
 
@@ -79,8 +79,8 @@ All the packages' bin layouts are added to $PATH:
   from provider
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
+  $PWD/_build/_private/default/.pkg/provider/target/bin
+  $PWD/_build/_private/default/.pkg/check-env/target/bin
 
 
 With a package defined in the project, *without a dir field*, the behavior is
@@ -105,8 +105,8 @@ All the packages' bin layouts are added to $PATH:
   from provider
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
+  $PWD/_build/_private/default/.pkg/provider/target/bin
+  $PWD/_build/_private/default/.pkg/check-env/target/bin
 
 
 With a package defined in the project, *with a dir field, but no dependencies*,
@@ -132,8 +132,8 @@ All the packages' bin layouts are added to $PATH:
   from provider
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
+  $PWD/_build/_private/default/.pkg/provider/target/bin
+  $PWD/_build/_private/default/.pkg/check-env/target/bin
 
 
 
@@ -162,8 +162,8 @@ All the packages' bin layouts are added to $PATH:
   from provider
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
+  $PWD/_build/_private/default/.pkg/provider/target/bin
+  $PWD/_build/_private/default/.pkg/check-env/target/bin
 
 
 With a package defined in the project, *with a dir field, and explicit depends
@@ -190,8 +190,8 @@ All the packages' bin layouts are added to $PATH:
   from provider
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
+  $PWD/_build/_private/default/.pkg/provider/target/bin
+  $PWD/_build/_private/default/.pkg/check-env/target/bin
 
 
 
@@ -220,5 +220,5 @@ All the packages' bin layouts are added to $PATH:
   from provider
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
+  $PWD/_build/_private/default/.pkg/provider/target/bin
+  $PWD/_build/_private/default/.pkg/check-env/target/bin

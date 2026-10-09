@@ -139,7 +139,21 @@ let exec ~(ectx : context) ~(eenv : env) prog args =
   Server.with_active ~ectx (fun action_id active_action ->
     let env =
       let where =
-        match Root.Rpc.Where.default () with
+        let where =
+          if Sys.win32
+          then (
+            match
+              Root.Rpc.Where.Where.get
+                ~env:(fun _ -> None)
+                ~build_dir:(Path.Build.to_string Path.Build.root)
+            with
+            | Ok (Some where) -> where
+            | Ok None -> Code_error.raise "RPC server address was not published" []
+            | Error exn ->
+              User_error.raise [ Pp.text "Unable to find dune rpc address"; Exn.pp exn ])
+          else Root.Rpc.Where.default ()
+        in
+        match where with
         | `Unix path -> `Unix (Path.reach (Path.of_string path) ~from:eenv.working_dir)
         | where -> where
       in

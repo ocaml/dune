@@ -2,6 +2,18 @@
 
 open Import
 
+module Dynamic : sig
+  val lookup
+    :  rule_digest:Digest.t
+    -> targets:Targets.Validated.t
+    -> env:Env.t
+    -> build_deps:(Dep.Set.t -> Dep.Facts.t Memo.t)
+    -> (Digest.t Targets.Produced.t * (Dep.Set.t * Digest.t) list) option Fiber.t
+
+  (** Store the discovery trace and return its artifact key. *)
+  val store : rule_digest:Digest.t -> stages:(Dep.Set.t * Digest.t) list -> Digest.t
+end
+
 (** The workspace-local cache consists of two components:
 
     - Build artifacts currently available in the build directory.

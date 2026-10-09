@@ -36,7 +36,9 @@ add_newline() {
 # Using setext level 2 headings.
 # See https://spec.commonmark.org/0.31.2/#setext-headings
 generate_version_header() {
-  today=$(date "+%Y-%m-%d")
+  # Stamp the date in UTC so that the header does not depend on the timezone
+  # of whoever cuts the release.
+  today=$(TZ=UTC date "+%Y-%m-%d")
 
   header="$version ($today)"
   header_size=${#header}

@@ -66,9 +66,40 @@ Queries without a matching extension keep the legacy fallback.
   alterexe.pp: (READER (interface))
   alterexe: (READER (interface))
 
+The typed lookup reports mode, default status, source kind, and counterpart.
+It omits ambiguous matches instead of assigning them a source kind.
+
+  $ merlin_configurations _build/default/.merlin-conf/exe-alterexe \
+  >   alterexe.aml alterexe.amli alterexe.pp.aml alterexe.pp.amli \
+  >   alterexe.pp alterexe missing.aml
+  alterexe.aml: ocaml true impl alterexe.amli
+  alterexe.amli: ocaml true intf alterexe.aml
+  alterexe.pp.aml: ocaml true impl alterexe.amli
+  alterexe.pp.amli: ocaml true intf alterexe.aml
+  alterexe.pp: none
+  alterexe: none
+  missing.aml: none
+
+The typed lookup keeps each source kind paired with its reader directive.
+
+  $ merlin_configurations --json _build/default/.merlin-conf/exe-alterexe \
+  >   alterexe.aml alterexe.amli alterexe.pp.aml alterexe.pp.amli | jq -r '
+  > [ .file, .kind,
+  >   (.directives[] | select(.[0] == "READER") | .[1][])
+  > ] | join(" ")'
+  alterexe.aml impl implementation
+  alterexe.amli intf interface
+  alterexe.pp.aml impl implementation
+  alterexe.pp.amli intf interface
+
 The fallback remains available when there is only one candidate.
 
   $ rm alterexe.amli
   $ dune build .merlin-conf/exe-alterexe
   $ query_ocaml_merlin_pp alterexe.pp | grep -Eo '\(READER \([^)]*\)\)'
   (READER (implementation))
+
+  $ merlin_configurations _build/default/.merlin-conf/exe-alterexe \
+  >   alterexe.pp alterexe
+  alterexe.pp: ocaml true impl -
+  alterexe: ocaml true impl -

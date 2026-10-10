@@ -16,6 +16,7 @@
    ../utils/action_trace.exe
    ../utils/dunepp.exe
    ../utils/melc_stdlib_prefix.exe
+   ../utils/merlin_configurations.exe
    ../utils/refmt.exe
    ../utils/curl
    ../utils/sherlodoc.exe

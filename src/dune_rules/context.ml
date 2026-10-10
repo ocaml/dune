@@ -87,9 +87,10 @@ and t =
   ; ocaml : Ocaml_toolchain.t Memo.t
   ; findlib_paths : Path.t list Memo.Lazy.t
   ; default_ocamlpath : Path.t list Memo.Lazy.t
+  ; installed_env : Env.t Memo.Lazy.t
   ; build_context : Build_context.t
   ; builder : builder
-  ; which : Filename.t -> Path.t option Memo.t
+  ; which : packages:Package.Name.Selection.t -> Filename.t -> Path.t option Memo.t
   }
 
 let default_target_exec ~target_exec toolchain =
@@ -200,10 +201,12 @@ let cms_cmt_dependency t = t.builder.cms_cmt_dependency
 let equal x y = Context_name.equal x.builder.name y.builder.name
 let hash t = Context_name.hash t.builder.name
 let build_context t = t.build_context
-let which t fname = t.which fname
+let which t fname = t.which ~packages:Package.Name.Selection.All fname
+let which_narrowed_to_packages t ~packages fname = t.which ~packages fname
 let name t = t.builder.name
 let path t = t.builder.path
-let installed_env t = t.builder.env
+let base_env t = t.builder.env
+let installed_env t = Memo.Lazy.force t.installed_env
 let to_dyn_concise t : Dyn.t = Context_name.to_dyn t.builder.name
 let compare a b = Context_name.compare a.builder.name b.builder.name
 
@@ -420,6 +423,10 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
           (fun () ->
              let+ current_env = builder.env
              and+ pkg_env = Pkg_rules.exported_env builder.name in
+             (* [PATH] is not added here because it is contributed per
+                directory by [Env_node], where the set of narrowed lockdir
+                packages is known. *)
+             let pkg_env = Env.remove pkg_env ~var:Env_path.var in
              Env_path.extend_env_concat_path current_env pkg_env)
         |> Memo.Lazy.force
       in
@@ -428,10 +435,11 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
   let which_outside_lockdir = Which.which ~path:builder.path in
   let which =
     match kind with
-    | Default | Opam _ -> which_outside_lockdir
+    (* There are no lock directory packages to narrow to outside of a [Lock]
+       context. *)
+    | Default | Opam _ -> fun ~packages:_ -> which_outside_lockdir
     | Lock _ ->
-      let which = Staged.unstage @@ Pkg_rules.which builder.name in
-      fun prog ->
+      fun ~packages prog ->
         Memo.push_stack_frame
           ~human_readable_description:(fun () ->
             Pp.textf
@@ -439,7 +447,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
               (Filename.to_string prog)
               (Context_name.to_string builder.name))
           (fun () ->
-             which prog
+             Pkg_rules.which ~packages builder.name prog
              >>= function
              | Some p -> Memo.return (Some p)
              | None -> Which.which ~path:builder.path prog)
@@ -467,7 +475,16 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
          let findlib_toolchain =
            Option.map builder.findlib_toolchain ~f:Context_name.to_string
          in
-         Findlib_config.discover_from_env ~env ~which ~ocamlpath ~findlib_toolchain)
+         Findlib_config.discover_from_env
+           ~env
+             (* [discover_from_env] uses this to locate [ocamlfind] when it has
+                to locate [findlib.conf], which it only does when cross
+                compiling. Package management has no cross compilation support,
+                so we can avoid looking in the lock directory.
+              CR-someday punchagan: revisit when the two ever work together. *)
+           ~which:which_outside_lockdir
+           ~ocamlpath
+           ~findlib_toolchain)
   in
   let ocaml_and_build_env_kind =
     Memo.Lazy.create
@@ -537,6 +554,13 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
   in
   { kind
   ; builder
+  ; installed_env =
+      Memo.Lazy.create ~name:"context-installed-env-with-lock-dir-path" (fun () ->
+        let* env = builder.env in
+        let+ bin_path =
+          Pkg_rules.bin_path_env ~packages:Package.Name.Selection.All builder.name
+        in
+        Env_path.extend_env_concat_path env bin_path)
   ; build_dir = Context_name.build_dir builder.name
   ; ocaml = Memo.of_thunk (fun () -> Memo.Lazy.force ocaml_and_build_env_kind >>| fst)
   ; findlib_paths =

@@ -828,6 +828,54 @@ let expand_pkg_macro ~loc { context; _ } macro_invocation =
   [ Value.Path path ]
 ;;
 
+(* CR-someday punchagan: Dependency filters such as [{with-test}] are not
+   interpreted here, so a dependency is visible whatever its filter says. *)
+let visible_packages t =
+  let open Memo.O in
+  let context = Context.name t.context in
+  let* lock_dir_active = Pkg_rules.lock_dir_active context in
+  if not lock_dir_active
+  then Memo.return Package.Name.Selection.All
+  else (
+    let src_dir = Path.Build.drop_build_context_exn t.dir in
+    match Dune_project.exclusive_package t.project ~dir:src_dir with
+    | None -> Memo.return Package.Name.Selection.All
+    | Some pkg_id ->
+      let+ packages = Dune_load.packages ()
+      and+ locked_packages =
+        Lock_dir.get_exn context
+        >>| fun lock_dir ->
+        Dune_pkg.Lock_dir.Packages.to_pkg_list lock_dir.packages
+        |> List.map ~f:(fun (pkg : Lock_dir.Pkg.t) -> pkg.info.name)
+        |> Package.Name.Set.of_list
+      in
+      let name = Package.Id.name pkg_id in
+      let visible = Package.Name.Set.singleton name in
+      (match Package.Name.Map.find packages name with
+       | None -> Package.Name.Selection.Only visible
+       | Some pkg ->
+         let visible =
+           List.fold_left
+             (Package.depends pkg)
+             ~init:visible
+             ~f:(fun acc (dep : Package_dependency.t) ->
+               Package.Name.Set.add acc dep.name)
+         in
+         (* An effective depopt is one that was actually solved: either a
+            workspace package (always present) or a package the solver put in
+            the lock directory. *)
+         let is_present dep_name =
+           Package.Name.Map.mem packages dep_name
+           || Package.Name.Set.mem locked_packages dep_name
+         in
+         Only
+           (List.fold_left
+              (Package.depopts pkg)
+              ~init:visible
+              ~f:(fun acc (dep : Package_dependency.t) ->
+                if is_present dep.name then Package.Name.Set.add acc dep.name else acc))))
+;;
+
 let expand_pform_macro
       (context : Context.t)
       ~dir

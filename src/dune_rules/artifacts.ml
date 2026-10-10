@@ -34,6 +34,11 @@ type t =
        but the artifacts database is depended on by the logic which expands
        globs. The computation of this field is deferred to break the cycle. *)
     local_bins : local_bins Memo.Lazy.t
+  ; (* The packages whose binaries are visible from the dir: its owning package
+       and the packages it directly depends on (or depopts on). Dependencies of
+       those packages are not included unless they are listed too. Applies to
+       both [local_bins] and the lock directory. *)
+    visible_packages : Package.Name.Selection.t
   }
 
 let force { local_bins; _ } =
@@ -46,6 +51,15 @@ let local_binaries { local_bins; _ } =
   List.filter_map (Filename.Map.to_list local_bins) ~f:(function
     | _, Resolved p -> Some p.binding
     | _, Origin _origins -> None)
+;;
+
+let origin_is_visible t (origin : origin) =
+  match t.visible_packages, origin.package with
+  | Package.Name.Selection.Only visible, Some package ->
+    Package.Name.Set.mem visible package
+  (* An origin with no owning package is always visible, similar to the rule
+     visibility with dune build -p. *)
+  | (Only _ | All), _ -> true
 ;;
 
 let analyze_binary t ~dir name =
@@ -66,7 +80,10 @@ let analyze_binary t ~dir name =
       match lookup_name with
       | None -> Memo.return `None
       | Some lookup_name ->
-        Context.which t.context lookup_name
+        Context.which_narrowed_to_packages
+          t.context
+          ~packages:t.visible_packages
+          lookup_name
         >>| (function
          | None -> `None
          | Some path -> `Resolved path)
@@ -75,7 +92,8 @@ let analyze_binary t ~dir name =
      | Some (Resolved p) -> Memo.return (`Resolved (Path.build p.path))
      | None -> which ()
      | Some (Origin origins) ->
-       Memo.parallel_map origins ~f:(fun origin ->
+       List.filter origins ~f:(origin_is_visible t)
+       |> Memo.parallel_map ~f:(fun origin ->
          origin.enabled_if
          >>| function
          | true -> Some origin
@@ -96,11 +114,30 @@ let analyze_binary t ~dir name =
             ]))
 ;;
 
+let origin_original_path { dir; binding; _ } =
+  let+ expanded =
+    let* expander = Expander0.get ~dir in
+    File_binding_expand.expand
+      binding
+      ~dir
+      ~f:(Expander0.expand_str_and_build_deps expander)
+  in
+  let src = File_binding.Expanded.src expanded in
+  Path.build src
+;;
+
 let binary t ?hint ?(where = Original_path) ~dir ~loc name =
   analyze_binary t ~dir name
   >>= function
   | `Resolved path -> Memo.return @@ Ok path
   | `None ->
+    let hint =
+      match t.visible_packages, hint with
+      | Package.Name.Selection.Only _, None ->
+        Some
+          (sprintf "add a dependency on the package installing %S to this package" name)
+      | _ -> hint
+    in
     let context = Context.name t.context in
     Memo.return
     @@ Error
@@ -110,28 +147,21 @@ let binary t ?hint ?(where = Original_path) ~dir ~loc name =
             ~context
             ~loc
             ())
-  | `Origin { dir; binding; dst; enabled_if = _; package = _ } ->
+  | `Origin ({ dst; dir = _; binding = _; enabled_if = _; package = _ } as origin) ->
     (match where with
      | Install_dir ->
        let install_dir = Install.Context.bin_dir ~context:(Context.name t.context) in
        Memo.return @@ Ok (Path.build @@ Path.Build.append_local install_dir dst)
-     | Original_path ->
-       let+ expanded =
-         let* expander = Expander0.get ~dir in
-         File_binding_expand.expand
-           binding
-           ~dir
-           ~f:(Expander0.expand_str_and_build_deps expander)
-       in
-       let src = File_binding.Expanded.src expanded in
-       Ok (Path.build src))
+     | Original_path -> origin_original_path origin >>| Result.ok)
 ;;
 
-let local_binary_install_name t ~dir name =
+let local_binary t ~dir name =
   analyze_binary t ~dir name
-  >>| function
-  | `Origin { package = Some _; dst; _ } -> Some (Path.Local.basename dst)
-  | `Origin { package = None; _ } | `Resolved _ | `None -> None
+  >>= function
+  | `Origin ({ package = Some _; dst; _ } as origin) ->
+    let+ src = origin_original_path origin in
+    Some (src, Path.Local.basename dst)
+  | `Origin { package = None; _ } | `Resolved _ | `None -> Memo.return None
 ;;
 
 let binary_available t ~dir name =
@@ -152,6 +182,8 @@ let add_binaries t ~dir l =
   { t with local_bins }
 ;;
 
+let set_visible_packages t ~visible_packages = { t with visible_packages }
+
 let create =
   fun (context : Context.t)
     ~(local_bins : origin Appendable_list.t Filename.Map.t Memo.Lazy.t) ->
@@ -163,5 +195,5 @@ let create =
         , Origin (Appendable_list.to_list sources) ))
       |> Filename.Map.of_list_exn)
   in
-  { context; local_bins }
+  { context; local_bins; visible_packages = Package.Name.Selection.All }
 ;;

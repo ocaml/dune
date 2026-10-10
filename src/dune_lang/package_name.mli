@@ -33,4 +33,17 @@ val decode_opam_compatible : t Decoder.t
 val opam_fn : t -> Filename.t
 val of_opam_file_basename : Filename.t -> t option
 
+(** A set of package names, or every package. Lookups are narrowed to a
+    [Selection]; [All] means no narrowing applies. The names may belong to
+    packages of any kind - workspace, lock directory or installed. *)
+module Selection : sig
+  type t =
+    | Only of Set.t
+    | All
+
+  val to_dyn : t -> Dyn.t
+  val equal : t -> t -> bool
+  val hash : t -> int
+end
+
 module Table : Hashtbl.S with type key = t

@@ -54,7 +54,8 @@ module Processed : sig
 
   val get : t -> file:Path.Build.t -> Sexp.t option
 
-  (** Unlike [get], this omits matches whose source kind is ambiguous. *)
+  (** Unlike [get], this omits matches whose source kind is ambiguous.
+      Counterparts refer only to files present in the source tree. *)
   val configurations : t -> file:Path.Build.t -> file_configuration Nonempty_list.t option
 end
 

@@ -108,6 +108,7 @@ module Processed = struct
     ; module_ : Module.t
     ; reader : string Nonempty_list.t option
     ; kind : Ml_kind.t option
+    ; counterpart : Path.Source.t option
     }
 
   let module_config_repr =
@@ -120,6 +121,8 @@ module Processed = struct
           (Repr.option (Repr.view (Repr.list Repr.string) ~to_:Nonempty_list.to_list))
           ~get:(fun t -> t.reader)
       ; Repr.field "kind" (Repr.option Ml_kind.repr) ~get:(fun t -> t.kind)
+      ; Repr.field "counterpart" (Repr.option Path.Source.repr) ~get:(fun t ->
+          t.counterpart)
       ]
   ;;
 
@@ -188,7 +191,7 @@ module Processed = struct
 
     let name = "merlin-conf"
     let sharing = false
-    let version = 12
+    let version = 13
 
     let repr =
       Repr.view Repr.string ~to_:(fun _ -> "Use [dune ocaml dump-dot-merlin] instead")
@@ -407,13 +410,15 @@ module Processed = struct
     ; directives : Sexp.t
     }
 
-  let get_configuration
-        { per_file_config; pp_config; config; for_ = _ }
-        ~file
-        ~allow_ambiguous
-    =
+  let directives { pp_config; config; _ } { module_; opens; reader; _ } =
+    let pp = Module_reference.Per_item.find pp_config (Module.path module_) in
+    let unit_name = Module_name.Unique.to_string (Module.obj_name module_) in
+    to_sexp ~unit_name ~opens ~pp ~reader config
+  ;;
+
+  let get_configuration { per_file_config; _ } ~file ~allow_ambiguous =
     let open Option.O in
-    let* match_kind, ({ module_; opens; reader; kind } as module_config) =
+    let* match_kind, ({ kind; _ } as module_config) =
       let find file =
         match Path.Build.Map.find per_file_config file with
         | Some { kind = None; _ } when not allow_ambiguous -> None
@@ -456,10 +461,7 @@ module Processed = struct
     in
     match allow_ambiguous, kind with
     | false, None -> None
-    | true, _ | false, Some _ ->
-      let pp = Module_reference.Per_item.find pp_config (Module.path module_) in
-      let unit_name = Module_name.Unique.to_string (Module.obj_name module_) in
-      Some (match_kind, module_config, to_sexp ~unit_name ~opens ~pp ~reader config)
+    | true, _ | false, Some _ -> Some (match_kind, module_config)
   ;;
 
   let matching_configurations =
@@ -472,16 +474,16 @@ module Processed = struct
       | (is_default, configuration) :: configurations ->
         (match get_configuration configuration ~file ~allow_ambiguous with
          | None -> loop configurations ~file ~allow_ambiguous ~exact ~without_extension
-         | Some (Exact_or_copy, module_config, directives) ->
-           let match_ = is_default, configuration, module_config, directives in
+         | Some (Exact_or_copy, module_config) ->
+           let match_ = is_default, configuration, module_config in
            loop
              configurations
              ~file
              ~allow_ambiguous
              ~exact:(match_ :: exact)
              ~without_extension
-         | Some (Without_extension, module_config, directives) ->
-           let match_ = is_default, configuration, module_config, directives in
+         | Some (Without_extension, module_config) ->
+           let match_ = is_default, configuration, module_config in
            loop
              configurations
              ~file
@@ -500,22 +502,17 @@ module Processed = struct
   let configurations t ~file =
     let to_file_configuration
           ( is_default
-          , { for_; config = _; per_file_config = _; pp_config = _ }
-          , { module_; kind; opens = _; reader = _ }
-          , directives )
+          , ({ for_; _ } as configuration)
+          , ({ kind; counterpart; _ } as module_config : module_config) )
       =
       let open Option.O in
       let+ kind = kind in
-      let counterpart_kind =
-        match kind with
-        | Ml_kind.Impl -> Ml_kind.Intf
-        | Intf -> Ml_kind.Impl
-      in
-      let counterpart =
-        Module.source_without_pp module_ ~ml_kind:counterpart_kind
-        |> Option.map ~f:Path.drop_optional_build_context
-      in
-      { mode = for_; is_default; kind; counterpart; directives }
+      { mode = for_
+      ; is_default
+      ; kind
+      ; counterpart = Option.map counterpart ~f:Path.source
+      ; directives = directives configuration module_config
+      }
     in
     matching_configurations t ~file ~allow_ambiguous:false
     |> List.filter_map ~f:to_file_configuration
@@ -524,17 +521,16 @@ module Processed = struct
 
   let get t ~file =
     match matching_configurations t ~file ~allow_ambiguous:true with
-    | (_, _, _, directives) :: _ -> Some directives
+    | (_, configuration, module_config) :: _ ->
+      Some (directives configuration module_config)
     | [] -> None
   ;;
 
-  let dump_entries { per_file_config; pp_config; config; for_ = _ } : Dump_entry.t list =
+  let dump_entries ({ per_file_config; _ } as configuration) : Dump_entry.t list =
     Path.Build.Map.to_list per_file_config
-    |> List.map ~f:(fun (source_path, { module_; opens; reader; kind = _ }) ->
+    |> List.map ~f:(fun (source_path, ({ module_; _ } as module_config)) ->
       let module_name = Module.name module_ in
-      let unit_name = Module_name.Unique.to_string (Module.obj_name module_) in
-      let pp = Module_reference.Per_item.find pp_config (Module.path module_) in
-      let config = to_sexp ~unit_name ~reader ~opens ~pp config in
+      let config = directives configuration module_config in
       Dump_entry.{ module_name; source_path; config })
   ;;
 
@@ -964,7 +960,15 @@ module Unprocessed = struct
       ; indexes
       ; parameters
       }
-    and+ pp_config = pp_config t context ~expander in
+    and+ pp_config = pp_config t context ~expander
+    and+ source_files =
+      Memo.map_reduce
+        more_src_dirs
+        ~f:Source_tree.files_of
+        ~empty:Path.Source.Set.empty
+        ~combine:Path.Source.Set.union
+      |> Action_builder.of_memo
+    in
     let per_file_config =
       (* And copy for each module the resulting pp flags *)
       modules
@@ -976,8 +980,23 @@ module Unprocessed = struct
               Path.as_in_build_dir_exn source, kind))
           |> Path.Build.Map.of_list_reduce ~f:(fun existing _ -> existing)
         in
-        let unambiguous = Path.Build.Map.is_singleton sources in
+        let fallback_kinds =
+          Path.Build.Map.to_list sources
+          |> List.map ~f:(fun (src, kind) -> remove_extension src, Some kind)
+          |> Path.Build.Map.of_list_reduce ~f:(fun _ _ -> None)
+        in
         Path.Build.Map.foldi sources ~init ~f:(fun src kind acc ->
+          let counterpart_kind =
+            match kind with
+            | Ml_kind.Impl -> Ml_kind.Intf
+            | Intf -> Ml_kind.Impl
+          in
+          let counterpart =
+            let open Option.O in
+            let* source = Module.source_without_pp m ~ml_kind:counterpart_kind in
+            let source = Path.drop_optional_build_context_src_exn source in
+            Option.some_if (Path.Source.Set.mem source_files source) source
+          in
           let config =
             { Processed.module_ = Module.set_pp m None
             ; opens = Modules.With_vlib.local_open modules m
@@ -986,12 +1005,17 @@ module Unprocessed = struct
                   readers
                   (Filename.Extension.Or_empty.to_string (Path.Build.extension src))
             ; kind = Some kind
+            ; counterpart
             }
           in
           (* we add the config with and without the extension, the latter is
              needed for a fallback in this file's [get] function. *)
           let src_without_extension = remove_extension src in
-          let fallback = if unambiguous then config else { config with kind = None } in
+          let fallback =
+            { config with
+              kind = Path.Build.Map.find_exn fallback_kinds src_without_extension
+            }
+          in
           (src, config) :: (src_without_extension, fallback) :: acc))
       |> Path.Build.Map.of_list_reduce ~f:(fun existing _ -> existing)
     in

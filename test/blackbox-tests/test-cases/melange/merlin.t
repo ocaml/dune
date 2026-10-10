@@ -696,6 +696,26 @@ Exact matches exclude fallback configurations from other modes.
   iface.pp.mli: melange false intf iface.ml
   iface: none
 
+Each returned mode carries its own directives, including for fallback lookups.
+An exact Melange-only match must not reuse the default OCaml directives.
+
+  $ (cd mixed && merlin_configurations --json \
+  >   _build/default/.merlin-conf/lib-mixed \
+  >   foo.ml platform.melange.ml platform.pp.ml iface.melange.mli) | jq -r '
+  > def directive($name): .directives[] | select(.[0] == $name) | .[1];
+  > [ .file, .mode,
+  >   (directive("B") | select(contains(".mixed.objs/"))
+  >    | sub("^.*_build/default/"; "")),
+  >   (directive("FLG") | select(.[0] == "-pp") | .[1]
+  >    | capture("(?<name>pp_(ocaml|melange)\\.sh)").name)
+  > ] | join(" ")'
+  foo.ml ocaml .mixed.objs/byte pp_ocaml.sh
+  foo.ml melange .mixed.objs/melange pp_melange.sh
+  platform.melange.ml melange .mixed.objs/melange pp_melange.sh
+  platform.pp.ml ocaml .mixed.objs/byte pp_ocaml.sh
+  platform.pp.ml melange .mixed.objs/melange pp_melange.sh
+  iface.melange.mli melange .mixed.objs/melange pp_melange.sh
+
 Melange-only libraries have a default Melange configuration.
 
   $ (cd mixed && merlin_configurations \

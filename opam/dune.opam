@@ -60,7 +60,7 @@ depends: [
   "ppx_optcomp" {with-dev-setup}
   "spawn" { with-dev-setup }
   "ppx_inline_test" { with-dev-setup & os != "win32" }
-  "ppxlib" { with-dev-setup & >= "0.37.0" & < "0.39.0" & os != "win32" }
+  "ppxlib" { with-dev-setup & >= "0.37.0" & os != "win32" }
   "ctypes" { with-dev-setup & os != "win32" }
   "utop" { with-dev-setup & >= "2.6.0" & os != "win32" }
   "melange" { with-dev-setup & >= "7.0.0" & os != "win32" }

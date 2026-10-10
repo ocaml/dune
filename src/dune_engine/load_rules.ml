@@ -891,8 +891,8 @@ end = struct
         match context_type with
         | With_sources -> compute_alias_expansions ~collected ~dir
         | Empty ->
-          (* There are no aliases in contexts without sources *)
-          Memo.return Alias.Name.Map.empty
+          Memo.return
+            (Alias.Name.Map.map collected.aliases ~f:Rules.Dir_rules.Alias_spec.to_list)
       in
       Loaded.Build { Loaded.allowed_subdirs = descendants_to_keep; rules_here; aliases }
   ;;

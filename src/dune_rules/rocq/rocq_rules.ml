@@ -416,6 +416,9 @@ let ml_flags_and_plugin_ocamlpath
     let* _, plugin_packages = Resolve.Memo.read res in
     Install_layout.For_rocq_only.lib_root context plugin_packages
   in
+  let plugin_ocamlpath =
+    Action_builder.memoize "rocq-plugin-ocamlpath" plugin_ocamlpath
+  in
   Resolve.Memo.map ~f:fst res, plugin_ocamlpath
 ;;
 

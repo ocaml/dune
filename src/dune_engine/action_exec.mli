@@ -36,6 +36,12 @@ type input =
   ; execution_parameters : Execution_parameters.t
   ; sandbox : Process.Sandbox.t option
   ; action : Action.t
+  ; job_slots : Action.t option
+    (** An action that prints the number of job slots that [action] takes. It
+        runs with the total number of job slots in [DUNE_JOBS]. The result is
+        limited to the range from 1 to the total number of job slots. [action]
+        sees the result in [DUNE_JOB_SLOTS]. Without it, [action] takes one
+        job slot. *)
   }
 
 val exec

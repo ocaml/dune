@@ -513,6 +513,11 @@ let cctx
     Some (lazy (Lib.Compile.user_written_requires_no_loc compile_info ~for_))
   in
   let requires_link = Lib.Compile.requires_link compile_info ~for_ in
+  let pps_runtime_libs =
+    let open Resolve.Memo.O in
+    let* pps = Lib.Compile.pps compile_info ~for_ in
+    Resolve.Memo.List.concat_map pps ~f:(Lib.ppx_runtime_deps ~for_)
+  in
   let instances =
     Parameterised_instances.instances ~sctx ~db:(Scope.libs scope) lib.buildable.libraries
   in
@@ -544,6 +549,7 @@ let cctx
     ~requires_compile
     ~user_written_requires
     ~requires_link
+    ~pps_runtime_libs
     ~implements
     ~parameters
     ~preprocessing:pp

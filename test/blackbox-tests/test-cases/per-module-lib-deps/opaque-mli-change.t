@@ -51,12 +51,6 @@ left unexported, which would trip warning 32 under dev):
   [
     {
       "target_files": [
-        "_build/default/.main.eobjs/byte/dune__exe__Main.cmi",
-        "_build/default/.main.eobjs/byte/dune__exe__Main.cmti"
-      ]
-    },
-    {
-      "target_files": [
         "_build/default/.main.eobjs/native/dune__exe__Main.cmx",
         "_build/default/.main.eobjs/native/dune__exe__Main.o"
       ]
@@ -88,12 +82,6 @@ Add another paired declaration:
   $ dune build ./main.exe
   $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("dune__exe__Main"))]'
   [
-    {
-      "target_files": [
-        "_build/default/.main.eobjs/byte/dune__exe__Main.cmi",
-        "_build/default/.main.eobjs/byte/dune__exe__Main.cmti"
-      ]
-    },
     {
       "target_files": [
         "_build/default/.main.eobjs/native/dune__exe__Main.cmx",

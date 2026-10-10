@@ -1,11 +1,13 @@
-Regression baseline for the cctx-wide `.cmi` glob over an unwrapped
-library whose module set is declared explicitly via `(modules ...)`.
-Today, editing one sibling module's `.mli` invalidates every
-sibling's compile rule — even siblings that don't reference it.
+Per-module narrowing on a `(wrapped false)` library whose module
+set is declared explicitly via `(modules ...)`. Under the per-
+module narrowing, editing one sibling module's `.mli` invalidates
+only modules that reference it — siblings that don't are
+unaffected. Matches the implicit-discovery behaviour covered by
+`lib-to-lib-unwrapped.t`, but the explicit `(modules ...)` clause
+routes through a different parse path; this test pins the
+equivalence observationally.
 
-Matches the shape raised in #14492's review feedback. The explicit
-`(modules ...)` clause routes through a different parse path from
-the implicit form covered by `lib-to-lib-unwrapped.t`.
+Matches the shape raised in #14492's review feedback.
 
   $ make_dune_project 3.24
 
@@ -54,61 +56,44 @@ references `A` only; `uses_b` references `B` only.
 
   $ dune build @check
 
-Each consumer compile rule carries a wide `.cmi` glob over `foo`'s
-objdir; no specific cmi from `foo` appears as a file dep. The wide
-glob is the structural cause of the sibling over-rebuilds asserted
-below.
+Each consumer compile rule depends on only the specific cmi it
+references — `uses_a` on `a.cmi`, `uses_b` on `b.cmi` — with no
+wide glob over `foo`'s objdir.
 
   $ dune rules --root . --format=json --deps '%{cmo:consumer/uses_a}' > deps_a.json
   $ dune rules --root . --format=json --deps '%{cmo:consumer/uses_b}' > deps_b.json
-  $ jq_dune -r '.[] | depsGlobs
+  $ jq -r 'include "dune"; .[] | depsGlobs
   >   | select(.dir | endswith("foo/.foo.objs/byte"))
   >   | .dir + " " + .predicate' < deps_a.json
-  _build/default/foo/.foo.objs/byte *.cmi
-  $ jq_dune -r '.[] | depsGlobs
+  $ jq -r 'include "dune"; .[] | depsGlobs
   >   | select(.dir | endswith("foo/.foo.objs/byte"))
   >   | .dir + " " + .predicate' < deps_b.json
-  _build/default/foo/.foo.objs/byte *.cmi
-  $ jq_dune -r '.[] | depsFilePaths
+  $ jq -r 'include "dune"; .[] | depsFilePaths
   >   | select(endswith("foo/.foo.objs/byte/a.cmi"))' < deps_a.json
-  $ jq_dune -r '.[] | depsFilePaths
+  _build/default/foo/.foo.objs/byte/a.cmi
+  $ jq -r 'include "dune"; .[] | depsFilePaths
   >   | select(endswith("foo/.foo.objs/byte/b.cmi"))' < deps_b.json
+  _build/default/foo/.foo.objs/byte/b.cmi
 
 Case 1: edit `A`'s interface to expose `extra`. `uses_b` references
-only `B`, but the cctx-wide `.cmi` glob over `foo`'s objdir includes
-`A.cmi`, so today `uses_b.cm*` rebuilds anyway.
+only `B`, so the per-module narrowing must drop `A.cmi` from
+`uses_b`'s dep set — `uses_b.cm*` must not rebuild.
 
   $ cat > foo/a.mli <<EOF
   > val v : int
   > val extra : string
   > EOF
   $ dune build @check
-  $ dune trace cat | jq_dune -s '[.[] | targetsMatching("uses_b.cm")]'
-  [
-    {
-      "target_files": [
-        "_build/default/consumer/.consumer.objs/byte/uses_b.cmi",
-        "_build/default/consumer/.consumer.objs/byte/uses_b.cmo",
-        "_build/default/consumer/.consumer.objs/byte/uses_b.cmt"
-      ]
-    }
-  ]
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatching("uses_b.cm")]'
+  []
 
-Case 2: edit `B`'s interface to expose `extra`. Symmetric — today
-`uses_a.cm*` rebuilds anyway.
+Case 2: edit `B`'s interface to expose `extra`. Symmetric —
+`uses_a.cm*` must not rebuild.
 
   $ cat > foo/b.mli <<EOF
   > val v : int
   > val extra : string
   > EOF
   $ dune build @check
-  $ dune trace cat | jq_dune -s '[.[] | targetsMatching("uses_a.cm")]'
-  [
-    {
-      "target_files": [
-        "_build/default/consumer/.consumer.objs/byte/uses_a.cmi",
-        "_build/default/consumer/.consumer.objs/byte/uses_a.cmo",
-        "_build/default/consumer/.consumer.objs/byte/uses_a.cmt"
-      ]
-    }
-  ]
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatching("uses_a.cm")]'
+  []

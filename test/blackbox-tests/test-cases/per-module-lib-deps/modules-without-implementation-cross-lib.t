@@ -5,7 +5,7 @@ lib's interface changes, the consumer rebuilds without the
 compiler complaining about inconsistent assumptions over
 interface.
 
-Reported by @art-w on #14116. The concern was that
+Reported by @art-w. The concern was that
 [(modules_without_implementation)] entries' aliases to other
 libs might escape the per-module dep filter (the intra-stanza
 [trans_deps] graph skips them), leaving the consumer's compile

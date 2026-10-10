@@ -80,6 +80,18 @@ It omits ambiguous matches instead of assigning them a source kind.
   alterexe: none
   missing.aml: none
 
+The typed lookup keeps each source kind paired with its reader directive.
+
+  $ merlin_configurations --json _build/default/.merlin-conf/exe-alterexe \
+  >   alterexe.aml alterexe.amli alterexe.pp.aml alterexe.pp.amli | jq -r '
+  > [ .file, .kind,
+  >   (.directives[] | select(.[0] == "READER") | .[1][])
+  > ] | join(" ")'
+  alterexe.aml impl implementation
+  alterexe.amli intf interface
+  alterexe.pp.aml impl implementation
+  alterexe.pp.amli intf interface
+
 The fallback remains available when there is only one candidate.
 
   $ rm alterexe.amli

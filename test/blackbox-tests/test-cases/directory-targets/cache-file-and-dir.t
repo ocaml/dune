@@ -46,8 +46,8 @@ the resulting file from the cache.
   $ is_linked _build/default/dir_out/a
   linked
 
-Changing only a target's declared kind currently reuses the cached directory,
-even though the new rule declares a file target.
+Changing a target's declaration from a directory to a file must not reuse the
+cached directory, even when the action is unchanged.
 
   $ export DUNE_TRACE=cache
   $ cat > dune <<'EOF'
@@ -63,5 +63,12 @@ even though the new rule declares a file target.
   >  (action (bash "mkdir foo; echo contents > foo/bar")))
   > EOF
   $ dune build foo
+  File "dune", lines 1-3, characters 0-74:
+  1 | (rule
+  2 |  (target foo)
+  3 |  (action (bash "mkdir foo; echo contents > foo/bar")))
+  Error: Error trying to read targets after a rule was run:
+  - foo: Directory produced for a file target. Use (dir foo).
+  [1]
   $ dune trace cat | jq_dune -s '[cacheHitsMatching("/foo$")] | length'
-  1
+  0

@@ -906,7 +906,11 @@ module Unprocessed = struct
         match Module.sources_without_pp m with
         | [] -> init
         | sources ->
-          let module_ = Module.set_pp m None in
+          let module_ =
+            match Module.pp_flags m with
+            | None -> m
+            | Some _ -> Module.set_pp m None
+          in
           let opens = Modules.With_vlib.local_open modules m in
           sources
           |> Path.Build.Set.of_list_map ~f:(fun src -> Path.as_in_build_dir_exn src)

@@ -370,13 +370,20 @@ Its authored implementation can be used as a counterpart.
   $ test -e generated-interface/_build/default/generated.mli
 
 Adding or removing an authored interface updates the counterpart metadata.
+The previous snapshot remains in use until the next build.
 
   $ touch generated-interface/generated.mli
+  $ (cd generated-interface && merlin_configurations \
+  >   _build/default/.merlin-conf/lib-generated generated.ml)
+  generated.ml: ocaml true impl -
   $ dune build --root generated-interface @check
   $ (cd generated-interface && merlin_configurations \
   >   _build/default/.merlin-conf/lib-generated generated.ml)
   generated.ml: ocaml true impl generated.mli
   $ rm generated-interface/generated.mli
+  $ (cd generated-interface && merlin_configurations \
+  >   _build/default/.merlin-conf/lib-generated generated.ml)
+  generated.ml: ocaml true impl generated.mli
   $ dune build --root generated-interface @check
   $ (cd generated-interface && merlin_configurations \
   >   _build/default/.merlin-conf/lib-generated generated.ml)
@@ -422,3 +429,30 @@ source kinds. The legacy query still finds the same configuration.
   $ query_ocaml_merlin_pp "$PWD/distinct-aliases/input.txt" --root distinct-aliases \
   >   | grep -Eo '\(UNIT_NAME [^)]*\)'
   (UNIT_NAME distinct__Value)
+
+Counterparts in qualified subdirectories refer to authored source files.
+Generated interfaces with the same basename in another directory are omitted.
+
+  $ mkdir -p nested/authored nested/generated
+  $ cat > nested/dune-project <<EOF
+  > (lang dune 3.16)
+  > EOF
+  $ cat > nested/dune <<EOF
+  > (include_subdirs qualified)
+  > (library (name nested))
+  > EOF
+  $ printf 'let x = 1\n' > nested/authored/value.ml
+  $ printf 'val x : int\n' > nested/authored/value.mli
+  $ printf 'let x = 2\n' > nested/generated/value.ml
+  $ cat > nested/generated/dune <<EOF
+  > (rule
+  >  (action (with-stdout-to value.mli (echo "val x : int"))))
+  > EOF
+  $ dune build --root nested @check
+  $ (cd nested && merlin_configurations \
+  >   _build/default/.merlin-conf/lib-nested \
+  >   authored/value.ml authored/value.mli generated/value.ml generated/value.mli)
+  authored/value.ml: ocaml true impl authored/value.mli
+  authored/value.mli: ocaml true intf authored/value.ml
+  generated/value.ml: ocaml true impl -
+  generated/value.mli: ocaml true intf generated/value.ml

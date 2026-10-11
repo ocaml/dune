@@ -133,8 +133,17 @@ extension sorts after the interface extension.
   alterexe.pp.amli: (READER (interface))
   alterexe.pp: (READER (implementation))
   alterexe: (READER (implementation))
+  $ merlin_configurations _build/default/.merlin-conf/exe-alterexe \
+  >   alterexe.zml alterexe.amli alterexe.pp.zml alterexe.pp.amli \
+  >   alterexe.pp alterexe
+  alterexe.zml: ocaml true impl alterexe.amli
+  alterexe.amli: ocaml true intf alterexe.zml
+  alterexe.pp.zml: ocaml true impl alterexe.amli
+  alterexe.pp.amli: ocaml true intf alterexe.zml
+  alterexe.pp: none
+  alterexe: none
 
-An interface-only module keeps the fallback available.
+An interface-only module has an unambiguous fallback and no counterpart.
 
   $ rm alterexe.zml
   $ rm dune
@@ -153,3 +162,9 @@ An interface-only module keeps the fallback available.
   alterexe.pp.amli: (READER (interface))
   alterexe.pp: (READER (interface))
   alterexe: (READER (interface))
+  $ merlin_configurations _build/default/.merlin-conf/lib-only \
+  >   alterexe.amli alterexe.pp.amli alterexe.pp alterexe
+  alterexe.amli: ocaml true intf -
+  alterexe.pp.amli: ocaml true intf -
+  alterexe.pp: ocaml true intf -
+  alterexe: ocaml true intf -

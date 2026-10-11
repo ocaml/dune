@@ -108,7 +108,7 @@ module Processed = struct
     ; module_ : Module.t
     ; reader : string Nonempty_list.t option
     ; kind : Ml_kind.t option
-    ; counterpart : Path.Source.t option
+    ; has_counterpart : bool
     }
 
   let module_config_repr =
@@ -121,8 +121,7 @@ module Processed = struct
           (Repr.option (Repr.view (Repr.list Repr.string) ~to_:Nonempty_list.to_list))
           ~get:(fun t -> t.reader)
       ; Repr.field "kind" (Repr.option Ml_kind.repr) ~get:(fun t -> t.kind)
-      ; Repr.field "counterpart" (Repr.option Path.Source.repr) ~get:(fun t ->
-          t.counterpart)
+      ; Repr.field "has_counterpart" Repr.bool ~get:(fun t -> t.has_counterpart)
       ]
   ;;
 
@@ -191,7 +190,7 @@ module Processed = struct
 
     let name = "merlin-conf"
     let sharing = false
-    let version = 13
+    let version = 14
 
     let repr =
       Repr.view Repr.string ~to_:(fun _ -> "Use [dune ocaml dump-dot-merlin] instead")
@@ -503,14 +502,26 @@ module Processed = struct
     let to_file_configuration
           ( is_default
           , ({ for_; _ } as configuration)
-          , ({ kind; counterpart; _ } as module_config : module_config) )
+          , ({ kind; has_counterpart; module_; _ } as module_config : module_config) )
       =
       let open Option.O in
       let+ kind = kind in
+      let counterpart =
+        if not has_counterpart
+        then None
+        else (
+          let ml_kind =
+            match kind with
+            | Ml_kind.Impl -> Ml_kind.Intf
+            | Intf -> Ml_kind.Impl
+          in
+          let+ source = Module.source_without_pp module_ ~ml_kind in
+          Path.drop_optional_build_context source)
+      in
       { mode = for_
       ; is_default
       ; kind
-      ; counterpart = Option.map counterpart ~f:Path.source
+      ; counterpart
       ; directives = directives configuration module_config
       }
     in
@@ -961,13 +972,15 @@ module Unprocessed = struct
       ; parameters
       }
     and+ pp_config = pp_config t context ~expander
-    and+ source_files =
-      Memo.map_reduce
-        more_src_dirs
-        ~f:Source_tree.files_of
-        ~empty:Path.Source.Set.empty
-        ~combine:Path.Source.Set.union
-      |> Action_builder.of_memo
+    and+ source_dirs =
+      Action_builder.of_memo
+        (let open Memo.O in
+         let+ dirs = Memo.List.filter_map more_src_dirs ~f:Source_tree.find_dir in
+         List.fold_left dirs ~init:Path.Source.Map.empty ~f:(fun dirs dir ->
+           Path.Source.Map.set
+             dirs
+             (Source_tree.Dir.path dir)
+             (Source_tree.Dir.filenames dir)))
     in
     let per_file_config =
       (* And copy for each module the resulting pp flags *)
@@ -979,12 +992,13 @@ module Unprocessed = struct
             match Module.source m ~ml_kind:kind with
             | None -> None
             | Some source ->
-              Some (Module.File.original_path source |> Path.as_in_build_dir_exn, kind)
+              let src = Module.File.original_path source |> Path.as_in_build_dir_exn in
+              Some (src, remove_extension src, kind)
           in
           match source Impl, source Intf with
           | None, None -> []
           | Some source, None | None, Some source -> [ source ]
-          | Some ((impl, _) as impl_source), Some ((intf, _) as intf_source) ->
+          | Some ((impl, _, _) as impl_source), Some ((intf, _, _) as intf_source) ->
             (* Preserve the legacy fallback preference for later filenames. *)
             (match Path.Build.compare impl intf with
              | Eq -> [ impl_source ]
@@ -994,9 +1008,10 @@ module Unprocessed = struct
         match sources with
         | [] -> init
         | _ :: _ ->
-          let fallback_kinds =
-            List.map sources ~f:(fun (src, kind) -> remove_extension src, Some kind)
-            |> Path.Build.Map.of_list_reduce ~f:(fun _ _ -> None)
+          let ambiguous_fallback =
+            match sources with
+            | [ (_, first, _); (_, second, _) ] -> Path.Build.equal first second
+            | _ -> false
           in
           let module_ =
             match Module.pp_flags m with
@@ -1004,17 +1019,26 @@ module Unprocessed = struct
             | Some _ -> Module.set_pp m None
           in
           let opens = Modules.With_vlib.local_open modules m in
-          List.fold_left sources ~init ~f:(fun acc (src, kind) ->
+          List.fold_left sources ~init ~f:(fun acc (src, src_without_extension, kind) ->
             let counterpart_kind =
               match kind with
               | Ml_kind.Impl -> Ml_kind.Intf
               | Intf -> Ml_kind.Impl
             in
-            let counterpart =
-              let open Option.O in
-              let* source = Module.source_without_pp m ~ml_kind:counterpart_kind in
-              let source = Path.drop_optional_build_context_src_exn source in
-              Option.some_if (Path.Source.Set.mem source_files source) source
+            let has_counterpart =
+              match Module.source m ~ml_kind:counterpart_kind with
+              | None -> false
+              | Some source ->
+                let source =
+                  Module.File.original_path source
+                  |> Path.drop_optional_build_context_src_exn
+                in
+                (match
+                   Path.Source.Map.find source_dirs (Path.Source.parent_exn source)
+                 with
+                 | None -> false
+                 | Some files ->
+                   Filename.Array.Set.mem files (Path.Source.basename source))
             in
             let config =
               { Processed.module_
@@ -1024,16 +1048,13 @@ module Unprocessed = struct
                     readers
                     (Filename.Extension.Or_empty.to_string (Path.Build.extension src))
               ; kind = Some kind
-              ; counterpart
+              ; has_counterpart
               }
             in
             (* we add the config with and without the extension, the latter is
                needed for a fallback in this file's [get] function. *)
-            let src_without_extension = remove_extension src in
             let fallback =
-              { config with
-                kind = Path.Build.Map.find_exn fallback_kinds src_without_extension
-              }
+              if ambiguous_fallback then { config with kind = None } else config
             in
             (src, config) :: (src_without_extension, fallback) :: acc))
       |> Path.Build.Map.of_list_reduce ~f:(fun existing _ -> existing)

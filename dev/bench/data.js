@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791766674926,
+  "lastUpdate": 1791772642389,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -647801,6 +647801,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.277181554593333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "32246731234ebdf6d3443dce7b3e33d68a99f9c6",
+          "message": "perf(merlin): avoid copying modules without preprocessing (#16568)\n\nExtracted from #16522.\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-11T19:22:56-07:00",
+          "tree_id": "a26eece3ce881b9d63393a421c539e4f237985a7",
+          "url": "https://github.com/ocaml/dune/commit/32246731234ebdf6d3443dce7b3e33d68a99f9c6"
+        },
+        "date": 1791772300727,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.86192676268,
             "unit": "seconds"
           }
         ]

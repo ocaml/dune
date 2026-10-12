@@ -272,3 +272,72 @@ The new field must still require the Melange extension.
   dune-project or workspace file. You must enable it using (using melange 1.0)
   in the file.
   [1]
+
+Both Melange fields currently add to the library's shared flags. Omitting
+:standard replaces the Melange flags inherited from env, but still keeps the
+shared flags, even when the Melange field is empty.
+When neither Melange field is set, the shared flags are used as a fallback.
+
+  $ cd ..
+  $ for field in melange.flags melange.compile_flags; do
+  >   mkdir "$field"
+  >   (
+  >     cd "$field"
+  >     case "$field" in
+  >       melange.flags) make_melange_project 3.26 1.0 ;;
+  >       melange.compile_flags) make_melange_project 3.25 1.0 ;;
+  >     esac
+  >     echo 'let value = 42' > foo.ml
+  >     for flags in '-w +44' ':standard -w +44' '' omitted; do
+  >       case "$flags" in
+  >         omitted) env_melange_flags=; melange_flags= ;;
+  >         *)
+  >           env_melange_flags="($field -w +42)"
+  >           melange_flags="($field $flags)"
+  >           ;;
+  >       esac
+  >       cat > dune <<EOF
+  > (env
+  >  (_
+  >   (flags -w +41)
+  >   $env_melange_flags))
+  > (library
+  >  (name foo)
+  >  (modes byte native melange)
+  >  (flags -w +43)
+  >  (ocamlc_flags -w +45)
+  >  (ocamlopt_flags -w +46)
+  >  $melange_flags)
+  > EOF
+  >       echo "$field: ${flags:-empty}"
+  >       dune build foo.cma foo.cmxa .foo.objs/melange/foo.cmj
+  >       dune trace cat | jq_dune -sc '
+  >       [.[] | processes
+  >        | select(.args.target_files // []
+  >                 | any(endswith(".cmj") or endswith(".cmo")
+  >                       or endswith(".cmx")))
+  >        | {target: (.args.target_files
+  >                    | map(select(endswith(".cmj") or endswith(".cmo")
+  >                                 or endswith(".cmx")))
+  >                    | first | basename),
+  >           flags: (.args.process_args | map(select(startswith("+"))))}]
+  >       | sort_by(.target)'
+  >     done
+  >   )
+  > done
+  melange.flags: -w +44
+  [{"target":"foo.cmj","flags":["+43","+44"]},{"target":"foo.cmo","flags":["+43","+45"]},{"target":"foo.cmx","flags":["+43","+46"]}]
+  melange.flags: :standard -w +44
+  [{"target":"foo.cmj","flags":["+43","+42","+44"]}]
+  melange.flags: empty
+  [{"target":"foo.cmj","flags":["+43"]}]
+  melange.flags: omitted
+  [{"target":"foo.cmj","flags":["+43"]}]
+  melange.compile_flags: -w +44
+  [{"target":"foo.cmj","flags":["+43","+44"]},{"target":"foo.cmo","flags":["+43","+45"]},{"target":"foo.cmx","flags":["+43","+46"]}]
+  melange.compile_flags: :standard -w +44
+  [{"target":"foo.cmj","flags":["+43","+42","+44"]}]
+  melange.compile_flags: empty
+  [{"target":"foo.cmj","flags":["+43"]}]
+  melange.compile_flags: omitted
+  [{"target":"foo.cmj","flags":["+43"]}]

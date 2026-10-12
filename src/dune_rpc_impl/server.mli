@@ -20,6 +20,7 @@ val create
   -> build:build
   -> where:Dune_rpc.Where.t
   -> action_runner:Dune_engine.Action_runner.t option
+  -> mode:[ `Disabled | `Auto | `Enabled ]
   -> Watch_mode_config.t
   -> t
 

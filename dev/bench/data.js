@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791775833935,
+  "lastUpdate": 1791775914979,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -466985,6 +466985,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5480061588466667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d049d3a6e7513bac2f1baacda2e0605d68b8a920",
+          "message": "test(merlin): cover dependency source directories across contexts (#16572)\n\nCover dependency source directories shared by multiple consumers,\ncontext-specific generated modules, and source-directory additions.\n\nUpstream version of anmonteiro/dune#244.\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-11T20:09:57-07:00",
+          "tree_id": "1f802395c5f02a849a5bad65a16c8f92b7b81313",
+          "url": "https://github.com/ocaml/dune/commit/d049d3a6e7513bac2f1baacda2e0605d68b8a920"
+        },
+        "date": 1791775912879,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 60.49196146966,
             "unit": "seconds"
           }
         ]

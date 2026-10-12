@@ -903,22 +903,27 @@ module Unprocessed = struct
       modules
       |> Modules.With_vlib.drop_vlib
       |> Modules.fold ~init:[] ~f:(fun m init ->
-        Module.sources_without_pp m
-        |> Path.Build.Set.of_list_map ~f:(fun src -> Path.as_in_build_dir_exn src)
-        |> Path.Build.Set.fold ~init ~f:(fun src acc ->
-          let config =
-            { Processed.module_ = Module.set_pp m None
-            ; opens = Modules.With_vlib.local_open modules m
-            ; reader =
-                String.Map.find
-                  readers
-                  (Filename.Extension.Or_empty.to_string (Path.Build.extension src))
-            }
-          in
-          (* we add the config with and without the extension, the latter is
-             needed for a fallback in this file's [get] function. *)
-          let src_without_extension = remove_extension src in
-          (src, config) :: (src_without_extension, config) :: acc))
+        match Module.sources_without_pp m with
+        | [] -> init
+        | sources ->
+          let module_ = Module.set_pp m None in
+          let opens = Modules.With_vlib.local_open modules m in
+          sources
+          |> Path.Build.Set.of_list_map ~f:(fun src -> Path.as_in_build_dir_exn src)
+          |> Path.Build.Set.fold ~init ~f:(fun src acc ->
+            let config =
+              { Processed.module_
+              ; opens
+              ; reader =
+                  String.Map.find
+                    readers
+                    (Filename.Extension.Or_empty.to_string (Path.Build.extension src))
+              }
+            in
+            (* we add the config with and without the extension, the latter is
+               needed for a fallback in this file's [get] function. *)
+            let src_without_extension = remove_extension src in
+            (src, config) :: (src_without_extension, config) :: acc))
       |> Path.Build.Map.of_list_reduce ~f:(fun existing _ -> existing)
     in
     { Processed.pp_config; config; per_file_config }

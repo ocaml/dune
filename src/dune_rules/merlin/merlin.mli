@@ -1,10 +1,9 @@
 (** This module ensures that one merlin configuration file is generated for each
     stanza. Each of these configuration files is accompanied by a merlin exist
-    file. Each of these files contain a map from every module involved in the
-    stanza to a standard merlin configuration. The [Processed.t] type represents
-    the Merlin configuration as it will be marshalled to and from the
-    configuration files, while [Merlin.t] represents raw information coming from
-    the build system. *)
+    file. Each configuration file contains the information needed for every
+    module involved in the stanza. The [Processed.t] type represents the loaded
+    Merlin configuration, indexed by source file, while [Merlin.t] represents
+    raw information coming from the build system. *)
 
 open Import
 

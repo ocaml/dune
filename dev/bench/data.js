@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791839881002,
+  "lastUpdate": 1791839888362,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -467130,6 +467130,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.0756951241,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "252442b08fedbf637976d4a4278bfb116d4bae32",
+          "message": "test: reproduce hidden signal diagnostics (#16577)\n\nAdds a cram repro for #16575: process output hides signal diagnostics in\nnormal/quiet display modes. No fix yet.",
+          "timestamp": "2026-10-12T22:55:37+02:00",
+          "tree_id": "6dbb3f670a4f8a90b1a359767a897dbebd9bc6e6",
+          "url": "https://github.com/ocaml/dune/commit/252442b08fedbf637976d4a4278bfb116d4bae32"
+        },
+        "date": 1791839887499,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5705746801000001,
             "unit": "seconds"
           }
         ]

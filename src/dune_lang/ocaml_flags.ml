@@ -10,17 +10,30 @@ let equal f { common; specific } t =
 ;;
 
 module Spec = struct
-  type nonrec t = Ordered_set_lang.Unexpanded.t t
+  type melange =
+    | Flags
+    | Compile_flags
 
-  let equal = equal Ordered_set_lang.Unexpanded.equal
+  type nonrec t =
+    { flags : Ordered_set_lang.Unexpanded.t t
+    ; melange : melange option
+    }
+
+  let equal { flags; melange } t =
+    let equal = equal Ordered_set_lang.Unexpanded.equal in
+    equal flags t.flags && Poly.equal melange t.melange
+  ;;
 
   let standard =
-    { common = Ordered_set_lang.Unexpanded.standard
-    ; specific = Lib_mode.Map.make_all Ordered_set_lang.Unexpanded.standard
+    { flags =
+        { common = Ordered_set_lang.Unexpanded.standard
+        ; specific = Lib_mode.Map.make_all Ordered_set_lang.Unexpanded.standard
+        }
+    ; melange = None
     }
   ;;
 
-  let make ~common ~specific : t = { common; specific }
+  let make ~common ~specific : t = { flags = { common; specific }; melange = None }
 
   let decode =
     let open Decoder in
@@ -30,22 +43,29 @@ module Spec = struct
     and+ native = field_oslu "ocamlopt_flags"
     and+ melange =
       fields_mutually_exclusive
-        ~default:Ordered_set_lang.Unexpanded.standard
+        ~default:None
         [ ( "melange.flags"
           , Syntax.since Stanza.syntax (3, 26)
             >>> Syntax.since Melange.syntax (0, 1)
-            >>> Ordered_set_lang.Unexpanded.decode )
+            >>> let+ flags = Ordered_set_lang.Unexpanded.decode in
+                Some (Flags, flags) )
         ; ( "melange.compile_flags"
           , Syntax.since Melange.syntax (0, 1)
             >>> Syntax.deprecated_in
                   Stanza.syntax
                   (3, 26)
                   ~extra_info:"Use 'melange.flags' instead."
-            >>> Ordered_set_lang.Unexpanded.decode )
+            >>> let+ flags = Ordered_set_lang.Unexpanded.decode in
+                Some (Compile_flags, flags) )
         ]
     in
-    let specific = Lib_mode.Map.make ~byte ~native ~melange in
-    { common; specific }
+    let melange, melange_flags =
+      match melange with
+      | None -> None, Ordered_set_lang.Unexpanded.standard
+      | Some (melange, flags) -> Some melange, flags
+    in
+    let specific = Lib_mode.Map.make ~byte ~native ~melange:melange_flags in
+    { flags = { common; specific }; melange }
   ;;
 end
 

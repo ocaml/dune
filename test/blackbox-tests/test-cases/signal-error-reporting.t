@@ -1,4 +1,4 @@
-Investigate signals hidden by test output (#16575).
+Report signals even when a command produces output (#16575).
 
   $ make_dune_project 3.24
   $ ulimit -c 0
@@ -29,12 +29,13 @@ Without output, the signal is reported.
   Command got signal SEGV.
   [1]
 
-With output on stdout, the signal is hidden even though the test still fails.
+Output on stdout must not hide the signal.
 
   $ OUTPUT=stdout dune runtest
   File "dune", line 2, characters 7-20:
   2 |  (name test_segfault)
              ^^^^^^^^^^^^^
+  Command got signal SEGV.
   Beginning tests...
   [1]
 
@@ -48,30 +49,33 @@ The process trace still records the signal.
     "error": "got signal SEGV"
   }
 
-Output on stderr also hides the signal.
+Output on stderr must not hide the signal either.
 
   $ OUTPUT=stderr dune runtest
   File "dune", line 2, characters 7-20:
   2 |  (name test_segfault)
              ^^^^^^^^^^^^^
+  Command got signal SEGV.
   Beginning tests...
   [1]
 
-Even a single newline hides the signal.
+A single newline must not hide the signal.
 
   $ OUTPUT=newline dune runtest
   File "dune", line 2, characters 7-20:
   2 |  (name test_segfault)
              ^^^^^^^^^^^^^
+  Command got signal SEGV.
   
   [1]
 
-Quiet display has the same problem.
+Quiet display must also report the signal.
 
   $ OUTPUT=stdout dune runtest --display quiet
   File "dune", line 2, characters 7-20:
   2 |  (name test_segfault)
              ^^^^^^^^^^^^^
+  Command got signal SEGV.
   Beginning tests...
   [1]
 

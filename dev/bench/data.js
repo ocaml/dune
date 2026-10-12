@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791775601558,
+  "lastUpdate": 1791775826283,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -466927,6 +466927,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5699495250933334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c9e22cd860b0fe37e7774ef443edd1236fa8925a",
+          "message": "test(merlin): keep configuration changes from recompiling libraries (#16571)\n\nVerify that Merlin-only configuration changes update Merlin directives\nwithout recompiling an up-to-date library.\n\nUpstream version of anmonteiro/dune#243.\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-11T20:08:30-07:00",
+          "tree_id": "a9207ac60f15e16fc027ac5d6d13906e28c2eff4",
+          "url": "https://github.com/ocaml/dune/commit/c9e22cd860b0fe37e7774ef443edd1236fa8925a"
+        },
+        "date": 1791775824438,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 60.54792891183333,
             "unit": "seconds"
           }
         ]

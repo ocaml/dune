@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791790242553,
+  "lastUpdate": 1791790446935,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -467043,6 +467043,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5537754394533335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cd17225e9c59ef5d1a5aa120268bc6e16313e190",
+          "message": "reject directories declared as file targets (#16564)\n\n## Description\n\nWe forbid the usage of \"classical directory targets\". These are regular\ntargets that happen to be directories.\n\nThe motivation for this change is to have a more strict handling of\ndirectory targets in order to perform changes like the fix for\nhttps://github.com/ocaml/dune/issues/16547. This way we only have one\nkind of directory target and a clear semantics of what should happen\nwhen sandboxing.\n\n## Checklist\n\n- [x] desloppification pass\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-10-12T09:19:19+02:00",
+          "tree_id": "27fa6c14dfd45aefcd81f793b47748d2d8b1e47e",
+          "url": "https://github.com/ocaml/dune/commit/cd17225e9c59ef5d1a5aa120268bc6e16313e190"
+        },
+        "date": 1791790444566,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 38.48361189069334,
             "unit": "seconds"
           }
         ]

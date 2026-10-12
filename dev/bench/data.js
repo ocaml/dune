@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791612036731,
+  "lastUpdate": 1791766408154,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -647714,6 +647714,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.5328192235600007,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5a66f44a90b3e94c3f44e6d70beb96c71d52b97c",
+          "message": "perf(merlin): compute module configuration fields once (#16567)\n\nExtracted from #16522.\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-11T17:39:46-07:00",
+          "tree_id": "8f44ecb2e41f4dc0747fd62a2b1be217482ad4cc",
+          "url": "https://github.com/ocaml/dune/commit/5a66f44a90b3e94c3f44e6d70beb96c71d52b97c"
+        },
+        "date": 1791766115874,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.277181554593333,
             "unit": "seconds"
           }
         ]

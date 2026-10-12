@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791774146732,
+  "lastUpdate": 1791774466870,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -466869,6 +466869,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5519095442466667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cd8b9b6c088c11e1af5b69a6836bd09ca3f405f8",
+          "message": "perf(merlin): avoid source path set allocations (#16569)\n\nExtracted from #16522.\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-11T19:45:25-07:00",
+          "tree_id": "9e404f587d73632cbd582d6fef686bc03addb437",
+          "url": "https://github.com/ocaml/dune/commit/cd8b9b6c088c11e1af5b69a6836bd09ca3f405f8"
+        },
+        "date": 1791774465145,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.045448484686666,
             "unit": "seconds"
           }
         ]

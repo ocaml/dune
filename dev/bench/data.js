@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791841486736,
+  "lastUpdate": 1791841493083,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -467188,6 +467188,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 49.797485316253336,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f0ab5d0424b08c2c17391971fc3f8fb3ceb0b097",
+          "message": "fix: report signals even when commands produce output (#16578)\n\nAlways report signal termination alongside captured output in\nnormal/quiet display modes. Fixes #16575.",
+          "timestamp": "2026-10-12T23:27:02+02:00",
+          "tree_id": "e51687fed7bedeb091701c62c271d35cf7d6c112",
+          "url": "https://github.com/ocaml/dune/commit/f0ab5d0424b08c2c17391971fc3f8fb3ceb0b097"
+        },
+        "date": 1791841492348,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5058737031333335,
             "unit": "seconds"
           }
         ]

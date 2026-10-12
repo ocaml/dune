@@ -8,7 +8,14 @@ type 'a t =
   }
 
 module Spec : sig
-  type nonrec t = Ordered_set_lang.Unexpanded.t t
+  type melange =
+    | Flags
+    | Compile_flags
+
+  type nonrec t =
+    { flags : Ordered_set_lang.Unexpanded.t t
+    ; melange : melange option
+    }
 
   val equal : t -> t -> bool
   val decode : t Decoder.fields_parser

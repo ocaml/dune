@@ -208,9 +208,9 @@ The new spelling requires Dune 3.26.
   >              | first | basename),
   >     flags: (.args.process_args | map(select(startswith("+"))))}]
   > | sort_by(.target)'
-  [{"target":"foo.cmj","flags":["+43","+41","+42"]},{"target":"foo.cmo","flags":["+43"]}]
+  [{"target":"foo.cmj","flags":["+41","+42"]},{"target":"foo.cmo","flags":["+43"]}]
 
-Both spellings in the same library or env configuration are rejected.
+Both fields in the same library or env configuration are rejected.
 
   $ cat > dune <<'EOF'
   > (library
@@ -273,9 +273,9 @@ The new field must still require the Melange extension.
   in the file.
   [1]
 
-Both Melange fields currently add to the library's shared flags. Omitting
-:standard replaces the Melange flags inherited from env, but still keeps the
-shared flags, even when the Melange field is empty.
+melange.flags overrides the library's shared flags for Melange, while the
+deprecated melange.compile_flags keeps adding to them. In both fields,
+:standard inherits Melange flags from env.
 When neither Melange field is set, the shared flags are used as a fallback.
 
   $ cd ..
@@ -326,11 +326,11 @@ When neither Melange field is set, the shared flags are used as a fallback.
   >   )
   > done
   melange.flags: -w +44
-  [{"target":"foo.cmj","flags":["+43","+44"]},{"target":"foo.cmo","flags":["+43","+45"]},{"target":"foo.cmx","flags":["+43","+46"]}]
+  [{"target":"foo.cmj","flags":["+44"]},{"target":"foo.cmo","flags":["+43","+45"]},{"target":"foo.cmx","flags":["+43","+46"]}]
   melange.flags: :standard -w +44
-  [{"target":"foo.cmj","flags":["+43","+42","+44"]}]
+  [{"target":"foo.cmj","flags":["+42","+44"]}]
   melange.flags: empty
-  [{"target":"foo.cmj","flags":["+43"]}]
+  [{"target":"foo.cmj","flags":[]}]
   melange.flags: omitted
   [{"target":"foo.cmj","flags":["+43"]}]
   melange.compile_flags: -w +44

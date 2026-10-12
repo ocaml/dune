@@ -418,6 +418,39 @@ module Internal = struct
 
   and build_deps deps = Dep.Map.parallel_map deps ~f:(fun dep () -> build_dep dep)
 
+  and sandbox_deps ~(mode : Sandbox_mode.some option) paths =
+    match mode with
+    | None | Some (Copy | Hardlink | Patch_back_source_tree) ->
+      Memo.return { Sandbox.Deps.paths; directories = Path.Build.Map.empty }
+    | Some Symlink ->
+      let rec has_parent path =
+        match Path.parent path with
+        | None -> false
+        | Some parent -> Path.Set.mem paths parent || has_parent parent
+      in
+      let paths = Path.Set.filter paths ~f:(fun path -> not (has_parent path)) in
+      let+ directories =
+        Memo.List.fold_left
+          (Path.Set.to_list paths)
+          ~init:Path.Build.Map.empty
+          ~f:(fun directories path ->
+            match Path.as_in_build_dir path with
+            | None -> Memo.return directories
+            | Some build_path ->
+              let+ (_ : Digest.t), kind = Memo.exec (Lazy.force build_file_memo) path in
+              (match kind with
+               | File_target -> directories
+               | Dir_target { targets } ->
+                 (match Targets.Produced.find_any targets build_path with
+                  | Some (Right contents) ->
+                    Path.Build.Map.set directories build_path contents
+                  | None | Some (Left _) ->
+                    Code_error.raise
+                      "Directory dependency missing from produced targets"
+                      [ "path", Path.Build.to_dyn build_path ])))
+      in
+      { Sandbox.Deps.paths; directories }
+
   and execute_action_for_rule
         ~rule_kind
         ~rule_digest
@@ -501,15 +534,20 @@ module Internal = struct
                 if not is_sandboxed
                 then Fiber.return ()
                 else
+                  let* deps =
+                    Memo.run
+                      (sandbox_deps
+                         ~mode:sandbox_mode
+                         (Dep.Facts.paths
+                            facts
+                            ~expand_aliases:
+                              (Execution_parameters.expand_aliases_in_sandbox
+                                 execution_parameters)))
+                  in
                   Sandbox.add_deps
                     sandbox
                     ~dirs:(Dep.Facts.necessary_dirs_for_sandboxing facts)
-                    ~deps:
-                      (Dep.Facts.paths
-                         facts
-                         ~expand_aliases:
-                           (Execution_parameters.expand_aliases_in_sandbox
-                              execution_parameters))
+                    ~deps
               in
               facts
             in
@@ -554,6 +592,7 @@ module Internal = struct
             facts
         , Dep.Facts.necessary_dirs_for_sandboxing facts )
     in
+    let* deps = Memo.run (sandbox_deps ~mode:sandbox_mode deps) in
     Sandbox.with_
       ~mode:sandbox_mode
       (Option.value ~default:Ignore corrections)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791772885876,
+  "lastUpdate": 1791773043690,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -466811,6 +466811,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.45807069866666666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c1465759de2dcacc8f138ecb9123e75ae4d0fd87",
+          "message": "test(merlin): preserve source filename fallback ordering (#16570)\n\nExtracted from #16569.\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-11T19:22:16-07:00",
+          "tree_id": "8cb2b94ee2c81e18b9b70f786482538db44c1344",
+          "url": "https://github.com/ocaml/dune/commit/c1465759de2dcacc8f138ecb9123e75ae4d0fd87"
+        },
+        "date": 1791773041667,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 60.21859593634,
             "unit": "seconds"
           }
         ]

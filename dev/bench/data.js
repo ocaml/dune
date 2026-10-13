@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791890477079,
+  "lastUpdate": 1791900573472,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -648584,6 +648584,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.686368406706667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b8effeb1309ce8a3ae98f3b248fb40fc09d72724",
+          "message": "ci: bootstrap Dune with OxCaml trunk (#16582)\n\nAdd a fresh Dune bootstrap with OxCaml main to the existing RC/manual\nOxCaml job.\n\nFixes #16581.",
+          "timestamp": "2026-10-13T15:55:26+02:00",
+          "tree_id": "65f84dd2d49035e5e994266cd7e98a1bdb8f3dd0",
+          "url": "https://github.com/ocaml/dune/commit/b8effeb1309ce8a3ae98f3b248fb40fc09d72724"
+        },
+        "date": 1791900279436,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.0229281978800002,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791927987258,
+  "lastUpdate": 1791928301344,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -467565,6 +467565,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4371451181266666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "99a7166924decc0c9074721fcf7f966fa85b7d70",
+          "message": "fix(stdune): bootstrap with OxCaml trunk (#16589)\n\nInherit Stdlib.Option’s type and constructor representation instead of\nredeclaring it with a fixed representation. This fixes bootstrap with\nOxCaml main’s updated option type.\n\nFollow-up to #16582.\n\n### CI comparison\n\nBoth runs include the CFLAGS fix (#16565) and use OxCaml revision\n`2a0f110add615cd062940fc610a2d7a8dd534939`.\n\n| Run | Build OxCaml | Bootstrap Dune |\n| --- | --- | --- |\n| [Before: main\n(`887d8d67`)](https://github.com/ocaml/dune/actions/runs/38456887336) |\nPass | Fail: `Option.t` constructor representation mismatch |\n| [After: this fix\n(`e2d48866`)](https://github.com/Alizter/dune/actions/runs/38456923728)\n| Pass | Pass |",
+          "timestamp": "2026-10-13T23:33:38+02:00",
+          "tree_id": "512947121b163e24b86fe58fd400924bd5c8dc9a",
+          "url": "https://github.com/ocaml/dune/commit/99a7166924decc0c9074721fcf7f966fa85b7d70"
+        },
+        "date": 1791928299875,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 60.97228901829333,
             "unit": "seconds"
           }
         ]

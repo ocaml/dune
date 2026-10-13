@@ -594,7 +594,6 @@ not stable across different setups.
        $DIGEST18
        $DIGEST19
        $DIGEST20
-       $DIGEST21
        $DIGEST6))
      (source_dir /FINDLIB/ppxlib)
      (modules ())
@@ -603,8 +602,7 @@ not stable across different setups.
     ((name ppxlib.ast)
      (uid $DIGEST8)
      (local false)
-     (requires
-      ($DIGEST16 $DIGEST20))
+     (requires ($DIGEST16))
      (source_dir /FINDLIB/ppxlib/ast)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib/ast))))
@@ -629,8 +627,7 @@ not stable across different setups.
     ((name ppxlib.stdppx)
      (uid $DIGEST19)
      (local false)
-     (requires
-      ($DIGEST21 $DIGEST20))
+     (requires ($DIGEST20))
      (source_dir /FINDLIB/ppxlib/stdppx)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib/stdppx))))
@@ -644,7 +641,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ppxlib/traverse_builtins))))
    (library
     ((name re_lib)
-     (uid $DIGEST22)
+     (uid $DIGEST21)
      (local true)
      (requires ())
      (source_dir _build/default)
@@ -671,23 +668,15 @@ not stable across different setups.
      (include_dirs (_build/default/.re_lib.objs/byte))))
    (library
     ((name sexplib0)
-     (uid $DIGEST21)
+     (uid $DIGEST20)
      (local false)
      (requires ())
      (source_dir /FINDLIB/sexplib0)
      (modules ())
      (include_dirs (/FINDLIB/sexplib0))))
    (library
-    ((name stdlib-shims)
-     (uid $DIGEST20)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB/stdlib-shims)
-     (modules ())
-     (include_dirs (/FINDLIB/stdlib-shims))))
-   (library
     ((name subfolder_lib)
-     (uid $DIGEST23)
+     (uid $DIGEST22)
      (local true)
      (requires ())
      (source_dir _build/default/subdir/subfolder)
@@ -702,7 +691,7 @@ not stable across different setups.
      (include_dirs (_build/default/subdir/subfolder/.subfolder_lib.objs/byte))))
    (library
     ((name virtual)
-     (uid $DIGEST24)
+     (uid $DIGEST23)
      (local true)
      (requires ())
      (source_dir _build/default/virtual)
@@ -716,9 +705,9 @@ not stable across different setups.
      (include_dirs (_build/default/virtual/.virtual.objs/byte))))
    (library
     ((name virtual_impl1)
-     (uid $DIGEST25)
+     (uid $DIGEST24)
      (local true)
-     (requires ($DIGEST24))
+     (requires ($DIGEST23))
      (source_dir _build/default/virtual_impl1)
      (modules
       (((name Virtual)
@@ -739,9 +728,9 @@ not stable across different setups.
      (include_dirs (_build/default/virtual_impl1/.virtual_impl1.objs/byte))))
    (library
     ((name virtual_impl2)
-     (uid $DIGEST26)
+     (uid $DIGEST25)
      (local true)
-     (requires ($DIGEST24))
+     (requires ($DIGEST23))
      (source_dir _build/default/virtual_impl2)
      (modules
       (((name Virtual)
@@ -1221,7 +1210,6 @@ not stable across different setups.
        $DIGEST18
        $DIGEST19
        $DIGEST20
-       $DIGEST21
        $DIGEST6))
      (source_dir /FINDLIB/ppxlib)
      (modules ())
@@ -1230,8 +1218,7 @@ not stable across different setups.
     ((name ppxlib.ast)
      (uid $DIGEST8)
      (local false)
-     (requires
-      ($DIGEST16 $DIGEST20))
+     (requires ($DIGEST16))
      (source_dir /FINDLIB/ppxlib/ast)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib/ast))))
@@ -1256,8 +1243,7 @@ not stable across different setups.
     ((name ppxlib.stdppx)
      (uid $DIGEST19)
      (local false)
-     (requires
-      ($DIGEST21 $DIGEST20))
+     (requires ($DIGEST20))
      (source_dir /FINDLIB/ppxlib/stdppx)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib/stdppx))))
@@ -1271,7 +1257,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ppxlib/traverse_builtins))))
    (library
     ((name re_lib)
-     (uid $DIGEST22)
+     (uid $DIGEST21)
      (local true)
      (requires ())
      (source_dir _build/default)
@@ -1307,23 +1293,15 @@ not stable across different setups.
      (include_dirs (_build/default/.re_lib.objs/byte))))
    (library
     ((name sexplib0)
-     (uid $DIGEST21)
+     (uid $DIGEST20)
      (local false)
      (requires ())
      (source_dir /FINDLIB/sexplib0)
      (modules ())
      (include_dirs (/FINDLIB/sexplib0))))
    (library
-    ((name stdlib-shims)
-     (uid $DIGEST20)
-     (local false)
-     (requires ())
-     (source_dir /FINDLIB/stdlib-shims)
-     (modules ())
-     (include_dirs (/FINDLIB/stdlib-shims))))
-   (library
     ((name subfolder_lib)
-     (uid $DIGEST23)
+     (uid $DIGEST22)
      (local true)
      (requires ())
      (source_dir _build/default/subdir/subfolder)
@@ -1339,7 +1317,7 @@ not stable across different setups.
      (include_dirs (_build/default/subdir/subfolder/.subfolder_lib.objs/byte))))
    (library
     ((name virtual)
-     (uid $DIGEST24)
+     (uid $DIGEST23)
      (local true)
      (requires ())
      (source_dir _build/default/virtual)
@@ -1354,9 +1332,9 @@ not stable across different setups.
      (include_dirs (_build/default/virtual/.virtual.objs/byte))))
    (library
     ((name virtual_impl1)
-     (uid $DIGEST25)
+     (uid $DIGEST24)
      (local true)
-     (requires ($DIGEST24))
+     (requires ($DIGEST23))
      (source_dir _build/default/virtual_impl1)
      (modules
       (((name Virtual)
@@ -1383,9 +1361,9 @@ not stable across different setups.
      (include_dirs (_build/default/virtual_impl1/.virtual_impl1.objs/byte))))
    (library
     ((name virtual_impl2)
-     (uid $DIGEST26)
+     (uid $DIGEST25)
      (local true)
-     (requires ($DIGEST24))
+     (requires ($DIGEST23))
      (source_dir _build/default/virtual_impl2)
      (modules
       (((name Virtual)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791904725189,
+  "lastUpdate": 1791904759839,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -467333,6 +467333,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.49659936206,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "shon.feder@gmail.com",
+            "name": "Shon",
+            "username": "shonfeder"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "801323e49b2bbb749aa59a72d2c3262f23edfd14",
+          "message": "test(pkg): repro for stdlibs in _build but out of context (#16580)\n\nReproduction case for https://github.com/ocaml/dune/issues/16521\n\nFactored out of #16563",
+          "timestamp": "2026-10-13T10:57:16-04:00",
+          "tree_id": "428d20992585d97fa9cdaac7dacfcba85152649b",
+          "url": "https://github.com/ocaml/dune/commit/801323e49b2bbb749aa59a72d2c3262f23edfd14"
+        },
+        "date": 1791904758109,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.02742418350001,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791890147032,
+  "lastUpdate": 1791890468956,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -467217,6 +467217,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5058737031333335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cd5d510e21f89699e65727595aef2ccd3b7a80e6",
+          "message": "test: disable bubblewrap sandbox tests (#16579)\n\nDisable the bubblewrap tests, which fail with permission errors under\nLandlock. This test is disabled on CI anyway. This way it can be ran\nmanually, but not when we do `dune build @runtest`.",
+          "timestamp": "2026-10-13T12:59:14+02:00",
+          "tree_id": "f6ae61761d73487e339a8e3b6b2e2510c3aaf7ce",
+          "url": "https://github.com/ocaml/dune/commit/cd5d510e21f89699e65727595aef2ccd3b7a80e6"
+        },
+        "date": 1791890467645,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.97296005938,
             "unit": "seconds"
           }
         ]

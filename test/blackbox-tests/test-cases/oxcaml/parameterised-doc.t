@@ -48,11 +48,11 @@ A parameterised library and its instantiation:
   > (library
   >  (public_name project.user)
   >  (name user)
-  >  (libraries (instantiate plib param_impl)))
+  >  (libraries (instantiate plib param_impl :as plib_impl)))
   > EOF
   $ cat > user/user.ml <<EOF
-  > (** The user's documentation. *)
-  > let v = Plib.v
+  > (** The user's documentation, referring to {!Plib_impl.v}. *)
+  > let v = Plib_impl.v
   > EOF
 
 A virtual library and its implementation, whose documentation is carried by the
@@ -79,10 +79,16 @@ virtual library itself:
   > let v = "virt"
   > EOF
 
-Every library gets its documentation, except the implementation of the virtual
-library:
+Every library gets its documentation:
 
   $ dune build @doc
+  File "user/user.ml", line 1, characters 43-57:
+  Warning: Failed to resolve reference unresolvedroot(Plib_impl).v Couldn't find "Plib_impl"
+
+The reference to the instance `Plib_impl` in the comment doesn't resolve, as
+its instance is defined in the alias module `User__` which isn't opened by
+odoc.
+
   $ find _build/default/_doc/_odocls -name '*.odocl' | sort
   _build/default/_doc/_odocls/project/page-index.odocl
   _build/default/_doc/_odocls/project/param.odocl
@@ -90,6 +96,11 @@ library:
   _build/default/_doc/_odocls/project/plib.odocl
   _build/default/_doc/_odocls/project/user.odocl
   _build/default/_doc/_odocls/project/virt.odocl
+
+The reference is rendered without a link to [Plib]:
+
+  $ grep -o '<p>The user.*</p>' _build/default/_doc/_html/project/User/index.html
+  <p>The user's documentation, referring to <code>Plib_impl.v</code>.</p>
 
 The package index lists them all:
 
@@ -113,10 +124,17 @@ The package index lists them all:
 
 The new documentation generator agrees:
 
-  $ dune build @doc-new 2>/dev/null
+  $ dune build @doc-new 2>&1 | grep -v WARNING
+  File "user/user.ml", line 1, characters 43-57:
+  Warning: Failed to resolve reference unresolvedroot(Plib_impl).v Couldn't find "Plib_impl"
+
   $ find _build/default/_doc_new/odoc/local -name '*.odocl' | sort
   _build/default/_doc_new/odoc/local/project/param/param.odocl
   _build/default/_doc_new/odoc/local/project/param_impl/param_impl.odocl
   _build/default/_doc_new/odoc/local/project/plib/plib.odocl
   _build/default/_doc_new/odoc/local/project/user/user.odocl
   _build/default/_doc_new/odoc/local/project/virt/virt.odocl
+
+  $ grep -o '<p>The user.*</p>' \
+  >   _build/default/_doc_new/html/docs/local/project/user/User/index.html
+  <p>The user's documentation, referring to <code>Plib_impl.v</code>.</p>

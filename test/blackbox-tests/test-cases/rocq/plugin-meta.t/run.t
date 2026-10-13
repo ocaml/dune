@@ -59,26 +59,26 @@ plugin layout.
   [
     {
       "target": "_build/default/other/qux.vo",
-      "layout_files": 11,
-      "layout_groups": 0
+      "layout_files": 0,
+      "layout_groups": 2
     },
     {
       "target": "_build/default/theory/bar.vo",
-      "layout_files": 11,
-      "layout_groups": 0
+      "layout_files": 2,
+      "layout_groups": 2
     },
     {
       "target": "_build/default/theory/baz.vo",
-      "layout_files": 11,
-      "layout_groups": 0
+      "layout_files": 0,
+      "layout_groups": 2
     }
   ]
 
   $ dune build theory/bar.vo theory/baz.vo other/qux.vo
   $ compiled_modules
 
-The two dependency-discovery rules use the same plugin package set. They still
-repeat the complete layout dependencies instead of sharing file groups:
+The two dependency-discovery rules use the same plugin package set. They share
+file groups rather than repeating the complete layout dependencies:
 
   $ dune rules --format=json theory/.bar.theory.d other/.qux.theory.d | jq '
   >   include "dune";
@@ -92,8 +92,8 @@ repeat the complete layout dependencies instead of sharing file groups:
   >      shared_layout_groups:
   >        ($groups[0] == $groups[1] and ($groups[0] | length) > 0)}'
   {
-    "layout_file_dependencies": 22,
-    "shared_layout_groups": false
+    "layout_file_dependencies": 0,
+    "shared_layout_groups": true
   }
 
   $ rm plugin/foo.ml
@@ -118,9 +118,9 @@ A root-section entry beside META must remain excluded to avoid a build cycle.
   >  (files (theory/bar.vo as bar/proof.vo)))
   > EOF
 
-Record the dependency representation in a directory shared with root-section
-entries. Any grouping must avoid literal-name filters, which scan a name list
-for every generated file.
+The mixed directory uses explicit file dependencies rather than a literal
+filter that would scan a name list for every generated file. All-library
+directories still use unconditional selectors.
 
   $ dune rules --format=json theory/.bar.theory.d | jq '
   >   include "dune";
@@ -135,8 +135,8 @@ for every generated file.
   >      layout_groups: ($groups | length),
   >      unconditional_groups: all($groups[]; .predicate == ["or", []])}'
   {
-    "layout_files": 11,
-    "layout_groups": 0,
+    "layout_files": 3,
+    "layout_groups": 1,
     "unconditional_groups": true
   }
 

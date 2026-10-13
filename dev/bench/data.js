@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791910038495,
+  "lastUpdate": 1791910046454,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -467478,6 +467478,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.02050785463334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "shon.feder@gmail.com",
+            "name": "Shon",
+            "username": "shonfeder"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e59cd0fb9b3c4f69f8aaefe6ed1b5a086901e863",
+          "message": "fix(lib_config): only localize stdlib if its in a context  (#16563)\n\nThis weaken the assumption governing when paths to the stdlib placed\nwithin the `_build` directory are localized: previously, they were\nlocalized whenever the path wish in the `_build` directory; we now only\nlocalize the path if it is within a registered context. See\nhttps://github.com/ocaml/dune/pull/16563/commits/659a32c495c81e7a07254e8e039332c1c7fe57e6\nfor a more detailed account of the rationale.\n\n\nFixes #16521\n\nFollowup to https://github.com/ocaml/dune/pull/16374",
+          "timestamp": "2026-10-13T12:29:12-04:00",
+          "tree_id": "10edd80eb4838fa513c1787b2f71473ef8998faa",
+          "url": "https://github.com/ocaml/dune/commit/e59cd0fb9b3c4f69f8aaefe6ed1b5a086901e863"
+        },
+        "date": 1791910045210,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5603127163533334,
             "unit": "seconds"
           }
         ]

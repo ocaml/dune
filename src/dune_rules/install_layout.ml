@@ -96,6 +96,53 @@ let compute_entries context_name root packages =
 ;;
 
 let entries =
+  let rocq_deps entries =
+    let dirs, deps =
+      Path.Build.Map.foldi
+        entries
+        ~init:(Path.Build.Map.empty, Dep.Set.empty)
+        ~f:(fun dst (entry : Path.t Install.Entry.Expanded.t) (dirs, deps) ->
+          let is_lib_entry =
+            match (entry.section : Section.t) with
+            | Lib | Libexec -> true
+            | _ -> false
+          in
+          match (entry.kind : Install.Entry.Expanded.kind) with
+          | Directory ->
+            let deps =
+              if is_lib_entry then Dep.Set.add deps (Dep.file (Path.build dst)) else deps
+            in
+            dirs, deps
+          | File ->
+            let dir = Path.Build.parent_exn dst in
+            let dirs =
+              Path.Build.Map.update dirs dir ~f:(fun contents ->
+                let paths, has_other_entries =
+                  Option.value contents ~default:([], false)
+                in
+                if is_lib_entry
+                then Some (dst :: paths, has_other_entries)
+                else Some (paths, true))
+            in
+            dirs, deps)
+    in
+    Path.Build.Map.foldi dirs ~init:deps ~f:(fun dir (paths, has_other_entries) deps ->
+      match paths with
+      | [] -> deps
+      | _ ->
+        (* Literal-name selectors scan their list for every generated file. *)
+        if has_other_entries
+        then
+          List.fold_left paths ~init:deps ~f:(fun deps dst ->
+            Dep.Set.add deps (Dep.file (Path.build dst)))
+        else
+          File_selector.of_predicate_lang
+            ~dir:(Path.build dir)
+            ~only_generated_files:true
+            Predicate_lang.true_
+          |> Dep.file_selector
+          |> Dep.Set.add deps)
+  in
   let set_hash s = List.hash Package.Name.hash (Package.Name.Set.to_list s) in
   let memo =
     Memo.create
@@ -111,14 +158,16 @@ let entries =
       (fun (context, packages) ->
          let key = Key.encode packages in
          let root = dir ~context ~key in
-         compute_entries context root packages)
+         let open Memo.O in
+         let+ entries = compute_entries context root packages in
+         entries, lazy (rocq_deps entries))
   in
   fun context packages -> Memo.exec memo (context, packages)
 ;;
 
 let files context_name packages =
   let open Memo.O in
-  let+ entries = entries context_name packages in
+  let+ entries, _ = entries context_name packages in
   Path.Build.Map.keys entries |> List.map ~f:Path.build
 ;;
 
@@ -161,7 +210,7 @@ let gen_rules context_name ~dir rest =
     (match Key.decode key with
      | None -> Memo.return Build_config.Gen_rules.no_rules
      | Some packages ->
-       let+ entries = entries context_name packages in
+       let+ entries, _ = entries context_name packages in
        let directory_targets =
          Path.Build.Map.filter_map entries ~f:(fun entry ->
            match (entry.kind : Install.Entry.Expanded.kind) with
@@ -197,17 +246,17 @@ module For_rocq_only = struct
      keeping METAs, .cmi, .cmxs etc. — all upstream of theory compilation. *)
   let lib_root context_name packages =
     let open Action_builder.O in
-    let* lib_paths =
-      Action_builder.of_memo (entries context_name packages)
-      >>| Path.Build.Map.foldi
-            ~init:[]
-            ~f:(fun dst (entry : Path.t Install.Entry.Expanded.t) acc ->
-              match (entry.section : Section.t) with
-              | Lib | Libexec -> Path.build dst :: acc
-              | _ -> acc)
+    let+ () =
+      if Package.Name.Set.is_empty packages
+      then Action_builder.return ()
+      else
+        let* _, deps = Action_builder.of_memo (entries context_name packages) in
+        Action_builder.deps (Lazy.force deps)
     in
-    let+ () = Action_builder.paths lib_paths in
     let layout_root = root context_name packages in
-    (Install.Roots.opam_from_prefix layout_root ~relative:Path.Build.relative).lib_root
+    let { Install.Roots.lib_root; _ } =
+      Install.Roots.opam_from_prefix layout_root ~relative:Path.Build.relative
+    in
+    lib_root
   ;;
 end

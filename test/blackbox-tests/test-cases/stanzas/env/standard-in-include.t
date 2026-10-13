@@ -1,7 +1,6 @@
-:standard in :include'd files is ignored (issue #13225)
+:standard in :include'd files is honored (issue #13225)
 
-When :standard is used inside an :include'd file, environment flags are not
-applied.
+When :standard is used inside an :include'd file, environment flags are applied.
 
   $ make_dune_project 3.18
 
@@ -42,8 +41,8 @@ Direct :standard correctly picks up the environment flag:
   $ show_flags direct.ml | grep -o '\-w -8'
   -w -8
 
-But :include containing :standard silently ignores environment flags:
+:include containing :standard also picks up the environment flag:
 
   $ dune build included.cma
-  $ show_flags included.ml | grep -o '\-w -8' || echo "flag missing"
-  flag missing
+  $ show_flags included.ml | grep -o '\-w -8'
+  -w -8

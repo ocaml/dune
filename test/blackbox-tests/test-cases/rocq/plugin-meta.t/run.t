@@ -21,8 +21,8 @@ the META file and native plugin are present:
   _build/install/default/.packages/$DIGEST/lib/bar/foo/foo.cmxs
 
 The plugin is used by theory/bar.v and, transitively, by other/qux.v.
-theory/baz.v does not load it. Currently all three proofs depend on the complete
-plugin layout.
+theory/baz.v does not load it. Each proof should depend only on the plugin files
+reported by rocqdep, not on the complete layout.
 
   $ touch theory/baz.v
   $ mkdir other
@@ -60,17 +60,17 @@ plugin layout.
     {
       "target": "_build/default/other/qux.vo",
       "layout_files": 0,
-      "layout_groups": 2
+      "layout_groups": 0
     },
     {
       "target": "_build/default/theory/bar.vo",
       "layout_files": 2,
-      "layout_groups": 2
+      "layout_groups": 0
     },
     {
       "target": "_build/default/theory/baz.vo",
       "layout_files": 0,
-      "layout_groups": 2
+      "layout_groups": 0
     }
   ]
 
@@ -102,7 +102,6 @@ file groups rather than repeating the complete layout dependencies:
   $ compiled_modules
   other/qux.v
   theory/bar.v
-  theory/baz.v
 
   $ dune build theory/bar.vo theory/baz.vo other/qux.vo
   $ compiled_modules
@@ -178,14 +177,11 @@ directories still use unconditional selectors.
   $ PATH="$PWD/bin:$PATH" dune build --build-dir _sandbox --sandbox=copy \
   >   theory/.bar.theory.d
 
-Library contents and membership remain dependencies of every proof. The
-root-section file whose name matches the bracketed filename as a glob does not.
+Unused library contents and membership no longer force proof recompilation.
+The root-section file remains excluded from discovery's layout dependencies.
 
   $ dune build theory/bar.vo theory/baz.vo other/qux.vo
   $ compiled_modules
-  other/qux.v
-  theory/bar.v
-  theory/baz.v
 
   $ dune build theory/bar.vo theory/baz.vo other/qux.vo
   $ compiled_modules
@@ -193,9 +189,6 @@ root-section file whose name matches the bracketed filename as a glob does not.
   $ echo changed > 'payload[1].dat'
   $ dune build theory/bar.vo theory/baz.vo other/qux.vo
   $ compiled_modules
-  other/qux.v
-  theory/bar.v
-  theory/baz.v
 
   $ echo changed > excluded.txt
   $ dune build theory/bar.vo theory/baz.vo other/qux.vo
@@ -204,16 +197,10 @@ root-section file whose name matches the bracketed filename as a glob does not.
   $ echo added > payload-added.dat
   $ dune build theory/bar.vo theory/baz.vo other/qux.vo
   $ compiled_modules
-  other/qux.v
-  theory/bar.v
-  theory/baz.v
 
   $ rm payload-added.dat
   $ dune build theory/bar.vo theory/baz.vo other/qux.vo
   $ compiled_modules
-  other/qux.v
-  theory/bar.v
-  theory/baz.v
 
   $ dune build theory/bar.vo theory/baz.vo other/qux.vo
   $ compiled_modules

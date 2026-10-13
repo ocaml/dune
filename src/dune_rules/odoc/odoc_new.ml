@@ -675,8 +675,18 @@ module Artifact : sig
   val artifact_ty : t -> artifact_ty
   val reference : t -> string
   val module_name : t -> Module_name.t option
+  val open_modules : t -> Module_name.t list
   val name : t -> string
-  val make_module : Context.t -> all:bool -> Index.t -> Path.t -> visible:bool -> t
+
+  val make_module
+    :  Context.t
+    -> all:bool
+    -> Index.t
+    -> Path.t
+    -> visible:bool
+    -> open_modules:Module_name.t list
+    -> t
+
   val external_mld : Context.t -> Index.t -> Path.t -> name:string -> t
   val index : Context.t -> all:bool -> Index.t -> t
 end = struct
@@ -690,6 +700,7 @@ end = struct
     ; html_dir : Path.Build.t
     ; html_file : Path.Build.t
     ; ty : artifact_ty
+    ; open_modules : Module_name.t list
     }
 
   let odoc_file v = v.odoc
@@ -744,10 +755,14 @@ end = struct
     | _ -> None
   ;;
 
+  let open_modules v = v.open_modules
   let name v = Path.basename v.source |> Filename.remove_extension |> Filename.to_string
-  let v ~source ~odoc ~html_dir ~html_file ~ty = { source; odoc; html_dir; html_file; ty }
 
-  let make_module ctx ~all index source ~visible =
+  let v ~source ~odoc ~html_dir ~html_file ~ty ~open_modules =
+    { source; odoc; html_dir; html_file; ty; open_modules }
+  ;;
+
+  let make_module ctx ~all index source ~visible ~open_modules =
     let basename =
       Path.basename source
       |> Filename.remove_extension
@@ -762,7 +777,7 @@ end = struct
        in the name. So we declare anything with a double underscore as hidden
        in addition to anything that dune believes should not be an entry module. *)
     let visible = visible && not (String.contains_double_underscore basename) in
-    v ~source ~odoc ~html_dir ~html_file:html ~ty:(Module visible)
+    v ~source ~odoc ~html_dir ~html_file:html ~ty:(Module visible) ~open_modules
   ;;
 
   let int_make_mld ctx ~all index source ~name ~is_index =
@@ -772,7 +787,7 @@ end = struct
     in
     let html_dir = Index.html_dir ctx ~all index in
     let html = html_dir ++ if is_index then "index.html" else sprintf "%s.html" name in
-    v ~source ~odoc ~html_dir ~html_file:html ~ty:Mld
+    v ~source ~odoc ~html_dir ~html_file:html ~ty:Mld ~open_modules:[]
   ;;
 
   let external_mld ctx index source ~name =
@@ -1015,6 +1030,7 @@ let link_odoc_rules sctx ~all (artifacts : Artifact.t list) ~quiet ~package ~lib
         ~flags_for:(Some (Artifact.odoc_file a))
         (index_deps
          @ [ odoc_include_flags ctx all maps package requires indices
+           ; Odoc.open_flags (Artifact.open_modules a)
            ; A "-o"
            ; Target (Artifact.odocl_file a)
            ; Dep (Path.build (Artifact.odoc_file a))
@@ -1228,12 +1244,12 @@ let fallback_artifacts
         let visible =
           Module_name.to_string mod_name |> String.contains_double_underscore |> not
         in
-        Artifact.make_module ctx ~all:true index cmti_file ~visible)
+        Artifact.make_module ctx ~all:true index cmti_file ~visible ~open_modules:[])
     in
     [ mods, libs ]
 ;;
 
-let lib_artifacts ctx all index lib modules =
+let lib_artifacts ctx all index lib with_vlib =
   let info = Lib.info lib in
   let cm_kind : Lib_mode.Cm_kind.t =
     match
@@ -1244,7 +1260,7 @@ let lib_artifacts ctx all index lib modules =
     | Melange -> Melange Cmi
   in
   let obj_dir = Lib_info.obj_dir info in
-  let modules = Modules.With_vlib.drop_vlib modules in
+  let modules = Modules.With_vlib.drop_vlib with_vlib in
   let entry_modules = Modules.entry_modules modules in
   modules
   |> Modules.fold ~init:[] ~f:(fun m acc ->
@@ -1260,7 +1276,8 @@ let lib_artifacts ctx all index lib modules =
          |> not
     in
     let cmti_file = Obj_dir.Module.cmti_file obj_dir ~cm_kind m in
-    Artifact.make_module ctx ~all index cmti_file ~visible :: acc)
+    let open_modules = Modules.With_vlib.local_open with_vlib m in
+    Artifact.make_module ctx ~all index cmti_file ~visible ~open_modules :: acc)
 ;;
 
 let ext_package_mlds (ctx : Context.t) (pkg : Package.Name.t) =

@@ -82,12 +82,6 @@ virtual library itself:
 Every library gets its documentation:
 
   $ dune build @doc
-  File "user/user.ml", line 1, characters 43-57:
-  Warning: Failed to resolve reference unresolvedroot(Plib_impl).v Couldn't find "Plib_impl"
-
-The reference to the instance `Plib_impl` in the comment doesn't resolve, as
-its instance is defined in the alias module `User__` which isn't opened by
-odoc.
 
   $ find _build/default/_doc/_odocls -name '*.odocl' | sort
   _build/default/_doc/_odocls/project/page-index.odocl
@@ -97,10 +91,10 @@ odoc.
   _build/default/_doc/_odocls/project/user.odocl
   _build/default/_doc/_odocls/project/virt.odocl
 
-The reference is rendered without a link to [Plib]:
+The reference links to [Plib]:
 
   $ grep -o '<p>The user.*</p>' _build/default/_doc/_html/project/User/index.html
-  <p>The user's documentation, referring to <code>Plib_impl.v</code>.</p>
+  <p>The user's documentation, referring to <a href="../Plib/index.html#val-v"><code>Plib_impl.v</code></a>.</p>
 
 The package index lists them all:
 
@@ -125,8 +119,7 @@ The package index lists them all:
 The new documentation generator agrees:
 
   $ dune build @doc-new 2>&1 | grep -v WARNING
-  File "user/user.ml", line 1, characters 43-57:
-  Warning: Failed to resolve reference unresolvedroot(Plib_impl).v Couldn't find "Plib_impl"
+  [1]
 
   $ find _build/default/_doc_new/odoc/local -name '*.odocl' | sort
   _build/default/_doc_new/odoc/local/project/param/param.odocl
@@ -137,4 +130,4 @@ The new documentation generator agrees:
 
   $ grep -o '<p>The user.*</p>' \
   >   _build/default/_doc_new/html/docs/local/project/user/User/index.html
-  <p>The user's documentation, referring to <code>Plib_impl.v</code>.</p>
+  <p>The user's documentation, referring to <a href="../../plib/Plib/index.html#val-v"><code>Plib_impl.v</code></a>.</p>

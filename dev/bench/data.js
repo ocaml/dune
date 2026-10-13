@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791905046994,
+  "lastUpdate": 1791905055429,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -467420,6 +467420,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.97105034971333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5acc938e6d578d550e2769ac9ad13e9eb03c9c8d",
+          "message": "ci: update OCaml trunk to 5.7 (#16588)\n\nUpdate the trunk compiler and cache prefix to\n`ocaml-variants.5.7.0+trunk` in the workflow template and generated\nworkflow.",
+          "timestamp": "2026-10-13T17:01:41+02:00",
+          "tree_id": "54b88df81bd99a8f1a2a468f387f56d7ba63aa30",
+          "url": "https://github.com/ocaml/dune/commit/5acc938e6d578d550e2769ac9ad13e9eb03c9c8d"
+        },
+        "date": 1791905054038,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5688265021666666,
             "unit": "seconds"
           }
         ]

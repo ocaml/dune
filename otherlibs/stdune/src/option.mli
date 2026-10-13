@@ -1,8 +1,6 @@
 (** Optional values *)
 
-type 'a t = 'a option =
-  | None
-  | Some of 'a
+include module type of Stdlib.Option
 
 module O : sig
   val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t

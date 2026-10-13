@@ -14,6 +14,15 @@ val create
   -> Lock_dir.t
   -> (t, User_message.t) result
 
+(** The local packages this universe was created from. *)
+val local_packages : t -> Local_package.t Package_name.Map.t
+
+(** The lock directory this universe was created from. *)
+val lock_dir : t -> Lock_dir.t
+
+(** The platform this universe was created for. *)
+val platform : t -> Solver_env.t
+
 val dependency_digest
   :  Local_package.t Package_name.Map.t
   -> Local_package.Dependency_hash.t option

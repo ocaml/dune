@@ -21,6 +21,8 @@ should work if wrapped in (no-infer ...) but not otherwise.
   5 |    (run touch source)
   6 |    (copy source target))))
   Error: No rule found for source
+  Hint: If this is a source file or directory, make sure it exists in the
+  source tree. If it is generated, add or fix the rule that produces source.
   [1]
 
   $ cat >dune <<EOF

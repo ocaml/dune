@@ -48,7 +48,7 @@
 
 (defcustom dune-watch-delete-buffer-on-termination t
   "Whether to delete the dune watch buffer when the dune watch process terminates."
-  :type 'bool
+  :type 'boolean
   :group 'dune-watch)
 
 (defcustom dune-watch-popup-function #'display-buffer-pop-up-window
@@ -58,7 +58,7 @@
 
 (defcustom dune-watch-read-command t
   "Whether the user should be prompted to select a build task."
-  :type 'bool
+  :type 'boolean
   :group 'dune-watch)
 
 ;;;; Constants 
@@ -93,7 +93,11 @@
 (defvar-local dune-watch-header-start nil
   "Start of the header of the most recent dune watch output.")
 
-;;;; Implementation 
+;; Defined below by `define-minor-mode'; forward-declared so functions
+;; that run before the mode definition can reference it.
+(defvar dune-watch-minor-mode)
+
+;;;; Implementation
 
 (defun dune-watch-generate-new-buffer ()
   "Return a new buffer to be used by dune watch."
@@ -142,11 +146,11 @@ EVENT is the text output by the sentinel."
   (when dune-watch-buffer
     (display-buffer dune-watch-buffer dune-watch-popup-function)))
 
-(defun dune-watch-filter-function (watch-buffer process event)
+(defun dune-watch-filter-function (watch-buffer _process event)
   "Process filter function used by dune watch.
 
 WATCH-BUFFER is the buffer corresponding to the process.
-PROCESS is the name of the process.
+_PROCESS is the name of the process.
 EVENT is the string returned by the dune watch."
   (when (and watch-buffer (buffer-live-p watch-buffer))
     (with-current-buffer watch-buffer

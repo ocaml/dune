@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791912709843,
+  "lastUpdate": 1791912716157,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -467536,6 +467536,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 41.450836364426664,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "shon.feder@gmail.com",
+            "name": "Shon",
+            "username": "shonfeder"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "887d8d67d6446e4ee7869e21a3c6bdf95a7a268f",
+          "message": "fix(ox.nix): use CFLAGS for cflags (#16565)\n\n## Description\n\nThe oxcaml trunk builds started failing. I think this was due to\nhttps://github.com/oxcaml/oxcaml/pull/6562/changes#diff-6cff31f46da42c5f179cda29f9fe7f8dbb6441dcb4d1bd5bfa0a2b9070d87325R107\nwhich ends up leading to tests being built and run on C++, if it's\navailable (as per the target at\nhttps://github.com/oxcaml/oxcaml/pull/6562/changes#diff-84be0d67b9397fd509a12b5fbc24ec217c1a8f3900388234f6a2a28d102211bbR1266).\n\nThe `NIX_CFLAGS_COMPILE` apparently get passed to both C++ and C\ncompilation, but `-std=gnu17` is not valid for C++, leading to the\nerror:\n\n```\ncc1plus: error: command-line option '-std=gnu17' is valid for C/ObjC but not for C++ [-Werror]\ncc1plus: all warnings being treated as errors\n```\n\nAs per https://github.com/NixOS/nixpkgs/issues/79303, `CFLAGS` (resp.\n`CXXFLAGS` should be preferred).\n\nApplying that fix here allows us to get a clean build of the oxcaml\ntrunk with dune.\n\nCI results:\n\n- The motivating build failure:\nhttps://github.com/ocaml/dune/actions/runs/37988037703/job/114014841515\n- A job run against this fix:\nhttps://github.com/ocaml/dune/actions/runs/37992567833/job/114030249421\n\nNote that this is on top of #16563 and will need a rebase once that is\nmerged.\n\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-10-13T13:19:44-04:00",
+          "tree_id": "2a4345c9e115bd0c9721562553c36016abedfe24",
+          "url": "https://github.com/ocaml/dune/commit/887d8d67d6446e4ee7869e21a3c6bdf95a7a268f"
+        },
+        "date": 1791912715204,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4371451181266666,
             "unit": "seconds"
           }
         ]

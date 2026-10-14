@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791991388307,
+  "lastUpdate": 1792004105298,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -649976,6 +649976,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.708763899393334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "shon.feder@gmail.com",
+            "name": "Shon",
+            "username": "shonfeder"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ee67f2986d3bdceb353b472c983eda1d8cff820a",
+          "message": "ci: rerun PR checks when the base branch changes (#16602)\n\nRun PR workflows on `edited`, so changing the base branch starts a new\nrun against the new merge commit.\n\n#16593 passed CI against `main` before being retargeted to `3.25.0-rc`.\nNo new run started, so the Nix metadata incompatibility was missed.\n\nTitle/body edits also rerun checks. Existing events and branch/path\nfilters are unchanged.\n\nChecked workflow generation, YAML triggers, `@check` and `@fmt`.",
+          "timestamp": "2026-10-14T14:41:54-04:00",
+          "tree_id": "88df941bdc8720a7e73f5aa07972de37335addfb",
+          "url": "https://github.com/ocaml/dune/commit/ee67f2986d3bdceb353b472c983eda1d8cff820a"
+        },
+        "date": 1792003735905,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.82451145574,
             "unit": "seconds"
           }
         ]

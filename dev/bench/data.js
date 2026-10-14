@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791990640404,
+  "lastUpdate": 1791990647866,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -467884,6 +467884,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.017344670119996,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rudi.grinberg@gmail.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8f6cd16670ec121f252e16d6992d49c1f45f0295",
+          "message": "Properly parse single quotes in `/etc/os-release`. (#16601)\n\n## Description\n\nHandle eg. `ID='gentoo'` in `/etc/os-release`. Opam does handle single\nquotes and we don't, leading to a failing test on my laptop, and\nprobably some complications down the line in some setups.\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.\n\n---------\n\nSigned-off-by: mefyl <quentin@tarides.com>",
+          "timestamp": "2026-10-14T22:52:06+08:00",
+          "tree_id": "d6fd8ad503abdbe237099f7c6eaecfdb5ea72c90",
+          "url": "https://github.com/ocaml/dune/commit/8f6cd16670ec121f252e16d6992d49c1f45f0295"
+        },
+        "date": 1791990647112,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5516681509,
             "unit": "seconds"
           }
         ]

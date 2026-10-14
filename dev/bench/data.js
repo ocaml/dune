@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791991380740,
+  "lastUpdate": 1791991388307,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -468174,6 +468174,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.109040063719995,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "033275c5041ec54bb0aa23485b55bbbf521af014",
+          "message": "test(compile-commands): cover foreign-stanza eligibility changes (#16585)\n\nVerify that unrelated stanzas leave the compilation database unchanged\nand adding or removing foreign stubs updates it.\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-14T08:04:47-07:00",
+          "tree_id": "d35eabec2e730c831763413289644b0fb034fa73",
+          "url": "https://github.com/ocaml/dune/commit/033275c5041ec54bb0aa23485b55bbbf521af014"
+        },
+        "date": 1791991387365,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5627149645599999,
             "unit": "seconds"
           }
         ]

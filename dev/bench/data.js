@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791973153968,
+  "lastUpdate": 1791973333384,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -467739,6 +467739,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4414774468266667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dc590bb44330350076f1f0b3b3bf06c611e174c4",
+          "message": "test(windows): record RPC registry PID mismatch (#16553)\n\nAdds a native-Windows-only characterization of the existing registry PID\nmismatch. Main's expected failures are recorded separately for the\nfilename and serialized PID, making this test-only change GREEN on the\ntested main revision.\n\nThe server starts directly, and its native PID is observed independently\nthrough Cygwin ps WINPID. Readiness waits for registry publication, not\na ping to the shared endpoint. Cleanup terminates only the captured\nfixture process; this test does not claim graceful registry cleanup.\n\nPreparation for #16549 and #16551. No production changes or changelog\nentry.\n\nLocal native Win32/mingw64, OCaml 5.5.1: scoped watching/runtest-windows\nand whole-source @fmt pass on main\n8cf80a16033c17158b8ada219b6b928504362830. Latest main\n733c8ca70adf22813ffda8b7964e4f7d57961ebe adds only an unrelated package\ntest. Full @check is blocked by absent ppx_bench/core_bench development\ndependencies; full Unix, MSVC and upstream-suite checks remain for CI.",
+          "timestamp": "2026-10-14T12:04:10+02:00",
+          "tree_id": "df8081a59fcb12065102717d9cacaca210e1c10f",
+          "url": "https://github.com/ocaml/dune/commit/dc590bb44330350076f1f0b3b3bf06c611e174c4"
+        },
+        "date": 1791973331182,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 60.085037964179996,
             "unit": "seconds"
           }
         ]

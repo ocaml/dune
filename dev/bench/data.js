@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791966543062,
+  "lastUpdate": 1791966549130,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -467652,6 +467652,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 39.68045466909333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "845ce8636668824116000f058de7989a913c09c6",
+          "message": "test(merlin): reproduce missing hidden includes for private modules (#16595)\n\nReproduce #16531 using the existing private-module Merlin fixture.\n\nRecords the current failure; fix to follow.",
+          "timestamp": "2026-10-14T10:17:11+02:00",
+          "tree_id": "3b1dda8b3ff1882e7388b33423b212e057d59b46",
+          "url": "https://github.com/ocaml/dune/commit/845ce8636668824116000f058de7989a913c09c6"
+        },
+        "date": 1791966548169,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.40897287191333337,
             "unit": "seconds"
           }
         ]

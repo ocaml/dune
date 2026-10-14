@@ -17,8 +17,7 @@ We try to pull an opam package that isn't a dune project
   $ pkg="${default_lock_dir}/foo.dev.pkg"
   $ grep version $pkg
   (version dev)
-  $ grep dev $pkg
-  (version dev)
+  $ grep -F '(dev)' $pkg
   (dev)
   $ grep "file://" $pkg | dune_cmd subst "$PWD" PWD
      file://PWD/_foo)))

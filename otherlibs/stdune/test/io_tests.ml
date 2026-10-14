@@ -141,13 +141,17 @@ let%expect_test "copy file chmod" =
   let src = Path.relative dir "initial" in
   let dst = Path.relative dir "final" in
   Io.write_file_exn src "foobarbaz";
-  Io.copy_file
-    ~chmod:(fun _ ->
-      let open Permissions in
-      Mode.create ~user:(read + write) ~group:(read + execute) ~other:read ())
-    ~src
-    ~dst
-    ();
+  let umask = Unix.umask 0o022 in
+  Exn.protect
+    ~f:(fun () ->
+      Io.copy_file
+        ~chmod:(fun _ ->
+          let open Permissions in
+          Mode.create ~user:(read + write) ~group:(read + execute) ~other:read ())
+        ~src
+        ~dst
+        ())
+    ~finally:(fun () -> ignore (Unix.umask umask : int));
   print_endline (Io.read_file_exn dst);
   Printf.printf "permissions: %d\n" (Unix.stat (Path.to_string dst)).st_perm;
   [%expect

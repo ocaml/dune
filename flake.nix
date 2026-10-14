@@ -42,6 +42,17 @@
                       flambdaSupport = false;
                       framePointerSupport = true;
                     };
+                    # Keep the 3.25 builder from before the flake update.
+                    # Newer builders emit 3.26 metadata the RC cannot read.
+                    dune_3 = osuper.dune_3.overrideAttrs {
+                      version = "3.25-dev";
+                      src = self.fetchFromGitHub {
+                        owner = "ocaml";
+                        repo = "dune";
+                        rev = "ab02ae0d95df25b4118047a421d955df0579cf58";
+                        hash = "sha256-Sjh12lyuXopNU0sU6fX1E0cdR17qbOFkPZJDfsn1I1I=";
+                      };
+                    };
                     utop = osuper.utop.overrideAttrs {
                       dontGzipMan = true;
                     };

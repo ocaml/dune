@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791990534840,
+  "lastUpdate": 1791990576530,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -649570,6 +649570,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.7507361485666664,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0cb3bc6cf65aac87fa78aac3f56412f310e6d4eb",
+          "message": "perf(melange): memoize emit ancestor lookup (#16586)\n\nMemoize Melange emit ancestor lookups by build path, sharing recursive\nsearches across directories.\n\nFrom anmonteiro/dune#264.\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-14T07:56:50-07:00",
+          "tree_id": "b2019aabb8691377bc47f8f0ed15537e7680aa08",
+          "url": "https://github.com/ocaml/dune/commit/0cb3bc6cf65aac87fa78aac3f56412f310e6d4eb"
+        },
+        "date": 1791990210807,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7034462324399997,
             "unit": "seconds"
           }
         ]

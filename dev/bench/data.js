@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791966549130,
+  "lastUpdate": 1791972724557,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -649193,6 +649193,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.577503821,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5f2b016d68ebaab964a341b415e24fed7fc168c7",
+          "message": "test(windows): record shared workspace RPC endpoints (#16552)\n\nRecords the existing shared default TCP endpoint across two native\nWindows workspaces. Main's expected failure is recorded, so this\ntest-only change is GREEN on the tested main revision.\n\nThe test validates complete registry publication per root without\nassuming distinct HANDLE-based filenames. Shared endpoints never receive\nRPC requests; only validated independent endpoints exercise real builds\nin both workspaces. Cleanup targets only captured fixture processes and\nuses bounded waits.\n\nThe existing rpc-registry.t gains a portable helper path and explicit\nbatch/watch rebuild coverage. Its Windows CI alias is added by the\ndependent endpoint fix, not here: that dynamic-action scenario cannot\nsafely isolate requests on unfixed Windows main.\n\nPreparation for #16548 and #16550. No production changes or changelog\nentry.\n\nLocal native Win32/mingw64, OCaml 5.5.1: the scoped\nwatching/runtest-windows alias and whole-source @fmt pass on main\n8cf80a16033c17158b8ada219b6b928504362830. Latest main\n733c8ca70adf22813ffda8b7964e4f7d57961ebe only adds an unrelated package\ntest; RPC code and these fixtures are unchanged. Full @check is blocked\nby absent ppx_bench/core_bench development dependencies. Full Unix, MSVC\nand upstream-suite results remain for CI; no full cross-platform pass is\nclaimed.",
+          "timestamp": "2026-10-14T12:03:27+02:00",
+          "tree_id": "95c554ba6993d7240b65fdef2bd261dc2aa54bbc",
+          "url": "https://github.com/ocaml/dune/commit/5f2b016d68ebaab964a341b415e24fed7fc168c7"
+        },
+        "date": 1791972511912,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.489807658906667,
             "unit": "seconds"
           }
         ]

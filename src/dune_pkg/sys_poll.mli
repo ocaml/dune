@@ -6,6 +6,10 @@ type t
 
 val make : path:Path.t list -> t
 
+(** [parse_os_release lines] are the key values pair parsed from [lines] in the
+    /etc/os-release format. *)
+val parse_os_release : string list -> (string * string) list
+
 (** Returns the value of [arch] *)
 val arch : t -> string option Fiber.t
 

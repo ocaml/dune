@@ -625,7 +625,6 @@ module Builder = struct
     ; target_exec : string option
     ; action_runner : bool
     ; sandbox_actions : bool
-    ; rpc_mode : [ `Auto | `Disabled | `Enabled ]
     }
 
   let root t = t.root
@@ -755,7 +754,7 @@ module Builder = struct
                    ~doc:
                      (Some
                         "Similar to [--watch], but only start a build when instructed \
-                         externally by an RPC. Implies --rpc=enabled."))
+                         externally by an RPC."))
            in
            if watch then Some Dune_rpc_impl.Watch_mode_config.Passive else None)
       in
@@ -971,17 +970,6 @@ module Builder = struct
             [ "action-runner" ]
             ~docs
             ~doc:(Some "Run spawned build processes in an external dune action runner."))
-    and+ rpc_mode =
-      let doc =
-        "Whether to start the RPC server. Auto mode tries opening the RPC socket and \
-         disables it in case of error, which is useful in sandboxes. Enabled raises a \
-         hard error if the socket cannot be started, disabled skips the attempt \
-         altogether."
-      in
-      Arg.(
-        value
-        & opt (enum [ "auto", `Auto; "disabled", `Disabled; "enabled", `Enabled ]) `Auto
-        & info [ "rpc" ] ~docs ~docv:"auto|disabled|enabled" ~doc:(Some doc))
     in
     { no_build
     ; debug_dep_path
@@ -1028,7 +1016,6 @@ module Builder = struct
     ; target_exec
     ; action_runner
     ; sandbox_actions
-    ; rpc_mode
     }
   ;;
 
@@ -1070,7 +1057,6 @@ module Builder = struct
         ; target_exec
         ; action_runner
         ; sandbox_actions
-        ; rpc_mode
         }
     =
     No_build.equal t.no_build no_build
@@ -1112,10 +1098,6 @@ module Builder = struct
     && Option.equal String.equal t.target_exec target_exec
     && Bool.equal t.action_runner action_runner
     && Bool.equal t.sandbox_actions sandbox_actions
-    &&
-    match t.rpc_mode, rpc_mode with
-    | `Disabled, `Disabled | `Auto, `Auto | `Enabled, `Enabled -> true
-    | _ -> false
   ;;
 end
 
@@ -1436,14 +1418,11 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
                   Dune_rpc_impl.Server.Enabled
                     { build_loop = c.build_loop; build_action = rpc_request_action ~root })
            in
-           let registry, build, mode =
-             match c.builder.watch, c.builder.rpc_mode with
-             | Yes Passive, `Disabled ->
-               User_error.raise
-                 [ Pp.text "--passive-watch-mode is incompatible with --rpc=disabled." ]
-             | Yes _, (`Auto | `Enabled) -> `Add, Lazy.force rpc_build, `Enabled
-             | Yes Eager, `Disabled -> `Add, Lazy.force rpc_build, `Disabled
-             | No, mode -> `Skip, Dune_rpc_impl.Server.Disabled, mode
+           let registry, build, required =
+             match c.builder.watch with
+             | Yes Passive -> `Add, Lazy.force rpc_build, true
+             | Yes Eager -> `Add, Lazy.force rpc_build, false
+             | No -> `Skip, Dune_rpc_impl.Server.Disabled, false
            in
            Dune_rpc_impl.Server.create
              ~registry
@@ -1451,7 +1430,7 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
              ~build
              ~where:(Lazy.force where)
              ~action_runner:(Lazy.force action_runner)
-             ~mode
+             ~required
              c.builder.watch))
     else `Forbid_builds
   in

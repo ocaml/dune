@@ -20,9 +20,10 @@ By default, the build proceeds without the RPC server.
   $ cat _build/default/x
   hello
 
-With --rpc=enabled, failing to start the RPC server is a hard error.
+Passive watch mode cannot work without the RPC server, so failing to start it
+is a hard error.
 
-  $ dune build --rpc=enabled ./x 2> stderr
+  $ dune build --passive-watch-mode 2> stderr
   [1]
 
 Neutralize the error message, which differs in a sandbox that forbids `socket`
@@ -30,15 +31,3 @@ altogether.
 
   $ sed -E 's/^Error: (bind|socket)\(\): .*/Error: <socket failure>/' stderr
   Error: <socket failure>
-
-With --rpc=disabled, the socket is not created at all.
-
-  $ chmod +w _build/.rpc
-  $ dune build --rpc=disabled ./x
-  $ ls _build/.rpc
-
-Passive watch mode cannot work without the RPC server.
-
-  $ dune build --passive-watch-mode --rpc=disabled
-  Error: --passive-watch-mode is incompatible with --rpc=disabled.
-  [1]

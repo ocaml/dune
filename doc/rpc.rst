@@ -9,9 +9,9 @@ Dune RPC
    This one could be split into :doc:`reference/dune-libs` for the API part and
    a how-to guide which is missing.
 
-Starting from 3.0, dune runs an RPC server. This is a general mechanism
-introduced to integrate with various dune functionality. Some use cases we have
-in mind are:
+Starting from 3.0, ``dune build`` runs an RPC server. This is a general
+mechanism introduced to integrate with various dune functionality. Some use
+cases we have in mind are:
 
 - Text editors that would like to receive dune's error reporting
 - In the future, custom actions that need to communicate with dune
@@ -67,19 +67,6 @@ are two ways of doing this:
 
 Then ``dune rpc build .`` will connect to it, trigger a build, and report
 status.
-
-Toggling the RPC Server
-=======================
-
-Whether to start the RPC server can be configured with the ``--rpc`` flag:
-
-- ``--rpc=auto`` (the default) starts the server, but continues without it if
-  its socket cannot be created, for instance in a sandbox forbidding sockets.
-- ``--rpc=enabled`` starts the server and fails if its socket cannot be
-  created.
-- ``--rpc=disabled`` never creates the socket.
-
-In watch mode, ``--rpc=auto`` behaves like ``--rpc=enabled`` and ``--rpc=disabled`` is rejected.
 
 Status Line
 ===========

@@ -427,47 +427,38 @@ let handler (t : t Fdecl.t) : unit Handler.t =
   rpc
 ;;
 
-let create ~registry ~root ~build ~where ~action_runner ~mode watch_mode =
+let create ~registry ~root ~build ~where ~action_runner ~required watch_mode =
   Global_lock.lock_exn ();
   let t = Fdecl.create Dyn.opaque in
   let socket_file = Where.rpc_socket_file () in
   Fpath.unlink_no_err (Path.Build.to_string socket_file);
   let lifecycle =
-    match mode with
-    | `Disabled -> None
-    | (`Auto | `Enabled) as mode ->
-      (try
-         let handler = Rpc.Server.make (handler t)
-         and server =
-           Path.mkdir_p (Path.build (Path.Build.parent_exn socket_file));
-           match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:100 with
-           | Ok s ->
-             (match where with
-              | `Ip _ ->
-                Io.write_file_exn (Path.build socket_file) (Where.to_string where)
-              | `Unix _ -> ());
-             at_exit (fun () -> Fpath.unlink_no_err (Path.Build.to_string socket_file));
-             s
-           | Error `Already_in_use ->
-             User_error.raise
-               [ Pp.textf
-                   "Dune rpc is already running in this workspace. If this is not the \
-                    case, please delete %s"
-                   (Path.Build.to_string_maybe_quoted (Where.rpc_socket_file ()))
-               ]
-         in
-         Some (Rpc.Server.Lifecycle.create ~handler ~root ~where ~registry ~server)
-       with
-       | Unix.Unix_error (error, syscall, _) as exn ->
-         (match mode with
-          | `Enabled -> Exn.reraise exn
-          | `Auto ->
-            Log.info
-              "RPC server unavailable"
-              [ "syscall", Dyn.string syscall
-              ; "error", Dyn.string (Unix.error_message error)
-              ];
-            None))
+    try
+      let handler = Rpc.Server.make (handler t)
+      and server =
+        Path.mkdir_p (Path.build (Path.Build.parent_exn socket_file));
+        match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:100 with
+        | Ok s ->
+          (match where with
+           | `Ip _ -> Io.write_file_exn (Path.build socket_file) (Where.to_string where)
+           | `Unix _ -> ());
+          at_exit (fun () -> Fpath.unlink_no_err (Path.Build.to_string socket_file));
+          s
+        | Error `Already_in_use ->
+          User_error.raise
+            [ Pp.textf
+                "Dune rpc is already running in this workspace. If this is not the case, \
+                 please delete %s"
+                (Path.Build.to_string_maybe_quoted (Where.rpc_socket_file ()))
+            ]
+      in
+      Some (Rpc.Server.Lifecycle.create ~handler ~root ~where ~registry ~server)
+    with
+    | Unix.Unix_error (error, syscall, _) when not required ->
+      Log.info
+        "RPC server unavailable"
+        [ "syscall", Dyn.string syscall; "error", Dyn.string (Unix.error_message error) ];
+      None
   in
   let server = { lifecycle; action_runner; watch_mode; clients = Clients.empty } in
   let res = { server; build } in

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791990824240,
+  "lastUpdate": 1791990851818,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -468029,6 +468029,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.69235380176,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fee54965bff836afa9f2f454839d6c4d7824bad6",
+          "message": "test(merlin): cover context INDEX invalidation (#16583)\n\nVerify that adding an unrelated library updates INDEX entries in\nexisting Merlin configurations.\n\nFollow-up to #16571.\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-14T07:56:01-07:00",
+          "tree_id": "d4ce798a7f173b9d9baf114eff3200650cb3a763",
+          "url": "https://github.com/ocaml/dune/commit/fee54965bff836afa9f2f454839d6c4d7824bad6"
+        },
+        "date": 1791990848227,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 60.84590175039333,
             "unit": "seconds"
           }
         ]

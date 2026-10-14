@@ -903,22 +903,46 @@ module Unprocessed = struct
       modules
       |> Modules.With_vlib.drop_vlib
       |> Modules.fold ~init:[] ~f:(fun m init ->
-        Module.sources_without_pp m
-        |> Path.Build.Set.of_list_map ~f:(fun src -> Path.as_in_build_dir_exn src)
-        |> Path.Build.Set.fold ~init ~f:(fun src acc ->
-          let config =
-            { Processed.module_ = Module.set_pp m None
-            ; opens = Modules.With_vlib.local_open modules m
-            ; reader =
-                String.Map.find
-                  readers
-                  (Filename.Extension.Or_empty.to_string (Path.Build.extension src))
-            }
+        let sources =
+          let source kind =
+            match Module.source m ~ml_kind:kind with
+            | None -> None
+            | Some source ->
+              Some (Module.File.original_path source |> Path.as_in_build_dir_exn)
           in
-          (* we add the config with and without the extension, the latter is
-             needed for a fallback in this file's [get] function. *)
-          let src_without_extension = remove_extension src in
-          (src, config) :: (src_without_extension, config) :: acc))
+          match source Impl, source Intf with
+          | None, None -> []
+          | Some source, None | None, Some source -> [ source ]
+          | Some impl, Some intf ->
+            (* Preserve the legacy fallback preference for later filenames. *)
+            (match Path.Build.compare impl intf with
+             | Eq -> [ impl ]
+             | Lt -> [ impl; intf ]
+             | Gt -> [ intf; impl ])
+        in
+        match sources with
+        | [] -> init
+        | _ :: _ ->
+          let module_ =
+            match Module.pp_flags m with
+            | None -> m
+            | Some _ -> Module.set_pp m None
+          in
+          let opens = Modules.With_vlib.local_open modules m in
+          List.fold_left sources ~init ~f:(fun acc src ->
+            let config =
+              { Processed.module_
+              ; opens
+              ; reader =
+                  String.Map.find
+                    readers
+                    (Filename.Extension.Or_empty.to_string (Path.Build.extension src))
+              }
+            in
+            (* we add the config with and without the extension, the latter is
+               needed for a fallback in this file's [get] function. *)
+            let src_without_extension = remove_extension src in
+            (src, config) :: (src_without_extension, config) :: acc))
       |> Path.Build.Map.of_list_reduce ~f:(fun existing _ -> existing)
     in
     { Processed.pp_config; config; per_file_config }

@@ -36,7 +36,7 @@ let linkages
              | Byte_complete | Other _ -> false
              | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_bytecode_exe_needed)
          in
-         if bytecode_exe_needed then [ Exe.Linkage.byte_for_jsoo ] else [])
+         if bytecode_exe_needed then [ Exe.Linkage.byte_for_jsoo ocaml.version ] else [])
        else if explicit_js_mode
        then []
        else if L.Map.mem exes.modes L.byte
@@ -44,7 +44,7 @@ let linkages
          Exe.Linkage.js
          ::
          (if Js_of_ocaml.Mode.Pair.select ~mode:JS jsoo_is_whole_program
-          then [ Exe.Linkage.byte_for_jsoo ]
+          then [ Exe.Linkage.byte_for_jsoo ocaml.version ]
           else [])
        else [])
     ; (if

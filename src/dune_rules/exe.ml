@@ -22,10 +22,15 @@ module Linkage = struct
 
   let byte = { mode = Ocaml Byte; ext = Filename.Extension.bc; flags = [] }
 
-  let byte_for_jsoo =
+  let byte_for_jsoo ocaml_version =
     { mode = Ocaml Byte_for_jsoo
     ; ext = Filename.Extension.of_string_exn ".bc-for-jsoo"
-    ; flags = [ "-no-check-prims"; "-noautolink" ]
+    ; flags =
+        ([ "-no-check-prims"; "-noautolink" ]
+         @
+         if Ocaml.Version.supports_bytecode_hints ocaml_version
+         then [ "-bytecode-hints" ]
+         else [])
     }
   ;;
 
@@ -260,7 +265,10 @@ let link_js
     |> Js_of_ocaml.Mode.Pair.select ~mode:jsoo_mode
     |> Option.value ~default:Js_of_ocaml.In_context.default
   in
-  let src = exe_path_from_name cctx ~name ~linkage:Linkage.byte_for_jsoo in
+  let src =
+    let ocaml = Compilation_context.ocaml cctx in
+    exe_path_from_name cctx ~name ~linkage:(Linkage.byte_for_jsoo ocaml.version)
+  in
   let linkall =
     Action_builder.bind link_args ~f:(fun cmd ->
       let open Action_builder.O in

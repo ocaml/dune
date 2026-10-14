@@ -16,7 +16,7 @@ module Linkage : sig
   (** Byte compilation, extension [.bc] *)
   val byte : t
 
-  val byte_for_jsoo : t
+  val byte_for_jsoo : Ocaml.Version.t -> t
 
   (** Native compilation, extension [.exe] *)
   val native : t

@@ -25,7 +25,11 @@ module Args0 = struct
     | Dyn : without_targets t Action_builder.t -> _ t
     | Expand : expand -> _ t
 
-  let dyn args = Dyn (Action_builder.map args ~f:(fun x -> As x))
+  let dyn args =
+    let args = Action_builder.map args ~f:Appendable_list.of_list in
+    Expand (fun ~dir:_ -> args)
+  ;;
+
   let empty = S []
 
   let as_any : without_targets t -> any t = function

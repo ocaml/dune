@@ -107,12 +107,7 @@ Call Dune with an absolute PATH as argv[0]:
 
   $ PATH=$fakepath $DUNE build "$pkg_root/$foo_digest/target/"
   $ PATH=$fakepath $DUNE build "$pkg_root/$bar_digest/target/"
-
-BUG: packages built with (dune) pick up the dune in PATH instead of the dune
-running the build.
-
   $ PATH=$fakepath $DUNE build "$pkg_root/$baz_digest/target/"
-  Fake dune! (args: build -p baz)
 
 argv[0] is set by the calling program (like a shell or cram test runner) and
 could be wrong, hence it cannot always be trusted. In the examples above we

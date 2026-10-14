@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791990323489,
+  "lastUpdate": 1791990427997,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -649483,6 +649483,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.74949057554,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ae82d62efc288b22389762e5a6ce27c990469d0d",
+          "message": "test(merlin): cover source-directory invalidation in watch mode (#16584)\n\nCover source-directory additions and removals for two Merlin consumers\nwithin one watch session.\n\nRelated to #16572.\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-14T07:56:26-07:00",
+          "tree_id": "817253953dfeba1a5d7a0697ba5827f7d19e0fe9",
+          "url": "https://github.com/ocaml/dune/commit/ae82d62efc288b22389762e5a6ce27c990469d0d"
+        },
+        "date": 1791990133823,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.966492461646667,
             "unit": "seconds"
           }
         ]

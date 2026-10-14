@@ -11,7 +11,12 @@ on:
   merge_group:
 
 concurrency:
-  group: "${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+  # Metadata edits must not cancel active checks.
+  group: >-
+    ${{ github.workflow }} @
+    ${{ github.event.action == 'edited' &&
+    !github.event.changes.base.ref && github.run_id ||
+    github.event.pull_request.head.label || github.head_ref || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
@@ -33,7 +38,11 @@ jobs:
 #
 
   nix-build:
-    name: Bootstrap with OCaml 5.5
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Bootstrap with OCaml 5.5' }}
     strategy:
       fail-fast: false
       matrix:
@@ -47,7 +56,11 @@ jobs:
       - run: nix build
 
   nix-test:
-    name: Tests (Nix)
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Tests (Nix)' }}
     strategy:
       fail-fast: false
       matrix:
@@ -60,7 +73,11 @@ jobs:
       - run: nix develop -i -s CI true -c make test
 
   nix-build-trunk:
-    name: Bootstrap with OCaml trunk (Nix)
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Bootstrap with OCaml trunk (Nix)' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -68,7 +85,11 @@ jobs:
       - run: nix build .#dune-trunk
 
   fmt:
-    name: Format
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Format' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -76,14 +97,22 @@ jobs:
       - run: nix develop .#fmt -c make fmt-preview
 
   diff-on-checkout:
-    name: Ensure no files with CRLF line endings are committed to the repo
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Ensure no files with CRLF line endings are committed to the repo' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - run: git diff --exit-code
 
   doc:
-    name: Documentation
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Documentation' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -93,7 +122,11 @@ jobs:
           LC_ALL: C
 
   bootstrap:
-    name: Bootstrap with OCaml 4.02
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Bootstrap with OCaml 4.02' }}
     strategy:
       fail-fast: false
       matrix:
@@ -106,7 +139,11 @@ jobs:
       - run: nix develop -i .#bootstrap-check -c make test-bootstrap-script
 
   nix-build-4-14:
-    name: Bootstrap with OCaml 4.14
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Bootstrap with OCaml 4.14' }}
     strategy:
       fail-fast: false
       matrix:
@@ -125,9 +162,13 @@ jobs:
       - run: nix develop -i .#bootstrap-check_4_14 -c make release
 
   nix-build-ox:
+    if: github.event.action != 'edited' || github.event.changes.base.ref
     # This builds OxCaml with the flake version which is typically ahead of the
     # OxCaml opam repository
-    name: Bootstrap with OxCaml
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Bootstrap with OxCaml' }}
     strategy:
       fail-fast: false
       matrix:
@@ -150,8 +191,12 @@ jobs:
 #
 
   build:
-    name: Build (opam)
+    if: github.event.action != 'edited' || github.event.changes.base.ref
     # we only start building our other jobs, once our main tests have passed
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Build (opam)' }}
     needs: nix-test
     strategy:
       fail-fast: false
@@ -320,7 +365,11 @@ jobs:
           key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**/*.opam') }}
 
   rocq:
-    name: Rocq Tests
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Rocq Tests' }}
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
@@ -335,7 +384,11 @@ jobs:
       - run: nix develop .#rocq -c make test-rocq
 
   rocq-native:
-    name: Rocq Tests (native)
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Rocq Tests (native)' }}
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
@@ -350,7 +403,11 @@ jobs:
       - run: nix develop .#rocq-native -c make test-rocq-native
 
   wasm:
-    name: Wasm_of_ocaml Tests
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Wasm_of_ocaml Tests' }}
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
@@ -406,7 +463,11 @@ jobs:
           key: opam-wasm-${{ hashFiles('**/*.opam') }}
 
   cygwin:
-    name: Bootstrap on Cygwin
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Bootstrap on Cygwin' }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -418,7 +479,11 @@ jobs:
         run: make release
 
   oxcaml:
-    name: OxCaml Tests (opam)
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'OxCaml Tests (opam)' }}
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
@@ -470,7 +535,11 @@ jobs:
           key: opam-ox-${{ hashFiles('**.opam') }}
 
   nix-oxcaml:
-    name: OxCaml Tests (Nix)
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'OxCaml Tests (Nix)' }}
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
@@ -488,7 +557,11 @@ jobs:
         run: nix develop -i .#ox -c make test-ox
 
   create-local-opam-switch:
-    name: Create local opam switch
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Create local opam switch' }}
     needs: nix-build
     strategy:
       fail-fast: true
@@ -516,7 +589,11 @@ jobs:
         run: opam install .
 
   build-microbench:
-    name: Build microbenchmarks
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Build microbenchmarks' }}
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
@@ -525,7 +602,11 @@ jobs:
       - run: nix develop .#microbench -c make dune build bench/micro
 
   utop-dev-tool-test:
-    name: Test that the utop dev tool can be built and run
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Test that the utop dev tool can be built and run' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

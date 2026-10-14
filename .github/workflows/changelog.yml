@@ -7,11 +7,19 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  # Metadata edits must not cancel active checks.
+  group: >-
+    ${{ github.workflow }}-${{ github.event.action == 'edited' &&
+    !github.event.changes.base.ref && github.run_id ||
+    github.event.pull_request.number }}
   cancel-in-progress: true
 jobs:
   check-changelog:
-    name: Entry Check
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'Entry Check' }}
     runs-on: ubuntu-slim
     steps:
       - name: Check for a changelog entry

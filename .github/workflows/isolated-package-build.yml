@@ -27,6 +27,11 @@ env:
 
 jobs:
   packaging-check:
+    if: github.event.action != 'edited' || github.event.changes.base.ref
+    name: >-
+      ${{ github.event.action == 'edited' &&
+      !github.event.changes.base.ref && 'Ignored metadata edit' ||
+      'packaging-check' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

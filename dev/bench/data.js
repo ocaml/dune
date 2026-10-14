@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791990815169,
+  "lastUpdate": 1791990824240,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -468000,6 +468000,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 68.5485137061,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a9e095dabbd66e0f5bb2a00324140a7eb417a20f",
+          "message": "Fix some of the test suite on mefyl's laptop (#16600)\n\n## Description\n\nA bunch of pretty boring fixes so the test suite passes on my local\nenvironment:\n\n* Be resilient to exotic umask by forcing it to 022. Some tests already\ndo that - already because of me back in the days.\n* Neutralize global git configuration: I have githooks enabled globally,\nwhich tries setting up hooks on each repository creation, which fails in\nthe sandbox. Some other part of the test suite already do that.\n* Fix some tests failing when cwd contains dev -\n`/home/mefyl/dev/tarides/...` in my case.\n* ~~Handle single quoted `ID='gentoo'` in `/etc/os-release`, just like\nwe handle `ID=ubuntu` and `ID=\"rhel\"`.~~\n* Fix test that assumes `/usr/bin/ocamlfind` does not exist.\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-10-14T16:54:17+02:00",
+          "tree_id": "9c6a6eec5c897e8ad53fb13c29dbb48f3c77d5c5",
+          "url": "https://github.com/ocaml/dune/commit/a9e095dabbd66e0f5bb2a00324140a7eb417a20f"
+        },
+        "date": 1791990822990,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.69235380176,
             "unit": "seconds"
           }
         ]

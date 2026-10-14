@@ -431,8 +431,8 @@ let try_to_store_to_shared_cache ~mode ~rule_digest ~loc ~produced_targets
       produced_targets
       ~f:(fun target ->
         match Target.create target with
-        | Some t -> Ok t
-        | None -> Error ())
+        | Some (File _ as target) -> Ok target
+        | Some Directory | None -> Error ())
       ~d:(fun target ->
         match Target.create target with
         | Some _ -> Ok ()
@@ -477,12 +477,12 @@ let try_to_store_to_shared_cache ~mode ~rule_digest ~loc ~produced_targets
 ;;
 
 module File_digest = struct
-  let refresh_async ~allow_dirs stats path =
+  let refresh_async stats path =
     let path = Path.build path in
-    Digest_result.path_with_unix_stats_async ~allow_dirs path stats
+    Digest_result.path_with_unix_stats_async ~allow_dirs:false path stats
   ;;
 
-  let refresh ~allow_dirs path =
+  let refresh path =
     let open Digest_result.Error in
     match Unix.lstat (Path.Build.to_string path) with
     | exception Unix.Unix_error (ENOENT, _, _) -> Fiber.return (Error No_such_file)
@@ -491,7 +491,7 @@ module File_digest = struct
       (match stats.st_kind with
        | S_LNK ->
          (match Unix.stat (Path.Build.to_string path) with
-          | stats -> refresh_async stats ~allow_dirs:false path
+          | stats -> refresh_async stats path
           | exception Unix.Unix_error (ENOENT, _, _) ->
             Fiber.return (Error Broken_symlink)
           | exception exn -> Fiber.return (Error (Digest_result.Error.of_exn exn)))
@@ -503,12 +503,9 @@ module File_digest = struct
            |> Permissions.Mode.to_int
          in
          (match Unix.chmod (Path.Build.to_string path) perm with
-          | () -> refresh_async ~allow_dirs:false { stats with st_perm = perm } path
+          | () -> refresh_async { stats with st_perm = perm } path
           | exception exn -> Fiber.return (Error (Digest_result.Error.of_exn exn)))
-       | _ ->
-         (* CR-someday amokhov: Shall we proceed if [stats.st_kind = S_DIR]?
-          What about stranger kinds like [S_SOCK]? *)
-         refresh_async ~allow_dirs stats path)
+       | _ -> refresh_async stats path)
   ;;
 end
 
@@ -523,18 +520,27 @@ let compute_target_digests_or_raise_error ~loc ~produced_targets
        not change state once built. A very practical reason is that enabling
        the cache will remove write permission because of hardlink sharing
        anyway, so always removing them enables to catch mistakes earlier. *)
-    File_digest.refresh ~allow_dirs:true
+    File_digest.refresh
   in
   Targets.Produced.map_with_errors_fiber ~f:compute_digest produced_targets
   >>| function
   | Ok result -> result
   | Error errors ->
     let missing, errors =
+      let { Targets.Produced.root; _ } = produced_targets in
       let process_target (target, error) =
         if Digest_result.Error.no_such_file error
         then Left target
         else (
-          let error = Digest_result.Error.pp error (Path.build target) in
+          let error =
+            match error with
+            | Unexpected_kind S_DIR
+              when Path.Build.equal (Path.Build.parent_exn target) root ->
+              Pp.textf
+                "Directory produced for a file target. Use (dir %s)."
+                (Path.Build.basename target |> Filename.to_string)
+            | _ -> Digest_result.Error.pp error (Path.build target)
+          in
           Right (target, error))
       in
       Nonempty_list.to_list errors |> List.partition_map ~f:process_target

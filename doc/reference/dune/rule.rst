@@ -200,5 +200,18 @@ directory target ``bar``.
      (targets foo (dir bar))
      (action  <action>))
 
-In Dune 3.0 through 3.23, directory targets require the experimental
-``(using directory-targets 0.1)`` extension.
+Targets declared without ``(dir ...)`` must produce files, not directories.
+Symlinks to files are allowed as file targets. Earlier Dune releases accepted
+rules that produced directories while declaring them as files. This is no
+longer supported, even when the project uses an older Dune language version.
+
+If an action creates a directory tree, declare its root as a directory target;
+for example, use ``(target (dir output))`` rather than ``(target output)``.
+An entirely empty directory is not a valid directory target, so changing its
+declaration alone is insufficient. Such rules must be restructured; for
+example, the action can create a marker file inside the directory when
+appropriate. Empty subdirectories inside directory targets are allowed.
+
+With Dune language versions 3.0 through 3.23, directory targets require the
+experimental ``(using directory-targets 0.1)`` extension. Projects using a
+language version older than 3.0 must increase it to use directory targets.

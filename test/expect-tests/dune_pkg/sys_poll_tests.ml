@@ -11,7 +11,7 @@ let%expect_test "parsing os-release values" =
     {|
     ID: debian
     ID_LIKE: rhel
-    VERSION_ID: '2.18'
+    VERSION_ID: 2.18
     NAME:
     |}]
 ;;

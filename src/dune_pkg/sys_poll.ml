@@ -111,8 +111,11 @@ let parse_os_release lines =
       Some
         ( key
         , match Scanf.sscanf v "\"%s@\"" Fun.id with
-          | Error _ -> v
-          | Ok contents -> contents ))
+          | Ok contents -> contents
+          | Error _ ->
+            (match Scanf.sscanf v "'%s@'" Fun.id with
+             | Ok contents -> contents
+             | Error _ -> v) ))
 ;;
 
 let os_release_fields () =

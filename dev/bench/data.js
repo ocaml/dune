@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791973465388,
+  "lastUpdate": 1791973472447,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -467826,6 +467826,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 60.23205174808667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a802131a3803cc68df6507dd913e04f2255dac48",
+          "message": "fix(compile_commands): avoid copy_files discovery cycles (#16518)\n\nFixes #16516 by deferring compilation-database discovery.",
+          "timestamp": "2026-10-14T12:06:24+02:00",
+          "tree_id": "d38444c50cf92206395a75e6b4ae33fa4011434c",
+          "url": "https://github.com/ocaml/dune/commit/a802131a3803cc68df6507dd913e04f2255dac48"
+        },
+        "date": 1791973471590,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5387545153600001,
             "unit": "seconds"
           }
         ]

@@ -154,6 +154,7 @@ Test that the cache stores all historical build results.
 
 Test that executable permissions are restored from the shared cache.
 
+  $ umask 022
   $ rm -rf .xdg-cache executable
   $ mkdir executable
   $ cat > executable/dune-project <<EOF

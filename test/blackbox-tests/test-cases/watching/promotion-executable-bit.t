@@ -4,6 +4,8 @@ just file contents.
 The second build repairs the promoted source file's permissions without rerunning
 the rule action.
 
+  $ umask 022
+
   $ write_promoted_result_project \
   >   "cp original promoted; chmod 655 promoted; printf 'promote\n' >> ../runs" \
   >   "dune_cmd stat permissions promoted > result; cat result >> ../runs"

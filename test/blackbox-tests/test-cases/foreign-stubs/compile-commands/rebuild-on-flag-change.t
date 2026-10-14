@@ -42,3 +42,45 @@ The flags should now contain -DFOO=2:
   [
     "-DFOO=2"
   ]
+
+A stanza without foreign stubs leaves the compilation database unchanged:
+
+  $ cp compile_commands.json original.json
+  $ cat >>dune <<EOF
+  > (alias (name unrelated))
+  > (library
+  >  (name bar)
+  >  (modules))
+  > EOF
+  $ dune build compile_commands.json
+  $ cmp original.json compile_commands.json
+  $ cp dune dune-without-bar-stubs
+
+Adding foreign stubs to that stanza includes its entries:
+
+  $ cat >bar_stub.c <<EOF
+  > #include <caml/mlvalues.h>
+  > value bar_stub(value unit) { return Val_int(7); }
+  > EOF
+  $ cat >dune <<EOF
+  > (library
+  >  (name foo)
+  >  (foreign_stubs (language c) (names stub) (flags :standard -DFOO=2)))
+  > (alias (name unrelated))
+  > (library
+  >  (name bar)
+  >  (modules)
+  >  (foreign_stubs (language c) (names bar_stub)))
+  > EOF
+  $ dune build compile_commands.json
+  $ jq '[.[].file]' compile_commands.json
+  [
+    "bar_stub.c",
+    "stub.c"
+  ]
+
+Removing those stubs restores the original compilation database:
+
+  $ cp dune-without-bar-stubs dune
+  $ dune build compile_commands.json
+  $ cmp original.json compile_commands.json

@@ -11,6 +11,7 @@ on:
     paths:
       - 'opam/*.opam'
   pull_request:
+    types: [opened, synchronize, reopened, edited]
     paths:
       - 'opam/*.opam'
   workflow_dispatch:

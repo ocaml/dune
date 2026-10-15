@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792081612909,
+  "lastUpdate": 1792081622496,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -468580,6 +468580,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 64.50019992475335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "mmatalka@gmail.com",
+            "name": "orbitz",
+            "username": "orbitz"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "31c98f9e1abfd578f51a64ca7ff1b9c5bcc50125",
+          "message": "Feat/job slots rule (#16475)\n\nAdd a new rule that allows specifying how many build slots to use. This\ncan be computed by running a program. The computed slots then become\navailable via an env variable which can be used to specify how many\nslots to use in the underlying operation.\n\nI have a large polyglot monorepo and we drive it with dune. However,\ndune does not provide a makefile jobserver, so there is not way to\ncommunicate available lots to underlying build systems, such as Cargo.\nAlso, not all build systems talk jobserver.\n\nIt is also not feasible to pass in the equivalent of `-j1` because all\nbuilds would take too long.\n\nThis solution is meant to be a reasonable middle ground: add a dune rule\nthat allows a build to specify how many slots it will use, possibly\ncomputing that value, and then pass that value to the build.\n\nTo avoid making the count the part of the computed digest. I chose to\nuse environment variables.\n\nAn example rule for my repo for a rust package would be:\n\n`(job_slots (bash \"echo $DUNE_JOBS\"))`\n\nThe bash solution here is just what seemed reasonable to me, I am not a\ndune expert.\n\nDisclaimer: I did use an LLM to create this change.\n\n## Related Issue and Motivation\n\nThis makes it possible for dune to more easily drive polyglot builds\nwithout over-subscribing or dramatically under-subscribing a machine.\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.\n\n---------\n\nSigned-off-by: Malcolm <malcolm@stategraph.com>\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\nCo-authored-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-16T00:07:35+08:00",
+          "tree_id": "63e074dba5cd6469035aaf3f07539f1b31b57427",
+          "url": "https://github.com/ocaml/dune/commit/31c98f9e1abfd578f51a64ca7ff1b9c5bcc50125"
+        },
+        "date": 1792081621235,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5759583799466667,
             "unit": "seconds"
           }
         ]

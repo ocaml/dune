@@ -9,9 +9,9 @@ Dune RPC
    This one could be split into :doc:`reference/dune-libs` for the API part and
    a how-to guide which is missing.
 
-Starting from 3.0, ``dune build`` runs an RPC server. This is a general
-mechanism introduced to integrate with various dune functionality. Some use
-cases we have in mind are:
+Starting from dune 3.0, dune's watch mode also runs an RPC server. This is a
+general mechanism introduced to integrate with various dune functionality. Some
+use cases we have in mind are:
 
 - Text editors that would like to receive dune's error reporting
 - In the future, custom actions that need to communicate with dune

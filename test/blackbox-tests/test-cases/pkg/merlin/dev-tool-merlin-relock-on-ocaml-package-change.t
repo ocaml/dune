@@ -23,7 +23,7 @@ Use an extra file to distinguish reuse from an identical regenerated lockdir.
   > else
   >   echo 'unchanged dev-tool lock regenerated'
   > fi
-  unchanged dev-tool lock regenerated
+  unchanged dev-tool lock reused
   $ rm -f "${dev_tool_lock_dir}"/relock-sentinel
 
 Change the compiler package's build recipe without changing its version, then
@@ -42,10 +42,9 @@ Executing Merlin must notice the changed compiler package and regenerate its
 lock directory from the updated recipe.
 
   $ dune tools exec ocamlmerlin
-  The version of the compiler package ("ocaml-base-compiler") in this project's
-  lockdir has changed to 5.2.0 (formerly the compiler version was 5.2.0). The
-  dev-tool "merlin" will be re-locked and rebuilt with this version of the
-  compiler.
+  The compiler package ("ocaml-base-compiler") in this project's lockdir has
+  changed without changing its version (5.2.0). The dev-tool "merlin" will be
+  re-locked and rebuilt with the updated compiler package.
   Solution for _build/.dev-tools.locks/merlin:
   - merlin.0.0.1
   - ocaml-base-compiler.5.2.0

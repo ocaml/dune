@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792096271653,
+  "lastUpdate": 1792096594029,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -468667,6 +468667,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5609717173800001,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "69c3607672dfcb8d2d56b38f08b4737ea819602d",
+          "message": "fix(rpc): use native Windows process IDs for registry entries (#16551)\n\n## Description\n\nUse GetCurrentProcessId only for Windows RPC registry metadata through a\nprivate binding in the existing C-stub file, with an OCaml-int bound\ncheck.\n\nUnix behavior, global Stdune.Pid/HANDLE process operations, encoding,\nfilename format, normal cleanup and dependencies are unchanged.\n\nFixes #16549. The independent shared endpoint issue remains #16548; this\ncorrection alone does not fix workspace routing.\n\n## Regression tests\n\nTest-only PR #16553 is merged. This branch is updated against main at\na802131a3803cc68df6507dd913e04f2255dac48. The fix leaves the test body\nunchanged and removes only the two recorded expected failures.\nProduction correction and changelog are unchanged from the previous\ndraft.\n\n## Validation\n\nNative Win32/mingw64, OCaml 5.5.1, release profile and -j 1:\nwatching/runtest-windows, scoped production typechecks (RPC, RPC\nimplementation, engine, CLI and Lwt RPC), the Lwt example build and\nwhole-source @fmt pass. The post-merge scoped recheck passes; it is\nincremental and may reuse unchanged outputs, not an independent\nfull-suite acceptance cycle.\n\nThe PID fixture observes the native PID independently and compares the\nfilename and serialized PID. It uses captured-process termination rather\nthan shared-endpoint shutdown and does not establish natural registry\ncleanup.\n\nFull @check/@runtest has not passed locally. The shared development\nswitch lacks full-suite dependencies, including ppx_bench/core_bench;\nthe address branch's full attempt also reported a Windows Git-path\nfixture error. Full Unix, MSVC and upstream-suite checks remain for CI.\nNo package installation, source workaround or warning suppression was\nadded. Earlier shutdown controls are historical evidence, not freshly\nrerun standalone-PID controls in this iteration. This PR remains draft;\nno full cross-platform pass or merge readiness is claimed.\n\nChangelog: doc/changes/fixed/16551.md. Old HANDLE-based servers, abrupt\ndeath, stale PID reuse and the earlier unexplained combined\nbackground-job segmentation-fault report remain outside this narrow\ncorrection.",
+          "timestamp": "2026-10-15T22:17:59+02:00",
+          "tree_id": "138410407897ee232a15be7107fd7c9cfad3a6eb",
+          "url": "https://github.com/ocaml/dune/commit/69c3607672dfcb8d2d56b38f08b4737ea819602d"
+        },
+        "date": 1792096592266,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.596647339966665,
             "unit": "seconds"
           }
         ]

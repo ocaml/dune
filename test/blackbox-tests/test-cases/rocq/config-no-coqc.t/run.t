@@ -123,17 +123,19 @@ We now test that the ocaml package still builds even when Coq rules can't be set
    ]
   [1]
 
-Coq package should fail:
+Coq package should fail. Either the theory or extraction can report the missing
+Corelib first, so omit their intermediate dependency paths:
 
-  $ (unset INSIDE_DUNE; PATH=_path dune build -p example-coq)
+  $ (unset INSIDE_DUNE; PATH=_path dune build -p example-coq) 2>stderr
+  [1]
+  $ sed \
+  >   -e '/^-> required by _build\/default\/coq\//d' \
+  >   -e '/^-> required by _build\/install\/default\/lib\/coq\/user-contrib\/Common\//d' \
+  >   -e '/^-> required by _build\/install\/default\/lib\/example-coq\/coq\//d' stderr
   Couldn't find Rocq Corelib, and the theory does not disable automatic Corelib
   inclusion with (no_corelib).
-  -> required by _build/default/coq/Common/.Common.theory.d
-  -> required by _build/default/coq/Common/Foo.glob
-  -> required by _build/install/default/lib/coq/user-contrib/Common/Foo.glob
   -> required by _build/default/example-coq.install
   -> required by alias install
-  [1]
   $ cat example-coq.install
   cat: example-coq.install: No such file or directory
   [1]

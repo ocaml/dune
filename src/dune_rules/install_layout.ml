@@ -147,6 +147,18 @@ let make_dispatch ~dir ~directory_targets subdirs f =
     rules
 ;;
 
+let rocq_plugin_alias ~dir = Alias.make (Alias.Name.of_string ".rocq-plugin-layout") ~dir
+
+let rocq_plugin_paths entries =
+  Path.Build.Map.foldi
+    entries
+    ~init:[]
+    ~f:(fun dst (entry : Path.t Install.Entry.Expanded.t) acc ->
+      match (entry.section : Section.t) with
+      | Lib | Libexec -> Path.build dst :: acc
+      | _ -> acc)
+;;
+
 let gen_rules context_name ~dir rest =
   let open Memo.O in
   match rest with
@@ -169,6 +181,11 @@ let gen_rules context_name ~dir rest =
            | Directory -> Some Loc.none)
        in
        make_dispatch ~dir ~directory_targets Subdir_set.empty (fun () ->
+         let* () =
+           Rules.Produce.Alias.add_deps
+             (rocq_plugin_alias ~dir)
+             (Action_builder.paths (rocq_plugin_paths entries))
+         in
          Path.Build.Map.to_seq entries
          |> Memo.parallel_iter_seq ~f:(fun (dst, { Install.Entry.kind; src; _ }) ->
            let { Action_builder.With_targets.build; targets } =
@@ -197,17 +214,8 @@ module For_rocq_only = struct
      keeping METAs, .cmi, .cmxs etc. — all upstream of theory compilation. *)
   let lib_root context_name packages =
     let open Action_builder.O in
-    let* lib_paths =
-      Action_builder.of_memo (entries context_name packages)
-      >>| Path.Build.Map.foldi
-            ~init:[]
-            ~f:(fun dst (entry : Path.t Install.Entry.Expanded.t) acc ->
-              match (entry.section : Section.t) with
-              | Lib | Libexec -> Path.build dst :: acc
-              | _ -> acc)
-    in
-    let+ () = Action_builder.paths lib_paths in
     let layout_root = root context_name packages in
+    let+ () = Action_builder.dep (Dep.alias (rocq_plugin_alias ~dir:layout_root)) in
     (Install.Roots.opam_from_prefix layout_root ~relative:Path.Build.relative).lib_root
   ;;
 end

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792079048586,
+  "lastUpdate": 1792079368666,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -468493,6 +468493,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5788586556733334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ecb31bc6855af1cef686f84c1ef7818087e49408",
+          "message": "test(action-plugin): cover detached requests (#16443)\n\nCover unsandboxed dependency requests that outlive the action-plugin\nprocess. The producer waits for the plugin to exit; subsequent changes\nto its input must rerun the plugin, verifying that late dependency facts\nare retained in the rule cache.\n\nUse two jobs so this regression runs on main independently of the\nseparate job-slot lending change.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-15T23:31:02+08:00",
+          "tree_id": "f5e3bc3168bf3eac69a21a7ef9bdb9ddb1428f93",
+          "url": "https://github.com/ocaml/dune/commit/ecb31bc6855af1cef686f84c1ef7818087e49408"
+        },
+        "date": 1792079366008,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.004615730506664,
             "unit": "seconds"
           }
         ]

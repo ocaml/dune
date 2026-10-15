@@ -117,6 +117,29 @@ A root-section entry beside META must remain excluded to avoid a build cycle.
   >  (section lib_root)
   >  (files (theory/bar.vo as bar/proof.vo)))
   > EOF
+
+Record the dependency representation in a directory shared with root-section
+entries. Any grouping must avoid literal-name filters, which scan a name list
+for every generated file.
+
+  $ dune rules --format=json theory/.bar.theory.d | jq '
+  >   include "dune";
+  >   .[0]
+  >   | [ruleDepGlobEntries
+  >      | select(.dir | startswith("_build/install/default/.packages/"))]
+  >   as $groups
+  >   | {layout_files:
+  >        ([ruleDepFilePathsOfKind("In_build_dir")
+  >          | select(startswith("_build/install/default/.packages/"))]
+  >         | length),
+  >      layout_groups: ($groups | length),
+  >      unconditional_groups: all($groups[]; .predicate == ["or", []])}'
+  {
+    "layout_files": 11,
+    "layout_groups": 0,
+    "unconditional_groups": true
+  }
+
   $ export REAL_ROCQ=$(command -v rocq)
   $ mkdir bin
   $ cat > bin/rocq <<'EOF'

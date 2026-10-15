@@ -737,23 +737,21 @@ module Handle_exit_status = struct
           :: add_command_line (pp_output output)
         | _ ->
           add_command_line
-            (match output with
-             | Has_output output -> [ output.with_color ]
-             | No_output ->
+            (match error, output with
+             | Failed _, Has_output output -> [ output.with_color ]
+             | Signaled signame, _ ->
+               Pp.textf "Command got signal %s." (Signal.name signame) :: pp_output output
+             | Failed exitcode, No_output ->
                (* If the command has no output, we need to say something.
                   Otherwise it's not clear what's going on. *)
-               (match error with
-                | Failed exitcode ->
-                  (* When debugging segfaults, 0xc0000005 is a slightly easier
-                     random number to pattern match and 🤦 than -1073741819! *)
-                  let exitcode =
-                    if Sys.win32 && exitcode < 0
-                    then Printf.sprintf "0x%08lx" (Int32.of_int exitcode)
-                    else string_of_int exitcode
-                  in
-                  [ Pp.textf "Command exited with code %s." exitcode ]
-                | Signaled signame ->
-                  [ Pp.textf "Command got signal %s." (Signal.name signame) ]))
+               (* When debugging segfaults, 0xc0000005 is a slightly easier
+                  random number to pattern match and 🤦 than -1073741819! *)
+               let exitcode =
+                 if Sys.win32 && exitcode < 0
+                 then Printf.sprintf "0x%08lx" (Int32.of_int exitcode)
+                 else string_of_int exitcode
+               in
+               [ Pp.textf "Command exited with code %s." exitcode ])
       in
       fail ~dir ~loc ~compound ~has_embedded_location ?promotion paragraphs
   ;;

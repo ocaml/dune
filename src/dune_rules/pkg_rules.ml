@@ -1228,21 +1228,13 @@ module Action_expander = struct
     |> Action_builder.with_no_targets
   ;;
 
-  let dune_exe context =
-    Which.which ~path:(Env_path.path Env.initial) Filename.dune
-    >>| function
-    | Some s -> Ok s
-    | None ->
-      Error (Action.Prog.Not_found.create ~loc:None ~context ~program:Filename.dune ())
-  ;;
-
   let build_command context (pkg : Pkg.t) =
     Option.map pkg.build_command ~f:(function
       | Action action -> expand context pkg action
       | Dune ->
         (* CR-someday rgrinberg: respect [dune subst] settings. *)
         Command.run_dyn_prog
-          (Action_builder.of_memo (dune_exe context))
+          (Action_builder.return (Ok (Path.of_string Sys.executable_name)))
           ~dir:pkg.paths.source_dir
           [ A "build"; A "-p"; A (Package.Name.to_string pkg.info.name) ]
         |> Memo.return)

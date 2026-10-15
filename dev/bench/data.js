@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792068861102,
+  "lastUpdate": 1792068868713,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -468406,6 +468406,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.26243670512667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4b7812a2134887c686bc990f42859825f69fe8c3",
+          "message": "test(rocq): reproduce excessive plugin layout dependencies (#16607)\n\nDemonstrate that rocq theories add the plugin dependency for every `.vo`\nfile even when it isn't relevant.",
+          "timestamp": "2026-10-15T14:35:52+02:00",
+          "tree_id": "f9e2f47dad24cae02d68ed78666aa74370e88838",
+          "url": "https://github.com/ocaml/dune/commit/4b7812a2134887c686bc990f42859825f69fe8c3"
+        },
+        "date": 1792068867681,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5508469836733334,
             "unit": "seconds"
           }
         ]

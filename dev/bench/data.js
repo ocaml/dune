@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792099222509,
+  "lastUpdate": 1792099535833,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -468725,6 +468725,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5763470492333335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "shon.feder@gmail.com",
+            "name": "Shon",
+            "username": "shonfeder"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b580d8bc3d0560f25f4366abd142549415d8986f",
+          "message": "chore(release): update release scripts (#15776)\n\n- The version header date in the changelog script was taken from the\nreleaser's local timezone, so the same release cut at the same instant\nrecords a different date depending on who runs the script.\n- make release-init.sh pash shellcheck\n- lint the release scripts from the build\n- add a step to preview the changelog before cutting a release\n- make each publication step its own target, allowing the release\nprocess to be resumed\n- submit alphas to opam as draft pull requests, because these are\npre-releases used to check CI results\n- update docs to refer to current and scripted release process\n\nI plan to exercise these changes to the scripts when we cut 3.25 #15593\n, and mark it as ready for merge after that. Any input or review in the\nmeantime is welcome.\n \n<!-- Thank you for contributing to dune!\n\n For general guidelines on contributing to dune, see\nhttps://github.com/ocaml/dune/blob/main/CONTRIBUTING.md#developing-dune\n-->\n\n## Description\n<!-- Briefly describe your changes -->\n\n## Related Issue and Motivation\n<!-- Why is this change required? What problem does it solve? -->\n<!-- If it closes an open issue, link to the issue here. -->\n<!-- Non-trivial contributions are expected to be preceded by an issue,\nas\n     per CONTRIBUTING.md. -->\n\nFixes #13771\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-10-15T17:07:07-04:00",
+          "tree_id": "3dacdb5a41ca34c2d1915a7c3583263d773e2e53",
+          "url": "https://github.com/ocaml/dune/commit/b580d8bc3d0560f25f4366abd142549415d8986f"
+        },
+        "date": 1792099534016,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 60.446305225580005,
             "unit": "seconds"
           }
         ]

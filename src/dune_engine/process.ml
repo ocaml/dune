@@ -1077,7 +1077,8 @@ let spawn
         ~name:metadata.Process_metadata.name
         ~categories:metadata.Process_metadata.categories
         ~started_at
-        ~queued);
+        ~queued
+        ~job_slots:metadata.job_slots);
   Io.release stdout;
   Io.release stderr;
   { started_at
@@ -1448,7 +1449,8 @@ let run_internal
            ~name:metadata.Process_metadata.name
            ~categories:metadata.Process_metadata.categories
            ~started_at
-           ~queued);
+           ~queued
+           ~job_slots:metadata.job_slots);
        report_process_finished
          ~extra_args:trace_args
          ~metadata

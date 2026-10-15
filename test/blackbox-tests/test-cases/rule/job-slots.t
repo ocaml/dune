@@ -64,6 +64,22 @@ values are clamped to one slot:
   1
   1
 
+Process start events report the granted slots, including the one slot used by
+commands that compute job slots:
+
+  $ dune trace cat | jq -sr '
+  >   [.[] | select(.cat == "process" and .name == "start")
+  >    | .args | select(.target_files != null)
+  >    | {target: (.target_files[0] | split("/") | last), job_slots}]
+  >   | group_by(.target)[]
+  >   | "\(.[0].target): \(map(.job_slots) | sort)"'
+  default: [1]
+  half: [1,2]
+  negative: [1,1]
+  run: [1,3]
+  too-many: [1,4]
+  zero: [1,1]
+
 A change of the total number of job slots does not cause a rebuild:
 
   $ dune build -j 8 ./half

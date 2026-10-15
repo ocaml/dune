@@ -183,6 +183,12 @@ let action dap =
   | [| _; "hold"; connection; release |] -> held_action dap ~connection ~release
   | [| _; "initialize" |] -> Lwt.return_unit
   | [| _; "exit"; code |] -> exit (int_of_string code)
+  | [| _; "parallel"; first; second |] ->
+    let open Lwt.Syntax in
+    let* first, second =
+      Lwt.both (read_file dap ~path:first) (read_file dap ~path:second)
+    in
+    Lwt_io.printf "%s,%s\n" first second
   | _ -> invalid_arg "invalid arguments"
 ;;
 

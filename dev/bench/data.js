@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792004432081,
+  "lastUpdate": 1792059938603,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -650063,6 +650063,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.82451145574,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a83e40e534cdf80a430df6a42c4b7488d2c13ea5",
+          "message": "Fix `dune build` invoking a different `dune` binary when building sub-packages. (#16606)\n\n## Description\n\nUsing `(dune)` as the build step expands to `dune` found in the PATH.\nWith pkg, this can cause a situation where invoking `dune build` invokes\na different `dune` for sub-packages, with the accompanying shenanigans.\nThis expands the current dune executable instead, as some other parts of\nthe code already do. It also saves a PATH lookup.\n\n## Related Issue and Motivation\n\nMy working copy dune invoking the global one, causing a version\nmismatch:\n\n```\n$ /home/mefyl/dev/tarides/dune/_opam/bin/dune build\nContext: _private\nFile \"/home/mefyl/dev/routine/api/_build/_private/default/.pkg/uri.4.4.0-5c37a98ff73b57e8e529024117693064/target/lib/uri/dune-package\", line 1, characters 11-15:\n1 | (lang dune 3.26)\n               ^^^^\nError: Version 3.26 of the dune language is not supported.\nSupported versions of this extension in version 3.26 of the dune language:\n- 1.0 to 1.12\n- 2.0 to 2.9\n- 3.0 to 3.24\n-> required by library \"cohttp\" in _build/default/cohttp/src\n-> required by _build/default/META.cohttp\n-> required by _build/install/default/lib/cohttp/META\n-> required by _build/default/cohttp.install\n-> required by alias install\n$\n\n```\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-10-15T12:16:51+02:00",
+          "tree_id": "8e18e8333fa59520fe7141edd5eeae03df575b13",
+          "url": "https://github.com/ocaml/dune/commit/a83e40e534cdf80a430df6a42c4b7488d2c13ea5"
+        },
+        "date": 1792059720353,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.5610694694066667,
             "unit": "seconds"
           }
         ]

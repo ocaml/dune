@@ -386,7 +386,7 @@ let%expect_test "external path reach on Windows" =
   check_external_reach_on_windows
     ~to_:{|C:\foo\baz|}
     ~from:"c:/foo/bar"
-    ~expected:{|C:\foo\baz|};
+    ~expected:"../baz";
   check_external_reach_on_windows ~to_:"C:/foo" ~from:"D:/bar" ~expected:"C:/foo";
   check_external_reach_on_windows
     ~to_:{|C:foo\baz|}
@@ -408,6 +408,14 @@ let%expect_test "external path reach on Windows" =
     ~to_:{|\\?\UNC\server\share\foo\baz|}
     ~from:{|\\?\unc\SERVER\SHARE\foo\bar|}
     ~expected:{|\\?\UNC\server\share\foo\baz|};
+  check_external_reach_on_windows
+    ~to_:{|C:\foo\qux\..\baz|}
+    ~from:{|C:\foo\bar|}
+    ~expected:"../baz";
+  check_external_reach_on_windows
+    ~to_:{|C:\foo\file:stream|}
+    ~from:{|C:\foo|}
+    ~expected:{|C:\foo\file:stream|};
   check_external_reach_on_windows ~to_:"/foo" ~from:"C:/bar" ~expected:"/foo";
   [%expect {| |}]
 ;;

@@ -91,9 +91,6 @@ let cwd () = Sys.getcwd ()
 let initial_cwd = Fpath.initial_cwd
 let as_local t = "." ^ t
 
-(* Only relativize POSIX-style absolute paths on non-Windows systems. Other
-   absolute syntaxes, such as Windows drive-letter and UNC paths, keep their
-   absolute spelling. *)
 let local_part t =
   match String.drop_prefix t ~prefix:"/" with
   | None -> None
@@ -102,10 +99,36 @@ let local_part t =
   | Some t -> Some (Local.of_string t)
 ;;
 
+(* Other Windows namespaces have different root and normalization semantics, so
+   only ordinary drive-rooted paths are made relative here. *)
+let windows_drive_and_path t =
+  if
+    String.length t >= 3
+    && (match t.[0] with
+        | 'A' .. 'Z' | 'a' .. 'z' -> true
+        | _ -> false)
+    && Char.equal t.[1] ':'
+    && (Char.equal t.[2] '/' || Char.equal t.[2] '\\')
+  then Some (Char.lowercase_ascii t.[0], String.drop t 3)
+  else None
+;;
+
+let windows_local_part t =
+  if (not (Filename.is_relative t)) || String.contains t ':'
+  then None
+  else Local.parse_string_result t |> Result.to_option
+;;
+
 let reach t ~from =
-  (* CR-someday rgrinberg: I couldn't get this to work on Windows. *)
   if Sys.win32
-  then to_string t
+  then (
+    match windows_drive_and_path t, windows_drive_and_path from with
+    | Some (drive, t_path), Some (from_drive, from_path) when Char.equal drive from_drive
+      ->
+      (match windows_local_part t_path, windows_local_part from_path with
+       | Some target, Some from -> Local.reach target ~from
+       | _ -> to_string t)
+    | _ -> to_string t)
   else (
     match local_part t, local_part from with
     | Some t, Some from -> Local.reach t ~from

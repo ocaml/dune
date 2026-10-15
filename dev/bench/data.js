@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792081622496,
+  "lastUpdate": 1792095761540,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -650585,6 +650585,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8758890054066675,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cae0fea9c3eb53373ba5dc553e09e43f2657929d",
+          "message": "test(rocq): check layout dependency sharing and sandbox inputs (#16611)",
+          "timestamp": "2026-10-15T22:09:44+02:00",
+          "tree_id": "eb75f527c5b8cbca0e57a4c9ab6051e8c62fd9ed",
+          "url": "https://github.com/ocaml/dune/commit/cae0fea9c3eb53373ba5dc553e09e43f2657929d"
+        },
+        "date": 1792095393520,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7500863318200004,
             "unit": "seconds"
           }
         ]

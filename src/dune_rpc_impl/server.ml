@@ -69,7 +69,7 @@ module Clients = struct
 end
 
 type server =
-  { lifecycle : Rpc.Server.Lifecycle.t
+  { lifecycle : Rpc.Server.Lifecycle.t option
   ; action_runner : Action_runner.t option
   ; watch_mode : Watch_mode_config.t
   ; mutable clients : Clients.t
@@ -100,7 +100,10 @@ let stop (t : t) =
        match t.server.action_runner with
        | None -> Fiber.return ()
        | Some runner -> Action_runner.stop runner)
-    (fun () -> Rpc.Server.Lifecycle.stop t.server.lifecycle)
+    (fun () ->
+       match t.server.lifecycle with
+       | None -> Fiber.return ()
+       | Some lifecycle -> Rpc.Server.Lifecycle.stop lifecycle)
 ;;
 
 let current_errors () =
@@ -424,34 +427,38 @@ let handler (t : t Fdecl.t) : unit Handler.t =
   rpc
 ;;
 
-let create ~registry ~root ~build ~where ~action_runner watch_mode =
+let create ~registry ~root ~build ~where ~action_runner ~required watch_mode =
   Global_lock.lock_exn ();
   let t = Fdecl.create Dyn.opaque in
-  let action_runner, lifecycle =
-    let server =
-      lazy
-        (let socket_file = Where.rpc_socket_file () in
-         Fpath.unlink_no_err (Path.Build.to_string socket_file);
-         Path.mkdir_p (Path.build (Path.Build.parent_exn socket_file));
-         match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:100 with
-         | Ok s ->
-           (match where with
-            | `Ip _ -> Io.write_file_exn (Path.build socket_file) (Where.to_string where)
-            | `Unix _ -> ());
-           at_exit (fun () -> Fpath.unlink_no_err (Path.Build.to_string socket_file));
-           s
-         | Error `Already_in_use ->
-           User_error.raise
-             [ Pp.textf
-                 "Dune rpc is already running in this workspace. If this is not the \
-                  case, please delete %s"
-                 (Path.Build.to_string_maybe_quoted (Where.rpc_socket_file ()))
-             ])
-    in
-    let handler = Rpc.Server.make (handler t) in
-    let server = Lazy.force server in
-    let lifecycle = Rpc.Server.Lifecycle.create ~handler ~root ~where ~registry ~server in
-    action_runner, lifecycle
+  let socket_file = Where.rpc_socket_file () in
+  Fpath.unlink_no_err (Path.Build.to_string socket_file);
+  let lifecycle =
+    try
+      let handler = Rpc.Server.make (handler t)
+      and server =
+        Path.mkdir_p (Path.build (Path.Build.parent_exn socket_file));
+        match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:100 with
+        | Ok s ->
+          (match where with
+           | `Ip _ -> Io.write_file_exn (Path.build socket_file) (Where.to_string where)
+           | `Unix _ -> ());
+          at_exit (fun () -> Fpath.unlink_no_err (Path.Build.to_string socket_file));
+          s
+        | Error `Already_in_use ->
+          User_error.raise
+            [ Pp.textf
+                "Dune rpc is already running in this workspace. If this is not the case, \
+                 please delete %s"
+                (Path.Build.to_string_maybe_quoted (Where.rpc_socket_file ()))
+            ]
+      in
+      Some (Rpc.Server.Lifecycle.create ~handler ~root ~where ~registry ~server)
+    with
+    | Unix.Unix_error (error, syscall, _) when not required ->
+      Log.info
+        "RPC server unavailable"
+        [ "syscall", Dyn.string syscall; "error", Dyn.string (Unix.error_message error) ];
+      None
   in
   let server = { lifecycle; action_runner; watch_mode; clients = Clients.empty } in
   let res = { server; build } in
@@ -462,7 +469,10 @@ let create ~registry ~root ~build ~where ~action_runner watch_mode =
 
 let run t =
   Fiber.fork_and_join_unit
-    (fun () -> Rpc.Server.Lifecycle.run t.server.lifecycle)
+    (fun () ->
+       match t.server.lifecycle with
+       | None -> Fiber.return ()
+       | Some lifecycle -> Rpc.Server.Lifecycle.run lifecycle)
     (fun () ->
        match t.server.action_runner with
        | None -> Fiber.return ()

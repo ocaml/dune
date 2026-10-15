@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792068083691,
+  "lastUpdate": 1792068290901,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -468319,6 +468319,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.45388572670666666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1fed7d6f044caa3a3516eb86a2991dc1cf4fbd1e",
+          "message": "Continue gracefully in the RPC server cannot be started. (#16597)\n\n## Description\n\nWhen running in sandboxed environments (eg. claude's auto mode default\nsandbox), socket creation can fail, which will prevent dune from\nstarting alltogether. Soften the expectations so a RPC-less build can be\nrun, unless passive watch mode is on since it does not make sense\nwithout RPCs.\n\n## Related Issue and Motivation\n\nCloning a dune-built repository and asking Claude to build it will\ncurrently fail, which is not a good experience. Other setup may trigger\nthis (other sandboxes, grsec/apparmor, ...). I'm unsure whether there\nhas been discussion for/against such a change, but I think it's\nimportant `dune` works smoothly out of the box whenever possible.\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-10-15T14:31:22+02:00",
+          "tree_id": "537a032d8cb7e8962d2b0ddc2e7a796bd64919ac",
+          "url": "https://github.com/ocaml/dune/commit/1fed7d6f044caa3a3516eb86a2991dc1cf4fbd1e"
+        },
+        "date": 1792068288074,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 38.62167401683333,
             "unit": "seconds"
           }
         ]

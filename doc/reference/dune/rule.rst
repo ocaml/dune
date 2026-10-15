@@ -165,13 +165,13 @@ has. The ``job_slots`` field lets such an action reserve more than one job slot.
 The value of the field is an action, usually ``run`` or ``bash``. Before Dune
 runs the rule's action, it runs the ``job_slots`` action with the total number
 of job slots in the ``DUNE_JOBS`` environment variable. The ``job_slots``
-action must print an integer. Dune limits this integer to the range from 1 to
-the total number of job slots. Each process that the rule's action starts waits
-until that number of job slots is free. The rule's action sees the number in
-the ``DUNE_JOB_SLOTS`` environment variable. An action without the field sees
-``DUNE_JOB_SLOTS=1``.
+action must print a positive integer; zero and negative values are errors.
+Dune caps this integer at the total number of job slots. Each process that the
+rule's action starts waits until that number of job slots is free. The rule's
+action sees the number in the ``DUNE_JOB_SLOTS`` environment variable. An action
+without the field sees ``DUNE_JOB_SLOTS=1``.
 
-For example, this rule gives half of the job slots to ``cargo``:
+For example, this rule gives half of the job slots, rounded up, to ``cargo``:
 
 .. code:: dune
 
@@ -181,7 +181,7 @@ For example, this rule gives half of the job slots to ``cargo``:
      (glob_files_rec src/*)
      Cargo.toml
      Cargo.lock)
-    (job_slots (bash "echo $((DUNE_JOBS / 2))"))
+    (job_slots (bash "echo $(((DUNE_JOBS + 1) / 2))"))
     (action
      (progn
       (bash "cargo build --release -j $DUNE_JOB_SLOTS --target-dir target")

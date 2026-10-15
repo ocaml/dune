@@ -337,12 +337,12 @@ let eval_job_slots job_slots ~ectx ~(eenv : env) =
     let stdout = String.trim (Io.read_file_exn out) in
     Dtemp.destroy File out;
     (match Int.of_string stdout with
-     | Some n -> max 1 (min n jobs)
-     | None ->
+     | Some n when n > 0 -> min n jobs
+     | Some _ | None ->
        User_error.raise
          ~loc:ectx.rule_loc
          [ Pp.textf
-             "The job_slots command must print an integer, but it printed %S."
+             "The job_slots command must print a positive integer, but it printed %S."
              stdout
          ])
 ;;

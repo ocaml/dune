@@ -38,10 +38,10 @@ type input =
   ; action : Action.t
   ; job_slots : Action.t option
     (** An action that prints the number of job slots that [action] takes. It
-        runs with the total number of job slots in [DUNE_JOBS]. The result is
-        limited to the range from 1 to the total number of job slots. [action]
-        sees the result in [DUNE_JOB_SLOTS]. Without it, [action] takes one
-        job slot. *)
+        runs with the total number of job slots in [DUNE_JOBS]. The result must
+        be a positive integer and is capped at the total number of job slots.
+        [action] sees the result in [DUNE_JOB_SLOTS]. Without it, [action] takes
+        one job slot. *)
   }
 
 val exec

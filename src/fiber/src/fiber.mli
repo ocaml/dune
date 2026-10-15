@@ -361,14 +361,11 @@ module Throttle : sig
   (** Change the capacity. *)
   val resize : t -> int -> unit fiber
 
-  (** Execute a fiber, waiting if too many jobs are already running *)
-  val run : t -> f:(unit -> 'a fiber) -> 'a fiber
-
-  (** Like [run], but the job takes [weight] slots instead of one. A job can
-      start whenever [running t < size t], even if its weight takes the total
-      above [size t]. A [weight] larger than [size t] is reduced to [size t].
-      Jobs start in the order in which they arrive. *)
-  val run_weighted : t -> weight:int -> f:(unit -> 'a fiber) -> 'a fiber
+  (** Execute a fiber taking [size] slots. A job can start whenever the occupied
+      slots are below the throttle's capacity, even if its size takes the total
+      above capacity. Requests larger than the capacity are capped at it. Jobs
+      start in the order in which they arrive. *)
+  val run : t -> size:int -> f:(unit -> 'a fiber) -> 'a fiber
 
   (** Return the total weight of the jobs currently running. *)
   val running : t -> int

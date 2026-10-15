@@ -34,8 +34,8 @@ let resize t n =
   restart t
 ;;
 
-let run_weighted t ~weight ~f =
-  let weight = min weight t.size in
+let run t ~size ~f =
+  let weight = min size t.size in
   finalize
     ~finally:(fun () ->
       t.running <- t.running - weight;
@@ -51,5 +51,3 @@ let run_weighted t ~weight ~f =
          let* () = Ivar.read ivar in
          f ()))
 ;;
-
-let run t ~f = run_weighted t ~weight:1 ~f

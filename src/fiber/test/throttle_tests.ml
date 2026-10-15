@@ -2,8 +2,8 @@ open Fiber.O
 open Common
 module Throttle = Fiber.Throttle
 
-let job throttle name ~weight ivar =
-  Throttle.run_weighted throttle ~weight ~f:(fun () ->
+let job throttle name ~size ivar =
+  Throttle.run throttle ~size ~f:(fun () ->
     printf "start %s (running %d)\n" name (Throttle.running throttle);
     let+ () = Fiber.Ivar.read ivar in
     printf "stop %s\n" name)
@@ -24,10 +24,10 @@ let%expect_test "two jobs that each take half of the slots run together" =
      let c = Fiber.Ivar.create () in
      let d = Fiber.Ivar.create () in
      Fiber.all_concurrently_unit
-       [ job throttle "a" ~weight:2 a
-       ; job throttle "b" ~weight:2 b
-       ; job throttle "c" ~weight:1 c
-       ; job throttle "d" ~weight:1 d
+       [ job throttle "a" ~size:2 a
+       ; job throttle "b" ~size:2 b
+       ; job throttle "c" ~size:1 c
+       ; job throttle "d" ~size:1 d
        ; (let* () = release "a" a in
           let* () = release "b" b in
           let* () = release "c" c in
@@ -59,9 +59,9 @@ let%expect_test "a job can start even when its weight exceeds the free slots" =
      let y = Fiber.Ivar.create () in
      let z = Fiber.Ivar.create () in
      Fiber.all_concurrently_unit
-       [ job throttle "x" ~weight:1 x
-       ; job throttle "y" ~weight:2 y
-       ; job throttle "z" ~weight:1 z
+       [ job throttle "x" ~size:1 x
+       ; job throttle "y" ~size:2 y
+       ; job throttle "z" ~size:1 z
        ; (let* () = release "x" x in
           let* () = release "y" y in
           release "z" z)
@@ -90,10 +90,10 @@ let%expect_test "queued jobs overcommit in FIFO order when a slot becomes free" 
      let c = Fiber.Ivar.create () in
      let d = Fiber.Ivar.create () in
      Fiber.all_concurrently_unit
-       [ job throttle "a" ~weight:3 a
-       ; job throttle "b" ~weight:1 b
-       ; job throttle "c" ~weight:4 c
-       ; job throttle "d" ~weight:1 d
+       [ job throttle "a" ~size:3 a
+       ; job throttle "b" ~size:1 b
+       ; job throttle "c" ~size:4 c
+       ; job throttle "d" ~size:1 d
        ; (let* () = release "b" b in
           let* () = release "a" a in
           let* () = release "c" c in
@@ -124,8 +124,8 @@ let%expect_test "a weight larger than the size takes all of the slots" =
      let w = Fiber.Ivar.create () in
      let v = Fiber.Ivar.create () in
      Fiber.all_concurrently_unit
-       [ job throttle "w" ~weight:5 w
-       ; job throttle "v" ~weight:1 v
+       [ job throttle "w" ~size:5 w
+       ; job throttle "v" ~size:1 v
        ; (let* () = release "w" w in
           release "v" v)
        ]);

@@ -51,7 +51,7 @@ let () = Memo.check_point := check_point
 let with_job_slot ?cancellation ~job_slots f =
   let* () = Fiber.return () in
   let t = t () in
-  Fiber.Throttle.run_weighted t.job_throttle ~weight:job_slots ~f:(fun () ->
+  Fiber.Throttle.run t.job_throttle ~size:job_slots ~f:(fun () ->
     check_cancelled cancellation;
     f ())
 ;;

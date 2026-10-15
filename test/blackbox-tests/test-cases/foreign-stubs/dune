@@ -1,2 +1,18 @@
 (cram
  (deps sandboxed.sh))
+
+(cram
+ (applies_to c-flags-availability.t)
+ (enabled_if
+  (and
+   (<> %{os_type} Win32)
+   (<> %{ocaml-config:ccomp_type} msvc)))
+ (deps %{bin:ocamlfind}))
+
+(cram
+ (applies_to c-flags-availability-clang.t)
+ (enabled_if
+  (and
+   (<> %{os_type} Win32)
+   %{bin-available:clang}))
+ (deps %{bin:clang} %{bin:ocamlfind}))

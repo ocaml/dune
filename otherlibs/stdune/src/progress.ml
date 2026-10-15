@@ -23,6 +23,7 @@ module No_flush = struct
       show_status_line ()
   ;;
 
+  let supports_status_line = true
   let print_if_no_status_line _msg = ()
 
   let print_user_message msg =

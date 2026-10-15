@@ -28,6 +28,8 @@ let compose (module A : Backend_intf.S) (module B : Backend_intf.S)
   : (module Backend_intf.S)
   =
   (module struct
+    let supports_status_line = A.supports_status_line || B.supports_status_line
+
     let start () =
       A.start ();
       B.start ()

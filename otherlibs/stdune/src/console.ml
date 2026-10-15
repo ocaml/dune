@@ -10,6 +10,11 @@ module Backend = struct
   let compose = Combinators.compose
   let main = ref dumb
 
+  let supports_status_line () =
+    let (module T : Backend_intf.S) = !main in
+    T.supports_status_line
+  ;;
+
   let set (module T : Backend_intf.S) =
     let module Old = (val !main) in
     Old.finish ();

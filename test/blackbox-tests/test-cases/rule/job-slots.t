@@ -3,9 +3,9 @@ runs the command in the field with the total number of job slots in DUNE_JOBS.
 The command prints the number of slots that the rule reserves. The action sees
 this number in DUNE_JOB_SLOTS.
 
-The field is available since dune 3.25:
+The field is available since dune 3.26:
 
-  $ make_dune_project 3.24
+  $ make_dune_project 3.25
 
   $ cat >dune <<'EOF'
   > (rule
@@ -18,11 +18,11 @@ The field is available since dune 3.25:
   File "dune", line 3, characters 1-45:
   3 |  (job_slots (bash "echo $((DUNE_JOBS / 2))"))
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: 'job_slots' is only available since version 3.25 of the dune language.
-  Please update your dune-project file to have (lang dune 3.25).
+  Error: 'job_slots' is only available since version 3.26 of the dune language.
+  Please update your dune-project file to have (lang dune 3.26).
   [1]
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
 
 A rule without the field uses one slot. Dune limits the number that the command
 prints to the range 1 to the total number of job slots:

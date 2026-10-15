@@ -63,7 +63,7 @@ produce files, such as benchmarks.
 - ``(job_slots <action>)`` specifies how many job slots the rule's action
   takes. Use it when the action runs its own parallel work, such as another
   build system. See `Job slots`_ for details. This field has been available
-  since Dune 3.25.
+  since Dune 3.26.
 
 Please note: contrary to makefiles or other build systems, user rules currently
 don't support patterns, such as a rule to produce ``%.y`` from ``%.x`` for any

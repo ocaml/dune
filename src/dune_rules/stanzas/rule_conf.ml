@@ -117,7 +117,7 @@ let long_form ~loc =
      and+ job_slots =
        field_o
          "job_slots"
-         (Dune_lang.Syntax.since Stanza.syntax (3, 25)
+         (Dune_lang.Syntax.since Stanza.syntax (3, 26)
           >>> located Dune_lang.Action.decode_dune_file)
      and+ corrections =
        field_o "corrections" (Dune_lang.Syntax.since Stanza.syntax (3, 23) >>> corrections)

@@ -24,6 +24,8 @@ let normalize_where = function
       (if Filename.is_relative path then Filename.concat (Sys.getcwd ()) path else path)
 ;;
 
+external windows_process_id : unit -> int = "dune_rpc_registry_windows_process_id"
+
 let register t =
   match t.registry with
   | `Skip -> ()
@@ -31,7 +33,9 @@ let register t =
     let (`Caller_should_write { Dune_rpc.Registry.File.path; contents }) =
       let registry_config = Dune_rpc.Registry.Config.create (Lazy.force Dune_util.xdg) in
       let dune =
-        let pid = Pid.me () in
+        let pid =
+          if Sys.win32 then Pid.of_int_exn (windows_process_id ()) else Pid.me ()
+        in
         let where = normalize_where t.where in
         Dune_rpc.Registry.Dune.create ~where ~root:t.root ~pid
       in

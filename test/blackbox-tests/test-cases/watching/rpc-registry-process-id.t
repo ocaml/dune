@@ -37,7 +37,5 @@ not the wrapper used by start_dune. Cygwin reports the native PID as WINPID.
   $ find "$XDG_RUNTIME_DIR/dune/rpc" -type f | wc -l | tr -d ' '
   1
   $ test -f "$XDG_RUNTIME_DIR/dune/rpc/$NATIVE_PID.csexp"
-  [1]
   $ grep -Fq "(3:pid${#NATIVE_PID}:$NATIVE_PID)" "$XDG_RUNTIME_DIR"/dune/rpc/*
-  [1]
   $ cleanup

@@ -265,16 +265,19 @@ let get_cookies ~loc ~expander ~lib_name libs =
       ( Expander.add_bindings expander ~bindings
       , Some ("library-name", (library_name, Lib_name.of_local (loc, lib_name))) )
   in
-  let+ cookies =
-    Memo.List.concat_map libs ~f:(fun t ->
+  let cookies =
+    List.concat_map libs ~f:(fun t ->
       let info = Lib.info t in
       let kind = Lib_info.kind info in
       match (kind : Lib_kind.t) with
-      | Virtual | Parameter | Dune_file Normal -> Memo.return []
+      | Virtual | Parameter | Dune_file Normal -> []
       | Dune_file (Ppx_rewriter { cookies } | Ppx_deriver { cookies }) ->
-        Memo.List.map cookies ~f:(fun { Lib_kind.Ppx_args.Cookie.name; value } ->
-          let+ value = Expander.No_deps.expand_str expander value in
-          name, (value, Lib.name t)))
+        List.map cookies ~f:(fun cookie -> Lib.name t, cookie))
+  in
+  let+ cookies =
+    Memo.List.map cookies ~f:(fun (lib_name, { Lib_kind.Ppx_args.Cookie.name; value }) ->
+      let+ value = Expander.No_deps.expand_str expander value in
+      name, (value, lib_name))
   in
   (match library_name_cookie with
    | None -> cookies

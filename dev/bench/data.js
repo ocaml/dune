@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792068868713,
+  "lastUpdate": 1792077111046,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -650324,6 +650324,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.74174467808,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9ebc8b4de78df8afb348815801997f14f128b4fb",
+          "message": "test(action-plugin): reproduce job-slot starvation (#16610)\n\nDynamic actions currently hold their job slot while waiting for\ndependencies. At `-j 1`, this deadlocks when building an input requires\nanother subprocess.\n\nAdd regression coverage for cold subprocess inputs, overlapping\ndependency requests, and nested dynamic actions. The tests record the\ncurrent timeouts; the scheduler fix will follow separately.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-15T22:59:03+08:00",
+          "tree_id": "65ce5d38ee22c2fbffdd99e595005802218be388",
+          "url": "https://github.com/ocaml/dune/commit/9ebc8b4de78df8afb348815801997f14f128b4fb"
+        },
+        "date": 1792076745187,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.56800597056,
             "unit": "seconds"
           }
         ]

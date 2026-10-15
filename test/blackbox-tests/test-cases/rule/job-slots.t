@@ -164,21 +164,34 @@ outside of the sandbox, so we disable landlock:
   a met b
   b met a
 
-A rule that reserves all of the job slots does not run at the same time as
-another rule:
+A job can start with its full weight as long as at least one slot is free.
+The light job holds one slot while waiting for the heavy job to start. The
+heavy job requests two slots, and its slot calculation waits for the light
+job to start first. Requesting all slots does not guarantee exclusivity:
 
   $ cat >dune <<'EOF'
   > (rule
-  >  (alias exclusive)
-  >  (job_slots (bash "echo $DUNE_JOBS"))
-  >  (action
+  >  (alias overcommit)
+  >  (job_slots
   >   (bash
-  >    "if mkdir $SYNC/busy 2>/dev/null; then sleep 1; rmdir $SYNC/busy; else echo x overlaps; fi")))
+  >    "for i in $(seq 100); do
+  >       if [ -e $SYNC/light ]; then echo $DUNE_JOBS; exit 0; fi
+  >       sleep 0.1
+  >     done
+  >     echo light did not start >&2; exit 1"))
+  >  (action (bash "touch $SYNC/heavy; echo heavy: $DUNE_JOB_SLOTS")))
   > (rule
-  >  (alias exclusive)
+  >  (alias overcommit)
   >  (action
   >   (bash
-  >    "if mkdir $SYNC/busy 2>/dev/null; then sleep 1; rmdir $SYNC/busy; else echo y overlaps; fi")))
+  >    "touch $SYNC/light
+  >     for i in $(seq 100); do
+  >       if [ -e $SYNC/heavy ]; then echo light: $DUNE_JOB_SLOTS; exit 0; fi
+  >       sleep 0.1
+  >     done
+  >     echo light timeout")))
   > EOF
 
-  $ dune build -j 2 @exclusive
+  $ dune build -j 2 @overcommit 2>&1 | sort
+  heavy: 2
+  light: 1

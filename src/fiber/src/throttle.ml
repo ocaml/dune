@@ -17,17 +17,16 @@ let create size = { size; running = 0; waiting = Queue.create () }
 let size t = t.size
 let running t = t.running
 
-(* Jobs start in the order in which they arrive. A job at the head of the
-   queue that does not fit blocks all the jobs behind it, so that a heavy job
-   does not wait forever behind a stream of light jobs. *)
 let rec restart t =
-  match Queue.peek t.waiting with
-  | Some { weight; ivar } when t.running + weight <= t.size ->
-    ignore (Queue.pop_exn t.waiting);
-    t.running <- t.running + weight;
-    let* () = Ivar.fill ivar () in
-    restart t
-  | Some _ | None -> return ()
+  if t.running >= t.size
+  then return ()
+  else (
+    match Queue.pop t.waiting with
+    | None -> return ()
+    | Some { weight; ivar } ->
+      t.running <- t.running + weight;
+      let* () = Ivar.fill ivar () in
+      restart t)
 ;;
 
 let resize t n =
@@ -42,7 +41,7 @@ let run_weighted t ~weight ~f =
       t.running <- t.running - weight;
       restart t)
     (fun () ->
-       if Queue.is_empty t.waiting && t.running + weight <= t.size
+       if Queue.is_empty t.waiting && t.running < t.size
        then (
          t.running <- t.running + weight;
          f ())

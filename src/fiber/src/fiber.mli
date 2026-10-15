@@ -348,30 +348,29 @@ module Mutex : sig
 end
 
 module Throttle : sig
-  (** Limit the number of jobs *)
+  (** Throttle jobs by their weight. *)
 
   type t
 
-  (** [create n] creates a throttler that allows to run [n] jobs at once *)
+  (** [create n] creates a throttler with capacity [n]. *)
   val create : int -> t
 
-  (** How many jobs can run at the same time *)
+  (** Return the capacity at which new jobs stop starting. *)
   val size : t -> int
 
-  (** Change the number of jobs that can run at once *)
+  (** Change the capacity. *)
   val resize : t -> int -> unit fiber
 
   (** Execute a fiber, waiting if too many jobs are already running *)
   val run : t -> f:(unit -> 'a fiber) -> 'a fiber
 
-  (** Like [run], but the job takes [weight] slots instead of one. This lets a
-      job that runs its own parallel work reserve the capacity that it uses.
-      A [weight] larger than [size t] is reduced to [size t], so that the job
-      can always start. Jobs start in the order in which they arrive, so that
-      a job with a large weight does not wait forever. *)
+  (** Like [run], but the job takes [weight] slots instead of one. A job can
+      start whenever [running t < size t], even if its weight takes the total
+      above [size t]. A [weight] larger than [size t] is reduced to [size t].
+      Jobs start in the order in which they arrive. *)
   val run_weighted : t -> weight:int -> f:(unit -> 'a fiber) -> 'a fiber
 
-  (** Return the number of jobs currently running *)
+  (** Return the total weight of the jobs currently running. *)
   val running : t -> int
 end
 

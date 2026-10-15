@@ -156,20 +156,19 @@ sandboxing.
 Job slots
 ~~~~~~~~~
 
-By default, each action takes one job slot, and Dune runs at most ``-j`` job
-slots at the same time. An action that runs another build system, such as
-``cargo`` or ``make``, can use many processors. If it uses one job slot, Dune
-and the other build system together can use more processors than the machine
-has. The ``job_slots`` field lets such an action reserve more than one job slot.
+By default, each process takes one job slot. Dune starts a new process only
+when fewer than ``-j`` slots are in use. A process that runs another build
+system, such as ``cargo`` or ``make``, can use many processors. The ``job_slots``
+field lets it account for this parallelism by taking more than one job slot.
 
 The value of the field is an action, usually ``run`` or ``bash``. Before Dune
 runs the rule's action, it runs the ``job_slots`` action with the total number
 of job slots in the ``DUNE_JOBS`` environment variable. The ``job_slots``
 action must print a positive integer; zero and negative values are errors.
 Dune caps this integer at the total number of job slots. Each process that the
-rule's action starts waits until that number of job slots is free. The rule's
-action sees the number in the ``DUNE_JOB_SLOTS`` environment variable. An action
-without the field sees ``DUNE_JOB_SLOTS=1``.
+rule's action starts takes this many slots. The rule's action sees the number
+in the ``DUNE_JOB_SLOTS`` environment variable. An action without the field sees
+``DUNE_JOB_SLOTS=1``.
 
 For example, this rule gives half of the job slots, rounded up, to ``cargo``:
 
@@ -188,8 +187,10 @@ For example, this rule gives half of the job slots, rounded up, to ``cargo``:
       (copy target/release/libfoo.a %{target}))))
 
 Processes that wait for job slots start in the order in which they become
-ready. A process that waits for many job slots also blocks the processes that
-become ready after it, so that it does not wait forever.
+ready. As soon as at least one slot is free, the next process starts with its
+full slot allocation, even if this takes the total above ``-j``. No further
+processes start until the number of occupied slots drops below ``-j`` again.
+Thus, requesting all slots does not guarantee exclusive execution.
 
 The number of job slots does not change the result of a rule. Thus, a change of
 ``-j`` or of the ``job_slots`` action does not cause a rebuild.

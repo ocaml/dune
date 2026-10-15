@@ -25,7 +25,8 @@ The field is available since dune 3.26:
   $ make_dune_project 3.26
 
 A rule without the field uses one slot. Dune limits the number that the command
-prints to the range 1 to the total number of job slots:
+prints to the range 1 to the total number of job slots. Both zero and negative
+values are clamped to one slot:
 
   $ cat >dune <<'EOF'
   > (rule
@@ -44,18 +45,23 @@ prints to the range 1 to the total number of job slots:
   >  (job_slots (bash "echo 100"))
   >  (action (with-stdout-to %{target} (bash "echo $DUNE_JOB_SLOTS"))))
   > (rule
-  >  (target too-few)
+  >  (target zero)
   >  (job_slots (bash "echo 0"))
+  >  (action (with-stdout-to %{target} (bash "echo $DUNE_JOB_SLOTS"))))
+  > (rule
+  >  (target negative)
+  >  (job_slots (bash "echo -3"))
   >  (action (with-stdout-to %{target} (bash "echo $DUNE_JOB_SLOTS"))))
   > EOF
 
-  $ dune build -j 4 ./default ./half ./run ./too-many ./too-few
+  $ dune build -j 4 ./default ./half ./run ./too-many ./zero ./negative
   $ cat _build/default/default _build/default/half _build/default/run \
-  >   _build/default/too-many _build/default/too-few
+  >   _build/default/too-many _build/default/zero _build/default/negative
   1
   2
   3
   4
+  1
   1
 
 A change of the total number of job slots does not cause a rebuild:

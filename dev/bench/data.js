@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792150249486,
+  "lastUpdate": 1792150256680,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -469102,6 +469102,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 60.89257167344667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6f77644c514783ee72ec37d96c7337414ca559ca",
+          "message": "refactor: remove some duplication around bool/string conversion (#16616)\n\nReuse `Bool.to_string` and `Bool.of_string` in boolean expressions,\npackage filters, and OCaml configuration parsing. Add `Bool.all` so the\nS-expression decoder shares the same boolean/string mapping, preserving\nexisting behavior and error messages.\n\nBuild and format checks pass. The full suite has only the previously\nconfirmed failure in `otherlibs/stdune/test/io_tests.ml`.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-16T19:12:46+08:00",
+          "tree_id": "1c0db81f8f62794f65086c6df92cbabd5f51c1db",
+          "url": "https://github.com/ocaml/dune/commit/6f77644c514783ee72ec37d96c7337414ca559ca"
+        },
+        "date": 1792150255801,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.56515404496,
             "unit": "seconds"
           }
         ]

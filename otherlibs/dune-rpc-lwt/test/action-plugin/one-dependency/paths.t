@@ -122,17 +122,23 @@ physical cwd and Dune's spelling of the root still refer to the same tree.
   second
   
 
-Batched declarations allow ordinary subprocess I/O without copying whole files
-into the plugin's heap.
+Absolute paths can name generated files.
 
   $ cat >> dune <<'EOF'
+  > (rule (target abs-input) (action (write-file abs-input absolute)))
+  > (rule
+  >  (target abs-output)
+  >  (action (with-stdout-to abs-output
+  >   (dynamic-run ./foo.exe absolute abs-input))))
   > (rule (target first) (action (write-file first first)))
   > (rule (target second) (action (write-file second second)))
   > (rule
   >  (target batched)
   >  (action (with-stdout-to batched (dynamic-run ./foo.exe batch first second))))
   > EOF
-  $ dune build -j 1 batched
+  $ dune build -j 1 abs-output batched
+  $ cat _build/default/abs-output
+  absolute
   $ cat _build/default/batched; echo
   firstsecond
 
@@ -172,3 +178,27 @@ The promise-returning runner leaves ownership of the event loop with the caller.
   $ cat _build/default/promise-output
   promise
   returned
+
+Absolute files outside the build tree remain readable. The build directory may
+also live outside the source workspace.
+
+  $ external_input=$(mktemp)
+  $ echo external > "$external_input"
+  $ cat >> dune <<EOF
+  > (rule
+  >  (target external-output)
+  >  (action (with-stdout-to external-output
+  >   (dynamic-run ./foo.exe absolute "$external_input"))))
+  > EOF
+  $ dune build external-output
+  $ cat _build/default/external-output
+  external
+  
+  $ external_build=$(mktemp -d)
+  $ dune build --build-dir="$external_build" abs-output external-output
+  $ cat "$external_build/default/abs-output"
+  absolute
+  $ cat "$external_build/default/external-output"
+  external
+  
+  $ rm "$external_input"

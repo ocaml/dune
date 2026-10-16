@@ -9,7 +9,20 @@ end
 
 let to_dune_dep_set =
   let of_action_plugin_dep ~loc ~root : Dune_rpc.Dep.t -> Dep.t =
-    let to_dune_path = Path.relative root in
+    let to_dune_path path =
+      let rec resolve root path =
+        match String.drop_prefix path ~prefix:"../" with
+        | Some path -> resolve (Filename.dirname root) path
+        | None ->
+          if String.equal path ".."
+          then Filename.dirname root
+          else Filename.concat root path
+      in
+      resolve root path
+      |> Path.of_string
+      |> Path.Expert.try_localize_external
+      |> Path.drop_optional_sandbox_root
+    in
     function
     | File fn -> Dep.file (to_dune_path fn)
     | Directory dir ->
@@ -27,7 +40,7 @@ let to_dune_dep_set =
       Dep.file_selector selector
   in
   fun set ~loc ~root ->
-    let root = Path.drop_optional_sandbox_root root in
+    let root = Path.to_absolute_filename root in
     Dune_rpc.Dep.Set.to_list_map set ~f:(of_action_plugin_dep ~loc ~root)
     |> Dep.Set.of_list
 ;;

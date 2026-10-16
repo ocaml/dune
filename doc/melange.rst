@@ -93,9 +93,20 @@ Adding Melange support to Dune libraries is done as follows:
   using ``melange.runtime_deps``. This field is analog to the ``runtime_deps``
   field used in ``melange.emit`` stanzas.
 
-- ``(melange.compile_flags <flags>)``: optionally, pass flags to ``melc`` compiler.
-  This field is analogous to the ``compile_flags``
-  field used in ``melange.emit`` stanzas.
+- ``(melange.flags <flags>)``: optionally, specify the flags passed to ``melc``
+  independently of the shared ``flags``. This field is available since Dune
+  3.26 and can also be set in :doc:`/reference/dune/env` stanzas. It uses the
+  :doc:`reference/ordered-set-language`, like the ``compile_flags`` field in
+  ``melange.emit`` stanzas.
+
+  ``:standard`` inherits Melange flags from the environment. If this field
+  is omitted, the library inherits its environment's Melange configuration,
+  falling back to the shared ``flags`` when no ``melange.flags`` is set.
+
+  The older field, ``melange.compile_flags``, remains supported and keeps
+  appending its flags to the shared ``flags``. It is deprecated in Dune
+  language 3.26 and later. The two fields cannot be used together in the same
+  configuration.
 
 Building Without Melange
 ------------------------

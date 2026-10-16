@@ -828,8 +828,23 @@ let expand_pkg_macro ~loc { context; _ } macro_invocation =
   [ Value.Path path ]
 ;;
 
-(* CR-someday punchagan: Dependency filters such as [{with-test}] are not
-   interpreted here, so a dependency is visible whatever its filter says. *)
+(* This lives here, not in [Pkg_rules], because [Dune_load] depends on
+   [Context], which depends on [Pkg_rules]. *)
+let package_universe =
+  Memo.create
+    "package-universe"
+    ~input:(module Context_name)
+    (fun context ->
+       let open Memo.O in
+       let+ platform = Lock_dir.Sys_vars.solver_env
+       and+ lock_dir = Lock_dir.get_exn context
+       and+ local_packages =
+         Dune_load.packages ()
+         >>| Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
+       in
+       Dune_pkg.Package_universe.create_unvalidated ~platform local_packages lock_dir)
+;;
+
 let visible_packages t =
   let open Memo.O in
   let context = Context.name t.context in
@@ -841,38 +856,15 @@ let visible_packages t =
     match Dune_project.exclusive_package t.project ~dir:src_dir with
     | None -> Memo.return Package.Name.Selection.All
     | Some pkg_id ->
-      let+ packages = Dune_load.packages ()
-      and+ locked_packages =
-        let+ lock_dir = Lock_dir.get_exn context in
-        Dune_pkg.Lock_dir.Packages.to_pkg_list lock_dir.packages
-        |> List.map ~f:(fun (pkg : Lock_dir.Pkg.t) -> pkg.info.name)
-        |> Package.Name.Set.of_list
-      in
       let name = Package.Id.name pkg_id in
-      let visible = Package.Name.Set.singleton name in
-      (match Package.Name.Map.find packages name with
-       | None -> Package.Name.Selection.Only visible
-       | Some pkg ->
-         let visible =
-           List.fold_left
-             (Package.depends pkg)
-             ~init:visible
-             ~f:(fun acc (dep : Package_dependency.t) ->
-               Package.Name.Set.add acc dep.name)
-         in
-         (* An effective depopt is one that was actually solved: either a
-            workspace package (always present) or a package the solver put in
-            the lock directory. *)
-         let is_present dep_name =
-           Package.Name.Map.mem packages dep_name
-           || Package.Name.Set.mem locked_packages dep_name
-         in
-         Only
-           (List.fold_left
-              (Package.depopts pkg)
-              ~init:visible
-              ~f:(fun acc (dep : Package_dependency.t) ->
-                if is_present dep.name then Package.Name.Set.add acc dep.name else acc))))
+      let+ selected =
+        let+ universe = Memo.exec package_universe context in
+        Dune_pkg.Package_universe.selected_dependencies_of_local_package
+          universe
+          name
+          ~with_test:true
+      in
+      Package.Name.Selection.Only (Package.Name.Set.of_list (name :: selected)))
 ;;
 
 let expand_pform_macro

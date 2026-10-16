@@ -53,7 +53,7 @@ let instrumentation_deps t ~instrumentation_backend =
   let open Resolve.Memo.O in
   let f = function
     | Preprocess.With_instrumentation.Ordinary _ -> Resolve.Memo.return []
-    | Instrumentation_backend { libname; deps; flags = _ } ->
+    | Instrumentation_backend { libname; deps; flags = _; libraries = _ } ->
       instrumentation_backend libname
       >>| (function
        | Some _ -> deps

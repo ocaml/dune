@@ -82,11 +82,15 @@ let add_stanza db ~dir (acc, pps) stanza =
         in
         let+ pps =
           Lib.DB.pps_for_preprocessing (Scope.libs scope) exes.buildable.preprocess.config
+        and+ instrumentation_libraries =
+          Lib.DB.instrumentation_libraries
+            (Scope.libs scope)
+            exes.buildable.preprocess.config
         in
         Lib.DB.resolve_user_written_deps
           db
           (Executables.exe_target exes)
-          exes.buildable.libraries
+          (exes.buildable.libraries @ instrumentation_libraries)
           ~allow_unused_libraries:exes.buildable.allow_unused_libraries
           ~pps
           ~dune_version

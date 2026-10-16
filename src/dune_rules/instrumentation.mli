@@ -11,3 +11,9 @@ val with_instrumentation
   -> instrumentation_backend:
        (Loc.t * Lib_name.t -> Preprocess.Without_instrumentation.t option Resolve.Memo.t)
   -> Preprocess.Without_instrumentation.t Preprocess.Per_module.t Resolve.Memo.t
+
+val active_libraries
+  :  Preprocess.With_instrumentation.t Preprocess.Per_module.t
+  -> instrumentation_backend:
+       (Loc.t * Lib_name.t -> Preprocess.Without_instrumentation.t option Resolve.Memo.t)
+  -> Lib_dep.t list Resolve.Memo.t

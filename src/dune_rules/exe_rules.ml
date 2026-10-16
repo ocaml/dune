@@ -359,11 +359,14 @@ let executables_rules
 let compile_info ~scope (exes : Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let libs = Scope.libs scope in
-  let+ pps = Lib.DB.pps_for_preprocessing libs exes.buildable.preprocess.config in
+  let+ pps = Lib.DB.pps_for_preprocessing libs exes.buildable.preprocess.config
+  and+ instrumentation_libraries =
+    Lib.DB.instrumentation_libraries libs exes.buildable.preprocess.config
+  in
   Lib.DB.resolve_user_written_deps
     libs
     (Executables.exe_target exes)
-    exes.buildable.libraries
+    (exes.buildable.libraries @ instrumentation_libraries)
     ~allow_unused_libraries:exes.buildable.allow_unused_libraries
     ~pps
     ~dune_version

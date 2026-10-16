@@ -37,6 +37,7 @@ module With_instrumentation : sig
         { libname : Loc.t * Lib_name.t
         ; deps : Dep_conf.t list
         ; flags : String_with_vars.t list
+        ; libraries : Lib_dep.t list
         }
 
   val repr : t Repr.t
@@ -71,6 +72,7 @@ module Instrumentation : sig
     { backend : Loc.t * Lib_name.t
     ; flags : String_with_vars.t list
     ; deps : Dep_conf.t list
+    ; libraries : Lib_dep.t list
     ; loc : Loc.t
     }
 

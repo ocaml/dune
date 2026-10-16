@@ -132,7 +132,10 @@ let resolve_lib_deps db lib_deps =
 let resolve_libs db dir libraries preprocess names public_names package kind extensions =
   let open Memo.O in
   let open Item in
-  let* lib_deps = resolve_lib_deps db libraries in
+  let* instrumentation_libraries =
+    Dune_rules.Lib.DB.instrumentation_libraries db preprocess
+  in
+  let* lib_deps = resolve_lib_deps db (libraries @ instrumentation_libraries) in
   let+ lib_pps = resolve_lib_pps db preprocess in
   let deps = lib_deps @ lib_pps in
   let internal_deps, external_deps =

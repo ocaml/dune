@@ -1307,6 +1307,12 @@ let modules_of_stanzas =
       |> Option.value_exn
       |> snd
     in
+    (* Instrumentation libraries may contain [(select ...)] forms, whose
+       targets are modules of the stanza. *)
+    let instrumentation_libraries preprocess =
+      let* lib_db = libs in
+      Lib.DB.instrumentation_libraries lib_db preprocess
+    in
     let* ({ ocamllexes; ocamlyaccs; menhirs; _ } as modules) =
       Generated_modules.add_generated_modules
         ~expander
@@ -1337,6 +1343,12 @@ let modules_of_stanzas =
                 [Or_exn.t] a bit longer. *)
              let+ sources, modules =
                let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
+               let preprocess =
+                 match for_ with
+                 | Ocaml -> lib.buildable.preprocess.config
+                 | Melange -> lib.buildable.melange_preprocess.config
+               in
+               let* instrumentation_libraries = instrumentation_libraries preprocess in
                let modules =
                  Generated_modules.with_lib_select_deps
                    modules
@@ -1345,7 +1357,7 @@ let modules_of_stanzas =
                    ~include_subdirs
                    ~for_
                    ~path_to_root_of_dir
-                   lib.buildable.libraries
+                   (lib.buildable.libraries @ instrumentation_libraries)
                in
                make_lib_modules
                  ~expander
@@ -1362,6 +1374,9 @@ let modules_of_stanzas =
              let obj_dir = Library.obj_dir lib ~dir in
              `Library { Per_stanza.stanza = lib; sources; modules; dir; obj_dir }
            | Executables.T exes ->
+             let* instrumentation_libraries =
+               instrumentation_libraries exes.buildable.preprocess.config
+             in
              let modules =
                Generated_modules.with_lib_select_deps
                  modules
@@ -1370,10 +1385,13 @@ let modules_of_stanzas =
                  ~include_subdirs
                  ~for_
                  ~path_to_root_of_dir
-                 exes.buildable.libraries
+                 (exes.buildable.libraries @ instrumentation_libraries)
              in
              make_executables ~dir ~expander ~include_subdirs ~modules ~project exes
            | Tests.T tests ->
+             let* instrumentation_libraries =
+               instrumentation_libraries tests.exes.buildable.preprocess.config
+             in
              let modules =
                Generated_modules.with_lib_select_deps
                  modules
@@ -1382,7 +1400,7 @@ let modules_of_stanzas =
                  ~include_subdirs
                  ~for_
                  ~path_to_root_of_dir
-                 tests.exes.buildable.libraries
+                 (tests.exes.buildable.libraries @ instrumentation_libraries)
              in
              make_tests ~dir ~expander ~include_subdirs ~modules ~project tests
            | Melange_stanzas.Emit.T mel ->
@@ -1390,6 +1408,9 @@ let modules_of_stanzas =
                Obj_dir.make_for_exe_target ~dir (Melange_stanzas.Emit.exe_target mel)
              in
              let+ sources, modules =
+               let* instrumentation_libraries =
+                 instrumentation_libraries mel.preprocess.config
+               in
                let modules =
                  Generated_modules.with_lib_select_deps
                    modules
@@ -1398,7 +1419,7 @@ let modules_of_stanzas =
                    ~include_subdirs
                    ~for_:Compilation_mode.Melange
                    ~path_to_root_of_dir
-                   mel.libraries
+                   (mel.libraries @ instrumentation_libraries)
                in
                let version = Dune_project.dune_version project in
                Modules_field_evaluator.eval

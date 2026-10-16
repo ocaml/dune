@@ -223,6 +223,11 @@ module DB : sig
     :  t
     -> Preprocess.With_instrumentation.t Preprocess.Per_module.t
     -> (Loc.t * Lib_name.t) list Memo.t
+
+  val instrumentation_libraries
+    :  t
+    -> Preprocess.With_instrumentation.t Preprocess.Per_module.t
+    -> Lib_dep.t list Memo.t
 end
 
 (** {1 Transitive closure} *)

@@ -12,8 +12,8 @@
 #endif
 
 CAMLprim value dune_rpc_registry_windows_process_id(value unit) {
-  CAMLparam1(unit);
 #ifdef _WIN32
+  CAMLparam1(unit);
   DWORD pid = GetCurrentProcessId();
   if ((uintnat)pid > (uintnat)Max_long) {
     caml_failwith("Windows process ID does not fit in an OCaml int");

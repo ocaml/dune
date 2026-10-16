@@ -37,9 +37,9 @@ The arguments in the generated _RocqProject files are sufficient to compile the 
 
   $ arguments=$(sed -re 's,-arg ,,' _build/default/theory/_RocqProject | tr '\n' " ")
   $ (cd theory && env -u OCAMLPATH rocq compile -q $arguments Test.v) 2>/dev/null
-  [1]
+
+  $ rm theory/Test.vo # clean up generated .vo file to avoid error in next command
 
 Importing a compiled theory file that declares the plugin also works with the same arguments
 
   $ (cd theory && env -u OCAMLPATH rocq compile -q $arguments RequireTest.v) 2>/dev/null
-  [1]

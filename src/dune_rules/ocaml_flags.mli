@@ -30,3 +30,6 @@ val with_vendored_alerts : t -> t
 val dump : t -> Dune_lang.t list Action_builder.t
 val with_vendored_flags : t -> ocaml_version:Version.t -> t
 val open_flags : Module_name.t list -> string list
+
+(** Extract module names from [-open Foo] pairs in compiler flags. *)
+val extract_open_module_names : string list -> Module_name.Set.t

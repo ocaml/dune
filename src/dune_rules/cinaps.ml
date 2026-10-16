@@ -207,6 +207,11 @@ let gen_rules sctx t ~dir ~scope =
       in
       let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
       let requires_link = Lib.Compile.requires_link compile_info ~for_ in
+      let pps_runtime_libs =
+        let open Resolve.Memo.O in
+        let* pps = Lib.Compile.pps compile_info ~for_ in
+        Resolve.Memo.List.concat_map pps ~f:(Lib.ppx_runtime_deps ~for_)
+      in
       let obj_dir = Obj_dir.make_for_exe_target ~dir:cinaps_dir exe_target in
       Compilation_context.create
         for_
@@ -218,6 +223,7 @@ let gen_rules sctx t ~dir ~scope =
         ~requires_compile
         ~user_written_requires:None
         ~requires_link
+        ~pps_runtime_libs
         ~flags
         ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
         ~melange_package_name:None

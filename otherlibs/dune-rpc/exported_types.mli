@@ -137,16 +137,18 @@ module Diagnostic : sig
     val sexp : t Conv.value
   end
 
-  type t =
+  type ('message, 'related) fields =
     { targets : Target.t list
     ; id : Id.t
-    ; message : User_message.Style.t Pp.t
+    ; message : 'message
     ; loc : Loc.t option
     ; severity : severity option
     ; promotion : Promotion.t list
     ; directory : string option
-    ; related : Related.t list
+    ; related : 'related list
     }
+
+  type t = (User_message.Style.t Pp.t, Related.t) fields
 
   val related : t -> Related.t list
   val id : t -> Id.t
@@ -157,6 +159,12 @@ module Diagnostic : sig
   val promotion : t -> Promotion.t list
   val targets : t -> Target.t list
   val directory : t -> string option
+
+  val sexp_fields
+    :  message:'message Conv.value
+    -> related:'related Conv.value
+    -> ('message, 'related) fields Conv.value
+
   val to_dyn : t -> Dyn.t
   val to_user_message : t -> Stdune.User_message.t
 

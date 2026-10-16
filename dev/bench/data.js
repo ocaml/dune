@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792120875779,
+  "lastUpdate": 1792121082087,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -650904,6 +650904,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.721059951926667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7912309477f5f8a26aaab1bdc43263e7edb27744",
+          "message": "refactor(rpc): share diagnostic record serialization (#16613)\n\nParameterize diagnostic fields by message and related-entry types, and\nshare the record and S-expression converter between the current\ndiagnostics and `Diagnostics_v1`. This removes duplicated definitions\nwhile preserving both wire formats.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-16T11:11:26+08:00",
+          "tree_id": "f69dc5e2414bcfe514441490ca25411609b35ea4",
+          "url": "https://github.com/ocaml/dune/commit/7912309477f5f8a26aaab1bdc43263e7edb27744"
+        },
+        "date": 1792120712162,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.8762428760466663,
             "unit": "seconds"
           }
         ]

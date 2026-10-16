@@ -50,10 +50,16 @@ Hardlink mode: a directory-only dependency already fails.
   -> required by alias directory in dune:4
   [1]
 
-With an overlapping file dependency, Dune tries to unlink the existing directory.
+With an overlapping file dependency, Linux reports EEXIST from link, then EISDIR
+from unlink. macOS rejects the directory directly with EPERM from link. Normalize
+these two diagnostics, checking Dune's exit status separately from the filter.
 
-  $ dune build @overlap --sandbox hardlink 2>&1 | censor
-  Error:
-  unlink(_build/.sandbox/$DIGEST/default/tree): Is a directory
-  -> required by alias overlap in dune:8
+  $ dune build @overlap --sandbox hardlink > hardlink.log 2>&1
   [1]
+  $ sed -E \
+  >   -e 's/^link\((.*)\): Operation not permitted$/hardlink(\1): rejected/' \
+  >   -e 's/^unlink\((.*)\): Is a directory$/hardlink(\1): rejected/' \
+  >   hardlink.log | censor
+  Error:
+  hardlink(_build/.sandbox/$DIGEST/default/tree): rejected
+  -> required by alias overlap in dune:8

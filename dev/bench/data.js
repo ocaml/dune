@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792148666126,
+  "lastUpdate": 1792148984509,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -469015,6 +469015,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4236777610733334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "53ee38fbbca24207072e17118800d3ba254aa8d9",
+          "message": "test(rocq): check dependencies in mixed install directories (#16619)\n\nExtend the existing root-section sandbox and cycle regression to inspect\nhow discovery depends on a mixed-section layout. Record direct-file and\ngroup counts and require any selectors to be unconditional, avoiding\nliteral-name filtering that scans a name list for every generated file.\n\nBefore layout sharing, all eleven library files are explicit\ndependencies. The following optimization can group all-library\ndirectories while keeping the mixed directory explicit and excluding the\nroot-section proof output.",
+          "timestamp": "2026-10-16T12:51:17+02:00",
+          "tree_id": "b74d0e108c079cff1e2dd84bf0890d287b45542a",
+          "url": "https://github.com/ocaml/dune/commit/53ee38fbbca24207072e17118800d3ba254aa8d9"
+        },
+        "date": 1792148983179,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 61.54123429817333,
             "unit": "seconds"
           }
         ]

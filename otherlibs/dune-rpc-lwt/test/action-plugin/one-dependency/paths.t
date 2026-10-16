@@ -122,23 +122,17 @@ physical cwd and Dune's spelling of the root still refer to the same tree.
   second
   
 
-Absolute paths can name generated files.
+A batch can declare generated inputs using absolute paths before a subprocess
+reads them.
 
   $ cat >> dune <<'EOF'
-  > (rule (target abs-input) (action (write-file abs-input absolute)))
-  > (rule
-  >  (target abs-output)
-  >  (action (with-stdout-to abs-output
-  >   (dynamic-run ./foo.exe absolute abs-input))))
   > (rule (target first) (action (write-file first first)))
   > (rule (target second) (action (write-file second second)))
   > (rule
   >  (target batched)
   >  (action (with-stdout-to batched (dynamic-run ./foo.exe batch first second))))
   > EOF
-  $ dune build -j 1 abs-output batched
-  $ cat _build/default/abs-output
-  absolute
+  $ dune build -j 1 batched
   $ cat _build/default/batched; echo
   firstsecond
 
@@ -179,26 +173,51 @@ The promise-returning runner leaves ownership of the event loop with the caller.
   promise
   returned
 
-Absolute files outside the build tree remain readable. The build directory may
-also live outside the source workspace.
+An absolute path can name a generated input inside the action's sandbox. The
+request must build that input and make it available before the client reads it.
+Changing the producer's source must invalidate the consuming action.
+
+  $ printf first > abs-control
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target abs-input)
+  >  (deps abs-control)
+  >  (action (copy abs-control abs-input)))
+  > (rule
+  >  (target abs-output)
+  >  (deps (sandbox always))
+  >  (action (with-stdout-to abs-output
+  >   (dynamic-run ./foo.exe absolute abs-input))))
+  > EOF
+  $ test ! -e _build/default/abs-input
+  $ dune build --sandbox hardlink abs-output
+  $ cat _build/default/abs-output
+  first
+  $ printf second > abs-control
+  $ dune build --sandbox hardlink abs-output
+  $ cat _build/default/abs-output
+  second
+
+Absolute paths also work when the plugin runs without Dune.
+
+  $ ./foo.exe read "$PWD/abs-control"
+  second
+
+Absolute inputs outside the workspace are tracked too.
 
   $ external_input=$(mktemp)
-  $ echo external > "$external_input"
+  $ printf external > "$external_input"
   $ cat >> dune <<EOF
   > (rule
   >  (target external-output)
   >  (action (with-stdout-to external-output
-  >   (dynamic-run ./foo.exe absolute "$external_input"))))
+  >   (dynamic-run ./foo.exe read "$external_input"))))
   > EOF
   $ dune build external-output
   $ cat _build/default/external-output
   external
-  
-  $ external_build=$(mktemp -d)
-  $ dune build --build-dir="$external_build" abs-output external-output
-  $ cat "$external_build/default/abs-output"
-  absolute
-  $ cat "$external_build/default/external-output"
-  external
-  
+  $ printf changed > "$external_input"
+  $ dune build external-output
+  $ cat _build/default/external-output
+  changed
   $ rm "$external_input"

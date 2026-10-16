@@ -173,7 +173,9 @@ let action dap =
     let open Lwt.Syntax in
     let first_path = absolute_path first in
     let second_path = absolute_path second in
-    let* () = build_deps dap [ Dep.File first; Dep.File second; Dep.File first ] in
+    let* () =
+      build_deps dap [ Dep.File first_path; Dep.File second_path; Dep.File first_path ]
+    in
     Lwt_process.exec ("cat", [| "cat"; first_path; second_path |])
     |> Lwt.map (function
       | Unix.WEXITED 0 -> ()
@@ -197,10 +199,7 @@ let action dap =
     |> Lwt.map (function
       | Unix.WEXITED 0 -> ()
       | _ -> failwith "cat failed")
-  | [| _; "absolute"; path |] ->
-    let open Lwt.Syntax in
-    let* data = read_file dap ~path:(absolute_path path) in
-    Lwt_io.printl data
+  | [| _; "absolute"; path |] -> ordinary_action dap ~path:(absolute_path path)
   | [| _ |] -> ordinary_action dap ~path:"some_dependency"
   | [| _; "read"; path |] -> ordinary_action dap ~path
   | [| _; "sandbox" |] -> sandbox_action dap

@@ -4,15 +4,6 @@ module Error = Dune_rpc_lwt.V1.Action_plugin.Error
 
 let run action = Lwt_main.run (Dune_rpc_lwt.V1.Action_plugin.run action)
 
-let%expect_test "absolute paths" =
-  run (fun dap ->
-    let open Lwt.Syntax in
-    let path = Filename.concat (Sys.getcwd ()) "some_dir/some_file" in
-    let+ data = read_file dap ~path in
-    print_endline data);
-  [%expect {| Hello from foo! |}]
-;;
-
 let%expect_test _ =
   let action dap =
     let open Lwt.Syntax in

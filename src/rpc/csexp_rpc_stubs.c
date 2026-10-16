@@ -7,6 +7,23 @@
 #include <caml/signals.h>
 #include <caml/unixsupport.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+CAMLprim value dune_rpc_registry_windows_process_id(value unit) {
+  CAMLparam1(unit);
+#ifdef _WIN32
+  DWORD pid = GetCurrentProcessId();
+  if ((uintnat)pid > (uintnat)Max_long) {
+    caml_failwith("Windows process ID does not fit in an OCaml int");
+  }
+  CAMLreturn(Val_long(pid));
+#else
+  caml_invalid_argument("Windows process IDs are only available on Windows");
+#endif
+}
+
 #if defined(__APPLE__)
 
 #include <fcntl.h>

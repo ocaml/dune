@@ -53,3 +53,50 @@ client.
   $ wait "$build_pid"
   $ cat _build/default/held-target
   held
+
+A plugin holds its job slot while waiting for dependencies. Inputs that need
+subprocesses rather than built-in Dune actions currently deadlock at -j 1.
+
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target scheduled-input)
+  >  (action (run sh -c "printf scheduled > scheduled-input")))
+  > (rule
+  >  (alias scheduled)
+  >  (action (dynamic-run ./foo.exe read scheduled-input)))
+  > (rule
+  >  (target parallel-first)
+  >  (action (run sh -c "printf first > parallel-first")))
+  > (rule
+  >  (target parallel-second)
+  >  (action (run sh -c "printf second > parallel-second")))
+  > (rule
+  >  (alias parallel)
+  >  (action
+  >   (dynamic-run ./foo.exe parallel parallel-first parallel-second)))
+  > (rule
+  >  (target nested-leaf)
+  >  (action (run sh -c "printf leaf > nested-leaf")))
+  > (rule
+  >  (target nested-input)
+  >  (action
+  >   (progn
+  >    (dynamic-run ./foo.exe read nested-leaf)
+  >    (write-file nested-input nested))))
+  > (rule
+  >  (alias nested)
+  >  (action (dynamic-run ./foo.exe read nested-input)))
+  > EOF
+
+  $ timeout 3 dune build -j 1 @scheduled
+  [124]
+
+Overlapping requests must lend only one slot, not one slot per request.
+
+  $ timeout 3 dune build -j 1 @parallel
+  [124]
+
+Nested dynamic actions must be able to lend their slots independently.
+
+  $ timeout 3 dune build -j 1 @nested
+  [124]

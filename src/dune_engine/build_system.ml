@@ -281,6 +281,7 @@ module Internal = struct
         ; can_use_sandbox_policy
         ; sandbox = _ (* already taken into account in [sandbox_mode] *)
         ; corrections
+        ; job_slots = _ (* the number of job slots does not change the result *)
         }
       =
       props
@@ -437,6 +438,7 @@ module Internal = struct
         ; can_use_sandbox_policy
         ; sandbox = _
         ; corrections
+        ; job_slots
         }
       =
       props
@@ -493,6 +495,7 @@ module Internal = struct
               ; execution_parameters
               ; sandbox = process_sandbox
               ; action
+              ; job_slots
               }
             in
             let build_deps deps =
@@ -826,6 +829,7 @@ module Internal = struct
           ; can_use_sandbox_policy
           ; sandbox
           ; corrections
+          ; job_slots = _ (* the number of job slots does not change the result *)
           }
         =
         props

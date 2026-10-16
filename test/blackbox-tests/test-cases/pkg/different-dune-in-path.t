@@ -16,6 +16,7 @@ Clarify the behavior when the `dune` in PATH is not the one used to start the bu
 
   $ make_test_package foo
   $ make_test_package bar
+  $ make_test_package baz
 
 Make a project that depends on the test packages:
 
@@ -24,7 +25,7 @@ Make a project that depends on the test packages:
   > (package
   >  (name x)
   >  (allow_empty)
-  >  (depends foo bar))
+  >  (depends foo bar baz))
   > EOF
 
 Make lockfiles for the packages.
@@ -60,6 +61,20 @@ Make lockfiles for the packages.
   > (dev)
   > EOF
 
+  $ make_lockpkg baz <<EOF
+  > (version 0.0.1)
+  > 
+  > (dune)
+  > 
+  > (depends dune)
+  > 
+  > (source
+  >  (fetch
+  >   (url $PWD/baz.tar)))
+  > 
+  > (dev)
+  > EOF
+
 Test that the project can be built normally.
   $ build_pkg foo
 
@@ -86,11 +101,13 @@ Remember the digests, to not to have to call nested Dunes:
 
   $ foo_digest="$(dune pkg print-digest foo)"
   $ bar_digest="$(dune pkg print-digest bar)"
+  $ baz_digest="$(dune pkg print-digest baz)"
 
 Call Dune with an absolute PATH as argv[0]:
 
   $ PATH=$fakepath $DUNE build "$pkg_root/$foo_digest/target/"
   $ PATH=$fakepath $DUNE build "$pkg_root/$bar_digest/target/"
+  $ PATH=$fakepath $DUNE build "$pkg_root/$baz_digest/target/"
 
 argv[0] is set by the calling program (like a shell or cram test runner) and
 could be wrong, hence it cannot always be trusted. In the examples above we

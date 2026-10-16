@@ -60,6 +60,11 @@ produce files, such as benchmarks.
   correction files that Dune reports as promotions. See `Corrections`_ for
   details. This field has been available since Dune 3.23.
 
+- ``(job_slots <action>)`` specifies how many job slots the rule's action
+  takes. Use it when the action runs its own parallel work, such as another
+  build system. See `Job slots`_ for details. This field has been available
+  since Dune 3.26.
+
 Please note: contrary to makefiles or other build systems, user rules currently
 don't support patterns, such as a rule to produce ``%.y`` from ``%.x`` for any
 given ``%``. This might be supported in the future.
@@ -147,6 +152,48 @@ accident.
 
 ``(corrections produce)`` cannot be combined with ``patch_back_source_tree``
 sandboxing.
+
+Job slots
+~~~~~~~~~
+
+By default, each process takes one job slot. Dune starts a new process only
+when fewer than ``-j`` slots are in use. A process that runs another build
+system, such as ``cargo`` or ``make``, can use many processors. The ``job_slots``
+field lets it account for this parallelism by taking more than one job slot.
+
+The value of the field is an action, usually ``run`` or ``bash``. Before Dune
+runs the rule's action, it runs the ``job_slots`` action with the total number
+of job slots in the ``DUNE_JOBS`` environment variable. The ``job_slots``
+action must print a positive integer; zero and negative values are errors.
+Dune caps this integer at the total number of job slots. Each process that the
+rule's action starts takes this many slots. The rule's action sees the number
+in the ``DUNE_JOB_SLOTS`` environment variable. An action without the field sees
+``DUNE_JOB_SLOTS=1``.
+
+For example, this rule gives half of the job slots, rounded up, to ``cargo``:
+
+.. code:: dune
+
+   (rule
+    (target libfoo.a)
+    (deps
+     (glob_files_rec src/*)
+     Cargo.toml
+     Cargo.lock)
+    (job_slots (bash "echo $(((DUNE_JOBS + 1) / 2))"))
+    (action
+     (progn
+      (bash "cargo build --release -j $DUNE_JOB_SLOTS --target-dir target")
+      (copy target/release/libfoo.a %{target}))))
+
+Processes that wait for job slots start in the order in which they become
+ready. As soon as at least one slot is free, the next process starts with its
+full slot allocation, even if this takes the total above ``-j``. No further
+processes start until the number of occupied slots drops below ``-j`` again.
+Thus, requesting all slots does not guarantee exclusive execution.
+
+The number of job slots does not change the result of a rule. Thus, a change of
+``-j`` or of the ``job_slots`` action does not cause a rebuild.
 
 Inferred Rules
 ~~~~~~~~~~~~~~

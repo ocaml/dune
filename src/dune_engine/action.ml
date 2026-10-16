@@ -449,6 +449,8 @@ let is_useful_to memoize =
 let is_useful_to_memoize = is_useful_to true
 
 module Full = struct
+  type action = t
+
   module Props = struct
     type t =
       { env : Env.t
@@ -457,6 +459,7 @@ module Full = struct
       ; can_use_sandbox_policy : bool
       ; sandbox : Sandbox_config.t
       ; corrections : Corrections.t option
+      ; job_slots : action option
       }
 
     let empty =
@@ -466,6 +469,7 @@ module Full = struct
       ; can_use_sandbox_policy = true
       ; sandbox = Sandbox_config.default
       ; corrections = None
+      ; job_slots = None
       }
     ;;
 
@@ -481,6 +485,14 @@ module Full = struct
           [ "x", Corrections.to_dyn x; "y", Corrections.to_dyn y ]
     ;;
 
+    let combine_job_slots x y =
+      match x, y with
+      | None, x -> x
+      | x, None -> x
+      | Some _, Some _ ->
+        Code_error.raise "an action can only have one job_slots command" []
+    ;;
+
     let combine
           { env
           ; locks
@@ -488,6 +500,7 @@ module Full = struct
           ; can_use_sandbox_policy
           ; sandbox
           ; corrections
+          ; job_slots
           }
           t
       =
@@ -497,6 +510,7 @@ module Full = struct
       ; can_use_sandbox_policy = can_use_sandbox_policy && t.can_use_sandbox_policy
       ; sandbox = Sandbox_config.inter sandbox t.sandbox
       ; corrections = combine_corrections corrections t.corrections
+      ; job_slots = combine_job_slots job_slots t.job_slots
       }
     ;;
 
@@ -507,6 +521,7 @@ module Full = struct
       ; can_use_sandbox_policy = true
       ; sandbox
       ; corrections
+      ; job_slots = None
       }
     ;;
 
@@ -530,6 +545,10 @@ module Full = struct
 
     let add_corrections t corrections =
       { t with corrections = combine_corrections (Some corrections) t.corrections }
+    ;;
+
+    let add_job_slots t job_slots =
+      { t with job_slots = combine_job_slots (Some job_slots) t.job_slots }
     ;;
   end
 
@@ -579,4 +598,6 @@ module Full = struct
   let add_corrections corrections t =
     { t with props = Props.add_corrections t.props corrections }
   ;;
+
+  let add_job_slots job_slots t = { t with props = Props.add_job_slots t.props job_slots }
 end

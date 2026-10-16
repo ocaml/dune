@@ -1,6 +1,9 @@
 Test embedding of build information
 -----------------------------------
 
+  $ export GIT_CONFIG_GLOBAL=/dev/null
+  $ export GIT_CONFIG_SYSTEM=/dev/null
+
   $ mkdir -p a b c
 
   $ for i in a b c d; do

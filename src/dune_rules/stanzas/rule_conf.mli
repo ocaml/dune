@@ -7,6 +7,7 @@ type t =
   ; corrections : Corrections.t option
   ; mode : Rule_mode.t
   ; locks : Locks.t
+  ; job_slots : (Loc.t * Dune_lang.Action.t) option
   ; loc : Loc.t
   ; enabled_if : Blang.t
   ; aliases : Alias.Name.t list

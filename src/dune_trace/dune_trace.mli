@@ -78,6 +78,7 @@ module Event : sig
     -> categories:string list
     -> targets:targets option
     -> queued:Time.Span.t
+    -> job_slots:int
     -> t
 
   val process

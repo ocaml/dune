@@ -1071,41 +1071,49 @@ let emit_rules sctx { stanza_dir; stanza } =
 ;;
 
 (* Detect if [dir] is under the target directory of a melange.emit stanza. *)
-let rec under_melange_emit_target ~sctx ~dir =
-  match Path.Build.parent dir with
-  | None -> Memo.return None
-  | Some parent ->
-    Dune_load.stanzas_in_dir parent
-    >>= (function
-     | None -> under_melange_emit_target ~sctx ~dir:parent
-     | Some stanzas ->
-       Dune_file.find_stanzas stanzas Melange_stanzas.Emit.key
-       >>= Memo.List.find_map ~f:(fun (mel : Melange_stanzas.Emit.t) ->
-         let target_dir = Melange_stanzas.Emit.target_dir ~dir:parent mel in
-         match Path.Build.equal target_dir dir with
-         | false -> Memo.return None
-         | true ->
-           (* In the case where we have two melange.emit stanzas in the same folder,
-              with one enabled in the current context and one disabled, we want to
-              make sure that we pick the enabled one *)
-           let+ enabled =
-             let* expander =
-               let* sctx = sctx in
-               Super_context.expander sctx ~dir
-             in
-             Expander.eval_blang expander mel.enabled_if
-           in
-           Option.some_if enabled mel)
-       >>= (function
-        | None -> under_melange_emit_target ~sctx ~dir:parent
-        | Some stanza -> Memo.return @@ Some { stanza_dir = parent; stanza }))
+let under_melange_emit_target =
+  let memo =
+    Memo.create_rec
+      "under-melange-emit-target"
+      ~input:(module Path.Build)
+      (fun under_melange_emit_target dir ->
+         match Path.Build.parent dir with
+         | None -> Memo.return None
+         | Some parent ->
+           Dune_load.stanzas_in_dir parent
+           >>= (function
+            | None -> under_melange_emit_target parent
+            | Some stanzas ->
+              Dune_file.find_stanzas stanzas Melange_stanzas.Emit.key
+              >>= Memo.List.find_map ~f:(fun (mel : Melange_stanzas.Emit.t) ->
+                let target_dir = Melange_stanzas.Emit.target_dir ~dir:parent mel in
+                match Path.Build.equal target_dir dir with
+                | false -> Memo.return None
+                | true ->
+                  (* Several stanzas may share the target when enabled in
+                     different contexts. Pick the enabled one. *)
+                  let+ enabled =
+                    let* expander =
+                      let* sctx =
+                        Context.DB.by_dir dir >>| Context.name >>= Super_context.find_exn
+                      in
+                      Super_context.expander sctx ~dir
+                    in
+                    Expander.eval_blang expander mel.enabled_if
+                  in
+                  Option.some_if enabled mel)
+              >>= (function
+               | None -> under_melange_emit_target parent
+               | Some stanza -> Memo.return @@ Some { stanza_dir = parent; stanza })))
+  in
+  fun ~dir -> Memo.exec memo dir
 ;;
 
 let gen_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
   match Path.Build.equal dir (Melange_stanzas.Emit.target_dir ~dir:stanza_dir stanza) with
   | false -> Memo.return None
   | true ->
-    under_melange_emit_target ~sctx ~dir:stanza_dir
+    under_melange_emit_target ~dir:stanza_dir
     >>| (function
      | None -> Some (emit_rules sctx for_melange)
      | Some { stanza_dir = _; stanza = parent_stanza } ->
@@ -1132,7 +1140,7 @@ let gen_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
 module Gen_rules = Build_config.Gen_rules
 
 let setup_emit_js_rules sctx ~dir =
-  under_melange_emit_target ~sctx ~dir
+  under_melange_emit_target ~dir
   >>= function
   | Some melange ->
     gen_emit_rules sctx ~dir melange

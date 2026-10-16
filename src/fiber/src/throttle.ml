@@ -2,10 +2,15 @@ open Stdune
 open Core
 open Core.O
 
+type waiting =
+  { weight : int
+  ; ivar : unit Ivar.t
+  }
+
 type t =
   { mutable size : int
   ; mutable running : int
-  ; waiting : unit Ivar.t Queue.t
+  ; waiting : waiting Queue.t
   }
 
 let create size = { size; running = 0; waiting = Queue.create () }
@@ -18,8 +23,8 @@ let rec restart t =
   else (
     match Queue.pop t.waiting with
     | None -> return ()
-    | Some ivar ->
-      t.running <- t.running + 1;
+    | Some { weight; ivar } ->
+      t.running <- t.running + weight;
       let* () = Ivar.fill ivar () in
       restart t)
 ;;
@@ -29,19 +34,20 @@ let resize t n =
   restart t
 ;;
 
-let run t ~f =
+let run t ~size ~f =
+  let weight = min size t.size in
   finalize
     ~finally:(fun () ->
-      t.running <- t.running - 1;
+      t.running <- t.running - weight;
       restart t)
     (fun () ->
-       if t.running < t.size
+       if Queue.is_empty t.waiting && t.running < t.size
        then (
-         t.running <- t.running + 1;
+         t.running <- t.running + weight;
          f ())
        else (
-         let waiting = Ivar.create () in
-         Queue.push t.waiting waiting;
-         let* () = Ivar.read waiting in
+         let ivar = Ivar.create () in
+         Queue.push t.waiting { weight; ivar };
+         let* () = Ivar.read ivar in
          f ()))
 ;;

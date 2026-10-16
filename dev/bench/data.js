@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792149934581,
+  "lastUpdate": 1792149963442,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -651310,6 +651310,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.67832215996,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9f401d6f41d367459da7bda9d7a39c0eb9b322d8",
+          "message": "test(action-plugin): exercise absolute inputs end to end (#16615)\n\nStrengthen absolute-path coverage with sandboxed generated inputs and\nrebuilds after changes to both generated and external inputs. Exercise\nabsolute paths in batched dependency declarations and replace the\nstandalone absolute-path unit test with cram coverage.\n\nNo production code changes or build-directory symlink extension.\n\nThe full test suite still has the previously confirmed failure in\n`otherlibs/stdune/test/io_tests.ml`; the action-plugin tests and\nbuild/format checks pass.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-16T19:13:05+08:00",
+          "tree_id": "1220ad70816b6dbec08b664f5c8dc6bb1cb1c17a",
+          "url": "https://github.com/ocaml/dune/commit/9f401d6f41d367459da7bda9d7a39c0eb9b322d8"
+        },
+        "date": 1792149594484,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7815679163133336,
             "unit": "seconds"
           }
         ]

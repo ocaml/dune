@@ -470,6 +470,14 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
      |> Action_builder.write_file target)
 ;;
 
+let link_deps ~expander ~(buildable : Buildable.t) =
+  match buildable.ctypes with
+  | Some ctypes when Dune_lang.Syntax.Version.Infix.(ctypes.version >= (0, 4)) ->
+    Dep_conf_eval.unnamed Sandbox_config.needs_sandboxing ~expander ctypes.link_deps
+  | None | Some _ ->
+    Action_builder.return Env.empty, Sandbox_config.no_special_requirements
+;;
+
 let ctypes_cclib_flags sctx ~expander ~(buildable : Buildable.t) =
   let standard = Action_builder.return [] in
   match buildable.ctypes with

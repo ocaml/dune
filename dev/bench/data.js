@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792120769195,
+  "lastUpdate": 1792120875779,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -650875,6 +650875,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.749421870433333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b37f6aeb12c7543c9b1b458f2ef60625364eae8c",
+          "message": "fix(rpc): avoid unused root frame on non-Windows platforms (#16614)\n\nMove `CAMLparam1(unit)` into the Windows branch of the process ID stub.\nThe non-Windows branch only raises an exception and never uses the root\nframe, triggering `-Wunused-variable` with OCaml 5.5.1.\n\nThe full test suite has a pre-existing failure in\n`otherlibs/stdune/test/io_tests.ml`, also reproduced on the unmodified\nbase.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-16T11:08:14+08:00",
+          "tree_id": "f3876fb231d0dfd386920183f922284ca7e1e060",
+          "url": "https://github.com/ocaml/dune/commit/b37f6aeb12c7543c9b1b458f2ef60625364eae8c"
+        },
+        "date": 1792120506926,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.721059951926667,
             "unit": "seconds"
           }
         ]

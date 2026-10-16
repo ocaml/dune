@@ -65,8 +65,7 @@ module Constraint = struct
     let of_opam_filter (filter : OpamTypes.filter) =
       match filter with
       | FString string -> Ok (Value.String_literal string)
-      | FBool true -> Ok (Value.String_literal "true")
-      | FBool false -> Ok (Value.String_literal "false")
+      | FBool bool -> Ok (Value.String_literal (Bool.to_string bool))
       | FIdent ([], name, None) -> Ok (Value.Variable (Variable.of_opam name))
       | _ -> Error (Convert_from_opam_error.Can't_convert_opam_filter_to_value filter)
     ;;

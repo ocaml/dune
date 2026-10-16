@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792099543247,
+  "lastUpdate": 1792120769195,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -650846,6 +650846,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.6324203199399996,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "160b594c6f78b1e92589c1a6b1192d0db332fd4b",
+          "message": "feat(action-plugin): accept absolute input paths (#16423)\n\nAccept absolute input paths in action-plugin reads and dependency\ndeclarations while retaining root-relative RPC requests. Resolve\nrequests lexically so they can name inputs outside the workspace, then\nlocalize managed paths and remove sandbox prefixes.\n\nKeep the managed action root as Path.t and leave the existing\ninitialization realpath unchanged. Additional symlink handling and\nphysical build-directory mapping remain separate.\n\nCover generated absolute inputs, external files, external build\ndirectories, and standalone reads. Stronger invalidation and\ndependency-batch cram coverage remains in a separate follow-up.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-16T11:06:23+08:00",
+          "tree_id": "c864909536a95efae6875038022bc8f3e0bce3cb",
+          "url": "https://github.com/ocaml/dune/commit/160b594c6f78b1e92589c1a6b1192d0db332fd4b"
+        },
+        "date": 1792120402439,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.749421870433333,
             "unit": "seconds"
           }
         ]

@@ -917,7 +917,7 @@ let maybe t = t >>| Option.some <|> return None
 let sum ?(force_parens = false) cstrs = Sum { force_parens; cstrs }
 let enum' cstrs = Enum cstrs
 let enum cstrs = enum' (List.map cstrs ~f:(fun (name, v) -> name, return v))
-let bool = enum [ "true", true; "false", false ]
+let bool = enum Bool.all
 let map_validate t ~f = Map_validate (t, f)
 
 let field name ?default ?on_dup t =

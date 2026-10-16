@@ -21,3 +21,5 @@ let[@inline always] hash = function
   | true -> 1
   | false -> 0
 ;;
+
+let all = List.map [ true; false ] ~f:(fun x -> to_string x, x)

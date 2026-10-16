@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792150291974,
+  "lastUpdate": 1792181546925,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -651455,6 +651455,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.7815679163133336,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2a2555f0f80f2c3cb05c4f6a0a2c04a87b61361f",
+          "message": "test(sandbox): overlapping directory deps (#16626)\n\nMinimal engine-level reproduction covering symlink, copy, and hardlink\nsandboxing, without package management.\n\nRelated: https://github.com/ocaml/dune/issues/16547",
+          "timestamp": "2026-10-16T22:03:37+02:00",
+          "tree_id": "efacddd456d0c6217811a23a927276bba20d4852",
+          "url": "https://github.com/ocaml/dune/commit/2a2555f0f80f2c3cb05c4f6a0a2c04a87b61361f"
+        },
+        "date": 1792181326886,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.5673057830733335,
             "unit": "seconds"
           }
         ]

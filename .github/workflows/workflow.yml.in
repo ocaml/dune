@@ -447,8 +447,8 @@ jobs:
         with:
           node-version: latest
 
-      - name: Install odoc deps
-        run: opam install result
+      - name: Pin odoc with OxCaml parameterised libs support
+        run: opam pin add -n https://github.com/art-w/odoc.git#oxcaml-param
 
       - name: Install deps
         run: opam install csexp pp re spawn uutf odoc ppx_expect ppx_inline_test wasm_of_ocaml-compiler

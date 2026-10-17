@@ -36,3 +36,29 @@ using `(select ...)` in melange.emit
   hello from melange
   foo has no fake
 
+A neighboring library can exclude the emit stanza's selected modules.
+
+  $ cat >dune <<EOF
+  > (library
+  >  (name lib)
+  >  (modes melange)
+  >  (modules :standard \ main bar foo))
+  > (melange.emit
+  >  (target output)
+  >  (alias mel)
+  >  (emit_stdlib false)
+  >  (modules main bar foo)
+  >  (libraries lib
+  >   (select bar.ml from
+  >    (melange.dom -> bar.melange.ml)
+  >    (!melange.dom -> bar.native.ml))
+  >   (select foo.ml from
+  >    (fakefoobar -> foo.fake.ml)
+  >    (!fakefoobar -> foo.no_fake.ml))))
+  > EOF
+  $ dune build @mel
+  File "dune", line 4, characters 31-34:
+  4 |  (modules :standard \ main bar foo))
+                                     ^^^
+  Error: Module Foo is excluded but it doesn't exist.
+  [1]

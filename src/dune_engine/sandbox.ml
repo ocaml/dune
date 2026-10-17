@@ -142,7 +142,9 @@ let copy_recursively =
             (Path.to_string_maybe_quoted src)
         ]
   in
-  let copy_file ~src ~dst = Io.copy_file ~chmod:chmod_file ~src ~dst () in
+  let copy_file ~src ~dst =
+    Io.copy_file ~overwrite:false ~chmod:chmod_file ~src ~dst ()
+  in
   let mkdir_with_perms ~src ~dst =
     let perms =
       (Unix.stat (Path.to_string src)).st_perm |> Permissions.Mode.of_int |> chmod_dir
@@ -200,7 +202,7 @@ let link_function ~(mode : Sandbox_mode.some) =
           dependencies and make them writable. *)
        (* CR-someday: this doesn't work with directory targets *)
        let chmod = Permissions.add Permissions.write in
-       fun src dst -> Io.copy_file ~src ~dst ~chmod ())
+       fun src dst -> Io.copy_file ~overwrite:false ~src ~dst ~chmod ())
 ;;
 
 let link_deps t ~deps =

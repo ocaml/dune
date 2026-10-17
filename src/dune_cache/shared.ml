@@ -105,7 +105,7 @@ let link_even_if_there_are_too_many_links_already ~src ~dst =
       ~f:(function
       | Error e -> raise e
       | Ok temp_file ->
-        Io.copy_file ~src ~dst:temp_file ();
+        Io.copy_file ~overwrite:true ~src ~dst:temp_file ();
         (* This replaces [src], which has too many links already, with a fresh
            copy we've just created in the [temp_file]. *)
         let src = Path.to_string src in
@@ -129,7 +129,7 @@ let store_targets_to ~temp_dir ~(targets : _ Targets.Produced.t) ~mode : unit Or
   let portable_hardlink_or_copy =
     match (mode : Mode.t) with
     | Hardlink -> Io.portable_hardlink
-    | Copy -> fun ~src ~dst -> Io.copy_file ~src ~dst ()
+    | Copy -> fun ~src ~dst -> Io.copy_file ~overwrite:true ~src ~dst ()
   in
   Result.try_with (fun () ->
     (* CR-someday rleshchinskiy: We recreate the directory structure here but it might be
@@ -288,7 +288,7 @@ module File_restore = struct
   ;;
 
   let copy ~src ~dst =
-    (try Io.copy_file ~src ~dst () with
+    (try Io.copy_file ~overwrite:true ~src ~dst () with
      | Sys_error _ -> raise_notrace (E Not_found_in_cache));
     let src = Path.to_string src in
     match Unix.stat src with

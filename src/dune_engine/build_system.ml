@@ -497,18 +497,11 @@ and execute_action_for_rule
           let build_deps deps =
             let* facts = Memo.run (build_deps deps) in
             let+ () =
-              if not is_sandboxed
-              then Fiber.return ()
-              else
-                Sandbox.add_deps
-                  sandbox
-                  ~dirs:(Dep.Facts.necessary_dirs_for_sandboxing facts)
-                  ~deps:
-                    (Dep.Facts.paths
-                       facts
-                       ~expand_aliases:
-                         (Execution_parameters.expand_aliases_in_sandbox
-                            execution_parameters))
+              Sandbox.add_deps
+                sandbox
+                facts
+                ~expand_aliases:
+                  (Execution_parameters.expand_aliases_in_sandbox execution_parameters)
             in
             facts
           in

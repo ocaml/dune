@@ -115,3 +115,50 @@ Disabled stanzas must not contribute selected modules to their neighbors.
   >   (select missing.ml from (-> missing.fallback.ml))))
   > EOF
   $ dune build mylib.cma
+
+Selected modules must also be included in another stanza's :standard, even
+when the stanza declaring the select does not compile those modules itself.
+Currently the selected module is incorrectly omitted from the default set.
+
+  $ mkdir standard
+  $ cd standard
+  $ make_dune_project 3.21
+  $ cat > dune <<'EOF'
+  > (library
+  >  (name generator)
+  >  (modules)
+  >  (libraries
+  >   (select selected.ml from (-> selected.fallback.ml))
+  >   (select selected.mli from (-> selected.fallback.mli))))
+  > (executable
+  >  (name main)
+  >  (modules :standard))
+  > EOF
+  $ echo 'let () = print_endline Selected.message' > main.ml
+  $ echo 'let message = "selected from :standard"' > selected.fallback.ml
+  $ echo 'val message : string' > selected.fallback.mli
+  $ dune exec ./main.exe
+  File "main.ml", line 1, characters 23-31:
+  1 | let () = print_endline Selected.message
+                             ^^^^^^^^
+  Error: Unbound module Selected
+  [1]
+
+Omitting the modules field must use the same default module set.
+
+  $ cat > dune <<'EOF'
+  > (library
+  >  (name generator)
+  >  (modules)
+  >  (libraries
+  >   (select selected.ml from (-> selected.fallback.ml))
+  >   (select selected.mli from (-> selected.fallback.mli))))
+  > (executable
+  >  (name main))
+  > EOF
+  $ dune exec ./main.exe
+  File "main.ml", line 1, characters 23-31:
+  1 | let () = print_endline Selected.message
+                             ^^^^^^^^
+  Error: Unbound module Selected
+  [1]

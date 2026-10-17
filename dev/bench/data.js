@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792181788845,
+  "lastUpdate": 1792235478619,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -651542,6 +651542,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.5673057830733335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6eca1f13ad1857010de40cd92d05905d2a079fa5",
+          "message": "test(sandbox): fix macOS overlap expectations (#16627)\n\nNormalize Linux/macOS directory-hardlink diagnostics and check the build\nexit status separately.\n\nFixes the [macOS CI\nfailure](https://github.com/ocaml/dune/actions/runs/38959469955/job/117174992824)\nafter #16626.",
+          "timestamp": "2026-10-17T13:00:34+02:00",
+          "tree_id": "7c82b79f212a0b2d1b9782bb4bb6038090fdd860",
+          "url": "https://github.com/ocaml/dune/commit/6eca1f13ad1857010de40cd92d05905d2a079fa5"
+        },
+        "date": 1792235181784,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.014157554253334,
             "unit": "seconds"
           }
         ]

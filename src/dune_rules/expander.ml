@@ -828,6 +828,45 @@ let expand_pkg_macro ~loc { context; _ } macro_invocation =
   [ Value.Path path ]
 ;;
 
+(* This lives here, not in [Pkg_rules], because [Dune_load] depends on
+   [Context], which depends on [Pkg_rules]. *)
+let package_universe =
+  Memo.create
+    "package-universe"
+    ~input:(module Context_name)
+    (fun context ->
+       let open Memo.O in
+       let+ platform = Lock_dir.Sys_vars.solver_env
+       and+ lock_dir = Lock_dir.get_exn context
+       and+ local_packages =
+         Dune_load.packages ()
+         >>| Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
+       in
+       Dune_pkg.Package_universe.create_unvalidated ~platform local_packages lock_dir)
+;;
+
+let visible_packages t =
+  let open Memo.O in
+  let context = Context.name t.context in
+  let* lock_dir_active = Pkg_rules.lock_dir_active context in
+  if not lock_dir_active
+  then Memo.return Package.Name.Selection.All
+  else (
+    let src_dir = Path.Build.drop_build_context_exn t.dir in
+    match Dune_project.exclusive_package t.project ~dir:src_dir with
+    | None -> Memo.return Package.Name.Selection.All
+    | Some pkg_id ->
+      let name = Package.Id.name pkg_id in
+      let+ selected =
+        let+ universe = Memo.exec package_universe context in
+        Dune_pkg.Package_universe.selected_dependencies_of_local_package
+          universe
+          name
+          ~with_test:true
+      in
+      Package.Name.Selection.Only (Package.Name.Set.of_list (name :: selected)))
+;;
+
 let expand_pform_macro
       (context : Context.t)
       ~dir

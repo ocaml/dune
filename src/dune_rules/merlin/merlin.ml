@@ -739,22 +739,25 @@ module Unprocessed = struct
   let pp_flags ctx ~expander lib_name preprocess
     : Processed.pp_flag option Action_builder.t
     =
-    let open Action_builder.O in
-    let* ocaml = Action_builder.of_memo (Context.ocaml ctx) in
-    match Preprocess.remove_future_syntax preprocess ~for_:Merlin ocaml.version with
-    | Action (loc, (action : Dune_lang.Action.t)) ->
-      pp_flag_of_action ~expander ~loc ~action
-    | No_preprocessing -> Action_builder.return None
-    | Pps { loc; pps; flags; staged = _ } ->
+    match preprocess with
+    | Preprocess.No_preprocessing -> Action_builder.return None
+    | Action _ | Pps _ | Future_syntax _ ->
       let open Action_builder.O in
-      let+ exe, flags =
-        let* scope =
-          Expander.dir expander |> Scope.DB.find_by_dir |> Action_builder.of_memo
-        in
-        Ppx_driver.get_ppx_driver ctx ~loc ~expander ~lib_name ~flags ~scope pps
-      in
-      let args = encode_command ~bin:(Path.build exe) ~args:("--as-ppx" :: flags) in
-      Some { Processed.flag = Processed.Pp_kind.Ppx; args }
+      let* ocaml = Action_builder.of_memo (Context.ocaml ctx) in
+      (match Preprocess.remove_future_syntax preprocess ~for_:Merlin ocaml.version with
+       | Action (loc, (action : Dune_lang.Action.t)) ->
+         pp_flag_of_action ~expander ~loc ~action
+       | No_preprocessing -> Action_builder.return None
+       | Pps { loc; pps; flags; staged = _ } ->
+         let open Action_builder.O in
+         let+ exe, flags =
+           let* scope =
+             Expander.dir expander |> Scope.DB.find_by_dir |> Action_builder.of_memo
+           in
+           Ppx_driver.get_ppx_driver ctx ~loc ~expander ~lib_name ~flags ~scope pps
+         in
+         let args = encode_command ~bin:(Path.build exe) ~args:("--as-ppx" :: flags) in
+         Some { Processed.flag = Processed.Pp_kind.Ppx; args })
   ;;
 
   let src_dirs sctx lib ~for_ =

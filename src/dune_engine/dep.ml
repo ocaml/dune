@@ -135,20 +135,13 @@ module Fact = struct
       Digest.Manual.get d
     ;;
 
-    let create files ~build_file =
-      let open Memo.O in
-      let empty_dir =
-        if Filename_set.is_empty files
-        then Path.as_in_build_dir (Filename_set.dir files)
-        else None
-      in
+    let create ~dir ~files ~digests =
+      let empty_dir = if List.is_empty files then Path.as_in_build_dir dir else None in
       let empty_dirs =
         match empty_dir with
         | None -> Path.Build.Set.empty
         | Some dir -> Path.Build.Set.singleton dir
       in
-      let files = Filename_set.to_list files in
-      let+ digests = Memo.parallel_map files ~f:build_file in
       { files = Path.Set.of_list files
       ; empty_dirs
       ; digest = combined_digest ?empty_dir files digests

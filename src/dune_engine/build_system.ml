@@ -387,8 +387,10 @@ and build_file_selector (file_selector : File_selector.t) : Dep.Fact.t Memo.t =
   Memo.exec (Lazy.force build_file_selector_memo) file_selector
 
 and build_file_selector_impl file_selector =
-  let* files = eval_pred file_selector in
-  let+ fact = Dep.Fact.Files.create files ~build_file:build_file_digest in
+  let* filenames = eval_pred file_selector in
+  let files = Filename_set.to_list filenames in
+  let+ digests = Memo.parallel_map files ~f:build_file_digest in
+  let fact = Dep.Fact.Files.create ~dir:(Filename_set.dir filenames) ~files ~digests in
   (* Fact: [file_selector] expands to the set of [files] whose digests are captured
        via [build_file_digest]; also, [File_selector.dir] exists (though it may be empty) *)
   Dep.Fact.file_selector file_selector fact

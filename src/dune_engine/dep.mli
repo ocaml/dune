@@ -44,10 +44,10 @@ module Fact : sig
     (** A group of files for which we cache the digest of the whole group. *)
     type t
 
-    (** Record a file-digest mapping for a given [Filename_set.t]. If the set is empty,
-        record the parent directory as existing, so that it can be created in the sandbox
-        even when the mapping is empty. *)
-    val create : Filename_set.t -> build_file:(Path.t -> Digest.t Memo.t) -> t Memo.t
+    (** Record a file-digest mapping for [files] in [dir]. The lists of files
+        and digests must have the same length and order. If [files] is empty,
+        record [dir] as existing so it can be created in the sandbox. *)
+    val create : dir:Path.t -> files:Path.t list -> digests:Digest.t list -> t
 
     val to_dyn : t -> Dyn.t
     val equal : t -> t -> bool

@@ -11,6 +11,16 @@ module Info = struct
     | Some loc -> From_dune_file loc
   ;;
 
+  let loc t ~dir =
+    match t with
+    | From_dune_file loc -> loc
+    | Internal ->
+      Loc.in_file
+        (Path.drop_optional_build_context
+           (Path.build (Path.Build.relative dir "_unknown_")))
+    | Source_file_copy p -> Loc.in_file (Path.source p)
+  ;;
+
   let repr =
     Repr.variant
       "rule-info"
@@ -72,16 +82,7 @@ module T = struct
   let compare a b = Id.compare a.id b.id
   let equal a b = Id.equal a.id b.id
   let hash t = Id.hash t.id
-
-  let loc { info; targets; _ } =
-    match info with
-    | From_dune_file loc -> loc
-    | Internal ->
-      Loc.in_file
-        (Path.drop_optional_build_context
-           (Path.build (Path.Build.relative targets.root "_unknown_")))
-    | Source_file_copy p -> Loc.in_file (Path.source p)
-  ;;
+  let loc { info; targets; _ } = Info.loc info ~dir:targets.root
 
   let repr =
     Repr.record
@@ -137,24 +138,5 @@ module Anonymous_action = struct
     }
 
   let loc t = t.loc
-  let info { loc; _ } = if Loc.is_none loc then Info.Internal else From_dune_file loc
-
-  let to_rule ~targets ?mode ({ action; loc = _; dir = _ } as anon) =
-    let info = info anon in
-    make ?mode ~info ~targets action
-  ;;
-
   let make ?(loc = Loc.none) ~dir action = { action; loc; dir }
-
-  module Evaluated = struct
-    type anon = t
-
-    type t =
-      { anon : anon
-      ; action : Action.Full.t
-      ; facts : Dep.Facts.t
-      }
-
-    let make ~action ~facts anon = { anon; action; facts }
-  end
 end

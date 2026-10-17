@@ -1434,7 +1434,7 @@ module Write_disk = struct
           let child_src = Path.relative_fname (Path.relative src dir) fname in
           let child_dst = dst_of ~dir fname in
           Path.mkdir_p (Path.relative dst dir);
-          Io.copy_file ~src:child_src ~dst:child_dst ())
+          Io.copy_file ~exclusive:false ~src:child_src ~dst:child_dst ())
         ~on_dir:(fun ~dir fname () -> Path.mkdir_p (dst_of ~dir fname))
         ~on_symlink:`Raise
         ()
@@ -1516,7 +1516,7 @@ module Write_disk = struct
               let dst = Path.append_local files_dir local_file in
               Path.mkdir_p (Path.parent_exn dst);
               match original with
-              | Path src -> Io.copy_file ~src ~dst ()
+              | Path src -> Io.copy_file ~exclusive:false ~src ~dst ()
               | Content content -> Io.write_file_exn dst content))));
       rename_old_lock_dir_to_hidden ();
       safely_rename_lock_dir_thunk ~dst:lock_dir_path_external lock_dir_path ();

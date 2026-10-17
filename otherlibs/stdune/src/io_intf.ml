@@ -45,8 +45,12 @@ module type S = sig
     -> string list
     -> unit
 
+  (** [copy_file ~exclusive ?chmod ~src ~dst ()] copies [src] to [dst]. When
+      [exclusive], it fails if [dst] already exists, otherwise allowing
+      overwrites. [chmod] optionally adjusts the permissions. *)
   val copy_file
-    :  ?chmod:(Permissions.Mode.t -> Permissions.Mode.t)
+    :  exclusive:bool
+    -> ?chmod:(Permissions.Mode.t -> Permissions.Mode.t)
     -> src:path
     -> dst:path
     -> unit

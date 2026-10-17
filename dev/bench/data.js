@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792272192450,
+  "lastUpdate": 1792272198445,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -469392,6 +469392,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 43.3672020905,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fcb89db6da409d50663f8493b89e0502ba523c3d",
+          "message": "test(select): reproduce selected modules missing from :standard (#16633)\n\nReproduce selected modules missing from another stanza's `:standard`\nsince #13175. Complements #16630 for #14085.\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-17T14:10:31-07:00",
+          "tree_id": "3dde523705b5545e5aa7f10043679c21ba841183",
+          "url": "https://github.com/ocaml/dune/commit/fcb89db6da409d50663f8493b89e0502ba523c3d"
+        },
+        "date": 1792272197511,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.39934637864666667,
             "unit": "seconds"
           }
         ]

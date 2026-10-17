@@ -29,7 +29,20 @@ module Spec = struct
     and+ byte = field_oslu "ocamlc_flags"
     and+ native = field_oslu "ocamlopt_flags"
     and+ melange =
-      field_oslu ~check:(Syntax.since Melange.syntax (0, 1)) "melange.compile_flags"
+      fields_mutually_exclusive
+        ~default:Ordered_set_lang.Unexpanded.standard
+        [ ( "melange.flags"
+          , Syntax.since Stanza.syntax (3, 26)
+            >>> Syntax.since Melange.syntax (0, 1)
+            >>> Ordered_set_lang.Unexpanded.decode )
+        ; ( "melange.compile_flags"
+          , Syntax.since Melange.syntax (0, 1)
+            >>> Syntax.deprecated_in
+                  Stanza.syntax
+                  (3, 26)
+                  ~extra_info:"Use 'melange.flags' instead."
+            >>> Ordered_set_lang.Unexpanded.decode )
+        ]
     in
     let specific = Lib_mode.Map.make ~byte ~native ~melange in
     { common; specific }

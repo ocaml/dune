@@ -128,10 +128,7 @@ let make ~(spec : Ocaml_flags.Spec.t) ~default ~eval =
                     default.flags.specific.ocaml.native
               }
           ; melange =
-              f
-                "melange compile_flags"
-                spec.specific.melange
-                default.flags.specific.melange
+              f "melange flags" spec.specific.melange default.flags.specific.melange
           }
       }
   }
@@ -169,7 +166,7 @@ let dump t =
     [ "flags", (if t.nostdlib then nostdlib_flags else []) @ common
     ; "ocamlc_flags", byte
     ; "ocamlopt_flags", native
-    ; "melange.compile_flags", melange
+    ; "melange.flags", melange
     ]
 ;;
 

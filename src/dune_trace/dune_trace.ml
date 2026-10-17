@@ -63,7 +63,7 @@ let at_exit =
              (Temp.temp_dir ~parent_dir:dir ~prefix:"dune" ~suffix:"trace")
              "trace.csexp"
          in
-         Io.copy_file ~src:path ~dst ()))
+         Io.copy_file ~exclusive:false ~src:path ~dst ()))
 ;;
 
 let set_global_impl ~ownership out =

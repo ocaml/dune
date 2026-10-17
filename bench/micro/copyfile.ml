@@ -26,6 +26,6 @@ let () =
   in
   for i = 1 to 10_000 do
     let dst = Path.relative dir (sprintf "dst-%d" i) in
-    Io.copy_file ~chmod ~src ~dst ()
+    Io.copy_file ~exclusive:false ~chmod ~src ~dst ()
   done
 ;;

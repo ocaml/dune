@@ -88,7 +88,7 @@ let copy_channels =
         Exn.reraise exn)
 ;;
 
-let setup_copy ?(chmod = Fun.id) ~src ~dst () =
+let setup_copy ~exclusive ?(chmod = Fun.id) ~src ~dst () =
   let ic = Stdlib.open_in_bin src in
   let oc =
     try
@@ -98,7 +98,8 @@ let setup_copy ?(chmod = Fun.id) ~src ~dst () =
         |> chmod
         |> Permissions.Mode.to_int
       in
-      Stdlib.open_out_gen [ Open_wronly; Open_creat; Open_trunc; Open_binary ] perm dst
+      let creation = if exclusive then Open_excl else Open_trunc in
+      Stdlib.open_out_gen [ Open_wronly; Open_creat; creation; Open_binary ] perm dst
     with
     | exn ->
       close_in ic;
@@ -111,7 +112,7 @@ module Copyfile = struct
   (* Bindings to mac's fast copy function. It's similar to a hardlink, except
      it does COW when edited. It will also default back to regular copying if
      it fails for w/e reason *)
-  external copyfile : string -> string -> unit = "stdune_copyfile"
+  external copyfile : string -> string -> bool -> unit = "stdune_copyfile"
 
   external sendfile
     :  src:Unix.file_descr
@@ -128,7 +129,7 @@ module Copyfile = struct
   ;;
 
   let sendfile_with_fallback =
-    let setup_copy ?(chmod = Fun.id) ~src ~dst () =
+    let setup_copy ~exclusive ?(chmod = Fun.id) ~src ~dst () =
       match Unix.openfile src [ O_RDONLY; O_CLOEXEC ] 0 with
       | exception Unix.Unix_error (Unix.ENOENT, _, _) -> Error `Src_missing
       | fd_src ->
@@ -152,7 +153,8 @@ module Copyfile = struct
                     |> chmod
                     |> Permissions.Mode.to_int
                   in
-                  Unix.openfile dst [ O_WRONLY; O_CREAT; O_TRUNC; O_CLOEXEC ] dst_perm
+                  let creation = if exclusive then Unix.O_EXCL else Unix.O_TRUNC in
+                  Unix.openfile dst [ O_WRONLY; O_CREAT; creation; O_CLOEXEC ] dst_perm
                 with
                 | fd_dst -> Ok (Fd.unsafe_of_unix_file_descr fd_dst, src_stat.st_size)
                 | exception exn ->
@@ -163,14 +165,14 @@ module Copyfile = struct
               in
               fd_src, fd_dst, src_size))
     in
-    fun ?chmod ~src ~dst () ->
+    fun ~exclusive ?chmod ~src ~dst () ->
       (* All of this exception translation is done for now to maintain the
          same error messages as the other file copying functions.
 
          Eventually, we should stop using exceptions for signalling these
          errors. But that's a bit of a large change since there's a lot of
          exception catching to audit. *)
-      match setup_copy ?chmod ~src ~dst () with
+      match setup_copy ~exclusive ?chmod ~src ~dst () with
       | Error (`Exn exn) -> Exn_with_backtrace.reraise exn
       | Error `Src_is_a_dir -> raise (Sys_error "Is a directory")
       | Error `Dst_is_a_dir ->
@@ -204,7 +206,7 @@ module Copyfile = struct
            Exn.reraise exn)
   ;;
 
-  let copyfile ?chmod ~src ~dst () =
+  let copyfile ~exclusive ?chmod ~src ~dst () =
     let src_stats =
       match Unix.stat src with
       | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
@@ -213,7 +215,7 @@ module Copyfile = struct
       | { st_kind = S_DIR; _ } -> raise (Sys_error "Is a directory")
       | stats -> stats
     in
-    (try copyfile src dst with
+    (try copyfile src dst exclusive with
      | Unix.Unix_error (Unix.EPERM, "unlink", _) ->
        let message = Printf.sprintf "%s: Is a directory" dst in
        raise (Sys_error message)
@@ -230,9 +232,11 @@ module Copyfile = struct
       |> Unix.chmod dst
   ;;
 
-  let copy_file_portable ?chmod ~src ~dst () =
-    Exn.protectx (setup_copy ?chmod ~src ~dst ()) ~finally:close_both ~f:(fun (ic, oc) ->
-      copy_channels ic oc)
+  let copy_file_portable ~exclusive ?chmod ~src ~dst () =
+    Exn.protectx
+      (setup_copy ~exclusive ?chmod ~src ~dst ())
+      ~finally:close_both
+      ~f:(fun (ic, oc) -> copy_channels ic oc)
   ;;
 
   let copy_file_best =
@@ -244,10 +248,10 @@ module Copyfile = struct
 
   let copy_file_impl = ref `Best
 
-  let copy_file ?chmod ~src ~dst () =
+  let copy_file ~exclusive ?chmod ~src ~dst () =
     match !copy_file_impl with
-    | `Portable -> copy_file_portable ?chmod ~src ~dst ()
-    | `Best -> copy_file_best ?chmod ~src ~dst ()
+    | `Portable -> copy_file_portable ~exclusive ?chmod ~src ~dst ()
+    | `Best -> copy_file_best ~exclusive ?chmod ~src ~dst ()
   ;;
 end
 
@@ -409,13 +413,13 @@ struct
   let setup_copy ?chmod ~src ~dst () =
     let src = Path.to_string src in
     let dst = Path.to_string dst in
-    setup_copy ?chmod ~src ~dst ()
+    setup_copy ~exclusive:false ?chmod ~src ~dst ()
   ;;
 
-  let copy_file ?chmod ~src ~dst () =
+  let copy_file ~exclusive ?chmod ~src ~dst () =
     let src = Path.to_string src in
     let dst = Path.to_string dst in
-    Copyfile.copy_file ?chmod ~src ~dst ()
+    Copyfile.copy_file ~exclusive ?chmod ~src ~dst ()
   ;;
 
   let file_line path n =
@@ -466,7 +470,7 @@ end
 
 let portable_symlink ~src ~dst =
   if Stdlib.Sys.win32
-  then copy_file ~src ~dst ()
+  then copy_file ~exclusive:false ~src ~dst ()
   else (
     let src =
       match Path.parent dst with
@@ -527,5 +531,5 @@ let portable_hardlink ~src ~dst =
     (* If we can't make a new hard link because we reached the limit on the
         number of hard links per file, we fall back to copying. We expect
         that this happens very rarely (probably only for empty files). *)
-    copy_file ~src ~dst ()
+    copy_file ~exclusive:false ~src ~dst ()
 ;;

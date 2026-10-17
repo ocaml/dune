@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792280702630,
+  "lastUpdate": 1792280883386,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -651832,6 +651832,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.19358664182,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "04150ec5338a7b99e8e6580fae4d7bc2b4a50fdf",
+          "message": "perf(merlin): skip compiler lookup without preprocessing (#16608)\n\nSkip the compiler lookup when computing Merlin preprocessing flags with\npreprocessing disabled.\n\nFrom anmonteiro/dune#260.\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-17T16:35:07-07:00",
+          "tree_id": "fd991c635e74f30a1070e6766e976db4e660ab56",
+          "url": "https://github.com/ocaml/dune/commit/04150ec5338a7b99e8e6580fae4d7bc2b4a50fdf"
+        },
+        "date": 1792280514308,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.535872685053334,
             "unit": "seconds"
           }
         ]

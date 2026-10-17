@@ -20,14 +20,15 @@ Dune can build Melange projects, and produces JavaScript files by defining a
 adding ``melange`` to ``(modes ...)`` in the :doc:`/reference/dune/library`
 stanza.
 
-Melange support must be enabled in the :doc:`/reference/dune-project/index`
-file:
+Melange support is enabled by default in Dune language 3.25 and later. Projects
+using older Dune language versions must enable it in the
+:doc:`/reference/dune-project/index` file:
 
 .. code:: dune
 
     (using melange 1.0)
 
-Once that's in place, you can use the Melange mode in
+Once Melange support is enabled, you can use the Melange mode in
 :doc:`/reference/dune/library` and ``melange.emit`` stanzas.
 
 Simple Project
@@ -36,14 +37,12 @@ Simple Project
 Let's start by looking at a simple project with Melange and Dune. Subsequent
 sections explain the different concepts used here in further detail.
 
-First, make sure that the :doc:`/reference/dune-project/index` file
-specifies at least version 3.20 of the Dune language, and the Melange extension
-is enabled:
+First, make sure that the :doc:`/reference/dune-project/index` file specifies
+at least version 3.25 of the Dune language:
 
 .. code:: dune
 
   (lang dune {{latest}})
-  (using melange 1.0)
 
 Next, write a :doc:`/reference/dune/index` file with a
 :ref:`melange-emit` stanza:
@@ -84,18 +83,241 @@ The resulting JavaScript can now be run:
 Libraries
 =========
 
-Adding Melange support to Dune libraries is done as follows:
+Dune libraries can be compiled as OCaml libraries, Melange libraries, or both.
+The selected modes control which compiler is used, and the Melange-specific
+library fields let one stanza describe sources, dependencies, and preprocessing
+that differ between OCaml and Melange builds.
 
-- ``(modes melange)``: adding ``melange`` to  ``modes`` is required. This
-  field also supports the :doc:`reference/ordered-set-language`.
+Certain Melange-only fields are only available from Dune 3.24:
 
-- ``(melange.runtime_deps <deps>)``: optionally, define any runtime dependencies
-  using ``melange.runtime_deps``. This field is analog to the ``runtime_deps``
-  field used in ``melange.emit`` stanzas.
+.. code:: dune
 
-- ``(melange.compile_flags <flags>)``: optionally, pass flags to ``melc`` compiler.
-  This field is analogous to the ``compile_flags``
-  field used in ``melange.emit`` stanzas.
+  (lang dune 3.24)
+  (using melange 1.0)
+
+Choosing Library Modes
+----------------------
+
+The ``modes`` field of the :doc:`/reference/dune/library` stanza decides which
+library variants Dune builds:
+
+- ``(modes melange)`` builds only the Melange variant of the library.
+
+- ``(modes :standard melange)`` builds the usual OCaml variants from
+  ``:standard`` and also builds a Melange variant. This is the common choice
+  when one library is shared by native OCaml code and Melange code.
+
+- ``(modes byte)`` or ``(modes :standard)`` builds only OCaml variants. Such a
+  library cannot use Melange-only library fields such as
+  ``melange.libraries`` and cannot be used by a ``melange.emit`` stanza.
+
+The ``modes`` field supports the :doc:`/reference/ordered-set-language`, so
+``melange`` can be added to or removed from ``:standard`` in the same way as
+other modes.
+
+Selecting Melange Sources
+-------------------------
+
+By default, a mixed-mode library uses the same module set for OCaml and Melange
+compilation. Dune also recognizes Melange-specific source files:
+
+- ``foo.melange.ml`` replaces ``foo.ml`` when compiling module ``Foo`` in
+  Melange mode.
+
+- ``foo.melange.mli`` replaces ``foo.mli`` when compiling module ``Foo``'s
+  interface in Melange mode.
+
+- Reason sources work the same way: ``foo.melange.re`` and
+  ``foo.melange.rei`` replace ``foo.re`` and ``foo.rei`` in Melange mode.
+
+- A ``*.melange.ml`` or ``*.melange.re`` file can also define a module that
+  exists only in the Melange variant, as long as that module is part of the
+  Melange module set.
+
+For example, this library builds ``Shared`` in both modes, but uses
+``Override.ml`` for OCaml and ``Override.melange.ml`` for Melange:
+
+.. code:: dune
+
+  (library
+   (name shared_with_override)
+   (modes :standard melange)
+   (modules shared override))
+
+If the module set itself differs between OCaml and Melange, use
+``melange.modules``:
+
+.. versionadded:: 3.24
+
+.. code:: dune
+
+  (library
+   (name platform_code)
+   (modes :standard melange)
+   (modules common ocaml_extra)
+   (melange.modules common melange_extra))
+
+In this example, the OCaml variants contain ``Common`` and ``Ocaml_extra``.
+The Melange variant contains ``Common`` and ``Melange_extra``.
+
+``melange.modules`` uses the same
+:doc:`/reference/ordered-set-language` as ``modules``. If it is omitted,
+Melange compilation uses the ``modules`` field.
+
+Mode-Specific Dependencies
+--------------------------
+
+By default, the Melange variant of a library uses the same ``libraries`` field
+as the OCaml variants. Use ``melange.libraries`` when the dependencies differ:
+
+.. versionadded:: 3.24
+
+.. code:: dune
+
+  (library
+   (name app)
+   (modes :standard melange)
+   (libraries native_dep)
+   (melange.libraries melange_dep))
+
+In this example, bytecode and native compilation depend on ``native_dep``.
+Melange compilation depends on ``melange_dep`` instead.
+
+``melange.libraries`` replaces ``libraries`` for Melange compilation. It can be
+empty, which means the Melange variant has no library dependencies even if the
+OCaml variants do.
+
+For PPX rewriters with runtime dependencies that differ between OCaml and
+Melange, use ``melange.ppx_runtime_libraries``:
+
+.. versionadded:: 3.24
+
+.. code:: dune
+
+  (library
+   (name my_ppx)
+   (kind ppx_rewriter)
+   (ppx_runtime_libraries my_ppx.native_runtime)
+   (melange.ppx_runtime_libraries my_ppx.melange_runtime))
+
+If ``melange.ppx_runtime_libraries`` is omitted, Melange uses
+``ppx_runtime_libraries``.
+
+Mode-Specific Preprocessing
+---------------------------
+
+By default, the Melange variant of a library uses the same ``preprocess`` field
+as the OCaml variants. Use ``melange.preprocess`` when Melange needs different
+preprocessing:
+
+.. versionadded:: 3.24
+
+.. code:: dune
+
+  (library
+   (name portable_ui)
+   (modes :standard melange)
+   (modules shared components)
+   (preprocess
+    (action
+     (run sh %{dep:pp_ocaml.sh} %{input-file})))
+   (melange.preprocess
+    (pps melange.ppx)))
+
+``melange.preprocess`` replaces ``preprocess`` for Melange compilation. It is
+not an addition to ``preprocess``. If the Melange preprocessor reads extra
+files, list them with ``melange.preprocessor_deps``:
+
+.. versionadded:: 3.24
+
+.. code:: dune
+
+  (library
+   (name generated)
+   (modes :standard melange)
+   (melange.preprocess
+    (action
+     (run ./pp.sh %{input-file})))
+   (melange.preprocessor_deps pp.sh))
+
+Melange Compile Flags and Runtime Dependencies
+----------------------------------------------
+
+``melange.compile_flags`` passes flags to ``melc`` for the Melange variant of a
+library:
+
+.. code:: dune
+
+  (library
+   (name warning_policy)
+   (modes :standard melange)
+   (melange.compile_flags :standard -w +a-70))
+
+The field uses the :doc:`/reference/ordered-set-language`, supports
+``(:include ...)`` forms, and can also be set from ``env`` stanzas. Prefer
+``:standard`` when adding flags so Dune's default flags are preserved.
+
+``melange.runtime_deps`` declares files that are needed at runtime when a
+``melange.emit`` stanza depends on the library. The field is analogous to
+``runtime_deps`` in ``melange.emit`` stanzas:
+
+.. code:: dune
+
+  (library
+   (name components)
+   (public_name my_package.components)
+   (modes melange)
+   (melange.runtime_deps ./style.css ./assets/logo.svg))
+
+Runtime dependencies can include assets such as CSS, images, fonts, or
+JavaScript files. They use the formats described in
+:doc:`/concepts/dependency-spec`.
+
+Putting the Pieces Together
+---------------------------
+
+This example combines the common patterns for a library shared by OCaml and
+Melange builds:
+
+.. code:: dune
+
+  (library
+   (name editor_mode_demo)
+   (modes :standard melange)
+   (modules common override dep_user)
+   (melange.modules common override melange_extra dep_user)
+   (libraries native_dep)
+   (melange.libraries melange_dep)
+   (preprocess
+    (action
+     (run sh %{dep:pp_ocaml.sh} %{input-file})))
+   (melange.preprocess
+    (action
+     (run sh %{dep:pp_melange.sh} %{input-file}))))
+
+With these source files:
+
+.. code::
+
+  common.ml
+  override.ml
+  override.melange.ml
+  dep_user.ml
+  melange_extra.melange.ml
+
+OCaml compilation uses ``common.ml``, ``override.ml``, and ``dep_user.ml`` with
+``native_dep`` and ``pp_ocaml.sh``. Melange compilation uses ``common.ml``,
+``override.melange.ml``, ``dep_user.ml``, and
+``melange_extra.melange.ml`` with ``melange_dep`` and ``pp_melange.sh``.
+
+``melange.emit`` can then depend on the library:
+
+.. code:: dune
+
+  (melange.emit
+   (target output)
+   (libraries editor_mode_demo)
+   (modules app))
 
 Building Without Melange
 ------------------------

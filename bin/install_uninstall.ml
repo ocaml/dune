@@ -345,7 +345,7 @@ module File_ops_real (W : sig
       else Mode.create ~user:(read + write) ~group:read ~other:read ()
     in
     let chmod _ = mode in
-    let plain_copy () = Io.copy_file ~chmod ~src ~dst () in
+    let plain_copy () = Io.copy_file ~overwrite:true ~chmod ~src ~dst () in
     match kind with
     | Substitute -> Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
     | Special sf ->

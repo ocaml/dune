@@ -12,12 +12,14 @@
 #include <caml/unixsupport.h>
 
 #include <copyfile.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/syslimits.h>
 
-CAMLprim value stdune_copyfile(value v_from, value v_to) {
-  CAMLparam2(v_from, v_to);
+CAMLprim value stdune_copyfile(value v_from, value v_to, value v_overwrite) {
+  CAMLparam3(v_from, v_to, v_overwrite);
+  bool overwrite = Bool_val(v_overwrite);
   caml_unix_check_path(v_from, "copyfile");
   caml_unix_check_path(v_to, "copyfile");
   char from[PATH_MAX];
@@ -44,12 +46,18 @@ CAMLprim value stdune_copyfile(value v_from, value v_to) {
     uerror("realpath", v_from);
   }
   /* nor does it automatically overwrite the target */
-  int ret = unlink(to);
-  if (ret < 0 && errno != ENOENT) {
-    caml_acquire_runtime_system();
-    uerror("unlink", v_to);
+  if (overwrite) {
+    int ret = unlink(to);
+    if (ret < 0 && errno != ENOENT) {
+      caml_acquire_runtime_system();
+      uerror("unlink", v_to);
+    }
   }
-  ret = copyfile(real_from, to, NULL, COPYFILE_CLONE);
+  copyfile_flags_t flags = COPYFILE_CLONE;
+  if (!overwrite) {
+    flags |= COPYFILE_EXCL;
+  }
+  int ret = copyfile(real_from, to, NULL, flags);
   caml_acquire_runtime_system();
   if (ret < 0) {
     uerror("copyfile", v_to);
@@ -77,9 +85,10 @@ CAMLprim value stdune_sendfile(value v_in, value v_out, value v_size) {
 #define KERNEL_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
 #define FD_val(value) Int_val(value)
 
-CAMLprim value stdune_copyfile(value v_from, value v_to) {
+CAMLprim value stdune_copyfile(value v_from, value v_to, value v_overwrite) {
   (void)v_from;
   (void)v_to;
+  (void)v_overwrite;
   caml_failwith("copyfile: only on macos");
 }
 
@@ -163,9 +172,10 @@ CAMLprim value stdune_sendfile(value v_in, value v_out, value v_size) {
   caml_failwith("sendfile: linux");
 }
 
-CAMLprim value stdune_copyfile(value v_from, value v_to) {
+CAMLprim value stdune_copyfile(value v_from, value v_to, value v_overwrite) {
   (void)v_from;
   (void)v_to;
+  (void)v_overwrite;
   caml_failwith("copyfile: only on macos");
 }
 

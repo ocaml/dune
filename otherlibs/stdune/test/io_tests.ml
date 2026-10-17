@@ -120,7 +120,7 @@ let%expect_test "copy file simple" =
   let src = Path.relative dir "initial" in
   let dst = Path.relative dir "final" in
   Io.write_file_exn src "foobarbaz";
-  Io.copy_file ~src ~dst ();
+  Io.copy_file ~overwrite:true ~src ~dst ();
   print_endline (Io.read_file_exn dst);
   [%expect {| foobarbaz |}]
 ;;
@@ -131,7 +131,7 @@ let%expect_test "copy file overwrite" =
   let dst = Path.relative dir "final" in
   Io.write_file_exn src "foobarbaz";
   Io.write_file_exn dst "xxx";
-  Io.copy_file ~src ~dst ();
+  Io.copy_file ~overwrite:true ~src ~dst ();
   print_endline (Io.read_file_exn dst);
   [%expect {| foobarbaz |}]
 ;;
@@ -145,6 +145,7 @@ let%expect_test "copy file chmod" =
   Exn.protect
     ~f:(fun () ->
       Io.copy_file
+        ~overwrite:true
         ~chmod:(fun _ ->
           let open Permissions in
           Mode.create ~user:(read + write) ~group:(read + execute) ~other:read ())
@@ -164,7 +165,7 @@ let%expect_test "copy file - no src" =
   let dir = temp_dir () in
   let src = Path.relative dir "initial" in
   let dst = Path.relative dir "final" in
-  match Io.copy_file ~src ~dst () with
+  match Io.copy_file ~overwrite:true ~src ~dst () with
   | () -> assert false
   | exception Sys_error s ->
     let s =
@@ -180,7 +181,7 @@ let%expect_test "copy file - src is a directory" =
   let src = Path.relative dir "initial" in
   let dst = Path.relative dir "final" in
   Unix.mkdir (Path.to_string src) 0o755;
-  Io.copy_file ~src ~dst ();
+  Io.copy_file ~overwrite:true ~src ~dst ();
   [%expect.unreachable]
 [@@expect.uncaught_exn {| (Sys_error "Is a directory") |}]
 ;;
@@ -192,7 +193,7 @@ let%expect_test "copy file - dst is a directory" =
   Io.write_file_exn src "foobarbaz";
   Unix.mkdir (Path.to_string dst) 0o755;
   Unix.sleepf 0.5;
-  match Io.copy_file ~src ~dst () with
+  match Io.copy_file ~overwrite:true ~src ~dst () with
   | _ -> assert false
   | exception Sys_error s ->
     let s =

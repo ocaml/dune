@@ -34,13 +34,20 @@ fails.
   -> required by alias overlap in dune:8
   [1]
 
-Copy mode: both builds succeed. This does not establish that overlapping inputs
-are copied only once.
+Copy mode: reject the second attempt to populate an already copied file.
+This exposes the overlap rather than silently overwriting its contents. Normalize
+both syscall errors and the portable copier's wrapped diagnostic.
 
   $ dune build @directory --sandbox copy
   contents
-  $ dune build @overlap --sandbox copy
-  contents
+  $ dune build @overlap --sandbox copy > copy.log 2>&1
+  [1]
+  $ sed -E \
+  >   -e '/^Error.*:$/ { N; s/\n/ /; }' \
+  >   -e 's/(open|copyfile)\((.*)\): File exists$/\2: File exists/' \
+  >   copy.log | censor
+  Error: _build/.sandbox/$DIGEST/default/tree/file: File exists
+  -> required by alias overlap in dune:8
 
 Hardlink mode: a directory-only dependency already fails.
 

@@ -57,8 +57,3 @@ A neighboring library can exclude the emit stanza's selected modules.
   >    (!fakefoobar -> foo.no_fake.ml))))
   > EOF
   $ dune build @mel
-  File "dune", line 4, characters 31-34:
-  4 |  (modules :standard \ main bar foo))
-                                     ^^^
-  Error: Module Foo is excluded but it doesn't exist.
-  [1]

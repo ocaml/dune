@@ -6,6 +6,14 @@ type t =
   ; only_generated_files : bool
   }
 
+let conv =
+  Conv.iso
+    (Conv.triple Path.conv Conv.bool Predicate_lang.Glob.conv)
+    (fun (dir, only_generated_files, predicate) ->
+       { dir; only_generated_files; predicate })
+    (fun { dir; only_generated_files; predicate } -> dir, only_generated_files, predicate)
+;;
+
 let dir t = t.dir
 let only_generated_files t = t.only_generated_files
 let predicate t = t.predicate

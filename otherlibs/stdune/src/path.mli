@@ -58,6 +58,7 @@ module Local : sig
   include Path_intf.S with type t := t
 
   val root : t
+  val conv : t Conv.value
   val repr : t Repr.t
   val append : t -> t -> t
 
@@ -79,6 +80,7 @@ end
 module External : sig
   include Path_intf.S
 
+  val conv : t Conv.value
   val root : t
   val initial_cwd : t
   val cwd : unit -> t
@@ -99,6 +101,7 @@ module Source : sig
   include Path_intf.With_loc with type t := t
   include Path_intf.S with type t := t
 
+  val conv : t Conv.value
   val root : t
 
   module L : sig
@@ -145,6 +148,9 @@ module Build : sig
   type t = w Path0.Local_gen.t
 
   include Path_intf.S with type t := t
+
+  (** Encodes paths relative to the build directory. *)
+  val conv : t Conv.value
 
   val root : t
   val append_source : t -> Source.t -> t
@@ -195,6 +201,8 @@ type t = private
   | In_build_dir of Build.t
 
 include Path_intf.S with type t := t
+
+val conv : t Conv.value
 
 module Table : sig
   (** Specialized tables for path. We do implement all of [Hashtbl_intf.S] -

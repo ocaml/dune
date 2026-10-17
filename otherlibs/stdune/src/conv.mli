@@ -6,6 +6,7 @@ type 'a value = ('a, values) t
 
 val sexp : (Sexp.t, values) t
 val int : (int, values) t
+val bool : (bool, values) t
 val float : (float, values) t
 val unit : (unit, values) t
 val char : (char, values) t

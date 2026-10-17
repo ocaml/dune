@@ -45,6 +45,13 @@ end
 
 include T
 
+let conv =
+  Conv.iso
+    (Conv.pair Path.Build.conv Name.conv)
+    (fun (dir, name) -> make name ~dir)
+    (fun { dir; name } -> dir, name)
+;;
+
 let compare { dir; name } t =
   match Name.compare name t.name with
   | Eq -> Path.Build.compare dir t.dir

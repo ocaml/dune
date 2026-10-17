@@ -167,7 +167,19 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
            when [dst] is a directory target. *)
       match ectx.targets with
       | Some { dirs; _ } when Filename.Set.mem dirs (Path.basename dst) ->
-        Tree_copy.copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ()
+        Tree_copy.copy
+          ~src
+          ~dst
+          ~copy_file
+          ~mkdir
+          ~on_unsupported
+          ~on_symlink:
+            (`Call
+                (fun ~src ->
+                  match (Unix.stat (Path.to_string src)).st_kind with
+                  | S_REG -> Some Unix.S_REG
+                  | kind -> on_unsupported ~src kind))
+          ()
       | _ -> copy_file ~src ~dst
     in
     Fiber.return ()

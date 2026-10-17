@@ -123,3 +123,51 @@ Now we try a broken symlink:
   Error: Error trying to read targets after a rule was run:
   - sub/targetdir/bar: Broken symbolic link
   [1]
+
+In symlink mode, materialize directory inputs as real directories containing
+file symlinks. A directory and its explicit descendants can overlap. Replacing
+or deleting entries must not modify the original directory target.
+
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target (dir input))
+  >  (action
+  >   (system "\| mkdir -p input/sub/deep input/sub/empty input/empty
+  >           "\| echo outer > input/a
+  >           "\| echo inner > input/sub/deep/b
+  >           "\| ln -s sub/deep/b input/link
+  >   )))
+  > (rule
+  >  (target result)
+  >  (deps
+  >   (sandbox always) input input/sub input/sub/deep/b
+  >   (glob_files input/empty/*))
+  >  (action
+  >   (with-stdout-to result
+  >    (system "\| if test -L input || test -L input/sub || test -L input/sub/deep; then
+  >            "\|   echo 'directory symlink'
+  >            "\| else
+  >            "\|   test -L input/a && test -L input/sub/deep/b && test -L input/link || exit 1
+  >            "\|   test -d input/empty && test -d input/sub/empty || exit 1
+  >            "\|   cat input/a input/sub/deep/b input/link
+  >            "\|   rm input/sub/deep/b || exit 1
+  >            "\|   echo replacement > input/sub/deep/b || exit 1
+  >            "\|   rmdir input/empty || exit 1
+  >            "\|   mkdir input/local || exit 1
+  >            "\|   test ! -e input/empty && test -d input/local || exit 1
+  >            "\|   cat input/sub/deep/b
+  >            "\| fi
+  >    ))))
+  > EOF
+
+  $ dune build result --sandbox symlink
+  $ cat _build/default/result
+  outer
+  inner
+  inner
+  replacement
+
+  $ cat _build/default/input/sub/deep/b
+  inner
+  $ test -d _build/default/input/empty
+  $ test ! -e _build/default/input/local

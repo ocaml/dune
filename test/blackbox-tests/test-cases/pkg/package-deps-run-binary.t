@@ -27,19 +27,14 @@ correctly under the default sandbox.
   >   (with-stdout-to out (run mybin))))
   > EOF
 
-This should print "from provider", but fails instead:
+The overlapping package-directory and executable dependencies are both
+available to the action.
 
-  $ dune build @all 2>&1 | censor
-  Error:
-  symlink(_build/.sandbox/$DIGEST1/_private/default/.pkg/provider.0.0.1-$DIGEST2/target): File exists
-  -> required by _build/default/out
-  -> required by alias all
-  [1]
+  $ dune build @all
   $ cat _build/default/out
-  cat: _build/default/out: No such file or directory
-  [1]
+  from provider
 
-Removing [(deps (package provider))] fixes the problem
+Removing [(deps (package provider))] produces the same result.
 
   $ cat >dune <<'EOF'
   > (rule
@@ -47,7 +42,6 @@ Removing [(deps (package provider))] fixes the problem
   >   (with-stdout-to out (run mybin))))
   > EOF
 
-  $ dune build @all 2>&1 | censor
-  
+  $ dune build @all
   $ cat _build/default/out
   from provider

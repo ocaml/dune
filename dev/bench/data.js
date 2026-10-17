@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792280983637,
+  "lastUpdate": 1792280990479,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -469450,6 +469450,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 53.60421410156667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e94ad86912cc9e9c307dfac910caf4cc9e5d26b7",
+          "message": "perf(ppx): collect cookie requests before expansion (#16609)\n\nFilter and collect PPX cookie requests before entering parallel memoized\nexpansion.\n\nFrom anmonteiro/dune#261.\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-17T16:31:35-07:00",
+          "tree_id": "014724ffaac36afa5e610e6fcc86cf8f811ae8f2",
+          "url": "https://github.com/ocaml/dune/commit/e94ad86912cc9e9c307dfac910caf4cc9e5d26b7"
+        },
+        "date": 1792280989474,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5172850822066667,
             "unit": "seconds"
           }
         ]

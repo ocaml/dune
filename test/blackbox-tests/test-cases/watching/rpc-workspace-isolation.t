@@ -70,7 +70,6 @@ registry PID bug can cause the two servers to reuse a registry filename.
   $ cd ..
   $ kill -0 "$A_PID" "$B_PID"
   $ test "$endpoint_a" != "$endpoint_b"
-  [1]
 
 Shared endpoints cannot safely address either fixture: on main, make no RPC
 calls. Once independent, verify the actual outputs in both workspaces.
@@ -84,5 +83,5 @@ calls. Once independent, verify the actual outputs in both workspaces.
   > else
   >   echo 'workspaces share an RPC endpoint'
   > fi
-  workspaces share an RPC endpoint
+  ab
   $ cleanup

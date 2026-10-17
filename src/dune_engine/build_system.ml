@@ -520,17 +520,14 @@ and execute_action_for_rule
             (fun () -> Action_trace.collect action_trace)
         in
         let+ () =
-          if not is_sandboxed
-          then Fiber.return ()
-          else (
-            (* The stamp file for anonymous actions is always created outside
+          (* The stamp file for anonymous actions is always created outside
              the sandbox, so we can't move it. *)
-            let should_be_skipped =
-              match rule_kind with
-              | Normal_rule -> fun (_ : Path.Build.t) -> false
-              | Anonymous_action { stamp_file; _ } -> Path.Build.equal stamp_file
-            in
-            Sandbox.move_targets_to_build_dir sandbox ~should_be_skipped ~targets)
+          let skip_files =
+            match rule_kind with
+            | Normal_rule -> Path.Build.Set.empty
+            | Anonymous_action { stamp_file; _ } -> Path.Build.Set.singleton stamp_file
+          in
+          Sandbox.move_targets_to_build_dir sandbox ~skip_files ~targets
         in
         match Targets.Produced.of_validated targets with
         | Ok produced_targets -> { Exec_result.produced_targets; action_exec_result }

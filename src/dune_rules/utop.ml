@@ -205,6 +205,7 @@ let setup sctx ~dir =
     let preprocess = Module_reference.Per_item.for_all pps in
     Pp_spec_rules.make
       sctx
+      ~for_
       ~dir
       ~expander
       ~scope

@@ -66,12 +66,43 @@ Queries without a matching extension keep the legacy fallback.
   alterexe.pp: (READER (interface))
   alterexe: (READER (interface))
 
+The typed lookup reports mode, default status, source kind, and counterpart.
+It omits ambiguous matches instead of assigning them a source kind.
+
+  $ merlin_configurations _build/default/.merlin-conf/exe-alterexe \
+  >   alterexe.aml alterexe.amli alterexe.pp.aml alterexe.pp.amli \
+  >   alterexe.pp alterexe missing.aml
+  alterexe.aml: ocaml true impl alterexe.amli
+  alterexe.amli: ocaml true intf alterexe.aml
+  alterexe.pp.aml: ocaml true impl alterexe.amli
+  alterexe.pp.amli: ocaml true intf alterexe.aml
+  alterexe.pp: none
+  alterexe: none
+  missing.aml: none
+
+The typed lookup keeps each source kind paired with its reader directive.
+
+  $ merlin_configurations --json _build/default/.merlin-conf/exe-alterexe \
+  >   alterexe.aml alterexe.amli alterexe.pp.aml alterexe.pp.amli | jq -r '
+  > [ .file, .kind,
+  >   (.directives[] | select(.[0] == "READER") | .[1][])
+  > ] | join(" ")'
+  alterexe.aml impl implementation
+  alterexe.amli intf interface
+  alterexe.pp.aml impl implementation
+  alterexe.pp.amli intf interface
+
 The fallback remains available when there is only one candidate.
 
   $ rm alterexe.amli
   $ dune build .merlin-conf/exe-alterexe
   $ query_ocaml_merlin_pp alterexe.pp | grep -Eo '\(READER \([^)]*\)\)'
   (READER (implementation))
+
+  $ merlin_configurations _build/default/.merlin-conf/exe-alterexe \
+  >   alterexe.pp alterexe
+  alterexe.pp: ocaml true impl -
+  alterexe: ocaml true impl -
 
 The legacy fallback follows filename ordering, even when the implementation
 extension sorts after the interface extension.
@@ -102,8 +133,17 @@ extension sorts after the interface extension.
   alterexe.pp.amli: (READER (interface))
   alterexe.pp: (READER (implementation))
   alterexe: (READER (implementation))
+  $ merlin_configurations _build/default/.merlin-conf/exe-alterexe \
+  >   alterexe.zml alterexe.amli alterexe.pp.zml alterexe.pp.amli \
+  >   alterexe.pp alterexe
+  alterexe.zml: ocaml true impl alterexe.amli
+  alterexe.amli: ocaml true intf alterexe.zml
+  alterexe.pp.zml: ocaml true impl alterexe.amli
+  alterexe.pp.amli: ocaml true intf alterexe.zml
+  alterexe.pp: none
+  alterexe: none
 
-An interface-only module keeps the fallback available.
+An interface-only module has an unambiguous fallback and no counterpart.
 
   $ rm alterexe.zml
   $ rm dune
@@ -122,3 +162,9 @@ An interface-only module keeps the fallback available.
   alterexe.pp.amli: (READER (interface))
   alterexe.pp: (READER (interface))
   alterexe: (READER (interface))
+  $ merlin_configurations _build/default/.merlin-conf/lib-only \
+  >   alterexe.amli alterexe.pp.amli alterexe.pp alterexe
+  alterexe.amli: ocaml true intf -
+  alterexe.pp.amli: ocaml true intf -
+  alterexe.pp: ocaml true intf -
+  alterexe: ocaml true intf -

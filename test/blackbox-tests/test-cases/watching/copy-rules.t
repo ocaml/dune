@@ -70,6 +70,30 @@ Note that [d.txt] is here but [c.txt] isn't (it's not promoted).
   b.txt
   d.txt
 
+A missing directory initially has no rules. Creating a source directory must
+invalidate that result, first for source copies and then for new local rules.
+
+  $ build child/value
+  Failure
+  [1]
+  $ mkdir child
+  $ echo source > child/value
+  $ build child/value
+  Success
+  $ cat _build/default/child/value
+  source
+
+  $ cat > child/dune <<EOF
+  > (rule
+  >  (target result)
+  >  (deps value)
+  >  (action (copy %{deps} %{target})))
+  > EOF
+  $ build child/result
+  Success
+  $ cat _build/default/child/result
+  source
+
 We're done.
 
   $ stop_dune_quiet

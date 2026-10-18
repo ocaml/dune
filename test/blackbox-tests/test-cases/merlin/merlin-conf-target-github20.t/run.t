@@ -4,6 +4,14 @@ Builds Merlin configuration targets explicitly.
   $ ls _build/default/.merlin-conf/lib-foo
   _build/default/.merlin-conf/lib-foo
 
+The generated child loads its parent's rules and removes stale siblings.
+
+  $ cp _build/default/.merlin-conf/lib-foo saved-merlin
+  $ touch _build/default/.merlin-conf/stale
+  $ dune build .merlin-conf/lib-foo
+  $ cmp saved-merlin _build/default/.merlin-conf/lib-foo
+  $ test ! -e _build/default/.merlin-conf/stale
+
 Changing Merlin-only settings must not recompile an up-to-date library.
 
   $ rm dune-project

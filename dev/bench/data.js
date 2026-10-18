@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792351323234,
+  "lastUpdate": 1792351632402,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -469711,6 +469711,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5411876647199999,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c689b70b8335b580d1e8884f90d8c08d2652d74c",
+          "message": "test(rules): cover redirected generated directories (#16640)\n\nCover inherited binaries, automatic utop directories, stale Merlin\nartifacts, and directories created during watch mode.\n\nFrom anmonteiro/dune#253.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-18T12:09:12-07:00",
+          "tree_id": "0f98f13e4f8ae4453d8509516bfe274d3755b428",
+          "url": "https://github.com/ocaml/dune/commit/c689b70b8335b580d1e8884f90d8c08d2652d74c"
+        },
+        "date": 1792351630795,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 59.77607397123334,
             "unit": "seconds"
           }
         ]

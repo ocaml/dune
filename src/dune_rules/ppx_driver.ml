@@ -305,6 +305,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
 
 let ppx_driver_and_flags_internal
       context
+      ~for_:compilation_mode
       ~dune_version
       ~loc
       ~expander
@@ -325,17 +326,42 @@ let ppx_driver_and_flags_internal
     let* libs = Resolve.Memo.read (Lib.closure libs ~linking:true ~for_) in
     Action_builder.of_memo (get_cookies ~loc ~lib_name ~expander libs)
   and+ ppx_driver_exe = Action_builder.of_memo @@ Ppx_exe.ppx_driver_exe context libs in
-  ppx_driver_exe, flags @ cookies
+  let compilation_mode_cookie =
+    match compilation_mode with
+    | Compilation_mode.Ocaml -> []
+    | Melange ->
+      if dune_version >= (3, 26)
+      then [ "--cookie"; "dune-compilation-mode=\"melange\"" ]
+      else []
+  in
+  ppx_driver_exe, flags @ cookies @ compilation_mode_cookie
 ;;
 
 let resolve_pps scope pps = Resolve.Memo.read (Lib.DB.resolve_pps (Scope.libs scope) pps)
 
-let ppx_driver_and_flags ctx ~lib_name ~expander ~scope ~loc ~flags pps =
+let ppx_driver_and_flags
+      ctx
+      ~for_:compilation_mode
+      ~lib_name
+      ~expander
+      ~scope
+      ~loc
+      ~flags
+      pps
+  =
   let open Action_builder.O in
   let* libs = resolve_pps scope pps in
   let+ exe, flags =
     let dune_version = Scope.project scope |> Dune_project.dune_version in
-    ppx_driver_and_flags_internal ctx ~loc ~expander ~dune_version ~lib_name ~flags libs
+    ppx_driver_and_flags_internal
+      ctx
+      ~for_:compilation_mode
+      ~loc
+      ~expander
+      ~dune_version
+      ~lib_name
+      ~flags
+      libs
   and+ driver =
     let* libs = Resolve.Memo.read (Lib.closure libs ~linking:true ~for_) in
     Action_builder.of_memo (Driver.select libs ~loc:(User_file (loc, pps)))
@@ -344,11 +370,19 @@ let ppx_driver_and_flags ctx ~lib_name ~expander ~scope ~loc ~flags pps =
   exe, driver, flags
 ;;
 
-let get_ppx_driver ctx ~loc ~expander ~scope ~lib_name ~flags pps =
+let get_ppx_driver ctx ~for_ ~loc ~expander ~scope ~lib_name ~flags pps =
   let open Action_builder.O in
   let* libs = resolve_pps scope pps in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
-  ppx_driver_and_flags_internal ctx ~loc ~expander ~dune_version ~lib_name ~flags libs
+  ppx_driver_and_flags_internal
+    ctx
+    ~for_
+    ~loc
+    ~expander
+    ~dune_version
+    ~lib_name
+    ~flags
+    libs
 ;;
 
 let ppx_exe ctx ~scope pp = Ppx_exe.get_ppx_exe ctx ~scope [ Loc.none, pp ]

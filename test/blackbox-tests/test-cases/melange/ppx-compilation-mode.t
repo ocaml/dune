@@ -1,5 +1,6 @@
 PPX drivers need the compilation target when the same source is compiled for
-OCaml and Melange. Currently the dune-compilation-mode cookie is missing.
+OCaml and Melange. Dune supplies the dune-compilation-mode cookie for Melange
+starting with language version 3.26.
 
   $ make_melange_project 3.26 1.0
   $ mkdir ppx
@@ -110,11 +111,11 @@ discover its dependency.
   $ _build/default/ordinary/main.exe
   absent
   $ node _build/default/ordinary/out/ordinary/main.js
-  absent
+  melange
   $ _build/default/staged/main.exe
   absent
   $ node _build/default/staged/out/staged/main.js
-  absent
+  melange
 
 The cookie is also supplied when preprocessing a melange.emit stanza directly.
 
@@ -127,7 +128,7 @@ The cookie is also supplied when preprocessing a melange.emit stanza directly.
   > EOF
   $ dune build @emit/melange
   $ node _build/default/emit/out/emit/main.js
-  absent
+  melange
 
 Melange lint drivers need the same information for both implementations and
 interfaces.
@@ -141,8 +142,8 @@ interfaces.
   > EOF
   $ touch linted/linted.ml linted/linted.mli
   $ dune build @linted/lint 2>&1 | sort
-  lint implementation: absent
-  lint interface: absent
+  lint implementation: melange
+  lint interface: melange
 
 Merlin uses a separate PPX invocation. Its configuration must retain the
 compilation target for Melange modules without changing the native view.
@@ -169,11 +170,11 @@ compilation target for Melange modules without changing the native view.
   >       else "absent" end' --arg source "$2" --arg obj_dir "$3" | sort -u
   > }
   $ merlin_mode "$PWD/editor" editor.ml .editor.objs/melange
-  absent
+  melange
   $ merlin_mode "$PWD/ordinary" ordinary/shared.ml .ordinary_shared.objs/byte
   absent
   $ merlin_mode "$PWD/ordinary" ordinary/shared.ml .ordinary_shared.objs/melange
-  absent
+  melange
 
 Projects using Dune 3.25 retain the existing cookie behavior.
 

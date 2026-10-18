@@ -80,6 +80,7 @@ let modules_rules
       modules
       ~lib_name
       ~empty_intf_modules
+      ~for_
   =
   let { Preprocess.config = preprocess; preprocessor_deps } = preprocess in
   let* pp =
@@ -95,6 +96,7 @@ let modules_rules
     in
     Pp_spec_rules.make
       sctx
+      ~for_
       ~dir
       ~scope
       ~preprocess:preprocess_with_instrumentation
@@ -177,4 +179,5 @@ let modules_rules sctx kind expander ~dir scope modules ~for_ =
     modules
     ~lib_name
     ~empty_intf_modules
+    ~for_
 ;;

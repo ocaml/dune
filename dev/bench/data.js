@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792358496928,
+  "lastUpdate": 1792358505080,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -469856,6 +469856,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 60.56462616481334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a8a931a133c45976a5e8ea90e6307bcb3cabd45e",
+          "message": "perf(merlin): build file indexes when loading configurations (#16642)\n\nPersist one configuration record per module and build filename lookup\nindexes when loading Merlin configurations.\n\nFollow-up to #16641; port of anmonteiro/dune#246.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-18T14:03:33-07:00",
+          "tree_id": "3dbc9148833d7aef461edc7b29c85a929914efa2",
+          "url": "https://github.com/ocaml/dune/commit/a8a931a133c45976a5e8ea90e6307bcb3cabd45e"
+        },
+        "date": 1792358503894,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.54930070838,
             "unit": "seconds"
           }
         ]

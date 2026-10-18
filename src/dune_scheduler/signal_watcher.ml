@@ -22,6 +22,18 @@ let warning =
 |}
 ;;
 
+let should_print_ctrl_c_warning signal n = n = 2 && Signal.equal signal Int
+
+let%expect_test "only repeated SIGINT triggers the Ctrl-C warning" =
+  print_endline
+    (sprintf
+       "%b %b %b"
+       (should_print_ctrl_c_warning Int 2)
+       (should_print_ctrl_c_warning Quit 2)
+       (should_print_ctrl_c_warning Term 2));
+  [%expect {| true false false |}]
+;;
+
 external sys_exit : int -> _ = "caml_sys_exit"
 
 let signal_waiter () =
@@ -62,7 +74,8 @@ let run ~print_ctrl_c_warning q : unit =
         ignore (Queue.pop_exn last_exit_signals : Time.t)
       done;
       let n = Queue.length last_exit_signals in
-      if n = 2 && print_ctrl_c_warning then prerr_endline warning;
+      if should_print_ctrl_c_warning signal n && print_ctrl_c_warning
+      then prerr_endline warning;
       if n = 3 then sys_exit 1
     | _ ->
       (* On macOS, [sigwait] can occasionally return with success, yet skip

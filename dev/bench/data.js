@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792281205862,
+  "lastUpdate": 1792284069111,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -651977,6 +651977,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.535872685053334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d5f3fd59f4e0007eb966cf78eb697932ce5ee57b",
+          "message": "feat(melange): deprecate melange.compile_flags in Dune 3.26 (#16573)\n\nAdd `melange.flags` for libraries and `env` stanzas in Dune 3.26,\ndeprecating `melange.compile_flags` while retaining compatibility.\n`melange.emit` keeps `compile_flags`.\n\nUpstreams anmonteiro/dune#214; follow-up to #16501.\n\n---------\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-17T17:33:11-07:00",
+          "tree_id": "a527795c07f18f5d63f9207a53aa74dd00190f34",
+          "url": "https://github.com/ocaml/dune/commit/d5f3fd59f4e0007eb966cf78eb697932ce5ee57b"
+        },
+        "date": 1792283867310,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.3674756536866663,
             "unit": "seconds"
           }
         ]

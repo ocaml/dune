@@ -105,7 +105,9 @@ module Processed = struct
 
   type module_config =
     { opens : Module_name.t list
-    ; module_ : Module.t
+    ; module_path : Module_name.Path.t
+    ; unit_name : string
+    ; sources : Path.Build.t list
     ; reader : string Nonempty_list.t option
     }
 
@@ -113,7 +115,12 @@ module Processed = struct
     Repr.record
       "merlin-module-config"
       [ Repr.field "opens" (Repr.list Module_name.repr) ~get:(fun t -> t.opens)
-      ; Repr.field "module_" (Repr.abstract Module.to_dyn) ~get:(fun t -> t.module_)
+      ; Repr.field
+          "module_path"
+          (Repr.view (Repr.list Module_name.repr) ~to_:Nonempty_list.to_list)
+          ~get:(fun t -> t.module_path)
+      ; Repr.field "unit_name" Repr.string ~get:(fun t -> t.unit_name)
+      ; Repr.field "sources" (Repr.list Path.Build.repr) ~get:(fun t -> t.sources)
       ; Repr.field
           "reader"
           (Repr.option (Repr.view (Repr.list Repr.string) ~to_:Nonempty_list.to_list))
@@ -184,7 +191,7 @@ module Processed = struct
 
     let name = "merlin-conf"
     let sharing = false
-    let version = 11
+    let version = 12
 
     let repr =
       Repr.view Repr.string ~to_:(fun _ -> "Use [dune ocaml dump-dot-merlin] instead")
@@ -397,7 +404,7 @@ module Processed = struct
 
   let get_configuration { per_file_config; pp_config; config } ~file =
     let open Option.O in
-    let+ match_kind, { module_; opens; reader } =
+    let+ match_kind, { module_path; unit_name; sources = _; opens; reader } =
       let find file = Path.Build.Map.find per_file_config file in
       match find file with
       | Some config -> Some (Exact_or_copy, config)
@@ -413,27 +420,24 @@ module Processed = struct
               This is too rough but, really, preprocessors should emit copy
               line directives instead and then Dune should have the database
               similar to Copy_line_directive to handle this. *)
-           let+ ({ module_; _ } as fallback) = find (remove_extension file) in
+           let+ ({ sources; _ } as fallback) = find (remove_extension file) in
            let extension =
              Path.Build.extension file |> Filename.Extension.Or_empty.to_string
            in
            let matching_sources =
-             Module.sources_without_pp module_
-             |> List.filter ~f:(fun source ->
+             List.filter sources ~f:(fun source ->
                String.equal
                  extension
-                 (Path.extension source |> Filename.Extension.Or_empty.to_string))
+                 (Path.Build.extension source |> Filename.Extension.Or_empty.to_string))
            in
            let config =
              match matching_sources with
-             | [ source ] ->
-               find (Path.as_in_build_dir_exn source) |> Option.value ~default:fallback
+             | [ source ] -> find source |> Option.value ~default:fallback
              | _ -> fallback
            in
            Without_extension, config)
     in
-    let pp = Module_reference.Per_item.find pp_config (Module.path module_) in
-    let unit_name = Module_name.Unique.to_string (Module.obj_name module_) in
+    let pp = Module_reference.Per_item.find pp_config module_path in
     match_kind, to_sexp ~unit_name ~opens ~pp ~reader config
   ;;
 
@@ -464,12 +468,12 @@ module Processed = struct
 
   let dump_entries { per_file_config; pp_config; config } : Dump_entry.t list =
     Path.Build.Map.to_list per_file_config
-    |> List.map ~f:(fun (source_path, { module_; opens; reader }) ->
-      let module_name = Module.name module_ in
-      let unit_name = Module_name.Unique.to_string (Module.obj_name module_) in
-      let pp = Module_reference.Per_item.find pp_config (Module.path module_) in
-      let config = to_sexp ~unit_name ~reader ~opens ~pp config in
-      Dump_entry.{ module_name; source_path; config })
+    |> List.map
+         ~f:(fun (source_path, { module_path; unit_name; sources = _; opens; reader }) ->
+           let module_name = Nonempty_list.last module_path in
+           let pp = Module_reference.Per_item.find pp_config module_path in
+           let config = to_sexp ~unit_name ~reader ~opens ~pp config in
+           Dump_entry.{ module_name; source_path; config })
   ;;
 
   let print_entry (Dump_entry.{ module_name; source_path; config } : Dump_entry.t) =
@@ -926,15 +930,14 @@ module Unprocessed = struct
         match sources with
         | [] -> init
         | _ :: _ ->
-          let module_ =
-            match Module.pp_flags m with
-            | None -> m
-            | Some _ -> Module.set_pp m None
-          in
+          let module_path = Module.path m in
+          let unit_name = Module_name.Unique.to_string (Module.obj_name m) in
           let opens = Modules.With_vlib.local_open modules m in
           List.fold_left sources ~init ~f:(fun acc src ->
             let config =
-              { Processed.module_
+              { Processed.module_path
+              ; unit_name
+              ; sources
               ; opens
               ; reader =
                   String.Map.find

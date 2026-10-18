@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792361518723,
+  "lastUpdate": 1792361708338,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -469885,6 +469885,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.54930070838,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f38afb607a6a873d0d863e04915ed3fd3e35e0ff",
+          "message": "refactor(merlin): retain file configuration metadata (#16522)\n\nRetain compilation mode, source kind, and counterpart metadata for\nplural Merlin lookup, while preserving legacy `File` behavior.\n\nFollows #16536. Preparation for single-context editor support;\noriginally anmonteiro/dune#111.\n\n---------\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-18T15:03:58-07:00",
+          "tree_id": "495ecc4a8d9dd7715652b2b82bfd177ac3e75927",
+          "url": "https://github.com/ocaml/dune/commit/f38afb607a6a873d0d863e04915ed3fd3e35e0ff"
+        },
+        "date": 1792361706711,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 36.32050774733333,
             "unit": "seconds"
           }
         ]

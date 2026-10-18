@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792356137157,
+  "lastUpdate": 1792356144411,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -469798,6 +469798,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 52.19952255426,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ab06279c7a07ac994d55404064491e13346b2e6a",
+          "message": "perf(merlin): persist compact module configuration (#16641)\n\nPersist only the module metadata Merlin needs while preserving filename\nlookup behavior.\n\nFrom anmonteiro/dune#245; related to #16522.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-18T13:24:18-07:00",
+          "tree_id": "ad9d54fecf6d3bfa2af50733e56d4d66aa98fbd9",
+          "url": "https://github.com/ocaml/dune/commit/ab06279c7a07ac994d55404064491e13346b2e6a"
+        },
+        "date": 1792356143303,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.48967705068000006,
             "unit": "seconds"
           }
         ]

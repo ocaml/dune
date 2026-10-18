@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792338960061,
+  "lastUpdate": 1792338967378,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -469624,6 +469624,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 60.549307424426665,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8dae3b1085b81a369a49f8258811b9e677509506",
+          "message": "refactor(odoc): simplify library and package rule dispatch (#16631)\n\nShare the library/package lookup and compilation-mode selection between\nthe `_odocls` and `_html` rule-generation branches. Select the\nappropriate package-rule generator once and reuse it for both\nlibrary-derived and directly named packages.\n\nUse `Memo.Option.iter` for optional rule setup and keep lookup bindings\nlocal. No intended behavior change.",
+          "timestamp": "2026-10-18T23:38:00+08:00",
+          "tree_id": "de34bf2802f3280cfbc587cd83fc6d5de80db6ac",
+          "url": "https://github.com/ocaml/dune/commit/8dae3b1085b81a369a49f8258811b9e677509506"
+        },
+        "date": 1792338966356,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5462469856733333,
             "unit": "seconds"
           }
         ]

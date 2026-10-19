@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792424437055,
+  "lastUpdate": 1792424443762,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -470262,6 +470262,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 60.49430805836,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d405ce0976d5055c97a7ecc8d9ddaa5bb2b954e0",
+          "message": "refactor(engine): remove the Internal wrapper and build-name shadowing (#16637)\n\nRemove `Internal`, which was immediately included back into\n`Build_system`, and name the private operations `build_file_digest` and\n`build_directory_targets` to distinguish them from the public\nunit-returning functions.\n\nAlso inline the single-use promotion dispatch at the end of rule\nexecution, removing an independent helper from the mutually recursive\ngroup. The public API, Memo tables, cutoffs, and execution order are\nunchanged.\n\nMost of the diff is indentation from removing `Internal`; review with\nwhitespace hidden to see the substantive changes.",
+          "timestamp": "2026-10-19T23:20:06+08:00",
+          "tree_id": "0c26dcab9530759c506bd0b009d9956e59a5d281",
+          "url": "https://github.com/ocaml/dune/commit/d405ce0976d5055c97a7ecc8d9ddaa5bb2b954e0"
+        },
+        "date": 1792424443037,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5395028024333334,
             "unit": "seconds"
           }
         ]

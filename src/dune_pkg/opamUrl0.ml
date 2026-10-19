@@ -35,16 +35,22 @@ type resolve =
   | Resolved of Rev_store.Object.resolved
   | Unresolved of Rev_store.Object.t
 
-let not_found ~loc ~git_output t =
-  let url = base_url t in
-  let rev = rev t in
+let not_found ~loc t revision =
+  Error
+    (User_message.make
+       ~loc
+       [ Pp.textf "revision %S not found in %s" revision (base_url t) ])
+;;
+
+let fetch_failed ~loc ~git_output t obj =
   let git_output = List.map ~f:Pp.verbatim git_output in
   Error
     (User_message.make ~loc
      @@ git_output
-     @ [ (match rev with
-          | None -> Pp.textf "default branch not found in %s" url
-          | Some rev -> Pp.textf "revision %S not found in %s" rev url)
+     @ [ Pp.textf
+           "could not fetch revision %S from %s"
+           (Rev_store.Object.to_hex obj)
+           (base_url t)
        ])
 ;;
 
@@ -74,7 +80,7 @@ let resolve t ~loc rev_store =
   | `Ref revision ->
     Rev_store.resolve_revision rev_store remote ~revision
     >>| (function
-     | None -> not_found ~loc ~git_output:[] t
+     | None -> not_found ~loc t revision
      | Some o -> Ok (Resolved o))
 ;;
 
@@ -86,7 +92,7 @@ let fetch_revision t ~loc resolve rev_store =
   | Unresolved o ->
     Rev_store.fetch_object rev_store remote o
     >>| (function
-     | Error git_output -> not_found ~loc ~git_output t
+     | Error git_output -> fetch_failed ~loc ~git_output t o
      | Ok rev -> Ok rev)
 ;;
 

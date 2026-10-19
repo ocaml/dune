@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792423491883,
+  "lastUpdate": 1792423724609,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -470175,6 +470175,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4918424088266667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "077081f94e12b76c032c7fc1eb486168210959d6",
+          "message": "Fix digest cache invalidation on crash (#16646)\n\n## Description\n\n`unlink` the `_build/.db` cache when it gets dirty, so that a hard crash\nleaves us with no cache, not an invalid one.\n\n## Related Issue and Motivation\n\nFixes #16559 \n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-10-19T17:14:37+02:00",
+          "tree_id": "04e055f39878f4f861dba1f3bcae9742384dd45b",
+          "url": "https://github.com/ocaml/dune/commit/077081f94e12b76c032c7fc1eb486168210959d6"
+        },
+        "date": 1792423722483,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 43.56301720972667,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792428791405,
+  "lastUpdate": 1792429102304,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -470407,6 +470407,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.42538858858,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e365114692d5e4657702a17204e5568949545e76",
+          "message": "refactor(engine): pass sandbox target exclusions as a set (#16655)\n\nSandbox target extraction accepted an arbitrary predicate even though\nits only\ncaller either excludes nothing or excludes the anonymous-action stamp\nfile.\nPass that finite set explicitly instead.\n\nAlso let `Sandbox.move_targets_to_build_dir` handle `No_sandbox`\ndirectly,\nremoving the duplicate sandbox-state check from the caller while\npreserving\ndirectory-target extraction and patch-back behavior.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-20T00:39:57+08:00",
+          "tree_id": "49706b2c153242fd42e80127a7b9a1a607aa1e0b",
+          "url": "https://github.com/ocaml/dune/commit/e365114692d5e4657702a17204e5568949545e76"
+        },
+        "date": 1792429100989,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 60.19477641324,
             "unit": "seconds"
           }
         ]

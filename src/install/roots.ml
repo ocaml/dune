@@ -170,8 +170,12 @@ let extend_env_concat_path_vars a b =
         let path_sep = sep var in
         let dirs = Bin.parse_path ?sep:path_sep value in
         Env.update env ~var ~f:(fun init ->
-          List.fold_right dirs ~init ~f:(fun dir acc ->
-            Some (Bin.cons_path ?path_sep dir ~_PATH:acc))))
+          match dirs with
+          | [] -> init
+          | _ ->
+            let sep = Option.value path_sep ~default:Bin.path_sep |> String.make 1 in
+            let dirs = List.map dirs ~f:Path.to_absolute_filename in
+            Some (String.concat ~sep (dirs @ Option.to_list init))))
   in
   let b = Env.Var.Set.fold path_vars ~init:b ~f:(fun var env -> Env.remove env ~var) in
   Env.extend_env a b

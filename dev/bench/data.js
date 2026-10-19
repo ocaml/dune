@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792441258266,
+  "lastUpdate": 1792441265416,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -470494,6 +470494,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 59.897643367773334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "661fbaf917dc07ee66ed9aaa232d7825a8cf4774",
+          "message": "test(action): cover recursive copying across sandbox modes (#16653)\n\nExercise directory copies with ordinary file dependencies in symlink,\ncopy, and hardlink sandbox modes. Record the symlink-mode rejection of\nsandbox file links before the action-copy fix.\n\nAlso compare original input symlinks and an action-created link with the\nsandbox target text at another path across all three modes.",
+          "timestamp": "2026-10-19T22:02:59+02:00",
+          "tree_id": "94acd8904d8f69de393c095f68584b0d2a02bdbe",
+          "url": "https://github.com/ocaml/dune/commit/661fbaf917dc07ee66ed9aaa232d7825a8cf4774"
+        },
+        "date": 1792441264509,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5350684710333334,
             "unit": "seconds"
           }
         ]

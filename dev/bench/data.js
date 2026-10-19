@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792408647734,
+  "lastUpdate": 1792408654064,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -470088,6 +470088,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 41.41955944108667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ff0d7784fe34a4d522aafae4a3b278a0a8a990e1",
+          "message": "docs(changes): correct Rocq performance PR reference (#16648)\n\nCorrect the changelog fragment added by #16622: rename `16543.md` to\n`16622.md` and update its PR reference. #16543 is the alternative\nperformance proposal, not the merged change described by this entry.\n\nNo code or wording changes beyond the PR reference. The same correction\nis included in the 3.25 backport, #16647.\n\nValidation: `./dune.exe build -j4 @check @fmt` passes. Tests skipped for\nthis documentation-only change.",
+          "timestamp": "2026-10-19T13:05:06+02:00",
+          "tree_id": "09ab5dfb6ce5f6e55b9e58abbd0e71f8c69ca0c7",
+          "url": "https://github.com/ocaml/dune/commit/ff0d7784fe34a4d522aafae4a3b278a0a8a990e1"
+        },
+        "date": 1792408653151,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.43290151080666667,
             "unit": "seconds"
           }
         ]

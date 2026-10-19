@@ -914,13 +914,42 @@ module Unprocessed = struct
          Some { Processed.flag = Processed.Pp_kind.Ppx; args })
   ;;
 
-  let src_dirs sctx lib ~for_ =
-    match Lib.Local.of_lib lib with
-    | None -> Lib.info lib |> Lib_info.src_dir |> Path.Set.singleton |> Memo.return
-    | Some lib ->
-      Dir_contents.modules_of_local_lib sctx lib ~for_
-      >>| Modules.source_dirs
-      >>| Path.Set.map ~f:Path.drop_optional_build_context
+  let src_dirs =
+    let module Key = struct
+      module Super_context = Super_context.As_memo_key
+
+      type t = Super_context.t * Lib.Local.t * Compilation_mode.t
+
+      let equal =
+        Tuple.T3.equal Super_context.equal Lib.Local.equal Compilation_mode.equal
+      ;;
+
+      let hash = Tuple.T3.hash Super_context.hash Lib.Local.hash Poly.hash
+
+      let repr =
+        Repr.triple
+          (Repr.abstract Super_context.to_dyn)
+          (Repr.abstract Lib.Local.to_dyn)
+          Compilation_mode.repr
+      ;;
+
+      let to_dyn = Repr.to_dyn repr
+    end
+    in
+    let local =
+      Memo.create
+        "merlin-src-dirs"
+        ~input:(module Key)
+        ~cutoff:Path.Set.equal
+        (fun (sctx, lib, for_) ->
+           Dir_contents.modules_of_local_lib sctx lib ~for_
+           >>| Modules.source_dirs
+           >>| Path.Set.map ~f:Path.drop_optional_build_context)
+    in
+    fun sctx lib ~for_ ->
+      match Lib.Local.of_lib lib with
+      | None -> Lib.info lib |> Lib_info.src_dir |> Path.Set.singleton |> Memo.return
+      | Some lib -> Memo.exec local (sctx, lib, for_)
   ;;
 
   module Per_item_action_builder =

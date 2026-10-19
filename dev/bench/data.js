@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792441312501,
+  "lastUpdate": 1792441320090,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -470552,6 +470552,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 60.679509895580004,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1ed1a7aba19b04538f60e159a59f1f5de99efaea",
+          "message": "test(sandbox): reproduce file-copy mismatch after relocating inputs (#16652)",
+          "timestamp": "2026-10-19T22:03:31+02:00",
+          "tree_id": "620b2da8ac221a3877a05bd15e71dbfd8a220050",
+          "url": "https://github.com/ocaml/dune/commit/1ed1a7aba19b04538f60e159a59f1f5de99efaea"
+        },
+        "date": 1792441318933,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5447895039733334,
             "unit": "seconds"
           }
         ]

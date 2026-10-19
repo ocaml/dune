@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792384687479,
+  "lastUpdate": 1792384694676,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -469972,6 +469972,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 52.66162617002001,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "10b4cbc56e57bfc946e1353853cece6200ef9575",
+          "message": "perf(merlin): memoize dependency source directories (#16643)\n\nMemoize local-library source-directory sets by context, library, and\ncompilation mode so Merlin configurations can reuse them.\n\nCovered by #16572 and #16584. Upstreams anmonteiro/dune#247.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-18T21:20:01-07:00",
+          "tree_id": "57d9989141b1c572a526564dce0004621a35ad6b",
+          "url": "https://github.com/ocaml/dune/commit/10b4cbc56e57bfc946e1353853cece6200ef9575"
+        },
+        "date": 1792384693511,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.50409771504,
             "unit": "seconds"
           }
         ]

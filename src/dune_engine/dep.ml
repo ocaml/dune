@@ -45,6 +45,22 @@ module T = struct
   let universe = Universe
   let file_selector g = File_selector g
 
+  let conv =
+    let open Conv in
+    let file = constr "file" Path.conv file in
+    let env = constr "env" Env.Var.conv env in
+    let alias = constr "alias" Alias.conv alias in
+    let glob = constr "glob" File_selector.conv file_selector in
+    sum
+      [ econstr file; econstr env; econstr alias; econstr glob ]
+      (function
+        | File path -> case path file
+        | Env var -> case var env
+        | Alias value -> case value alias
+        | File_selector selector -> case selector glob
+        | Universe -> Code_error.raise "Cannot serialize a universe dependency" [])
+  ;;
+
   let compare x y =
     match x, y with
     | Env x, Env y -> Env.Var.compare x y
@@ -300,6 +316,7 @@ module Set = struct
   module M = Set.Of_map (T) (Map)
   include M
 
+  let conv = Conv.iso (Conv.list conv) of_list to_list
   let of_files l = of_list_map l ~f:file
   let of_files_set = Path.Set.fold ~init:empty ~f:(fun f acc -> add acc (file f))
 

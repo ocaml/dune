@@ -16,6 +16,8 @@ let of_string t =
   t
 ;;
 
+let conv = Conv.iso Conv.string of_string to_string
+
 let parse_string_exn ~loc t =
   if Filename.is_relative t
   then User_error.raise ~loc [ Pp.textf "path %s is not absolute" t ];

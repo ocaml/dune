@@ -18,4 +18,5 @@ let of_string s =
 ;;
 
 let to_string s = s
+let conv = Conv.iso Conv.string of_string to_string
 let to_dyn = String.to_dyn

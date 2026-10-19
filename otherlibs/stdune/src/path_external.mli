@@ -2,6 +2,7 @@ open Path0
 include Path_intf.S
 module Table : Hashtbl.S with type key = t
 
+val conv : t Conv.value
 val root : t
 
 include Path_intf.With_loc with type t := t

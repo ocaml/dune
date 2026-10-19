@@ -117,3 +117,5 @@ val path_with_stats_async
     number of concurrent calls capped by a global throttle so that we do not
     exceed the process's open file descriptor limit. *)
 val file_with_executable_bit : executable:bool -> Path.t -> t Fiber.t
+
+val path_with_executable_bit : executable:bool -> content_digest:t -> t

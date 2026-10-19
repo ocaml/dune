@@ -10,6 +10,7 @@ end
 
 type t
 
+val conv : t Conv.value
 val equal : t -> t -> bool
 val hash : t -> int
 val compare : t -> t -> Ordering.t

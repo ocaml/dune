@@ -5,6 +5,7 @@ open Import
 
 type t
 
+val conv : t Conv.value
 val dir : t -> Path.t
 val only_generated_files : t -> bool
 val of_glob : dir:Path.t -> Glob.t -> t

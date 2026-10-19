@@ -1,6 +1,99 @@
 open Import
 open Dune_cache.Hit_or_miss
 
+module Dynamic = struct
+  open Fiber.O
+
+  let conv =
+    let open Conv in
+    let deps = constr "deps" Dep.Set.conv (fun deps -> `Deps deps) in
+    let done_ = constr "done" unit (fun () -> `Done) in
+    sum
+      [ econstr deps; econstr done_ ]
+      (function
+        | `Deps values -> case values deps
+        | `Done -> case () done_)
+  ;;
+
+  let initial rule_digest =
+    Digest.Feed.compute_digest
+      (Digest.Feed.tuple2 Digest.Feed.string Digest.Feed.digest)
+      ("dynamic-dependency-manifest-v2", rule_digest)
+  ;;
+
+  let artifact_key key =
+    Digest.Feed.compute_digest
+      (Digest.Feed.tuple2 Digest.Feed.string Digest.Feed.digest)
+      ("dynamic-artifacts-v1", key)
+  ;;
+
+  let advance key deps digest =
+    let d = Digest.Manual.create () in
+    Digest.Manual.string d "dynamic-dependency-step-v1";
+    Digest.Manual.digest d key;
+    Dep.Set.digest deps d;
+    Digest.Manual.digest d digest;
+    Digest.Manual.get d
+  ;;
+
+  let facts_digest facts ~env =
+    let d = Digest.Manual.create () in
+    Dep.Facts.digest facts d ~env;
+    Digest.Manual.get d
+  ;;
+
+  (* Each node describes the next request. Its observed facts select the next
+     node, so a changed observation never evaluates obsolete later requests.
+     Missing nodes (including partially trimmed traces) are ordinary misses. *)
+  let lookup ~rule_digest ~targets ~env ~build_deps =
+    let rec loop key stages =
+      match
+        Dune_cache.Shared.Dynamic_deps.load ~rule_digest:key
+        |> Option.bind ~f:(fun sexp ->
+          Conv.of_sexp conv ~version:(0, 0) sexp |> Result.to_option)
+      with
+      | None ->
+        Dune_trace.emit ~buffered:true Cache (fun () ->
+          let reason =
+            match !Dune_cache.Shared.config with
+            | Disabled -> "cache disabled"
+            | Enabled _ -> "dynamic dependency manifest unavailable"
+          in
+          Dune_trace.Event.Cache.shared
+            (`Miss reason)
+            ~rule_digest:(Digest.to_string key)
+            ~head:(Targets.Validated.head targets));
+        Fiber.return None
+      | Some `Done ->
+        Dune_cache.Shared.lookup
+          ~can_go_in_shared_cache:true
+          ~rule_digest:(artifact_key key)
+          ~targets
+        >>| Option.map ~f:(fun targets -> targets, List.rev stages)
+      | Some (`Deps deps) ->
+        let* digest = build_deps deps |> Memo.run >>| facts_digest ~env in
+        loop (advance key deps digest) ((deps, digest) :: stages)
+    in
+    loop (initial rule_digest) []
+  ;;
+
+  let store ~rule_digest ~stages =
+    match !Dune_cache.Shared.config with
+    | Disabled -> rule_digest
+    | Enabled _ ->
+      let rec loop key = function
+        | [] ->
+          Dune_cache.Shared.Dynamic_deps.store ~rule_digest:key (Conv.to_sexp conv `Done);
+          artifact_key key
+        | (deps, digest) :: rest ->
+          let manifest = Conv.to_sexp conv (`Deps deps) in
+          Dune_cache.Shared.Dynamic_deps.store ~rule_digest:key manifest;
+          loop (advance key deps digest) rest
+      in
+      loop (initial rule_digest) stages
+  ;;
+end
+
 module Workspace_local = struct
   (* Stores information for deciding if a rule needs to be re-executed. *)
   module Database = struct

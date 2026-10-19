@@ -30,6 +30,7 @@ module Var = struct
   ;;
 
   let to_string t = t
+  let conv = Conv.iso Conv.string of_string to_string
   let repr = Repr.view Repr.string ~to_:to_string
   let temp_dir = of_string (if Sys.win32 then "TEMP" else "TMPDIR")
   let _PATH = of_string "PATH"

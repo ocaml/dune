@@ -202,6 +202,14 @@ let action dap =
   | [| _; "absolute"; path |] -> ordinary_action dap ~path:(absolute_path path)
   | [| _ |] -> ordinary_action dap ~path:"some_dependency"
   | [| _; "read"; path |] -> ordinary_action dap ~path
+  | [| _; "choose" |] ->
+    let open Lwt.Syntax in
+    let* path = read_file dap ~path:"choice" in
+    ordinary_action dap ~path:(String.trim path)
+  | [| _; "glob"; path; pattern |] ->
+    let open Lwt.Syntax in
+    let* files = read_directory_with_glob dap ~path ~glob:(Glob.of_string pattern) in
+    Lwt_list.iter_s Lwt_io.printl files
   | [| _; "sandbox" |] -> sandbox_action dap
   | [| _; "detached"; state |] -> detached_sandbox_action dap state ~cancel:false
   | [| _; "cancelled"; state |] -> detached_sandbox_action dap state ~cancel:true

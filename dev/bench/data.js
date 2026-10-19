@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792425844902,
+  "lastUpdate": 1792425852752,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -470320,6 +470320,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 60.29487775438,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3999f33589e9bdf8fb2242650c3532d773950b33",
+          "message": "refactor(engine): construct file facts from built digests (#16636)\n\nKeep file-selector builds in `Build_system` and make\n`Dep.Fact.Files.create` a pure constructor, removing its build callback.\n\nThe caller materializes the file list once, builds it in parallel, and\nsupplies the matching digests. This preserves digest encoding, ordering,\nand empty-directory facts; the constructor’s list-alignment invariant is\ndocumented.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-19T23:43:14+08:00",
+          "tree_id": "7c9af063f80e21077895ca9d903e12f6e376771a",
+          "url": "https://github.com/ocaml/dune/commit/3999f33589e9bdf8fb2242650c3532d773950b33"
+        },
+        "date": 1792425851604,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5400312090933334,
             "unit": "seconds"
           }
         ]

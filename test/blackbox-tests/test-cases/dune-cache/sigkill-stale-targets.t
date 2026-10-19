@@ -30,19 +30,12 @@ Restore the original source. x must be rebuilt.
   $ echo A > src
   $ echo 2 > extra
   $ dune build ./y
-
-BUG (#16559): x still holds the contents written by the killed build.
-
   $ cat _build/default/x
-  B
-
-BUG (#16559): y was computed from the stale x and stored in the shared cache,
-so it is restored even from a clean build directory.
-
+  A
   $ rm -rf _build
   $ dune build ./y
   $ cat _build/default/y
-  B
+  A
   2
 
 A deleted target behaves the same way.
@@ -53,8 +46,4 @@ A deleted target behaves the same way.
   $ echo A > src
   $ rm _build/default/x
   $ dune build ./x
-
-BUG (#16559): x is not rebuilt.
-
   $ test -e _build/default/x || echo missing
-  missing

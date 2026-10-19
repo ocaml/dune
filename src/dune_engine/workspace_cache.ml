@@ -1,8 +1,5 @@
 open Import
 
-let needs_dumping = ref false
-let mark_dirty () = needs_dumping := true
-
 module Dir_contents = struct
   type t =
     { files : Filename.Array.Set.t
@@ -266,6 +263,14 @@ let get () = fst (Lazy.force cache)
 let fs_memo () = (get ()).fs_memo
 let rule_cache () = (get ()).rule_cache
 let loaded_from_disk () = snd (Lazy.force cache)
+let needs_dumping = ref false
+
+let mark_dirty () =
+  if not !needs_dumping
+  then (
+    needs_dumping := true;
+    Fpath.unlink_exn (Path.to_string file))
+;;
 
 let dump () =
   if !needs_dumping && Path.build_dir_exists ()

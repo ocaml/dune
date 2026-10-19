@@ -169,3 +169,50 @@ let%expect_test "singleton list maps preserve evaluation and dependencies" =
   print_endline "singleton map invariants hold";
   [%expect {| singleton map invariants hold |}]
 ;;
+
+let%expect_test "success prefixes preserve parallel cache restoration" =
+  let run memo =
+    Fiber.run (Memo.run memo) ~iter:(fun () ->
+      failwith "prefix restoration blocked the action that releases it")
+  in
+  let changed = Memo.Var.create ~name:"prefix-restore-change" false in
+  let gate = Fiber.Ivar.create () in
+  let prefix_calls = ref 0 in
+  let action_calls = ref 0 in
+  let parent_calls = ref 0 in
+  let prefix_node =
+    Memo.lazy_node ~name:"restored-prefix" ~cutoff:Unit.equal (fun () ->
+      let open Memo.O in
+      let* changed = Memo.Var.read changed in
+      incr prefix_calls;
+      if changed
+      then Memo.of_reproducible_fiber (Fiber.Ivar.read gate)
+      else Memo.return ())
+  in
+  let action_node =
+    Memo.lazy_node ~name:"restored-action" ~cutoff:Unit.equal (fun () ->
+      let open Memo.O in
+      let* changed = Memo.Var.read changed in
+      incr action_calls;
+      if changed
+      then Memo.of_reproducible_fiber (Fiber.Ivar.fill gate ())
+      else Memo.return ())
+  in
+  let prefix = Action_builder.record_success (Memo.Node.read prefix_node) in
+  let parent =
+    Memo.lazy_node ~name:"restored-prefix-parent" (fun () ->
+      incr parent_calls;
+      let open Action_builder.O in
+      prefix
+      >>> Action_builder.of_memo (Memo.Node.read action_node)
+      |> Action_builder.evaluate_and_collect_facts)
+  in
+  run (Memo.Node.read prefix_node);
+  let (), _ = run (Memo.Node.read parent) in
+  assert (!prefix_calls = 1 && !action_calls = 1 && !parent_calls = 1);
+  Memo.reset (Memo.Var.set changed true);
+  let (), _ = run (Memo.Node.read parent) in
+  assert (!prefix_calls = 2 && !action_calls = 2 && !parent_calls = 1);
+  print_endline "parallel cache restoration preserved";
+  [%expect {| parallel cache restoration preserved |}]
+;;

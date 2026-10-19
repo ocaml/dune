@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792413331184,
+  "lastUpdate": 1792413599463,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -470117,6 +470117,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.43290151080666667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "94623855f62d156d1e00f72deddaf84538822972",
+          "message": "Do not report all git fetch errors as \"revision not found\". (#16623)\n\n## Description\n\nDo not over-interpret a failure from git: report that we \"could not\nfetch $REV from $REMOTE\", not that the revision does not exist in the\nremote, which is wrong if eg. the remote is not accessible.\n\n## Related Issue and Motivation\n\nFixes #16466 \n\n## Other design options\n\nThis does not try to be smart and determine the actual reason, in hope\nthat the actual error from git included in the output will give enough\ninformation.\n\nGit always exits 128 so some alternatives could be:\n\n* Parse the error messages, but they are obviously prone to change,\nplatform dependent and even forge-dependent (github and gitlab may give\ndifferent errors).\n* Try to `git ls-remote` to determine whether the remote is reachable,\nbut the additional network roundtrip looks more like a liability to me.\n\nAll in all I do not think it's worth the hassle.\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-10-19T14:24:24+02:00",
+          "tree_id": "94a74562b73166c8b6bc2db8a5087fde0e118841",
+          "url": "https://github.com/ocaml/dune/commit/94623855f62d156d1e00f72deddaf84538822972"
+        },
+        "date": 1792413597821,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 50.597569706239995,
             "unit": "seconds"
           }
         ]

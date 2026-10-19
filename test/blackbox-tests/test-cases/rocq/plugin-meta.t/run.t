@@ -125,9 +125,9 @@ A root-section entry beside META must remain excluded to avoid a build cycle.
   >   (excluded.txt as bar/payload1.dat)))
   > EOF
 
-The mixed directory uses explicit file dependencies rather than a literal
-filter that would scan a name list for every generated file. All-library
-directories still use unconditional selectors.
+The mixed directory groups its library files using literal-set membership
+rather than a linear name-list filter. All-library directories still use
+unconditional selectors.
 
   $ dune rules --format=json theory/.bar.theory.d | jq '
   >   include "dune";
@@ -142,9 +142,9 @@ directories still use unconditional selectors.
   >      layout_groups: ($groups | length),
   >      unconditional_groups: all($groups[]; .predicate == ["or", []])}'
   {
-    "layout_files": 4,
-    "layout_groups": 1,
-    "unconditional_groups": true
+    "layout_files": 0,
+    "layout_groups": 2,
+    "unconditional_groups": false
   }
 
   $ export REAL_ROCQ=$(command -v rocq)

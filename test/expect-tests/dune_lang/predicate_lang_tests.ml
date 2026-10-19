@@ -26,7 +26,7 @@ let%expect_test "literal filename sets" =
     ]
     |}];
   print_dyn (Glob.to_dyn predicate);
-  [%expect {| or (Literal "*", Literal "?", Literal "[x]", Literal "a") |}]
+  [%expect {| Literals [ "*"; "?"; "[x]"; "a" ] |}]
 ;;
 
 let%expect_test "empty sets and complement" =

@@ -4,12 +4,21 @@ open Import
 
 type t
 
+module Deps : sig
+  (** In symlink mode, [paths] contains non-overlapping roots and [directories]
+      contains the already-built subtree for each directory root. *)
+  type t =
+    { paths : Path.Set.t
+    ; directories : Digest.t Targets.Produced.dir_contents Path.Build.Map.t
+    }
+end
+
 val root : t -> Path.t option
 
 (** [map_path t p] returns the path corresponding to [p] inside the sandbox. *)
 val map_path : t -> Path.Build.t -> Path.Build.t
 
-val add_deps : t -> dirs:Path.Build.Set.t -> deps:Path.Set.t -> unit Fiber.t
+val add_deps : t -> dirs:Path.Build.Set.t -> deps:Deps.t -> unit Fiber.t
 
 (** Delete targets left behind by interrupted non-sandboxed actions. *)
 val cleanup_pending_targets : unit -> unit
@@ -24,7 +33,7 @@ val with_
   -> Corrections.t
   -> rule_loc:Loc.t
   -> dirs:Path.Build.Set.t
-  -> deps:Path.Set.t
+  -> deps:Deps.t
   -> rule_dir:Path.Build.t
   -> rule_digest:Digest.t
   -> targets:Targets.Validated.t

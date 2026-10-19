@@ -85,6 +85,13 @@ let init =
   fun () -> Lazy.force init
 ;;
 
+module Deps = struct
+  type t =
+    { paths : Path.Set.t
+    ; directories : Digest.t Targets.Produced.dir_contents Path.Build.Map.t
+    }
+end
+
 type snapshot = [ `Dir | `File of Stat.t ] Path.Map.t
 
 type real =
@@ -195,7 +202,10 @@ let link_function ~(mode : Sandbox_mode.some) =
      | Symlink ->
        (match Sys.win32 with
         | true -> win32_error mode
-        | false -> fun src dst -> Io.portable_symlink ~src ~dst)
+        | false ->
+          fun src dst ->
+            let src = Path.reach ~from:(Path.parent_exn dst) src in
+            Unix.symlink src (Path.to_string dst))
      | Copy -> fun src dst -> copy_recursively ~src ~dst
      | Hardlink -> fun src dst -> Io.portable_hardlink ~src ~dst
      | Patch_back_source_tree ->
@@ -222,14 +232,55 @@ let link_deps t ~deps =
     | Some p -> link path (Path.build (map_real_path t p)))
 ;;
 
-let unlinked_deps t deps =
-  let rec already_linked paths path =
+let already_linked paths path =
+  let rec loop path =
     Path.Set.mem paths path
     ||
     match Path.parent path with
     | None -> false
-    | Some parent -> already_linked paths parent
+    | Some parent -> loop parent
   in
+  (not (Path.Set.is_empty paths)) && loop path
+;;
+
+let link_symlink_deps t ~dirs { Deps.paths; directories } =
+  let link = Staged.unstage (link_function ~mode:Symlink) in
+  Path.Build.Set.iter dirs ~f:(fun dir ->
+    let path = Path.build dir in
+    if not (already_linked paths path || already_linked t.deps path) then create_dir t dir);
+  let rec link_directory path { Targets.Produced.files; subdirs } =
+    if not (Path.Set.mem t.deps (Path.build path))
+    then (
+      let dst = Path.build (map_real_path t path) in
+      Path.mkdir_p dst;
+      let src = Path.reach ~from:dst (Path.build path) in
+      let dst = Path.to_string dst in
+      Filename.Array.Map.iteri files ~f:(fun name _ ->
+        if
+          Path.Set.is_empty t.deps
+          || not (Path.Set.mem t.deps (Path.build (Path.Build.relative_fname path name)))
+        then Unix.symlink (Filename.append src name) (Filename.append dst name));
+      Filename.Array.Map.iteri subdirs ~f:(fun name contents ->
+        link_directory (Path.Build.relative_fname path name) contents))
+  in
+  Path.Set.iter paths ~f:(fun path ->
+    if not (already_linked t.deps path)
+    then (
+      match Path.as_in_build_dir path with
+      | None ->
+        if Path.is_in_source_tree path
+        then
+          Code_error.raise
+            "Action depends on source tree. All actions should depend on the copies in \
+             the build directory instead."
+            [ "path", Path.to_dyn path ]
+      | Some path ->
+        (match Path.Build.Map.find directories path with
+         | None -> link (Path.build path) (Path.build (map_real_path t path))
+         | Some contents -> link_directory path contents)))
+;;
+
+let unlinked_deps t deps =
   let rec loop path acc =
     if already_linked t.deps path || already_linked acc path
     then acc
@@ -256,9 +307,17 @@ let add_deps t ~dirs ~deps =
       let open Fiber.O in
       let+ (_ : Time.t * Time.t * Time.Span.t option) =
         maybe_async (fun () ->
-          create_dirs t dirs;
-          let unlinked = unlinked_deps t deps in
-          link_deps t ~deps:unlinked;
+          let unlinked =
+            match t.mode with
+            | Symlink ->
+              link_symlink_deps t ~dirs deps;
+              Path.Set.empty
+            | Copy | Hardlink | Patch_back_source_tree ->
+              create_dirs t dirs;
+              let unlinked = unlinked_deps t deps.paths in
+              link_deps t ~deps:unlinked;
+              unlinked
+          in
           t.snapshot
           <- Option.map t.snapshot ~f:(fun snapshot ->
                Path.Set.fold unlinked ~init:snapshot ~f:(fun path snapshot ->
@@ -267,7 +326,7 @@ let add_deps t ~dirs ~deps =
                  | Some p ->
                    let dst = Path.build (map_real_path t p) in
                    Path.Map.set snapshot dst (`File (Stat.stat (Path.to_string dst)))));
-          t.deps <- Path.Set.union t.deps deps)
+          t.deps <- Path.Set.union t.deps deps.paths)
       in
       ())
 ;;
@@ -377,7 +436,7 @@ let create_real
   let t =
     { dir = sandbox_dir
     ; snapshot = None
-    ; deps
+    ; deps = Path.Set.empty
     ; mutex = Fiber.Mutex.create ()
     ; mode
     ; loc = rule_loc
@@ -389,8 +448,12 @@ let create_real
     maybe_async (fun () ->
       Path.rm_rf (Path.build sandbox_dir);
       create_dir t rule_dir;
-      create_dirs t dirs;
-      link_deps t ~deps)
+      (match mode with
+       | Symlink -> link_symlink_deps t ~dirs deps
+       | Copy | Hardlink | Patch_back_source_tree ->
+         create_dirs t dirs;
+         link_deps t ~deps:deps.paths);
+      t.deps <- deps.paths)
   in
   Dune_trace.emit ~buffered:true Sandbox (fun () ->
     Dune_trace.Event.sandbox `Create ~start ~stop ~queued t.loc ~dir:t.dir);

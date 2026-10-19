@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792425852752,
+  "lastUpdate": 1792426165309,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -653195,6 +653195,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.60087082678,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "128f6232f2df706704500192800917f9fb702828",
+          "message": "refactor(engine): normalize build system comment indentation (#16654)\n\nNormalize continuation indentation in `build_system.ml` comments that\nretained\ntheir former module-level offset after the `Internal` wrapper was\nremoved in\n#16637. Keeping this mechanical cleanup separate leaves the subsequent\nanonymous-action execution refactor focused on its structural changes.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-20T00:00:53+08:00",
+          "tree_id": "123dd22a4f1d5358a180f6a370ee833ff09f25cf",
+          "url": "https://github.com/ocaml/dune/commit/128f6232f2df706704500192800917f9fb702828"
+        },
+        "date": 1792425944802,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.7465024589333336,
             "unit": "seconds"
           }
         ]

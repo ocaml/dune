@@ -112,10 +112,17 @@ expansion disabled. Checking only whether rocqdep succeeds is insufficient:
 its absolute OCAMLPATH can access the original, unsandboxed layout.
 A root-section entry beside META must remain excluded to avoid a build cycle.
 
+  $ echo library > 'payload[1].dat'
+  $ echo excluded > excluded.txt
   $ cat > dune << EOF
   > (install
+  >  (section lib)
+  >  (files (glob_files payload*.dat)))
+  > (install
   >  (section lib_root)
-  >  (files (theory/bar.vo as bar/proof.vo)))
+  >  (files
+  >   (theory/bar.vo as bar/proof.vo)
+  >   (excluded.txt as bar/payload1.dat)))
   > EOF
 
 The mixed directory uses explicit file dependencies rather than a literal
@@ -135,7 +142,7 @@ directories still use unconditional selectors.
   >      layout_groups: ($groups | length),
   >      unconditional_groups: all($groups[]; .predicate == ["or", []])}'
   {
-    "layout_files": 3,
+    "layout_files": 4,
     "layout_groups": 1,
     "unconditional_groups": true
   }
@@ -150,9 +157,17 @@ directories still use unconditional selectors.
   >     *) echo 'Discovery is not sandboxed' >&2; exit 1 ;;
   >   esac
   >   for file in ../../install/default/.packages/*/lib/bar/META \
-  >       ../../install/default/.packages/*/lib/bar/foo/foo.cmxs; do
+  >       ../../install/default/.packages/*/lib/bar/foo/foo.cmxs \
+  >       ../../install/default/.packages/*/lib/bar/'payload[1].dat'; do
   >     if [ ! -f "$file" ]; then
   >       echo 'Missing sandbox plugin file' >&2
+  >       exit 1
+  >     fi
+  >   done
+  >   for file in ../../install/default/.packages/*/lib/bar/proof.vo \
+  >       ../../install/default/.packages/*/lib/bar/payload1.dat; do
+  >     if [ -e "$file" ]; then
+  >       echo 'Unexpected root-section sandbox file' >&2
   >       exit 1
   >     fi
   >   done
@@ -162,3 +177,43 @@ directories still use unconditional selectors.
   $ chmod +x bin/rocq
   $ PATH="$PWD/bin:$PATH" dune build --build-dir _sandbox --sandbox=copy \
   >   theory/.bar.theory.d
+
+Library contents and membership remain dependencies of every proof. The
+root-section file whose name matches the bracketed filename as a glob does not.
+
+  $ dune build theory/bar.vo theory/baz.vo other/qux.vo
+  $ compiled_modules
+  other/qux.v
+  theory/bar.v
+  theory/baz.v
+
+  $ dune build theory/bar.vo theory/baz.vo other/qux.vo
+  $ compiled_modules
+
+  $ echo changed > 'payload[1].dat'
+  $ dune build theory/bar.vo theory/baz.vo other/qux.vo
+  $ compiled_modules
+  other/qux.v
+  theory/bar.v
+  theory/baz.v
+
+  $ echo changed > excluded.txt
+  $ dune build theory/bar.vo theory/baz.vo other/qux.vo
+  $ compiled_modules
+
+  $ echo added > payload-added.dat
+  $ dune build theory/bar.vo theory/baz.vo other/qux.vo
+  $ compiled_modules
+  other/qux.v
+  theory/bar.v
+  theory/baz.v
+
+  $ rm payload-added.dat
+  $ dune build theory/bar.vo theory/baz.vo other/qux.vo
+  $ compiled_modules
+  other/qux.v
+  theory/bar.v
+  theory/baz.v
+
+  $ dune build theory/bar.vo theory/baz.vo other/qux.vo
+  $ compiled_modules

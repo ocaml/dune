@@ -177,7 +177,7 @@ let file_selector_stack_frame_description file_selector =
 
 let select_sandbox_mode (config : Sandbox_config.t) ~rule ~sandboxing_preference =
   (* Rules with (mode patch-back-source-tree) are special and are not affected
-       by sandboxing preferences. *)
+     by sandboxing preferences. *)
   match Sandbox_mode.Set.is_patch_back_source_tree_only config with
   | true -> Some Sandbox_mode.Patch_back_source_tree
   | false ->
@@ -199,9 +199,9 @@ let select_sandbox_mode (config : Sandbox_config.t) ~rule ~sandboxing_preference
      | Some choice -> choice
      | None ->
        (* This is not trivial to reach because the user rules are checked at
-            parse time and [sandboxing_preference] always includes all possible
-            modes. However, it can still be reached if multiple sandbox config
-            specs are combined into an unsatisfiable one. *)
+          parse time and [sandboxing_preference] always includes all possible
+          modes. However, it can still be reached if multiple sandbox config
+          specs are combined into an unsatisfiable one. *)
        User_error.raise
          ~loc:(Rule.loc rule)
          [ Pp.text
@@ -263,7 +263,7 @@ let digest_env_subset d deps env =
 ;;
 
 (* The current version of the rule digest scheme. We should increment it when
-     making any changes to the scheme, to avoid collisions. *)
+   making any changes to the scheme, to avoid collisions. *)
 let rule_digest_version = 36
 
 let compute_rule_digest (rule : Rule.t) ~facts ~action ~sandbox_mode ~execution_parameters
@@ -347,9 +347,9 @@ module Anonymous_action = struct
 end
 
 (* CR-soon amokhov: Instead of wrapping the result into a variant, [build_file_impl]
-     could always return [targets : Digest.t Targets.Produced.t], and the latter could
-     provide a way to conveniently check if a specific [path] is a file or a directory,
-     as well as extract its digest when needed. *)
+   could always return [targets : Digest.t Targets.Produced.t], and the latter could
+   provide a way to conveniently check if a specific [path] is a file or a directory,
+   as well as extract its digest when needed. *)
 type target_kind =
   | File_target
   | Dir_target of
@@ -392,11 +392,11 @@ and build_file_selector_impl file_selector =
   let+ digests = Memo.parallel_map files ~f:build_file_digest in
   let fact = Dep.Fact.Files.create ~dir:(Filename_set.dir filenames) ~files ~digests in
   (* Fact: [file_selector] expands to the set of [files] whose digests are captured
-       via [build_file_digest]; also, [File_selector.dir] exists (though it may be empty) *)
+     via [build_file_digest]; also, [File_selector.dir] exists (though it may be empty) *)
   Dep.Fact.file_selector file_selector fact
 
 (* [build_dep] turns a [Dep.t] which is a description of a dependency into a
-     fact about the world. To do that, it needs to do some building. *)
+   fact about the world. To do that, it needs to do some building. *)
 and build_dep : Dep.t -> Dep.Fact.t Memo.t = function
   | Alias a ->
     let+ digests = build_alias a in
@@ -410,7 +410,7 @@ and build_dep : Dep.t -> Dep.Fact.t Memo.t = function
   | File_selector file_selector -> build_file_selector file_selector
   | Universe | Env _ ->
     (* Facts about these dependencies are constructed in
-         [Dep.Facts.digest]. *)
+       [Dep.Facts.digest]. *)
     Memo.return Dep.Fact.nothing
 
 and build_deps deps = Dep.Map.parallel_map deps ~f:(fun dep () -> build_dep dep)
@@ -457,9 +457,9 @@ and execute_action_for_rule
     let action = if is_sandboxed then Action.sandbox action sandbox else action in
     let action =
       (* We must add the creation of the stamp file after sandboxing it, as
-           otherwise the stamp file would end up inside the sandbox. This is
-           especially a problem for the [Patch_back_source_tree] sandboxing
-           mode. *)
+         otherwise the stamp file would end up inside the sandbox. This is
+         especially a problem for the [Patch_back_source_tree] sandboxing
+         mode. *)
       match rule_kind with
       | Normal_rule -> action
       | Anonymous_action { stamp_file; capture_stdout; _ } ->
@@ -524,7 +524,7 @@ and execute_action_for_rule
           then Fiber.return ()
           else (
             (* The stamp file for anonymous actions is always created outside
-               the sandbox, so we can't move it. *)
+             the sandbox, so we can't move it. *)
             let should_be_skipped =
               match rule_kind with
               | Normal_rule -> fun (_ : Path.Build.t) -> false
@@ -576,11 +576,11 @@ and execute_rule_impl ~rule_kind rule =
         [ "dir", Path.Build.to_dyn targets.root ]
   in
   (* Note: we do not run the below in parallel with the above: if we fail to
-       compute action execution parameters, we have no use for the action and
-       might as well fail early, skipping unnecessary dependencies. The
-       function [(Build_config.get ()).execution_parameters] is likely
-       memoized, and the result is not expected to change often, so we do not
-       sacrifice too much performance here by executing it sequentially. *)
+     compute action execution parameters, we have no use for the action and
+     might as well fail early, skipping unnecessary dependencies. The
+     function [(Build_config.get ()).execution_parameters] is likely
+     memoized, and the result is not expected to change often, so we do not
+     sacrifice too much performance here by executing it sequentially. *)
   let* action, facts = Action_builder.evaluate_and_collect_facts action in
   let { Action.Full.action = action_ast; props } = action in
   let wrap_fiber f =
@@ -607,22 +607,22 @@ and execute_rule_impl ~rule_kind rule =
         ~sandboxing_preference:config.sandboxing_preference
     in
     (* CR-someday amokhov: More [always_rerun] and [can_go_in_shared_cache]
-         to [Rule_cache] too. *)
+       to [Rule_cache] too. *)
     let always_rerun =
       let is_test =
         (* jeremiedimino: what about:
 
-             {v (rule (alias runtest) (targets x) (action ...)) v}
+           {v (rule (alias runtest) (targets x) (action ...)) v}
 
-             These will be treated as [Normal_rule], and the below match means
-             that [--force] will have no effect on them. Is that what we want?
+           These will be treated as [Normal_rule], and the below match means
+           that [--force] will have no effect on them. Is that what we want?
 
-             The doc says:
+           The doc says:
 
-             -f, --force Force actions associated to aliases to be re-executed
-             even if their dependencies haven't changed.
+           -f, --force Force actions associated to aliases to be re-executed
+           even if their dependencies haven't changed.
 
-             So it seems to me that such rules should be re-executed. TBC *)
+           So it seems to me that such rules should be re-executed. TBC *)
         match rule_kind with
         | Normal_rule -> false
         | Anonymous_action _ -> true
@@ -659,7 +659,7 @@ and execute_rule_impl ~rule_kind rule =
       | None ->
         Path.mkdir_p (Path.build targets.root);
         (* Step II. Remove stale targets both from the digest table and from
-             the build directory. *)
+           the build directory. *)
         Rule_cache.Workspace_local.remove targets;
         let () =
           let remove_target_dir dir =
@@ -672,7 +672,7 @@ and execute_rule_impl ~rule_kind rule =
             | Does_not_exist -> ()
             | Is_a_directory ->
               (* If target changed from a directory to a file, delete
-                     in anyway. *)
+                   in anyway. *)
               remove_target_dir path
             | Error exn ->
               Log.warn
@@ -689,11 +689,11 @@ and execute_rule_impl ~rule_kind rule =
           >>= function
           | Some produced_targets ->
             (* Rules with dynamic deps can't be stored to the shared cache
-                 (see the [is_action_dynamic] check above), so we know this is
-                 not a dynamic action, so returning an empty list is correct.
-                 The lack of information to fill in [dynamic_deps_stages] here
-                 is precisely the reason why we don't store dynamic actions in
-                 the shared cache. *)
+               (see the [is_action_dynamic] check above), so we know this is
+               not a dynamic action, so returning an empty list is correct.
+               The lack of information to fill in [dynamic_deps_stages] here
+               is precisely the reason why we don't store dynamic actions in
+               the shared cache. *)
             let dynamic_deps_stages = [] in
             Fiber.return (produced_targets, dynamic_deps_stages)
           | None ->
@@ -711,7 +711,7 @@ and execute_rule_impl ~rule_kind rule =
                 ~targets
             in
             (* Step V. Examine produced targets and store them to the shared
-                 cache if needed. *)
+               cache if needed. *)
             let* produced_targets =
               Dune_cache.Shared.examine_targets_and_store
                 ~can_go_in_shared_cache
@@ -731,7 +731,7 @@ and execute_rule_impl ~rule_kind rule =
             Fiber.return (produced_targets, dynamic_deps_stages)
         in
         (* We do not include target names into [targets_digest] because they
-             are already included into the rule digest. *)
+           are already included into the rule digest. *)
         Rule_cache.Workspace_local.store
           ~targets:produced_targets
           ~head_target:(Targets.Validated.head targets)
@@ -752,8 +752,8 @@ and execute_rule_impl ~rule_kind rule =
     in
     produced_targets)
   (* jeremidimino: We need to include the dependencies discovered while
-       running the action here. Otherwise, package dependencies are broken in
-       the presence of dynamic actions. *)
+     running the action here. Otherwise, package dependencies are broken in
+     the presence of dynamic actions. *)
   >>| fun produced_targets -> { facts; targets = produced_targets }
 
 (* Returns the action's stdout or the empty string if [capture_stdout = false]. *)
@@ -831,13 +831,13 @@ and execute_action_generic (anon : Rule.Anonymous_action.Evaluated.t) ~capture_s
       let d = Digest.Manual.create () in
       Digest.Manual.int d rule_digest_version;
       (* Here we restrict the environment to only the variables we depend on,
-           so that we don't re-execute all actions when some irrelevant
-           environment variable changes.
+         so that we don't re-execute all actions when some irrelevant
+         environment variable changes.
 
-           Ideally, we would pass this restricted environment to the external
-           command, however that might be tedious to do in practice. See this
-           ticket for a longer discussion about the management of the
-           environment: https://github.com/ocaml/dune/issues/4382 *)
+         Ideally, we would pass this restricted environment to the external
+         command, however that might be tedious to do in practice. See this
+         ticket for a longer discussion about the management of the
+         environment: https://github.com/ocaml/dune/issues/4382 *)
       digest_env_subset d deps env;
       Dep.Set.digest deps d;
       Action.digest d action;
@@ -853,11 +853,11 @@ and execute_action_generic (anon : Rule.Anonymous_action.Evaluated.t) ~capture_s
     digest
   in
   (* It might seem superfluous to memoize the execution here, given that a
-       given anonymous action will typically only appear once during a given
-       build. However, it is possible that two code paths try to execute the
-       exact same anonymous action, and so would end up trying to create the
-       same file. Using [Memo.create] serves as a synchronisation point to share
-       the execution and avoid such a race condition. *)
+     given anonymous action will typically only appear once during a given
+     build. However, it is possible that two code paths try to execute the
+     exact same anonymous action, and so would end up trying to create the
+     same file. Using [Memo.create] serves as a synchronisation point to share
+     the execution and avoid such a race condition. *)
   Memo.exec
     (Lazy.force execute_action_generic_stage2_memo)
     { Anonymous_action.action = anon; deps; capture_stdout; digest }
@@ -872,7 +872,7 @@ and execute_action_stdout (anon : Rule.Anonymous_action.t) =
   execute_action_generic anon ~capture_stdout:true
 
 (* A rule can have multiple targets but calls to [execute_rule] are memoized,
-     so the rule will be executed only once. *)
+   so the rule will be executed only once. *)
 and build_file_impl path =
   let directory_digest contents =
     Digest.Feed.compute_digest
@@ -902,8 +902,8 @@ and build_file_impl path =
        Memo.return (digest, Dir_target { targets })
      | None ->
        (* CR-someday amokhov: The most important reason we end up here is
-          [No_such_file]. I think some of the outcomes above are impossible
-          but some others will benefit from a better error. To be refined. *)
+        [No_such_file]. I think some of the outcomes above are impossible
+        but some others will benefit from a better error. To be refined. *)
        let target =
          Path.Build.drop_build_context_exn path |> Path.Source.to_string_maybe_quoted
        in
@@ -963,7 +963,7 @@ and build_alias_impl alias =
 and eval_pred_impl g =
   let dir = File_selector.dir g in
   (* CR-soon amokhov: Change [Load_rules.load_dir] to return [Filename_set.t]s to save
-       a bunch of set/list operations and reduce code duplication. *)
+     a bunch of set/list operations and reduce code duplication. *)
   Load_rules.load_dir ~dir
   >>= function
   | Source { filenames } | External { filenames } ->
@@ -972,7 +972,7 @@ and eval_pred_impl g =
   | Build { rules_here; _ } ->
     let only_generated_files = File_selector.only_generated_files g in
     (* We look only at [by_file_targets] because [File_selector] does not
-         match directories. *)
+       match directories. *)
     Path.Build.Map.foldi
       ~init:[]
       rules_here.by_file_targets
@@ -988,7 +988,7 @@ and eval_pred_impl g =
     |> Memo.return
   | Build_under_directory_target { directory_target_ancestor = _ } ->
     (* To evaluate a glob in a generated directory, we have no choice but to build the
-         whole directory and examine its contents. *)
+       whole directory and examine its contents. *)
     let+ path_map = build_directory_targets dir in
     (match Targets.Produced.find_dir path_map (Path.as_in_build_dir_exn dir) with
      | Some files_and_digests ->
@@ -998,8 +998,8 @@ and eval_pred_impl g =
          (Filename.Array.Map.keys files_and_digests)
      | None ->
        (* CR-soon amokhov: I think this case should be an error. If the directory target
-            doesn't contain the requested dir, we will currently create an empty directory
-            in the sandbox, as if it actually existed. *)
+          doesn't contain the requested dir, we will currently create an empty directory
+          in the sandbox, as if it actually existed. *)
        Filename_set.empty ~dir)
 
 and build_file_selector_memo =
@@ -1009,7 +1009,7 @@ and build_file_selector_memo =
        ~input:(module File_selector)
        ~cutoff:Dep.Fact.equal
          (* CR-someday amokhov: Pass [file_selector_stack_frame_description] here to
-              include globs into stack traces. *)
+            include globs into stack traces. *)
        ?human_readable_description:None
        build_file_selector_impl)
 

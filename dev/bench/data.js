@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792384694676,
+  "lastUpdate": 1792404420979,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -652673,6 +652673,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.1882755050066667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "adb122239dd05938e016d4d9777e718dcb72ce86",
+          "message": "perf(rocq): share plugin layouts without changing dependencies (#16622)\n\n## Description\n\nGroup Lib and Libexec files in all-library directories with\nunconditional generated-file selectors. Reuse their dependency hashes\nacross discovery, compilation, and extraction while materializing the\nfiles in sandboxes without requiring alias expansion.\n\nConstruct the groups lazily within the existing layout-entry memo and\nforce them only for Rocq consumers. Ordinary package dependencies and\nlayout rule generation do not construct unused groups or selectors.\n\nKeep directory entries and library files in mixed-section directories as\nexplicit dependencies. This excludes root-section theory outputs without\ncycles or quadratic literal-name filtering.\n\nPreserve the existing dependency set and proof rebuild behavior. No\nengine changes, new memo table, or changes to Rocq rule generation are\nneeded. Dependency narrowing and environment construction remain\nseparate changes.\n\n<!-- Thank you for contributing to dune!\n\n For general guidelines on contributing to dune, see\nhttps://github.com/ocaml/dune/blob/main/CONTRIBUTING.md#developing-dune\n-->\n\n<!-- Briefly describe your changes -->\n\n## Related Issue and Motivation\n\nAddresses perf regression reported in\nhttps://github.com/ocaml/dune/pull/16543.\n\ncc @rlepigre-skylabs-ai @pgiarrusso-sl could you benchmark this change\non your internal repo? I have some more perf improvements so I'm mostly\ninterested in 3.24 vs 3.25-rc vs this.\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [ ] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-10-19T11:56:12+02:00",
+          "tree_id": "982e34ae2917250861aa29853bb01198f2ad6a2b",
+          "url": "https://github.com/ocaml/dune/commit/adb122239dd05938e016d4d9777e718dcb72ce86"
+        },
+        "date": 1792404122075,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.016763226053333,
             "unit": "seconds"
           }
         ]

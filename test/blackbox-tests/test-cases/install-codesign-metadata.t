@@ -32,7 +32,7 @@ macOS.
   v1.2.3
   $ codesign --verify --strict prefix/bin/main
   $ codesign --display --verbose=2 prefix/bin/main 2>&1 | sed -n -e '/^Identifier=/p' -e 's/.*flags=0x[0-9a-f]*(\([^)]*\)).*/flags=\1/p'
-  Identifier=.#main
-  flags=adhoc
+  Identifier=org.example.main
+  flags=adhoc,runtime
   $ codesign --display --xml --entitlements - prefix/bin/main 2>/dev/null | grep -o com.apple.security.virtualization
-  [1]
+  com.apple.security.virtualization

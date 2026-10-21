@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792601895646,
+  "lastUpdate": 1792602091381,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -470871,6 +470871,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.50828798496,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "71b761985d23fd44b6eb2e8889963e68a9a97f49",
+          "message": "refactor(engine): remove the with_file callback (#16669)\n\nRemove `Build_system.with_file`, which only sequenced a build before\ninvoking a callback and did not manage a scoped resource lifetime. Have\nits two callers build files directly before reading or parsing them,\npreserving memoized reads and existing behavior.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-22T00:44:58+08:00",
+          "tree_id": "07ad4e793d2336edf63fe0f70a4dc75da7eef93b",
+          "url": "https://github.com/ocaml/dune/commit/71b761985d23fd44b6eb2e8889963e68a9a97f49"
+        },
+        "date": 1792602088520,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 50.26585646233334,
             "unit": "seconds"
           }
         ]

@@ -204,9 +204,7 @@ order to declare a multi-directory library, you need to use the
    Dune also passes the cookie ``mode`` to every PPX driver invocation. Its
    value is ``melange`` when the sources are preprocessed for Melange, and
    ``ocaml`` otherwise. ``ocaml`` covers bytecode, native and js_of_ocaml,
-   because they share one preprocessing run. Future versions of Dune may add
-   more values. A PPX that declares its own ``mode`` cookie with another value
-   is an error. Since Dune 3.26.
+   because they share one preprocessing run. Since Dune 3.26.
 
 .. describe:: (ppx_runtime_libraries (<library-names>))
 

@@ -248,10 +248,12 @@ let unlinked_deps t deps =
   Path.Set.fold deps ~init:Path.Set.empty ~f:loop
 ;;
 
-let add_deps t ~dirs ~deps =
+let add_deps t facts ~expand_aliases =
   match t with
   | No_sandbox _ -> Fiber.return ()
   | Sandboxed t ->
+    let dirs = Dep.Facts.necessary_dirs_for_sandboxing facts in
+    let deps = Dep.Facts.paths facts ~expand_aliases in
     Fiber.Mutex.with_lock t.mutex ~f:(fun () ->
       let open Fiber.O in
       let+ (_ : Time.t * Time.t * Time.Span.t option) =

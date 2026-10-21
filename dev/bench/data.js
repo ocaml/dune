@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792441320090,
+  "lastUpdate": 1792595334205,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -653543,6 +653543,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.7227538429,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7b3a8a074e9aa8959d167c57cba2c5338bd0533f",
+          "message": "refactor(engine): pass dependency facts to Sandbox.add_deps (#16663)\n\n`Build_system` currently expands observed dependency facts into paths\nand\nnecessary directories before calling `Sandbox.add_deps`, while also\nchecking\nwhether the action is sandboxed.\n\nPass the facts and alias-expansion policy to `Sandbox.add_deps` instead.\nThe\nsandbox implementation now performs the expansion only for a real\nsandbox and\nhandles `No_sandbox` without traversing the facts, keeping\nsandbox-specific\npreparation behind the sandbox API.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-21T22:56:04+08:00",
+          "tree_id": "0ddf32d1b8c32e7a6a56926ec595184caa5c9513",
+          "url": "https://github.com/ocaml/dune/commit/7b3a8a074e9aa8959d167c57cba2c5338bd0533f"
+        },
+        "date": 1792594966109,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.53321443696,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792600254118,
+  "lastUpdate": 1792601601513,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -653891,6 +653891,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 4.134877270406666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8e3414718c1280ad83863595dc280decf23532d1",
+          "message": "refactor(engine): run Memo computations without build requests (#16638)\n\nRun ordinary Memo computations directly through the shared build\nlifecycle instead of wrapping them in an `Action_builder` and a\nsingle-goal `Request`. This removes the mutable result slot and\nunreachable missing-result error.\n\nKeep goal completion and promotion deferral in `run_build_requests`.\nMove action-runner finalization into the common lifecycle so both entry\npoints finalize the `Process.Build` actually used, including inherited\nbuilds.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-22T00:36:28+08:00",
+          "tree_id": "2b68792a3ff8217a15e2ef4711e94efcea715f57",
+          "url": "https://github.com/ocaml/dune/commit/8e3414718c1280ad83863595dc280decf23532d1"
+        },
+        "date": 1792601200128,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.3272274527333336,
             "unit": "seconds"
           }
         ]

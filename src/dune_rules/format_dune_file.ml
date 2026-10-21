@@ -9,7 +9,7 @@ module To_file = struct
     let runs_process = false
     let can_run_in_action_runner = false
     let bimap (ver, src, dst) f g = ver, f src, g dst
-    let is_useful_to ~memoize = memoize
+    let is_useful_to_memoize = true
 
     let encode (version, src, dst) path target : Sexp.t =
       List
@@ -37,7 +37,7 @@ module To_stdout = struct
     let runs_process = false
     let can_run_in_action_runner = false
     let bimap (ver, src) f _ = ver, f src
-    let is_useful_to ~memoize = memoize
+    let is_useful_to_memoize = true
 
     let encode (version, src) path _target : Sexp.t =
       List [ Dune_lang.Syntax.Version.encode version |> Dune_sexp.to_sexp; path src ]

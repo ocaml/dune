@@ -74,7 +74,7 @@ module Spec = struct
   let runs_process = false
   let can_run_in_action_runner = false
   let bimap (src, dst, merlin) f g = f src, g dst, merlin
-  let is_useful_to ~memoize = memoize
+  let is_useful_to_memoize = true
 
   let encode (src, dst, merlin) path target : Sexp.t =
     List [ path src; target dst; Atom (Bool.to_string (bool_of_merlin merlin)) ]

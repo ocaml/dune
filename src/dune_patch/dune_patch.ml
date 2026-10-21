@@ -212,7 +212,7 @@ module Action = Dune_engine.Action_ext.Make (struct
     let runs_process = false
     let can_run_in_action_runner = false
     let bimap patch f _ = f patch
-    let is_useful_to ~memoize = memoize
+    let is_useful_to_memoize = true
     let encode patch input _ : Sexp.t = input patch
 
     let action patch ~(ectx : Action.context) ~(eenv : Action.env) =

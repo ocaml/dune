@@ -78,7 +78,7 @@ module Spec = struct
   let runs_process = false
   let can_run_in_action_runner = false
   let bimap t _ g = { t with target = g t.target }
-  let is_useful_to ~memoize = memoize
+  let is_useful_to_memoize = true
 
   let encode { target; url = _, url; checksum; kind } _ encode_target : Sexp.t =
     List
@@ -300,7 +300,7 @@ module Copy = struct
     let runs_process = false
     let can_run_in_action_runner = false
     let bimap t f g = { src_dir = f t.src_dir; dst_dir = g t.dst_dir }
-    let is_useful_to ~memoize = memoize
+    let is_useful_to_memoize = true
 
     let encode { src_dir; dst_dir } path target : Sexp.t =
       List [ path src_dir; target dst_dir ]

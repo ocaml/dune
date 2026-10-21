@@ -666,7 +666,7 @@ module Substitute = struct
     let runs_process = false
     let can_run_in_action_runner = false
     let bimap t f g = { t with src = f t.src; dst = g t.dst }
-    let is_useful_to ~memoize = memoize
+    let is_useful_to_memoize = true
 
     let variable_value_repr =
       Repr.variant
@@ -1744,7 +1744,7 @@ module Install_action = struct
       }
     ;;
 
-    let is_useful_to ~memoize = memoize
+    let is_useful_to_memoize = true
 
     let encode
           { install_file

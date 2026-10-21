@@ -92,7 +92,7 @@ module Ext = struct
 
     val name : string
     val version : int
-    val is_useful_to : memoize:bool -> bool
+    val is_useful_to_memoize : bool
     val is_dynamic : bool
     val runs_process : bool
     val can_run_in_action_runner : bool

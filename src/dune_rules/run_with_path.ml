@@ -194,7 +194,7 @@ module Spec = struct
     }
   ;;
 
-  let is_useful_to ~memoize:_ = true
+  let is_useful_to_memoize = true
 
   let encode { prog; args; ocamlfind_destdir; pkg = _; depexts = _ } path _ : Sexp.t =
     let prog : Sexp.t =

@@ -376,37 +376,34 @@ type is_useful =
   | Clearly_not
   | Maybe
 
-let is_useful_to memoize =
+let is_useful_to_memoize t =
   let rec loop t =
     match t with
     | Chdir (_, t) -> loop t
     | Setenv (_, _, t) -> loop t
-    | Redirect_out (_, _, _, t) -> memoize || loop t
+    | Redirect_out _ -> true
     | Redirect_in (_, _, t) -> loop t
     | Ignore (_, t) | With_accepted_exit_codes (_, t) -> loop t
     | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:loop
     | Echo _ -> false
-    | Cat _ -> memoize
-    | Copy _ -> memoize
+    | Cat _ -> true
+    | Copy _ -> true
     | Symlink _ -> false
     | Hardlink _ -> false
     | Write_file _ -> true
-    | Rename _ -> memoize
+    | Rename _ -> true
     | Remove_tree _ -> false
     | Diff _ -> false
     | Mkdir _ -> false
     | Run _ -> true
     | System _ -> true
     | Bash _ -> true
-    | Extension (module A) -> A.Spec.is_useful_to ~memoize
+    | Extension (module A) -> A.Spec.is_useful_to_memoize
   in
-  fun t ->
-    match loop t with
-    | true -> Maybe
-    | false -> Clearly_not
+  match loop t with
+  | true -> Maybe
+  | false -> Clearly_not
 ;;
-
-let is_useful_to_memoize = is_useful_to true
 
 module Full = struct
   type action = t

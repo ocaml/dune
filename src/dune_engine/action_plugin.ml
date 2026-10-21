@@ -195,7 +195,7 @@ module Spec = struct
 
   let name = "dynamic-run"
   let version = 1
-  let is_useful_to ~memoize = memoize
+  let is_useful_to_memoize = true
   let is_dynamic = true
   let runs_process = true
   let can_run_in_action_runner = true

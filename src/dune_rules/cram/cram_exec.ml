@@ -896,7 +896,7 @@ module Run = struct
       }
     ;;
 
-    let is_useful_to ~memoize:_ = true
+    let is_useful_to_memoize = true
 
     let encode { src = _; dir; script; output; timeout; shell; setup_scripts } path target
       : Sexp.t
@@ -954,7 +954,7 @@ module Make_script = struct
     let runs_process = false
     let can_run_in_action_runner = false
     let bimap t f g = { t with script = f t.script; target = g t.target }
-    let is_useful_to ~memoize:_ = true
+    let is_useful_to_memoize = true
 
     let encode { script = src; target = dst; conflict_markers } path target : Sexp.t =
       List
@@ -1002,7 +1002,7 @@ module Diff = struct
     let runs_process = false
     let can_run_in_action_runner = false
     let bimap { script; out } f _ = { script = f script; out = f out }
-    let is_useful_to ~memoize:_ = true
+    let is_useful_to_memoize = true
     let encode { script; out } path _ : Sexp.t = List [ path script; path out ]
 
     let action { script; out } ~ectx:_ ~eenv:_ =
@@ -1045,7 +1045,7 @@ module Action = struct
     let runs_process = true
     let can_run_in_action_runner = true
     let bimap path f _ = f path
-    let is_useful_to ~memoize:_ = true
+    let is_useful_to_memoize = true
     let encode script path _ : Sexp.t = List [ path script ]
 
     let action script ~(ectx : Action.context) ~(eenv : Action.env) =

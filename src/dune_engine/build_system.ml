@@ -1145,6 +1145,16 @@ let handle_final_exns exns =
        List.iter exns ~f:Dune_util.Report_error.report)
 ;;
 
+let complete_action_runner_build build =
+  match Process.Build.action_runner build with
+  | None -> Fiber.return ()
+  | Some action_runner ->
+    Action_runner.complete_build
+      action_runner
+      ~run_id:(Process.Build.run_id build)
+      ~cancellation:(Process.Build.cancellation build)
+;;
+
 let run_with_error_collection ?restart_started_at ~build_started_at ~build collect_errors =
   let build =
     match build with
@@ -1267,7 +1277,10 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
         Option.iter timing_section ~f:Console.Status_line.remove_section;
         Fiber.return ())
   in
-  Fiber.Mutex.with_lock State.build_mutex ~f:(fun () -> Process.Build.with_ build f)
+  Fiber.finalize
+    (fun () ->
+       Fiber.Mutex.with_lock State.build_mutex ~f:(fun () -> Process.Build.with_ build f))
+    ~finally:(fun () -> complete_action_runner_build build)
 ;;
 
 let evaluate_action_builder request =
@@ -1312,18 +1325,6 @@ module Request = struct
   let goals t = t.goals
 end
 
-let complete_action_runner_build = function
-  | None -> Fiber.return ()
-  | Some build ->
-    (match Process.Build.action_runner build with
-     | None -> Fiber.return ()
-     | Some action_runner ->
-       Action_runner.complete_build
-         action_runner
-         ~run_id:(Process.Build.run_id build)
-         ~cancellation:(Process.Build.cancellation build))
-;;
-
 let run_build_requests ?restart_started_at ~build_started_at ?build (request : Request.t) =
   let open Fiber.O in
   let finish_request goal outcome =
@@ -1356,37 +1357,25 @@ let run_build_requests ?restart_started_at ~build_started_at ?build (request : R
       let+ () = finish_request goal Failure in
       Error exns
   in
-  Fiber.finalize
-    ~finally:(fun () -> complete_action_runner_build build)
-    (fun () ->
-       run_with_error_collection ?restart_started_at ~build_started_at ~build (fun () ->
-         Request.goals request
-         |> Fiber.parallel_map ~f:run_request
-         >>| List.concat_map ~f:(function
-           | Ok () -> []
-           | Error exns -> exns)
-         >>| function
-         | [] -> Ok ()
-         | exns -> Error exns))
+  run_with_error_collection ?restart_started_at ~build_started_at ~build (fun () ->
+    Request.goals request
+    |> Fiber.parallel_map ~f:run_request
+    >>| List.concat_map ~f:(function
+      | Ok () -> []
+      | Error exns -> exns)
+    >>| function
+    | [] -> Ok ()
+    | exns -> Error exns)
 ;;
 
 let run ?restart_started_at ?build f =
-  let result = ref None in
-  let goal =
-    let open Memo.O in
-    Action_builder.of_memo
-      (let+ result_value = f () in
-       result := Some result_value)
-  in
-  let request = Request.create [ Request.Goal.create goal ] in
-  let open Fiber.O in
-  run_build_requests ?restart_started_at ~build_started_at:(Time.now ()) ?build request
-  >>| function
-  | Error `Already_reported -> Error `Already_reported
-  | Ok () ->
-    (match !result with
-     | Some result -> Ok result
-     | None -> Code_error.raise "build request did not produce a result" [])
+  run_with_error_collection
+    ?restart_started_at
+    ~build_started_at:(Time.now ())
+    ~build
+    (fun () ->
+       Fiber.collect_errors (fun () ->
+         Memo.run_with_error_handler ~handle_error_no_raise:report_early_exn f))
 ;;
 
 let run_exn f =

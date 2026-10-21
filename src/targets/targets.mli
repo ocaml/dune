@@ -37,6 +37,7 @@ module Validated : sig
     ; dirs : Filename.Set.t
     }
 
+  val file : Path.Build.t -> t
   val iter : t -> file:(Path.Build.t -> unit) -> dir:(Path.Build.t -> unit) -> unit
 
   val fold

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792602099093,
+  "lastUpdate": 1792602122628,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -654065,6 +654065,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.149283279766667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "78ffb656608002bb10c4669e5e8d4031e75d6a4e",
+          "message": "refactor(install): share recursive include expansion (#15796)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-22T00:50:10+08:00",
+          "tree_id": "7b39649082bb61a093f258da6e1af8d2e69afb0f",
+          "url": "https://github.com/ocaml/dune/commit/78ffb656608002bb10c4669e5e8d4031e75d6a4e"
+        },
+        "date": 1792601898255,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.8344222649666673,
             "unit": "seconds"
           }
         ]

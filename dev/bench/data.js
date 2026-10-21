@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792595968493,
+  "lastUpdate": 1792596196422,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -470639,6 +470639,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5333604862466668,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7eb159a59f25c421de964d22550349ac6c82a082",
+          "message": "fix(sandbox): reject existing destinations when copying inputs (#16632)\n\nAllow `Io.copy_file` callers to choose exclusive creation or\noverwriting. Reject existing destinations during copy and patch-back\nsandbox population.\n\nThis implements [Rudi's request in\n#16596](https://github.com/ocaml/dune/pull/16596#issuecomment-6218124853)\nto stop silent overwriting in copy mode before fixing the overlapping\ndirectory dependencies behind #16547. It updates the reproduction from\n#16626; resolving the overlap itself remains a separate change.",
+          "timestamp": "2026-10-21T17:08:54+02:00",
+          "tree_id": "a5692a99669a947708f6f6a58c7c28faf689f236",
+          "url": "https://github.com/ocaml/dune/commit/7eb159a59f25c421de964d22550349ac6c82a082"
+        },
+        "date": 1792596193333,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 42.088047345313335,
             "unit": "seconds"
           }
         ]

@@ -201,6 +201,12 @@ order to declare a multi-directory library, you need to use the
    libraries that share cookies with the same name should agree on their
    expanded value).
 
+   Dune also passes the cookie ``mode`` to every PPX driver invocation. Its
+   value is ``melange`` when the sources are preprocessed for Melange, and
+   ``ocaml`` otherwise (bytecode and native share one preprocessing run). A
+   PPX that declares its own ``mode`` cookie with another value is an error.
+   Since Dune 3.26.
+
 .. describe:: (ppx_runtime_libraries (<library-names>))
 
    This field is for when the library is a ``ppx rewriter`` or a ``[@@deriving

@@ -202,6 +202,7 @@ let gen_rules sctx t ~dir ~scope =
             ~instrumentation_deps:[]
             ~lib_name:None
             ~scope
+            ~mode:Ocaml
         in
         Pp_spec.pp_module preprocess module_ >>| Modules.With_vlib.singleton_exe
       in

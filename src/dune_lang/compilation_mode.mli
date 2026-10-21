@@ -5,6 +5,7 @@ type t =
   | Melange
 
 val equal : t -> t -> bool
+val to_string : t -> string
 val repr : t Repr.t
 val to_dyn : t -> Dyn.t
 val default_sandbox : Dune_engine.Sandbox_config.t

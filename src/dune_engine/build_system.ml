@@ -1407,11 +1407,6 @@ let build_dir p =
   ()
 ;;
 
-let with_file p ~f =
-  let+ () = build_file p in
-  f p
-;;
-
 (* CR-someday amokhov: Try running [Io.read_file] in a separate thread. *)
 let read_file =
   Memo.exec
@@ -1420,7 +1415,9 @@ let read_file =
        ~store:(module Path.Table)
        ~input:(module Path)
        ~cutoff:String.equal
-       (fun path -> with_file path ~f:Io.read_file_exn))
+       (fun path ->
+          let+ () = build_file path in
+          Io.read_file_exn path))
 ;;
 
 let state = State.t

@@ -216,9 +216,6 @@ module Copyfile = struct
       | stats -> stats
     in
     (try copyfile src dst overwrite with
-     | Unix.Unix_error (Unix.EPERM, "unlink", _) ->
-       let message = Printf.sprintf "%s: Is a directory" dst in
-       raise (Sys_error message)
      | Unix.Unix_error (Unix.ENOENT, "realpath", _) ->
        let message = Printf.sprintf "%s: No such file or directory" src in
        raise (Sys_error message));

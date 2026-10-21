@@ -45,18 +45,8 @@ CAMLprim value stdune_copyfile(value v_from, value v_to, value v_overwrite) {
     caml_acquire_runtime_system();
     uerror("realpath", v_from);
   }
-  /* nor does it automatically overwrite the target */
-  if (overwrite) {
-    int ret = unlink(to);
-    if (ret < 0 && errno != ENOENT) {
-      caml_acquire_runtime_system();
-      uerror("unlink", v_to);
-    }
-  }
-  copyfile_flags_t flags = COPYFILE_CLONE;
-  if (!overwrite) {
-    flags |= COPYFILE_EXCL;
-  }
+  copyfile_flags_t flags =
+      COPYFILE_CLONE | (overwrite ? COPYFILE_UNLINK : COPYFILE_EXCL);
   int ret = copyfile(real_from, to, NULL, flags);
   caml_acquire_runtime_system();
   if (ret < 0) {

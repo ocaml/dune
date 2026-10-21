@@ -1,18 +1,6 @@
 open Import
 
 module Exec_result : sig
-  (* Exceptions that can be raised by action execution. We catch those and
-     use a variant type so we can marshal them across processes. We lose backtraces,
-     but we don't print them for most exceptions. *)
-  module Error : sig
-    type t =
-      | User of User_message.t
-      | Code of Code_error.t
-      | Sys of string
-      | Unix of Unix.error * string * string
-      | Nonreproducible_build_cancelled
-  end
-
   type ok =
     { dynamic_deps_stages :
         (* The set can be derived from the facts by getting the keys of the
@@ -20,7 +8,7 @@ module Exec_result : sig
         (Dep.Set.t * Dep.Facts.t) list
     }
 
-  type t = (ok, Error.t list) Result.t
+  type t = (ok, Exn_with_backtrace.t list) Result.t
 
   val ok_exn : t -> ok Fiber.t
 end

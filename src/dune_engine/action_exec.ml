@@ -100,10 +100,8 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
     Fiber.return ()
   | Copy (src, dst) ->
     let dst = Path.build dst in
-    let copy_file ~src ~dst =
-      Path.parent dst |> Option.iter ~f:Path.mkdir_p;
-      Io.copy_file ~overwrite:true ~src ~dst ()
-    in
+    Path.parent dst |> Option.iter ~f:Path.mkdir_p;
+    let copy_file ~src ~dst = Io.copy_file ~overwrite:true ~src ~dst () in
     let mkdir ~src:_ ~dst = Path.mkdir_p dst in
     let on_unsupported ~src kind =
       User_error.raise

@@ -88,15 +88,27 @@ subprocesses rather than built-in Dune actions currently deadlock at -j 1.
   >  (action (dynamic-run ./foo.exe read nested-input)))
   > EOF
 
-  $ timeout 3 dune build -j 1 @scheduled
+Ignore signal-handler output when terminating a deadlocked build, but preserve
+all diagnostics when the build exits without timing out.
+
+  $ build_with_timeout() {
+  >   output=$(mktemp)
+  >   status=0
+  >   timeout 3 dune build "$@" >"$output" 2>&1 || status=$?
+  >   if [ "$status" -ne 124 ]; then cat "$output"; fi
+  >   rm "$output"
+  >   return "$status"
+  > }
+
+  $ build_with_timeout -j 1 @scheduled
   [124]
 
 Overlapping requests must lend only one slot, not one slot per request.
 
-  $ timeout 3 dune build -j 1 @parallel
+  $ build_with_timeout -j 1 @parallel
   [124]
 
 Nested dynamic actions must be able to lend their slots independently.
 
-  $ timeout 3 dune build -j 1 @nested
+  $ build_with_timeout -j 1 @nested
   [124]

@@ -16,7 +16,7 @@ module Loaded : sig
   type build =
     { allowed_subdirs : Path.Unspecified.w Dir_set.t
     ; rules_here : rules_here
-    ; aliases : (Loc.t * Rules.Dir_rules.Alias_spec.item) list Alias.Name.Map.t
+    ; aliases : Rules.Dir_rules.Alias_spec.t Alias.Name.Map.t
     }
 
   (* CR-someday amokhov: Switch to [Filename_set.Source.t] and [Filename_set.External.t]
@@ -37,9 +37,7 @@ val load_dir : dir:Path.t -> Loaded.t Memo.t
 val get_rule : Path.t -> Rule.t option Memo.t
 
 (** Return the definition of an alias. *)
-val get_alias_definition
-  :  Alias.t
-  -> (Loc.t * Rules.Dir_rules.Alias_spec.item) list Memo.t
+val get_alias_definition : Alias.t -> Rules.Dir_rules.Alias_spec.t Memo.t
 
 type target_type =
   | File

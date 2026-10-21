@@ -27,8 +27,9 @@ module Build = struct
   let file_exists _ = Memo.return true
 
   let with_lexbuf_from_file t ~f =
-    Build_system.with_file (Path.build t) ~f:(fun path ->
-      Io.Untracked.with_lexbuf_from_file path ~f)
+    let path = Path.build t in
+    let+ () = Build_system.build_file path in
+    Io.Untracked.with_lexbuf_from_file path ~f
   ;;
 end
 

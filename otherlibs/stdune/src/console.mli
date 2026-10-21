@@ -18,6 +18,9 @@ module type Backend = sig
   (** Set the status line. *)
   val set_status_line : User_message.Style.t Pp.t option -> unit
 
+  (** Whether the backend displays a persistent status line. *)
+  val supports_status_line : bool
+
   (** Print a message if the backend doesn't support a persistent status line. *)
   val print_if_no_status_line : User_message.Style.t Pp.t -> unit
 
@@ -46,6 +49,9 @@ module Backend : sig
   type t = (module Backend)
 
   val set : t -> unit
+
+  (** Whether the selected backend displays a persistent status line. *)
+  val supports_status_line : unit -> bool
 
   (** [compose a b] produce a backend that sends message to both [a] and [b]
       backends. *)

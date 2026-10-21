@@ -3,6 +3,7 @@ include Dune_threaded_console_intf
 
 let make ~frames_per_second (module Base : S) : (module Console.Backend) =
   let module T = struct
+    let supports_status_line = true
     let mutex = Mutex.create ()
     let finish_cv = Condition.create ()
 

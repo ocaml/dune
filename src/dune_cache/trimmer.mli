@@ -21,6 +21,9 @@ end
     the trimming. *)
 val trim : goal:int64 -> Trimming_result.t
 
+(** Trim the cache to a maximum overhead [size], in bytes. *)
+val trim_to_size : size:int64 -> Trimming_result.t
+
 (** Purge cache metadata files that can't be read or contain references to
     non-existing files. *)
 val garbage_collect : unit -> Trimming_result.t

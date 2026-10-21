@@ -87,6 +87,8 @@ module Unused_file = struct
     ; size : int
     ; ctime : float
     }
+
+  let add_size total { size; _ } = Int64.add total (Int64.of_int size)
 end
 
 let unused_files_in_cache () =
@@ -112,14 +114,11 @@ let unused_files_in_cache () =
      as well as copying it from the cache to a build directory, both change the
      entry's [ctime]. This means that the trimmer will start deleting entries
      starting from the one that was least recently created or used. *)
-let trim ~goal =
+let trim_files files ~goal =
   let files =
     if goal <= 0L
     then []
-    else
-      unused_files_in_cache ()
-      |> List.of_seq
-      |> List.sort ~compare:(fun x y -> Float.compare x.Unused_file.ctime y.ctime)
+    else List.sort files ~compare:(fun x y -> Float.compare x.Unused_file.ctime y.ctime)
   in
   let delete (trimmed_so_far : Trimming_result.t) { Unused_file.path; size; _ } =
     if trimmed_so_far.trimmed_bytes >= goal
@@ -134,10 +133,19 @@ let trim ~goal =
   trim_broken_metadata_entries ~trimmed_so_far
 ;;
 
+let trim ~goal =
+  let files = if goal <= 0L then [] else unused_files_in_cache () |> List.of_seq in
+  trim_files files ~goal
+;;
+
+let trim_to_size ~size =
+  let files = unused_files_in_cache () |> List.of_seq in
+  let overhead = List.fold_left files ~init:0L ~f:Unused_file.add_size in
+  trim_files files ~goal:(Int64.sub overhead size)
+;;
+
 let overhead_size () =
-  unused_files_in_cache ()
-  |> Seq.fold_left ~init:0L ~f:(fun total file ->
-    Int64.add total (Int64.of_int file.Unused_file.size))
+  unused_files_in_cache () |> Seq.fold_left ~init:0L ~f:Unused_file.add_size
 ;;
 
 let clear () =

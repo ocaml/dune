@@ -49,16 +49,11 @@ let trim =
      in
      Common.No_build.set_debug_backtraces debug_backtraces;
      Log.init No_log_file;
-     let open Result.O in
      match
-       let+ goal =
-         match trimmed_size, size with
-         | Some trimmed_size, None -> Result.Ok trimmed_size
-         | None, Some size ->
-           Result.Ok (Int64.sub (Dune_cache.Trimmer.overhead_size ()) size)
-         | _ -> Result.Error "please specify either --size or --trimmed-size"
-       in
-       Dune_cache.Trimmer.trim ~goal
+       match trimmed_size, size with
+       | Some trimmed_size, None -> Result.Ok (Dune_cache.Trimmer.trim ~goal:trimmed_size)
+       | None, Some size -> Result.Ok (Dune_cache.Trimmer.trim_to_size ~size)
+       | _ -> Result.Error "please specify either --size or --trimmed-size"
      with
      | Error s -> User_error.raise [ Pp.text s ]
      | Ok { trimmed_bytes; number_of_files_removed } ->

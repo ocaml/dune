@@ -1283,13 +1283,6 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
     ~finally:(fun () -> complete_action_runner_build build)
 ;;
 
-let evaluate_action_builder request =
-  let+ (), (_ : Dep.Fact.t Dep.Map.t) =
-    Action_builder.evaluate_and_collect_facts request
-  in
-  ()
-;;
-
 module Request = struct
   module Goal = struct
     type t =
@@ -1346,7 +1339,9 @@ let run_build_requests ?restart_started_at ~build_started_at ?build (request : R
   let run_request goal =
     Fiber.collect_errors (fun () ->
       Memo.run_with_error_handler ~handle_error_no_raise:report_early_exn (fun () ->
-        Request.Goal.build goal |> evaluate_action_builder))
+        Request.Goal.build goal
+        |> Action_builder.evaluate_and_collect_facts
+        |> Memo.map ~f:fst))
     >>= function
     | Ok () ->
       let+ () = finish_request goal Success in

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792599905586,
+  "lastUpdate": 1792600245645,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -470755,6 +470755,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.43333902158,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c886973012c863cbf7af78c1d427f5137d36107b",
+          "message": "test(action-plugin): ignore signal-handler noise on expected timeouts (#16668)\n\nThe job-slot starvation tests intentionally time out. On macOS,\nterminating these builds can print a signal-watcher warning, causing\nintermittent cram output mismatches.\n\nCapture build output and suppress it only when `timeout` returns 124.\nPreserve output and exit status for every other outcome, matching the\nexisting dependency-cycle tests. No scheduler behavior changes.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-22T00:11:29+08:00",
+          "tree_id": "7d943649027fefd8924be7cfa777dca48318fb14",
+          "url": "https://github.com/ocaml/dune/commit/c886973012c863cbf7af78c1d427f5137d36107b"
+        },
+        "date": 1792600244074,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 65.31119154069334,
             "unit": "seconds"
           }
         ]

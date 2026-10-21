@@ -55,6 +55,34 @@ let%expect_test "dependency set digest encoding" =
     |}]
 ;;
 
+let%expect_test "rule dependency path kinds" =
+  let module Dep = Dune_engine.Dep in
+  List.iter
+    [ "source", Path.source (Path.Source.relative Path.Source.root "dependency")
+    ; "build", Path.build (Path.Build.relative Path.Build.root "default/dependency")
+    ; "external", Path.external_ (Path.External.relative Path.External.root "dependency")
+    ]
+    ~f:(fun (label, path) ->
+      (match Dep.file path with
+       | _ -> printfn "%s file: accepted" label
+       | exception Code_error.E _ -> printfn "%s file: rejected" label);
+      let selector =
+        Dune_engine.File_selector.of_predicate_lang ~dir:path Predicate_lang.true_
+      in
+      match Dep.file_selector selector with
+      | _ -> printfn "%s selector: accepted" label
+      | exception Code_error.E _ -> printfn "%s selector: rejected" label);
+  [%expect
+    {|
+    source file: accepted
+    source selector: accepted
+    build file: accepted
+    build selector: accepted
+    external file: accepted
+    external selector: accepted
+    |}]
+;;
+
 let%expect_test "nested argument groups preserve order" =
   let open Command.Args in
   let args =

@@ -64,24 +64,6 @@ module Gen_rules : sig
     val unknown_context : t
     val no_rules : t
   end
-
-  module type Rule_generator = sig
-    (** The rule generator.
-
-      This callback is used to generate the rules for a given directory in the
-      corresponding build context. It receives the directory for which to
-      generate the rules and the split part of the path after the build context.
-      It must return an additional list of sub-directories to keep. This is in
-      addition to the ones that are present in the source tree and the ones that
-      already contain rules.
-
-      [gen_rules] may only generate rules whose targets are descendant of [dir]. *)
-    val gen_rules
-      :  Context_name.t
-      -> dir:Path.Build.t
-      -> string list
-      -> Gen_rules_result.t Memo.t
-  end
 end
 
 module type Source_tree = sig
@@ -106,7 +88,11 @@ val set
         -> dst:Path.Source.t
         -> unit Fiber.t)
   -> sandboxing_preference:Sandbox_mode.t list
-  -> rule_generator:(module Gen_rules.Rule_generator)
+  -> rule_generator:
+       (Context_name.t
+        -> dir:Path.Build.t
+        -> string list
+        -> Gen_rules.Gen_rules_result.t Memo.t)
   -> implicit_default_alias:(Path.Build.t -> unit Action_builder.t option Memo.t)
   -> execution_parameters:
        (Context_name.t -> dir:Path.Build.t -> Execution_parameters.t Memo.t)
@@ -115,7 +101,14 @@ val set
 
 type t = private
   { contexts : (Build_context.t * Context_type.t) Context_name.Map.t Memo.Lazy.t
-  ; rule_generator : (module Gen_rules.Rule_generator)
+  ; rule_generator :
+      Context_name.t
+      -> dir:Path.Build.t
+      -> string list
+      -> Gen_rules.Gen_rules_result.t Memo.t
+    (** Generate rules for a directory in the corresponding build context.
+        Receives the directory and its path components after the build context.
+        May only generate rules whose targets are descendants of [dir]. *)
   ; sandboxing_preference : Sandbox_mode.t list
   ; promote_source :
       chmod:(Permissions.Mode.t -> Permissions.Mode.t)

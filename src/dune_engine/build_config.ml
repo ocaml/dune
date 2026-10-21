@@ -73,14 +73,6 @@ module Gen_rules = struct
     let unknown_context = Unknown_context
     let no_rules = rules_here Rules.empty
   end
-
-  module type Rule_generator = sig
-    val gen_rules
-      :  Context_name.t
-      -> dir:Path.Build.t
-      -> string list
-      -> Gen_rules_result.t Memo.t
-  end
 end
 
 module type Source_tree = sig
@@ -96,7 +88,11 @@ end
 
 type t =
   { contexts : (Build_context.t * Context_type.t) Context_name.Map.t Memo.Lazy.t
-  ; rule_generator : (module Gen_rules.Rule_generator)
+  ; rule_generator :
+      Context_name.t
+      -> dir:Path.Build.t
+      -> string list
+      -> Gen_rules.Gen_rules_result.t Memo.t
   ; sandboxing_preference : Sandbox_mode.t list
   ; promote_source :
       chmod:(Permissions.Mode.t -> Permissions.Mode.t)

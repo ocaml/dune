@@ -27,19 +27,13 @@ correctly under the default sandbox.
   >   (with-stdout-to out (run mybin))))
   > EOF
 
-This should print "from provider", but fails instead:
+The package dependency and the binary dependency can be sandboxed together.
 
-  $ dune build @all 2>&1 | censor
-  Error:
-  symlink(_build/.sandbox/$DIGEST1/_private/default/.pkg/provider.0.0.1-$DIGEST2/target): File exists
-  -> required by _build/default/out
-  -> required by alias all
-  [1]
+  $ dune build @all
   $ cat _build/default/out
-  cat: _build/default/out: No such file or directory
-  [1]
+  from provider
 
-Removing [(deps (package provider))] fixes the problem
+Resolving the binary without a package dependency still works.
 
   $ cat >dune <<'EOF'
   > (rule

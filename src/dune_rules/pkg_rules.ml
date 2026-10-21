@@ -2622,7 +2622,14 @@ let find_package ctx pkg =
   | false -> Memo.return None
   | true ->
     let+ pkg = resolve_pkg_dep ctx (Loc.none, pkg) in
-    Some (Action_builder.deps (Dep.Set.add (Pkg.package_deps pkg) (Pkg.dep pkg)))
+    (* CR-someday Alizter: This works around an engine bug with overlapping
+       directory and file dependencies in sandboxes (#16547). Depend on whole
+       installation directories once the engine handles these overlaps. *)
+    Some
+      (Action_builder.List.iter (pkg :: Pkg.deps_closure pkg) ~f:(fun { Pkg.paths; _ } ->
+         let open Action_builder.O in
+         let* { Install_cookie.Gen.files; _ } = (Pkg_installed.of_paths paths).cookie in
+         Action_builder.paths (Section.Map.values files |> List.concat)))
 ;;
 
 let package_prefixes ctx =

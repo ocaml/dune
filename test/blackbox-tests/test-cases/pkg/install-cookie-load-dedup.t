@@ -1,4 +1,5 @@
-Each install cookie should be deserialised at most once per build.
+Each install cookie should be deserialised at most once per build. With
+per-file package dependencies, this currently happens once per rule instead.
 
   $ make_lockdir
 
@@ -20,10 +21,10 @@ Two rules, both depending on package base:
 
   $ DUNE_TRACE="persistent" dune build out1 out2
 
-Count install-cookie loads in this build. Neither rule needs to load the cookie:
+Count install-cookie loads in this build. Each rule currently loads it separately:
 
   $ dune trace cat | jq -s '
   >   [ .[] | select(.args.module == "INSTALL-COOKIE" and .args.operation == "load") ]
   >   | length
   > '
-  0
+  2

@@ -94,6 +94,13 @@ let get = Package_variable_name.Map.find
 let extend a b = Package_variable_name.Map.superpose b a
 let contains = Package_variable_name.Map.mem
 
+let variable_names t =
+  Package_variable_name.Map.foldi
+    t
+    ~init:Package_variable_name.Set.empty
+    ~f:(fun variable _ variables -> Package_variable_name.Set.add variables variable)
+;;
+
 let with_defaults =
   [ ( Package_variable_name.opam_version
     , OpamVersion.to_string OpamVersion.current |> Variable_value.string )

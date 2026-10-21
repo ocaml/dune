@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792596203751,
+  "lastUpdate": 1792597859011,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -653717,6 +653717,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.4562436869533335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "13f8470e64b866a171648affb6c90469d462f67e",
+          "message": "refactor(engine): execute anonymous actions without synthetic rules (#16662)\n\nAnonymous actions currently construct a synthetic `Rule` only to reuse\nordinary\nrule execution. This replaces their evaluated action builder and then\nevaluates\nit again to rebuild dependency facts.\n\nExtract the evaluated-action executor shared by ordinary rules and\nanonymous\nactions. The anonymous memo node now stores the evaluated action and\ndependency\ndescriptions, rebuilds facts directly, and invokes that executor without\na fake\nrule. This removes the `Evaluated` wrapper and redundant execution\nstages while\npreserving digest-keyed synchronization, stamp targets, stdout capture,\nand\nfallback error locations.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-21T23:42:06+08:00",
+          "tree_id": "44973947915405d099d2c42effc5c6cf58c2cb92",
+          "url": "https://github.com/ocaml/dune/commit/13f8470e64b866a171648affb6c90469d462f67e"
+        },
+        "date": 1792597645527,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.7402510389133337,
             "unit": "seconds"
           }
         ]

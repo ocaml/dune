@@ -22,7 +22,15 @@ make_fake_ocamlformat() {
 	  if Sys.file_exists ".ocamlformat-ignore" then
 	  print_endline "ignoring some files"
 	;;
-	let () = print_endline ("formatted with version "^version)
+	let () =
+	  let output = "formatted with version " ^ version ^ "\n" in
+	  if Array.exists (String.equal "--inplace") Sys.argv
+	  then (
+	    let file = Sys.argv.(Array.length Sys.argv - 1) in
+	    let channel = open_out file in
+	    output_string channel output;
+	    close_out channel)
+	  else print_string output
 	EOF
   fi
   cat > ocamlformat/dune <<- EOF

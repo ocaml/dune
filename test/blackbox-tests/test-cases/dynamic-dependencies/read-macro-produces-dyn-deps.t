@@ -41,3 +41,35 @@ Building `./output` should now produce a file with contents "depA depB"
 
   $ cat ./_build/default/output
   ./depA ./depB
+
+The read-strings variant decodes OCaml escapes before treating each line as a
+single dependency. A space in a filename must not split it into two paths.
+
+  $ cat > filenames <<'EOF'
+  > space\032name
+  > EOF
+  $ echo contents > 'space name'
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target escaped)
+  >  (deps %{read-strings:filenames})
+  >  (action (with-stdout-to %{target} (cat %{deps}))))
+  > EOF
+  $ dune build escaped
+  $ cat _build/default/escaped
+  contents
+
+Changes to the decoded dependency invalidate the action.
+
+  $ echo changed > 'space name'
+  $ dune build escaped
+  $ cat _build/default/escaped
+  changed
+
+Invalid escapes are attributed to the file being read, not to the rule.
+
+  $ printf '%s\n' '\q' > filenames
+  $ dune build escaped
+  File "_build/default/filenames", line 1, characters 0-0:
+  Error: This file must be a list of lines escaped using OCaml's conventions
+  [1]

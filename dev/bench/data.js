@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792686136135,
+  "lastUpdate": 1792686143772,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -471480,6 +471480,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 44.49751796178666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9efed2e52a69ca16ad5dff8d1b3badd54ac4bec8",
+          "message": "test(engine): characterize dependency-set digest encoding (#16682)\n\nPin the digest encoding for each dependency kind, the empty set, and\nmixed sets in both insertion orders before simplifying the encoder.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T00:06:32+08:00",
+          "tree_id": "0a2658169a5ad9ef931b1b6c6e6f175d345f1ae5",
+          "url": "https://github.com/ocaml/dune/commit/9efed2e52a69ca16ad5dff8d1b3badd54ac4bec8"
+        },
+        "date": 1792686142790,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.45004408815333335,
             "unit": "seconds"
           }
         ]

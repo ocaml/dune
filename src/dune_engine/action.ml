@@ -39,23 +39,38 @@ module Prog = struct
   ;;
 end
 
-module Encode_ext = struct
-  type t =
-    (module Ext.Instance
-       with type target = Stdune.Path.Build.t
-        and type path = Stdune.Path.t)
-end
-
-module type Ast =
-  Action_intf.Ast
-  with type program = Prog.t
-  with type path = Path.t
-  with type target = Path.Build.t
-  with type string = String.t
-   and type ext = Encode_ext.t
-
-module rec Ast : Ast = Ast
-include Ast
+type t =
+  | Run of
+      { prog : Prog.t
+      ; args : string Appendable_list.t
+      ; can_run_in_action_runner : bool
+      }
+  | With_accepted_exit_codes of int Predicate_lang.t * t
+  | Chdir of Path.t * t
+  | Setenv of string * string * t
+  | Redirect_out of Outputs.t * Path.Build.t * File_perm.t * t
+  | Redirect_in of Inputs.t * Path.t * t
+  | Ignore of Outputs.t * t
+  | Progn of t list
+  | Concurrent of t list
+  | Echo of string list
+  | Cat of Path.t list
+  | Copy of Path.t * Path.Build.t
+  | Symlink of Path.t * Path.Build.t
+  | Hardlink of Path.t * Path.Build.t
+  | System of string
+  | Bash of
+      { script : string
+      ; can_run_in_action_runner : bool
+      }
+  | Write_file of Path.Build.t * File_perm.t * string
+  | Rename of Path.Build.t * Path.Build.t
+  | Remove_tree of Path.Build.t
+  | Mkdir of Path.Build.t
+  | Pipe of Outputs.t * t list
+  | Diff of (Path.t, Path.Build.t) Diff.t
+  | Extension of
+      (module Ext.Instance with type target = Path.Build.t and type path = Path.t)
 
 let run prog args =
   Run { prog; args = Appendable_list.of_list args; can_run_in_action_runner = true }
@@ -110,54 +125,6 @@ include Monoid.Make (struct
     ;;
   end)
 
-module For_shell = struct
-  module type Ast =
-    Action_intf.Ast
-    with type program = string
-    with type path = string
-    with type target = string
-    with type string = string
-    with type ext = Sexp.t
-
-  module rec Ast : Ast = Ast
-  include Ast
-end
-
-module Relativise = Action_mapper.Make (Ast) (For_shell.Ast)
-
-let for_shell t =
-  let rec loop t ~dir ~f_program ~f_string ~f_path ~f_target ~f_ext =
-    match t with
-    | Symlink (src, dst) ->
-      let src =
-        match Path.Build.parent dst with
-        | None -> Path.to_string src
-        | Some from -> Path.reach ~from:(Path.build from) src
-      in
-      let dst = Path.reach ~from:dir (Path.build dst) in
-      For_shell.Symlink (src, dst)
-    | t ->
-      Relativise.map_one_step loop t ~dir ~f_program ~f_string ~f_path ~f_target ~f_ext
-  in
-  let f_path ~dir x = Path.reach x ~from:dir in
-  let f_target ~dir x = Path.reach (Path.build x) ~from:dir in
-  loop
-    t
-    ~dir:Path.root
-    ~f_string:(fun ~dir:_ x -> x)
-    ~f_path
-    ~f_target
-    ~f_ext:(fun ~dir (module A) ->
-      A.Spec.encode
-        A.v
-        (fun p -> Sexp.Atom (f_path p ~dir))
-        (fun p -> Sexp.Atom (f_target p ~dir)))
-    ~f_program:(fun ~dir x ->
-      match x with
-      | Ok p -> Path.reach p ~from:dir
-      | Error e -> Filename.to_string e.program)
-;;
-
 let digest =
   let open Dune_digest.Manual in
   let digest_outputs d outputs = repr d Outputs.repr outputs in
@@ -171,7 +138,11 @@ let digest =
   in
   let digest_path d ~dir path = string d (Path.reach path ~from:dir) in
   let digest_target d ~dir target = string d (Path.reach (Path.build target) ~from:dir) in
-  let digest_ext d ~dir ((module A) : Encode_ext.t) =
+  let digest_ext
+        d
+        ~dir
+        (module A : Ext.Instance with type target = Path.Build.t and type path = Path.t)
+    =
     repr
       d
       Sexp.repr
@@ -308,8 +279,6 @@ let fold_one_step t ~init:acc ~f =
   | Extension _ -> acc
 ;;
 
-include Action_mapper.Make (Ast) (Ast)
-
 (* TODO change [chdir] to use [Path.Build.t] in the directory. This will be
    easier once [Action.t] is split off from the dune lang's action *)
 let chdirs =
@@ -364,22 +333,41 @@ let maybe_sandbox_path sandbox p =
   | Some p -> Path.build (Sandbox.map_path sandbox p)
 ;;
 
-let sandbox t sandbox : t =
-  map
-    t
-    ~dir:Path.root
-    ~f_string:(fun ~dir:_ x -> x)
-    ~f_path:(fun ~dir:_ p -> maybe_sandbox_path sandbox p)
-    ~f_target:(fun ~dir:_ p -> Sandbox.map_path sandbox p)
-    ~f_program:(fun ~dir:_ p -> Result.map p ~f:(maybe_sandbox_path sandbox))
-    ~f_ext:(fun ~dir:_ (module A) ->
-      let module A = struct
-        include A
+let sandbox t sandbox =
+  let path = maybe_sandbox_path sandbox in
+  let target = Sandbox.map_path sandbox in
+  let rec loop = function
+    | Run ({ prog; _ } as run) -> Run { run with prog = Result.map prog ~f:path }
+    | With_accepted_exit_codes (pred, t) -> With_accepted_exit_codes (pred, loop t)
+    | Chdir (dir, t) -> Chdir (path dir, loop t)
+    | Setenv (var, value, t) -> Setenv (var, value, loop t)
+    | Redirect_out (outputs, fn, perm, t) ->
+      Redirect_out (outputs, target fn, perm, loop t)
+    | Redirect_in (inputs, fn, t) -> Redirect_in (inputs, path fn, loop t)
+    | Ignore (outputs, t) -> Ignore (outputs, loop t)
+    | Progn l -> Progn (List.map l ~f:loop)
+    | Concurrent l -> Concurrent (List.map l ~f:loop)
+    | (Echo _ | System _ | Bash _) as t -> t
+    | Cat xs -> Cat (List.map xs ~f:path)
+    | Copy (src, dst) -> Copy (path src, target dst)
+    | Symlink (src, dst) -> Symlink (path src, target dst)
+    | Hardlink (src, dst) -> Hardlink (path src, target dst)
+    | Write_file (fn, perm, contents) -> Write_file (target fn, perm, contents)
+    | Rename (src, dst) -> Rename (target src, target dst)
+    | Remove_tree dir -> Remove_tree (target dir)
+    | Mkdir dir -> Mkdir (target dir)
+    | Pipe (outputs, l) -> Pipe (outputs, List.map l ~f:loop)
+    | Diff ({ file1; file2; _ } as diff) ->
+      Diff { diff with file1 = path file1; file2 = target file2 }
+    | Extension (module A) ->
+      Extension
+        (module struct
+          include A
 
-        let v = Spec.bimap v (maybe_sandbox_path sandbox) (Sandbox.map_path sandbox)
-      end
-      in
-      (module A))
+          let v = Spec.bimap v path target
+        end)
+  in
+  loop t
 ;;
 
 type is_useful =

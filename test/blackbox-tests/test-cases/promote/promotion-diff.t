@@ -51,3 +51,12 @@ Tests dune promotion diff output.
   @@ -1 +1 @@
   -A expected
   +A actual
+
+Only exit status 1 contributes a displayed diff. Discard stdout from a command
+reporting no difference or an error, without consuming the pending promotion.
+
+  $ dune promotion diff a.expected --diff-command echo
+  $ dune promotion diff a.expected \
+  > --diff-command 'sh -c "echo spurious; exit 2" --'
+  $ dune promotion list a.expected
+  a.expected

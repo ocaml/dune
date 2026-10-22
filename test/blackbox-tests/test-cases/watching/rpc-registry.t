@@ -63,6 +63,17 @@ reports this server, rather than silently dropping it.
   .
   - pid: $PID
   - clients: 1
+
+A client which has initialized but has not negotiated versions is also listed.
+Wait for its initialization response rather than racing the server's accept.
+
+  $ action_plugin_helper initialize-only "$TMPDIR/started" "$TMPDIR/release" &
+  $ HELD_PID=$!
+  $ wait_for_file "$TMPDIR/started"
+  $ dune rpc status 2>&1 | grep '^Client \[held-client\]'
+  Client [held-client], conducting version negotiation
+  $ touch "$TMPDIR/release"
+  $ wait "$HELD_PID"
   $ cp "$XDG_RUNTIME_DIR"/dune/rpc/*.csexp saved-registry
 
   $ build_quiet dynamic-target
@@ -85,3 +96,10 @@ status must report the connection failure instead of failing the whole query.
   > | dune_cmd subst 'pid: [0-9]+' 'pid: $PID'
   - pid: $PID
   - clients: failed to connect to RPC
+
+An explicit unavailable endpoint also reports an error for a single-server
+query. Do not include the transport's implementation backtrace in the output.
+
+  $ DUNE_RPC=unix:path=missing-socket dune rpc status >failed-status 2>&1
+  $ grep '^Error: failed to connect to RPC' failed-status
+  Error: failed to connect to RPC server unix:path=missing-socket

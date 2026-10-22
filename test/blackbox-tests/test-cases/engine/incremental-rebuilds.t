@@ -26,3 +26,35 @@ even if two modifications happen in the same time slot.
   running
   $ cat _build/default/b
   3
+
+A multi-target cache entry must not survive another rule taking over one of its
+outputs. Restore the original rule and check both outputs, then its null build.
+
+  $ export DUNE_CACHE=disabled
+  $ write_multi_rule () {
+  > cat > dune <<'EOF'
+  > (rule
+  >  (targets owner-a owner-b)
+  >  (action (bash "echo multi; echo one > owner-a; echo two > owner-b")))
+  > EOF
+  > }
+  $ write_multi_rule
+  $ dune build owner-a
+  multi
+
+  $ cat > dune <<'EOF'
+  > (rule (target owner-a) (action (write-file owner-a one)))
+  > (rule
+  >  (target owner-b)
+  >  (action (bash "echo single; echo changed > owner-b")))
+  > EOF
+  $ dune build owner-b
+  single
+
+  $ write_multi_rule
+  $ dune build owner-a
+  multi
+  $ cat _build/default/owner-a _build/default/owner-b
+  one
+  two
+  $ dune build owner-a owner-b

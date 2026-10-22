@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792683249783,
+  "lastUpdate": 1792683256955,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -471248,6 +471248,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 38.411563542866666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5bd36ee383306926c35c2c8e42e26e6a66360290",
+          "message": "refactor(engine): define action constructors directly (#16677)\n\nRemove the six-argument helper functor and define the constructors\ndirectly on the concrete action AST. The shell representation needs only\nthe AST, not an unused copy of every constructor helper.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-22T23:20:52+08:00",
+          "tree_id": "caa3378102bd3188e4ee32fa4660c9869fdeca95",
+          "url": "https://github.com/ocaml/dune/commit/5bd36ee383306926c35c2c8e42e26e6a66360290"
+        },
+        "date": 1792683255155,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.39737621914000004,
             "unit": "seconds"
           }
         ]

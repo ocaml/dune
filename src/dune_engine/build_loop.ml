@@ -3,7 +3,7 @@ open Fiber.O
 module Trigger = Fiber.Trigger
 
 type active_build =
-  { run_id : Run_id.t
+  { process : Process.Build.t
   ; request : Build_system.Request.t
   }
 
@@ -156,7 +156,7 @@ let request_rebuild_due_to_rpc_request t =
       t.status <- Restarting_build active;
       if Option.is_none t.pending_reset
       then t.pending_reset <- Some Memo.Invalidation.empty;
-      Process.Build.cancel_current ()
+      Fiber.Cancel.fire (Process.Build.cancellation active.process)
   in
   trigger_wakeup t
 ;;
@@ -188,10 +188,10 @@ let request_restart t invalidation =
              (fun () ->
                Pp.textf "Restarting current build... %s" (Build_timing.format_now now)));
         t.status <- Restarting_build active;
-        let+ () = Process.Build.cancel_current () in
+        let+ () = Fiber.Cancel.fire (Process.Build.cancellation active.process) in
         Dune_trace.emit Build (fun () ->
           Dune_trace.Event.watch_build_restart
-            ~run_id:(Run_id.to_int active.run_id)
+            ~run_id:(Process.Build.run_id active.process |> Run_id.to_int)
             ~reasons:(Memo.Invalidation.details_hum ~max_elements:max_int invalidation)
             ~at:now)
     in
@@ -336,7 +336,10 @@ let run_current_build
   (match t.status with
    | Building _ -> assert false
    | Standing_by | Restarting_build _ -> ());
-  t.status <- Building { run_id; request };
+  let process =
+    Process.Build.create ~action_runner ~run_id ~cancellation:(Fiber.Cancel.create ())
+  in
+  t.status <- Building { process; request };
   let build_started_at = Time.now () in
   let goals = Build_system.Request.number_of_goals request in
   clear_status_overlay t;
@@ -353,16 +356,10 @@ let run_current_build
   let* outcome =
     Fiber.finalize_now
       (fun () ->
-         let build_ctx =
-           Process.Build.create
-             ~action_runner
-             ~run_id
-             ~cancellation:(Fiber.Cancel.create ())
-         in
          Build_system.run_build_requests
            ?restart_started_at
            ~build_started_at
-           ~build:build_ctx
+           ~build:process
            request)
       ~finally:(fun () -> t.current_build_started_at <- None)
   in
@@ -376,7 +373,9 @@ let run_current_build
       t.status <- Standing_by;
       t.watch_restart_started_at <- None;
       `Done
-    | Restarting_build _ -> `Restart
+    | Restarting_build _ ->
+      t.status <- Standing_by;
+      `Restart
     | Standing_by | Building _ ->
       t.status <- Standing_by;
       t.watch_restart_started_at <- None;
@@ -433,7 +432,8 @@ let cancel_all_rpc_requests t = cancel_rpc_requests t ~f:(fun _ _ -> true)
 
 let current_run_id t =
   match t.status with
-  | Building { run_id; _ } | Restarting_build { run_id; _ } -> Some run_id
+  | Building { process; _ } | Restarting_build { process; _ } ->
+    Some (Process.Build.run_id process)
   | Standing_by -> None
 ;;
 

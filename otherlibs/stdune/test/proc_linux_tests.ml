@@ -127,7 +127,7 @@ let%expect_test "reading a zero-sized procfs directory" =
     {|
     directory: true
     reported size: 0
-    read: ""
+    read: EISDIR
     |}]
 ;;
 

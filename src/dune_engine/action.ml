@@ -1,75 +1,7 @@
 open Import
 open Stdune.Action_types
 module Ext = Action_intf.Ext
-
-module type T = sig
-  type t
-end
-
 include Action_intf.Exec
-
-module Make
-    (Program : T)
-    (Path : T)
-    (Target : T)
-    (String : T)
-    (Extension : T)
-    (Ast :
-       Action_intf.Ast
-       with type program := Program.t
-       with type path := Path.t
-       with type target := Target.t
-       with type string := String.t
-        and type ext := Extension.t) =
-struct
-  include Ast
-
-  let run prog args =
-    Run { prog; args = Appendable_list.of_list args; can_run_in_action_runner = true }
-  ;;
-
-  let chdir path t = Chdir (path, t)
-  let setenv var value t = Setenv (var, value, t)
-
-  let with_stdout_to ?(perm = File_perm.Normal) path t =
-    Redirect_out (Stdout, path, perm, t)
-  ;;
-
-  let with_stderr_to ?(perm = File_perm.Normal) path t =
-    Redirect_out (Stderr, path, perm, t)
-  ;;
-
-  let with_outputs_to ?(perm = File_perm.Normal) path t =
-    Redirect_out (Outputs, path, perm, t)
-  ;;
-
-  let with_stdin_from path t = Redirect_in (Stdin, path, t)
-  let ignore_stdout t = Ignore (Stdout, t)
-  let ignore_stderr t = Ignore (Stderr, t)
-  let ignore_outputs t = Ignore (Outputs, t)
-  let progn ts = Progn ts
-  let concurrent ts = Concurrent ts
-  let echo s = Echo s
-  let cat ps = Cat ps
-  let copy a b = Copy (a, b)
-  let symlink a b = Symlink (a, b)
-  let system s = System s
-  let bash script = Bash { script; can_run_in_action_runner = true }
-  let write_file ?(perm = File_perm.Normal) p s = Write_file (p, perm, s)
-  let rename a b = Rename (a, b)
-  let remove_tree path = Remove_tree path
-  let mkdir path = Mkdir path
-
-  let diff
-        ?(optional = false)
-        ?(mode = Diff.Mode.Text)
-        ?(directory_diffs = true)
-        file1
-        file2
-    =
-    Diff { optional; mode; directory_diffs; file1; file2 }
-  ;;
-end
 
 module Prog = struct
   module Not_found = struct
@@ -123,7 +55,47 @@ module type Ast =
    and type ext = Encode_ext.t
 
 module rec Ast : Ast = Ast
-include Make (Prog) (Stdune.Path) (Stdune.Path.Build) (String) (Encode_ext) (Ast)
+include Ast
+
+let run prog args =
+  Run { prog; args = Appendable_list.of_list args; can_run_in_action_runner = true }
+;;
+
+let chdir path t = Chdir (path, t)
+let setenv var value t = Setenv (var, value, t)
+let with_stdout_to ?(perm = File_perm.Normal) path t = Redirect_out (Stdout, path, perm, t)
+let with_stderr_to ?(perm = File_perm.Normal) path t = Redirect_out (Stderr, path, perm, t)
+
+let with_outputs_to ?(perm = File_perm.Normal) path t =
+  Redirect_out (Outputs, path, perm, t)
+;;
+
+let with_stdin_from path t = Redirect_in (Stdin, path, t)
+let ignore_stdout t = Ignore (Stdout, t)
+let ignore_stderr t = Ignore (Stderr, t)
+let ignore_outputs t = Ignore (Outputs, t)
+let progn ts = Progn ts
+let concurrent ts = Concurrent ts
+let echo s = Echo s
+let cat ps = Cat ps
+let copy a b = Copy (a, b)
+let symlink a b = Symlink (a, b)
+let system s = System s
+let bash script = Bash { script; can_run_in_action_runner = true }
+let write_file ?(perm = File_perm.Normal) p s = Write_file (p, perm, s)
+let rename a b = Rename (a, b)
+let remove_tree path = Remove_tree path
+let mkdir path = Mkdir path
+
+let diff
+      ?(optional = false)
+      ?(mode = Diff.Mode.Text)
+      ?(directory_diffs = true)
+      file1
+      file2
+  =
+  Diff { optional; mode; directory_diffs; file1; file2 }
+;;
 
 include Monoid.Make (struct
     type nonrec t = t
@@ -138,8 +110,6 @@ include Monoid.Make (struct
     ;;
   end)
 
-type string = String.t
-
 module For_shell = struct
   module type Ast =
     Action_intf.Ast
@@ -150,7 +120,7 @@ module For_shell = struct
     with type ext = Sexp.t
 
   module rec Ast : Ast = Ast
-  include Make (String) (String) (String) (String) (Sexp) (Ast)
+  include Ast
 end
 
 module Relativise = Action_mapper.Make (Ast) (For_shell.Ast)

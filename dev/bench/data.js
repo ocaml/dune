@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792683669164,
+  "lastUpdate": 1792683819683,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -654616,6 +654616,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 4.06472400484,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "88aeeeaafaf125190c02acdd6f3408c5b896fdcf",
+          "message": "refactor(engine): keep the stdout wrapper non-recursive (#16679)\n\nMove the public stdout wrapper out of the recursive build group; it is\nnot used by the group itself.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-22T23:33:46+08:00",
+          "tree_id": "1347ab9ae26fa8ce360ce99b2048670745ae050b",
+          "url": "https://github.com/ocaml/dune/commit/88aeeeaafaf125190c02acdd6f3408c5b896fdcf"
+        },
+        "date": 1792683577536,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.1598617364466666,
             "unit": "seconds"
           }
         ]

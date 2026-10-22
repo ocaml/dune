@@ -130,3 +130,41 @@ lives at another path and points to the local file. It is rejected in every mode
   26 |     (copy a/b/c/tree copied-local)))))
   Error: Symlink alias is not allowed here
   [1]
+
+An action-created directory link points outside the copied tree. This should
+copy the directory contents, but currently rejects the link.
+
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target (dir copied-directory))
+  >  (deps (sandbox always))
+  >  (action
+  >   (no-infer
+  >    (progn
+  >     (system "mkdir -p input real && echo nested > real/file")
+  >     (system "ln -s ../real input/alias")
+  >     (copy input copied-directory)))))
+  > EOF
+
+  $ dune build copied-directory --sandbox symlink > directory.log 2>&1
+  [1]
+  $ grep '^Error:' directory.log
+  Error: Symlink alias is not allowed here
+
+A cyclic directory link must fail rather than hang.
+
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target (dir copied-cycle))
+  >  (deps (sandbox always))
+  >  (action
+  >   (no-infer
+  >    (progn
+  >     (system "mkdir input && ln -s . input/loop")
+  >     (copy input copied-cycle)))))
+  > EOF
+
+  $ dune build copied-cycle --sandbox symlink > cycle.log 2>&1
+  [1]
+  $ grep '^Error:' cycle.log
+  Error: Symlink loop is not allowed here

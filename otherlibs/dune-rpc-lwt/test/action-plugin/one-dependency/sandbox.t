@@ -3,6 +3,7 @@ The client requests dependencies from a subdirectory, concurrently and repeatedl
 then reads an overlapping glob and an empty directory. Static inputs modified by
 an earlier part of the action must not be replaced by their original contents.
 A directory target requested after one of its files must not replace that file.
+It must preserve directories and files created by the action itself.
 
   $ cat > dune-project <<'EOF'
   > (lang dune 3.25)
@@ -24,9 +25,10 @@ A directory target requested after one of its files must not replace that file.
   >  (targets (dir tree))
   >  (action
   >   (progn
-  >    (run mkdir -p tree/sub)
+  >    (run mkdir -p tree/sub tree/other)
   >    (bash "printf first > tree/sub/first")
-  >    (bash "printf second > tree/sub/second"))))
+  >    (bash "printf second > tree/sub/second")
+  >    (bash "printf third > tree/other/third"))))
   > EOF
   $ cat > inputs/dune <<'EOF'
   > (rule
@@ -43,7 +45,7 @@ A directory target requested after one of its files must not replace that file.
 The second build should reuse the result. Changing a discovered dependency must
 rerun the action with its new contents, without exposing unmatched dependencies.
 
-  $ for mode in symlink hardlink; do
+  $ for mode in symlink hardlink copy; do
   >   echo "$mode:"
   >   printf ../inputs/picked.txt > selection
   >   if dune build result --sandbox "$mode" --build-dir "_build-$mode"; then
@@ -69,6 +71,16 @@ rerun the action with its new contents, without exposing unmatched dependencies.
   local
   checked isolation
   hardlink:
+  starting sandboxed action
+  picked
+  other.txt, picked.txt, static.txt
+  local
+  starting sandboxed action
+  other
+  other.txt, picked.txt, static.txt
+  local
+  checked isolation
+  copy:
   starting sandboxed action
   picked
   other.txt, picked.txt, static.txt

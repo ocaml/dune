@@ -851,8 +851,6 @@ and execute_anonymous_action { Rule.Anonymous_action.action; dir; loc } ~capture
     (Lazy.force execute_anonymous_action_memo)
     { Anonymous_action.action; dir; loc; deps; capture_stdout; digest }
 
-and execute_action_stdout anon = execute_anonymous_action anon ~capture_stdout:true
-
 (* A rule can have multiple targets but calls to [execute_rule] are memoized,
    so the rule will be executed only once. *)
 and build_file_impl path =
@@ -1039,6 +1037,8 @@ and execute_rule_memo =
        ~on_event:State.on_rule_event
        execute_rule_impl)
 ;;
+
+let execute_action_stdout anon = execute_anonymous_action anon ~capture_stdout:true
 
 let () =
   Load_rules.set_current_rule_loc (fun () ->

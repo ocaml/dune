@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792688947170,
+  "lastUpdate": 1792689614359,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -655022,6 +655022,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.5643972385333336,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rudi.grinberg@gmail.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b29845f09f70d7d694bd9fbb1a9fd4707455756f",
+          "message": "fix(fs-io): reject directories before the empty-file shortcut (#16687)\n\n`Fs_io.read_file` treated directories as empty files whenever their\nreported size was zero, as happens with empty Btrfs directories and\nprocfs directories.\n\nThe first commit reproduces the bug using `/proc/self` on Linux, without\nrequiring Btrfs. The second rejects directories before the empty-file\nshortcut and updates the expectation to `EISDIR`.\n\n---------\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T01:06:13+08:00",
+          "tree_id": "cd8f22656dc5f7ea3516bb466be0ffb99ce62322",
+          "url": "https://github.com/ocaml/dune/commit/b29845f09f70d7d694bd9fbb1a9fd4707455756f"
+        },
+        "date": 1792689243442,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.635815355606667,
             "unit": "seconds"
           }
         ]

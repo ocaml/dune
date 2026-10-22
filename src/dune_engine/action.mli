@@ -5,6 +5,7 @@
     the user in [Dune_lang.Action.t] *)
 
 open Import
+open Action_types
 module Ext : module type of Action_intf.Ext
 include module type of Action_intf.Exec
 
@@ -46,13 +47,36 @@ include
   with type ext :=
     (module Ext.Instance with type target = Path.Build.t and type path = Path.t)
 
-include
-  Action_intf.Helpers
-  with type program := Prog.t
-  with type path := Path.t
-  with type target := Path.Build.t
-  with type string := string
-  with type t := t
+val run : Prog.t -> string list -> t
+val chdir : Path.t -> t -> t
+val setenv : string -> string -> t -> t
+val with_stdout_to : ?perm:File_perm.t -> Path.Build.t -> t -> t
+val with_stderr_to : ?perm:File_perm.t -> Path.Build.t -> t -> t
+val with_outputs_to : ?perm:File_perm.t -> Path.Build.t -> t -> t
+val with_stdin_from : Path.t -> t -> t
+val ignore_stdout : t -> t
+val ignore_stderr : t -> t
+val ignore_outputs : t -> t
+val progn : t list -> t
+val concurrent : t list -> t
+val echo : string list -> t
+val cat : Path.t list -> t
+val copy : Path.t -> Path.Build.t -> t
+val symlink : Path.t -> Path.Build.t -> t
+val system : string -> t
+val bash : string -> t
+val write_file : ?perm:File_perm.t -> Path.Build.t -> string -> t
+val rename : Path.Build.t -> Path.Build.t -> t
+val remove_tree : Path.Build.t -> t
+val mkdir : Path.Build.t -> t
+
+val diff
+  :  ?optional:bool
+  -> ?mode:Diff.Mode.t
+  -> ?directory_diffs:bool
+  -> Path.t
+  -> Path.Build.t
+  -> t
 
 include Monoid with type t := t
 

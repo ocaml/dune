@@ -65,45 +65,6 @@ module type Ast = sig
     | Extension of ext
 end
 
-module type Helpers = sig
-  type program
-  type path
-  type target
-  type string
-  type t
-
-  val run : program -> string list -> t
-  val chdir : path -> t -> t
-  val setenv : string -> string -> t -> t
-  val with_stdout_to : ?perm:File_perm.t -> target -> t -> t
-  val with_stderr_to : ?perm:File_perm.t -> target -> t -> t
-  val with_outputs_to : ?perm:File_perm.t -> target -> t -> t
-  val with_stdin_from : path -> t -> t
-  val ignore_stdout : t -> t
-  val ignore_stderr : t -> t
-  val ignore_outputs : t -> t
-  val progn : t list -> t
-  val concurrent : t list -> t
-  val echo : string list -> t
-  val cat : path list -> t
-  val copy : path -> target -> t
-  val symlink : path -> target -> t
-  val system : string -> t
-  val bash : string -> t
-  val write_file : ?perm:File_perm.t -> target -> string -> t
-  val rename : target -> target -> t
-  val remove_tree : target -> t
-  val mkdir : target -> t
-
-  val diff
-    :  ?optional:bool
-    -> ?mode:Diff.Mode.t
-    -> ?directory_diffs:bool
-    -> path
-    -> target
-    -> t
-end
-
 module Exec = struct
   type context =
     { targets : Targets.Validated.t option

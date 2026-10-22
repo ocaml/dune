@@ -35,6 +35,68 @@ let%expect_test "non-incremental mode discards dependencies but counts them" =
     |}]
 ;;
 
+let%expect_test "non-incremental map_reduce_seq counts edges without retaining them" =
+  in_non_incremental_mode ~f:(fun () ->
+    let dependency =
+      Memo.lazy_node ~name:"dependency" (fun () ->
+        Scheduler.yield () |> Memo.of_reproducible_fiber)
+    in
+    let node =
+      Memo.lazy_node ~name:"node" (fun () ->
+        Memo.map_reduce_seq
+          (List.to_seq [ dependency; dependency ])
+          ~f:Memo.Node.read
+          ~empty:()
+          ~combine:(fun () () -> ()))
+    in
+    let () = run (Memo.Node.read node) in
+    printfn
+      "dependencies: %s"
+      (Memo.For_tests.get_deps_structured node |> Option.value_exn |> Dyn.to_string);
+    printfn "edges: %d" (Counter.read Memo.Metrics.Compute.edges);
+    Memo.Metrics.assert_invariants ());
+  [%expect
+    {|
+    dependencies: Empty
+    edges: 2
+    |}]
+;;
+
+let%expect_test "non-incremental map_reduce_seq preserves early errors" =
+  in_non_incremental_mode ~f:(fun () ->
+    let trace = ref [] in
+    let log event = trace := event :: !trace in
+    let (_ : (unit, unit) result) =
+      Scheduler.run
+        (Fiber.map_reduce_errors
+           (module Monoid.Unit)
+           ~on_error:(fun _exn ->
+             log "late";
+             Fiber.return ())
+           (fun () ->
+              Memo.run_with_error_handler
+                (fun () ->
+                   Memo.map_reduce_seq
+                     (List.to_seq [ true; false ])
+                     ~empty:()
+                     ~combine:(fun () () -> ())
+                     ~f:(fun fail ->
+                       Fiber.map (Scheduler.yield ()) ~f:(fun () ->
+                         if fail then failwith "error" else log "other branch")
+                       |> Memo.of_reproducible_fiber))
+                ~handle_error_no_raise:(fun _exn ->
+                  log "early";
+                  Fiber.return ())))
+    in
+    List.rev !trace |> List.iter ~f:(fun event -> printfn "%s" event));
+  [%expect
+    {|
+    early
+    other branch
+    late
+    |}]
+;;
+
 let%expect_test "non-incremental mode preserves early errors outside Memo nodes" =
   in_non_incremental_mode ~f:(fun () ->
     let trace = ref [] in

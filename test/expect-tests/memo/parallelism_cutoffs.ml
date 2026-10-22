@@ -164,6 +164,58 @@ let%expect_test "parallel_map" =
     |}]
 ;;
 
+let%expect_test "map_reduce_seq" =
+  let nodes = List.map [ "a"; "b"; "c"; "d"; "e" ] ~f:(node ~cutoff:true) in
+  let top =
+    Memo.lazy_node ~name:"top" (fun () ->
+      Memo.map_reduce_seq
+        (List.to_seq nodes)
+        ~f:Node.read
+        ~empty:()
+        ~combine:(fun () () -> ()))
+  in
+  test ~nodes ~top;
+  [%expect
+    {|
+    1st run: a+ b+ c+ d+ e+ a- b- c- d- e-
+    2nd run: a+ a- b+ b- c+ c- d+ d- e+ e-
+
+    Metrics for 2nd run:
+
+    Memo graph: 6/10/0 nodes/edges/blocked (restore), 10/5/0 nodes/edges/blocked (compute)
+    Memo cycle detection graph: 0/0/0 nodes/edges/paths
+    |}]
+;;
+
+let%expect_test "map_reduce_seq keeps Memo frames and waits for failing branches" =
+  let a = node ~cutoff:true ~fail:true "a" in
+  let b = node ~cutoff:true ~fail:true "b" in
+  let top =
+    Memo.lazy_node ~name:"top" (fun () ->
+      Memo.map_reduce_seq
+        (List.to_seq [ a; b ])
+        ~f:Node.read
+        ~empty:()
+        ~combine:(fun () () -> ()))
+  in
+  evaluate_and_log_errors top;
+  printfn
+    "cached dependencies: %s"
+    (Memo.For_tests.get_deps_structured top |> Option.value_exn |> Dyn.to_string);
+  [%expect
+    {|
+    a+ b+ a! b! Error: { exn =
+               "Memo.Error.E { exn = \"Failure(\\\"a\\\")\"; stack = [ (\"a\", ()); (\"top\", ()) ] }"
+           ; backtrace = ""
+           }
+    Error: { exn =
+               "Memo.Error.E { exn = \"Failure(\\\"b\\\")\"; stack = [ (\"b\", ()); (\"top\", ()) ] }"
+           ; backtrace = ""
+           }
+    cached dependencies: Seq [ Singleton (Some "a", ()); Singleton (Some "b", ()) ]
+    |}]
+;;
+
 (* Core eagerness / altitude cases. *)
 
 (* Structure [Par [ Seq [a, b], c ]], with [a], [b] no-cutoff and [c] cutoff, all

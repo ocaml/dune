@@ -3,59 +3,13 @@ open Stdune.Action_types
 open Action_intf.Exec
 
 module Exec_result = struct
-  module Error = struct
-    type t =
-      | User of User_message.t
-      | Code of Code_error.t
-      | Sys of string
-      | Unix of Unix.error * string * string
-      | Nonreproducible_build_cancelled
-
-    (* We can't capture raw backtraces since they are not marshallable.
-       We can convert those to marshallable backtrace slots, but we can't convert them
-       back to re-raise exceptions with preserved backtraces. *)
-    let of_exn (e : exn) =
-      match e with
-      | User_error.E msg -> User msg
-      | Code_error.E err -> Code err
-      | Sys_error msg -> Sys msg
-      | Unix.Unix_error (err, call, args) -> Unix (err, call, args)
-      | Memo.Non_reproducible Scheduler.Run.Build_cancelled ->
-        Nonreproducible_build_cancelled
-      | Memo.Cycle_error.E _ as e ->
-        (* [Memo.Cycle_error.t] is hard to serialize and can only be raised during action
-           execution with the dynamic dependencies plugin, which is not production-ready yet.
-           For now, we just re-reraise it.
-        *)
-        reraise e
-      | e ->
-        Code
-          { message = "unable to serialize exception"
-          ; data = [ "exn", Exn.to_dyn e ]
-          ; loc = None
-          }
-    ;;
-
-    let to_exn (t : t) =
-      match t with
-      | User msg -> User_error.E msg
-      | Code err -> Code_error.E err
-      | Sys msg -> Sys_error msg
-      | Unix (err, call, args) -> Unix.Unix_error (err, call, args)
-      | Nonreproducible_build_cancelled ->
-        Memo.Non_reproducible Scheduler.Run.Build_cancelled
-    ;;
-  end
-
   type ok = { dynamic_deps_stages : (Dep.Set.t * Dep.Facts.t) list }
-  type t = (ok, Error.t list) Result.t
+  type t = (ok, Exn_with_backtrace.t list) Result.t
 
   let ok_exn (t : t) =
     match t with
     | Ok t -> Fiber.return t
-    | Error errs ->
-      Fiber.reraise_all
-        (List.map errs ~f:(fun e -> Exn_with_backtrace.capture (Error.to_exn e)))
+    | Error errs -> Fiber.reraise_all errs
   ;;
 end
 
@@ -426,7 +380,5 @@ let exec
     exec t ~ectx ~eenv)
   >>| function
   | Ok () -> Ok { Exec_result.dynamic_deps_stages = List.rev !dynamic_deps_stages }
-  | Error exns ->
-    Error
-      (List.map exns ~f:(fun (e : Exn_with_backtrace.t) -> Exec_result.Error.of_exn e.exn))
+  | Error exns -> Error exns
 ;;

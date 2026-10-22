@@ -1,6 +1,6 @@
-A generated alias for an empty library must not use the interface of an
-executable module with the same name. Recompiling it after that interface is
-copied currently fails, even though the same alias builds before the copy.
+A generated alias for an empty library must ignore the interface belonging to
+an executable module with the same name, whether or not it has been copied to
+the build directory.
 
   $ make_dune_project 1.2
   $ cat >dune<<EOF
@@ -27,6 +27,4 @@ reusing the successful cached action.
 
   $ dune build foo.mli
   $ dune build .foo.objs/byte/foo.cmi --profile release --sandbox=none
-  File "foo.ml-gen", line 1:
-  Error: Could not find the .cmi file for interface foo.mli.
-  [1]
+  $ dune build ./bar.exe --profile release

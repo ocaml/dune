@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792636616497,
+  "lastUpdate": 1792636813511,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -470987,6 +470987,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.47367202758666677,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "248e2c88e223b4b73d74081daa1c8c17cc135c72",
+          "message": "refactor(engine): retain action exceptions without serialization (#16670)\n\nKeep action execution failures as `Exn_with_backtrace.t` values and\nre-raise them directly. These results stay in-process, so converting\nexceptions to a restricted serializable variant is unnecessary and\ndiscards their original backtraces.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-22T10:21:44+08:00",
+          "tree_id": "ba3b4824c26b9daff57bea78251d6d148eab9ce5",
+          "url": "https://github.com/ocaml/dune/commit/248e2c88e223b4b73d74081daa1c8c17cc135c72"
+        },
+        "date": 1792636811567,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.92550417034666,
             "unit": "seconds"
           }
         ]

@@ -1,16 +1,9 @@
 open Import
 
 module Exec_result : sig
-  type ok =
-    { dynamic_deps_stages :
-        (* The set can be derived from the facts by getting the keys of the
-           facts map. We don't do it because conversion isn't free *)
-        (Dep.Set.t * Dep.Facts.t) list
-    }
+  type t = (unit, Exn_with_backtrace.t list) Result.t
 
-  type t = (ok, Exn_with_backtrace.t list) Result.t
-
-  val ok_exn : t -> ok Fiber.t
+  val ok_exn : t -> unit Fiber.t
 end
 
 type input =
@@ -31,7 +24,4 @@ type input =
         one job slot. *)
   }
 
-val exec
-  :  input
-  -> build_deps:(Dep.Set.t -> Dep.Fact.t Dep.Map.t Fiber.t)
-  -> Exec_result.t Fiber.t
+val exec : input -> build_deps:(Dep.Set.t -> unit Fiber.t) -> Exec_result.t Fiber.t

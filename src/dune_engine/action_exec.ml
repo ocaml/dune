@@ -3,8 +3,7 @@ open Stdune.Action_types
 open Action_intf.Exec
 
 module Exec_result = struct
-  type ok = { dynamic_deps_stages : (Dep.Set.t * Dep.Facts.t) list }
-  type t = (ok, Exn_with_backtrace.t list) Result.t
+  type t = (unit, Exn_with_backtrace.t list) Result.t
 
   let ok_exn (t : t) =
     match t with
@@ -312,14 +311,9 @@ let exec
       }
       ~build_deps
   =
-  let dynamic_deps_stages = ref [] in
   let ectx =
     let metadata =
       Process_metadata.create ~purpose:(Process_metadata.Build_job targets) ()
-    in
-    let build_deps deps =
-      let+ facts = build_deps deps in
-      dynamic_deps_stages := (deps, facts) :: !dynamic_deps_stages
     in
     { root; metadata; sandbox; rule_loc; build_deps }
   and eenv =
@@ -376,7 +370,4 @@ let exec
       }
     in
     exec t ~ectx ~eenv)
-  >>| function
-  | Ok () -> Ok { Exec_result.dynamic_deps_stages = List.rev !dynamic_deps_stages }
-  | Error exns -> Error exns
 ;;

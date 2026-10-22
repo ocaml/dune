@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792684068919,
+  "lastUpdate": 1792684762104,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -654761,6 +654761,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.1598617364466666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a32cb96ae2853f71349d45f404162ffa7f2eab7c",
+          "message": "refactor(engine): declare action helpers on their concrete interface (#16681)\n\nThe helper signature has only one consumer now that action constructors\nno longer use a functor. Declare the concrete signatures in `Action`\ninstead of keeping five abstract types and a generic signature in\n`Action_intf`.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-22T23:45:57+08:00",
+          "tree_id": "085eeea2472df2e6878edd1c472ba9b7190e7470",
+          "url": "https://github.com/ocaml/dune/commit/a32cb96ae2853f71349d45f404162ffa7f2eab7c"
+        },
+        "date": 1792684387356,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7949235555400005,
             "unit": "seconds"
           }
         ]

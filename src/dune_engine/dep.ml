@@ -10,35 +10,6 @@ module T = struct
     | File_selector of File_selector.t
     | Universe
 
-  module Stable_for_digest = struct
-    type t =
-      | Env of string
-      | File of Digest.t (* Digest of the underlying [Path.t] *)
-      | Alias of
-          { dir : string
-          ; name : string
-          }
-      | File_selector of Digest.t (* Digest of the underlying [File_selector.t] *)
-      | Universe
-
-    let digest d = function
-      | Env var ->
-        Digest.Manual.int d 0;
-        Digest.Manual.string d var
-      | File digest ->
-        Digest.Manual.int d 1;
-        Digest.Manual.digest d digest
-      | Alias { dir; name } ->
-        Digest.Manual.int d 2;
-        Digest.Manual.string d dir;
-        Digest.Manual.string d name
-      | File_selector digest ->
-        Digest.Manual.int d 3;
-        Digest.Manual.digest d digest
-      | Universe -> Digest.Manual.int d 4
-    ;;
-  end
-
   let env e = Env e
   let file f = File f
   let alias a = Alias a
@@ -313,23 +284,21 @@ module Set = struct
     iter t ~f:(fun dep ->
       match dep with
       | Env var ->
-        Stable_for_digest.digest digest (Stable_for_digest.Env (Env.Var.to_string var))
-      | Universe -> Stable_for_digest.digest digest Stable_for_digest.Universe
-      | File p ->
-        Stable_for_digest.digest
-          digest
-          (Stable_for_digest.File (Path.to_string p |> Digest.string))
-      | File_selector fs ->
-        Stable_for_digest.digest
-          digest
-          (Stable_for_digest.File_selector (File_selector.digest fs))
-      | Alias a ->
-        Stable_for_digest.digest
-          digest
-          (Stable_for_digest.Alias
-             { dir = Path.Build.to_string (Alias.dir a)
-             ; name = Alias.Name.to_string (Alias.name a)
-             }))
+        Digest.Manual.int digest 0;
+        Digest.Manual.string digest (Env.Var.to_string var)
+      | File path ->
+        let path_digest = Digest.string (Path.to_string path) in
+        Digest.Manual.int digest 1;
+        Digest.Manual.digest digest path_digest
+      | Alias alias ->
+        Digest.Manual.int digest 2;
+        Digest.Manual.string digest (Path.Build.to_string (Alias.dir alias));
+        Digest.Manual.string digest (Alias.Name.to_string (Alias.name alias))
+      | File_selector selector ->
+        let selector_digest = File_selector.digest selector in
+        Digest.Manual.int digest 3;
+        Digest.Manual.digest digest selector_digest
+      | Universe -> Digest.Manual.int digest 4)
   ;;
 end
 

@@ -18,14 +18,23 @@ Minimal RPC watch shutdown after an RPC build.
   shutdown stop
   accept stop close
 
-RPC build requests are cancelled if their client connection goes away.
+RPC build requests are cancelled if their client connection goes away. Exercise
+an unsandboxed action using a language version before user rules required
+sandboxing.
 
+  $ make_directory_targets_project 3.22
   $ cancelled="$(mktemp -u)"
   $ cat > dune <<EOF
   > (rule
-  >  (target slow)
+  >  (targets slow partial-file (dir partial-dir))
+  >  (deps (sandbox none))
   >  (action
-  >   (bash "trap \"touch '$cancelled'; exit 0\" TERM; while true; do sleep 1; done")))
+  >   (progn
+  >    (write-file slow partial)
+  >    (write-file partial-file partial)
+  >    (bash "mkdir -p partial-dir; echo partial > partial-dir/output;
+  >           trap \"touch '$cancelled'; exit 0\" TERM;
+  >           while true; do sleep 1; done"))))
   > (rule
   >  (target fast)
   >  (action (with-stdout-to fast (echo fast))))
@@ -34,8 +43,20 @@ RPC build requests are cancelled if their client connection goes away.
   $ start_dune
   $ "$timeout" 1 dune rpc build --wait slow > cancelled.out 2>&1
   [124]
-  $ wait_for_file "$cancelled"
+  $ with_timeout dune_cmd wait-for-file-to-appear "$cancelled"
   $ build_quiet fast
+
+Cancellation currently leaves partial outputs in place, while a subsequent
+successful rule keeps its completed output.
+
+  $ dune_cmd exists _build/default/slow
+  true
+  $ dune_cmd exists _build/default/partial-file
+  true
+  $ dune_cmd exists _build/default/partial-dir
+  true
+  $ cat _build/default/fast
+  fast
   $ stop_dune_quiet
 
 Concurrent RPC build requests both complete.

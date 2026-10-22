@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792683819683,
+  "lastUpdate": 1792684015396,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -471277,6 +471277,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.39737621914000004,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "35a863434b458ca34ebbd71a5bffb688e17b993f",
+          "message": "refactor(engine): keep the build runner entry point minimal (#16678)\n\nInline the result-returning `run` wrapper into `run_exn`, its only\ncaller. Stop exposing the unused entry point and its optional\nrestart/build arguments.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-22T23:27:48+08:00",
+          "tree_id": "46e1930a747992fdb2f79f97ec331eb8423a5e37",
+          "url": "https://github.com/ocaml/dune/commit/35a863434b458ca34ebbd71a5bffb688e17b993f"
+        },
+        "date": 1792684013626,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 67.23015655729999,
             "unit": "seconds"
           }
         ]

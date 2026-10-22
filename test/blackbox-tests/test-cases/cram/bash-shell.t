@@ -77,3 +77,20 @@ Undefined Variables:
   $ dune promotion show undefined.t 2>&1 | head -n 2 | dune_cmd subst ".*line 1:" "line 1:"
     $ echo $foo
   line 1: foo: unbound variable
+
+If the selected shell is missing, report that before attempting the test. Keep
+an OCaml toolchain on PATH so context initialization can still succeed.
+
+  $ dune_bin=$(command -v dune)
+  $ mkdir toolchain
+  $ for tool in ocamlc ocamldep ocamlopt; do
+  >   ln -s "$(command -v "$tool")" "toolchain/$tool"
+  > done
+  $ cat > dune <<'EOF'
+  > (cram (shell sh))
+  > EOF
+  $ PATH="$PWD/toolchain" "$dune_bin" runtest exit1.t
+  Error: CRAM test aborted, "sh" can not be found in PATH
+  -> required by _build/default/.cram.exit1.t/cram.out
+  -> required by alias exit1
+  [1]

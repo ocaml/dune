@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792636843749,
+  "lastUpdate": 1792636850111,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -471074,6 +471074,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 43.74696423528,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "418b41ed7814ae02ee6cbbcd485e9bc17a448bd2",
+          "message": "refactor(engine): configure the rule generator as a function (#16671)\n\nPass the rule generator directly as `Gen_rules.gen_rules` instead of\npacking it into a first-class module. Remove the single-function module\nsignatures and call the configured function directly from rule loading.\nRule generation behavior is unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-22T10:27:49+08:00",
+          "tree_id": "7462e4835b7ebebfd2fc522d003623a23aa58759",
+          "url": "https://github.com/ocaml/dune/commit/418b41ed7814ae02ee6cbbcd485e9bc17a448bd2"
+        },
+        "date": 1792636849225,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4285057246333334,
             "unit": "seconds"
           }
         ]

@@ -93,6 +93,10 @@ let read_all_fd =
   fun fd ->
     match Unix.fstat fd with
     | exception Unix.Unix_error (e, x, y) -> Error (`Unix (e, x, y))
+    | { Unix.st_kind = S_DIR; _ } ->
+      (* Empty directories can report size zero (e.g. on Btrfs), so reject
+         them before applying the empty-file shortcut. *)
+      Error (`Unix (Unix.EISDIR, "read", ""))
     | { Unix.st_size; _ } ->
       if st_size = 0
       then Ok ""

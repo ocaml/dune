@@ -89,9 +89,9 @@ argument lists. These are valid Csexp frames but not valid trace events.
   (test data 0 (process_args (())))
   [1]
 
-CR: special bytes in S-expression atoms are currently not escaped. The payload
-contains a quote, backslash, newline, tab, carriage return, backspace, space,
-printable text, and a high byte.
+Special bytes in S-expression atoms are escaped using their expanded size.
+The payload contains a quote, backslash, newline, tab, carriage return,
+backspace, space, printable text, and a high byte.
 
   $ printf '(4:test4:data1:0(5:value11:"\\\n\t\r\b foo\377))' > input.csexp
   $ dune trace cat --sexp --trace-file input.csexp > actual
@@ -104,4 +104,4 @@ printable text, and a high byte.
   > else
   >   echo 'incorrect escaping'
   > fi
-  incorrect escaping
+  escaped

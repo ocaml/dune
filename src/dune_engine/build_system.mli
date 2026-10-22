@@ -44,13 +44,7 @@ val dep_on_alias_definition : Rules.Dir_rules.Alias_spec.item -> unit Action_bui
 
 (** {2 Running the build system} *)
 
-val run
-  :  ?restart_started_at:Time.t
-  -> ?build:Process.Build.t
-  -> (unit -> 'a Memo.t)
-  -> ('a, [ `Already_reported ]) Result.t Fiber.t
-
-(** A variant of [run] that raises an [Already_reported] exception on error. *)
+(** Run the build system, raising [Already_reported] on error. *)
 val run_exn : (unit -> 'a Memo.t) -> 'a Fiber.t
 
 module Request : sig

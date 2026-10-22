@@ -174,8 +174,6 @@ module Build_config = struct
 
     type result = Gen_rules_result.t
 
-    module type Generator = Rule_generator
-
     let rules_for ?directory_targets ~dir ~allowed_subdirs rules =
       Rules.create
         ?directory_targets

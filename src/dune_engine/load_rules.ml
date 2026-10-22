@@ -4,8 +4,6 @@ module Gen_rules = Build_config.Gen_rules
 module Context_type = Build_config.Context_type
 module Build_only_sub_dirs = Gen_rules.Build_only_sub_dirs
 
-module type Rule_generator = Gen_rules.Rule_generator
-
 module Current_rule_loc = struct
   let t = ref (fun () -> Memo.return None)
   let set f = t := f
@@ -590,9 +588,8 @@ end = struct
           ({ Dir_triage.Build_directory.dir; context_name; context_type = _; sub_dir } as
            d)
       =
-      let (module RG : Rule_generator) = (Build_config.get ()).rule_generator in
       let sub_dir_components = Path.Source.explode sub_dir |> Filename.L.to_string in
-      RG.gen_rules context_name ~dir sub_dir_components
+      (Build_config.get ()).rule_generator context_name ~dir sub_dir_components
       >>= function
       | Rules rules -> Memo.return @@ Normal (Normal.make_rules_gen_result ~of_:dir rules)
       | Unknown_context ->

@@ -52,3 +52,19 @@ HTTP
   Error: failed to extract 'download'
   Reason: 'tar' failed with non-zero exit code X and output:
   [1]
+
+Mercurial and Darcs URLs can be stored in a lock directory, but fetching them
+must report the unsupported backend without trying to contact the server.
+
+  $ runtest '(fetch (url "hg+https://example.invalid/source"))'
+  File "dune.lock/foo.pkg", line 2, characters 20-55:
+  2 | (source (fetch (url "hg+https://example.invalid/source")))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Unsupported backend: mercurial
+  [1]
+  $ runtest '(fetch (url "darcs+https://example.invalid/source"))'
+  File "dune.lock/foo.pkg", line 2, characters 20-58:
+  2 | (source (fetch (url "darcs+https://example.invalid/source")))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Unsupported backend: darcs
+  [1]

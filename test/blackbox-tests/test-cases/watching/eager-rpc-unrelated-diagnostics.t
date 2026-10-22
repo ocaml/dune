@@ -23,6 +23,15 @@ an unrelated failing RPC build.
   $ wait_for_rpc_server
   $ wait_for_line_with_timeout "$server_output" "sticky error" 1000
 
+The diagnostics command renders the current error with its source location.
+
+  $ dune diagnostics
+  File "$TESTCASE_ROOT/dune", lines 1-3, characters 0-71:
+  1 | (rule
+  2 |  (alias sticky)
+  3 |  (action (bash "echo sticky error >&2; exit 1")))
+  sticky error
+
   $ dune build @rpc >"$client_output" 2>&1
   [1]
   $ stop_dune_quiet

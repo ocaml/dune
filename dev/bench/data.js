@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792688624276,
+  "lastUpdate": 1792688937577,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -471509,6 +471509,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.45004408815333335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c5d4f33efb7b121545b5910b697121d156a24455",
+          "message": "test(action): cover recursive copies through directory symlinks (#16685)\n\nExtend the recursive-copy tests from #16653 with two action-created\ndirectory symlinks: an acyclic link pointing outside the copied tree,\nand a directory-link cycle.\n\nRecord their current rejection ahead of relaxing symlink handling. The\nacyclic case should eventually copy successfully; the cyclic case must\ncontinue to terminate with an error.\n\nTests only; no implementation changes. Related to #16675.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T00:50:47+08:00",
+          "tree_id": "3896f5483997c6d07dd0e7ac399314d3b0170dfc",
+          "url": "https://github.com/ocaml/dune/commit/c5d4f33efb7b121545b5910b697121d156a24455"
+        },
+        "date": 1792688936166,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 60.53379305477333,
             "unit": "seconds"
           }
         ]

@@ -114,6 +114,23 @@ let%expect_test "PATH lookup skips non-executable files" =
   [%expect {| selected non-executable candidate |}]
 ;;
 
+let%expect_test "reading a zero-sized procfs directory" =
+  let path = "/proc/self" in
+  let { Unix.st_kind; st_size; _ } = Unix.stat path in
+  printfn "directory: %b" (st_kind = S_DIR);
+  printfn "reported size: %d" st_size;
+  (match Io.String_path.read_file path with
+   | Ok contents -> printfn "read: %S" contents
+   | Error (Unix.Unix_error (EISDIR, _, _)) -> print_endline "read: EISDIR"
+   | Error exn -> raise exn);
+  [%expect
+    {|
+    directory: true
+    reported size: 0
+    read: ""
+    |}]
+;;
+
 let%expect_test "Linux process tree reports missing roots" =
   (match Proc.Linux.Process_tree.children_of (Pid.of_int_exn max_int) with
    | Ok _ -> print_endline "unexpected success"

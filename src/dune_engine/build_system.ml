@@ -618,65 +618,80 @@ and execute_rule_action
            | _ -> Exn_with_backtrace.reraise exn))
   in
   let config = Build_config.get () in
+  report_evaluated_rule_exn ();
+  let is_action_dynamic = Action.is_dynamic action_ast in
+  let sandbox_mode =
+    select_sandbox_mode
+      ~loc
+      props.sandbox
+      ~sandboxing_preference:config.sandboxing_preference
+  in
+  let always_rerun =
+    let is_test =
+      (* jeremiedimino: what about:
+
+         {v (rule (alias runtest) (targets x) (action ...)) v}
+
+         These will be treated as [Normal_rule], and the below match means
+         that [--force] will have no effect on them. Is that what we want?
+
+         The doc says:
+
+         -f, --force Force actions associated to aliases to be re-executed
+         even if their dependencies haven't changed.
+
+         So it seems to me that such rules should be re-executed. TBC *)
+      match rule_kind with
+      | Normal_rule -> false
+      | Anonymous_action _ -> true
+    in
+    let force_rerun = !Clflags.force && is_test in
+    force_rerun || Dep.Map.mem facts Dep.universe
+  in
+  let rule_digest =
+    compute_rule_digest ~targets ~facts ~action ~sandbox_mode ~execution_parameters
+  in
+  let can_go_in_shared_cache =
+    props.can_go_in_shared_cache
+    && (not
+          (always_rerun
+           || is_action_dynamic
+           || Action.is_useful_to_memoize action_ast = Clearly_not))
+    &&
+    match sandbox_mode with
+    | Some Patch_back_source_tree -> false
+    | _ -> true
+  in
+  (* Step I. Check if the workspace-local cache is up to date. *)
+  let* cached_targets =
+    match Rule_cache.Workspace_local.lookup ~always_rerun ~rule_digest ~targets with
+    | None -> Memo.return None
+    | Some { produced_targets; dynamic_deps_stages } ->
+      let rec unchanged = function
+        | [] -> Memo.return true
+        | (deps, old_digest) :: rest ->
+          let* facts = build_deps deps in
+          let new_digest =
+            let d = Digest.Manual.create () in
+            Dep.Facts.digest facts d ~env:props.env;
+            Digest.Manual.get d
+          in
+          if Digest.equal old_digest new_digest then unchanged rest else Memo.return false
+      in
+      let+ unchanged = unchanged dynamic_deps_stages in
+      if unchanged
+      then Some produced_targets
+      else (
+        Dune_trace.emit ~buffered:true Cache (fun () ->
+          Dune_trace.Event.Cache.workspace_local_miss
+            ~head:(Targets.Validated.head targets)
+            ~reason:"dynamic dependencies changed");
+        None)
+  in
   wrap_fiber (fun () ->
     let open Fiber.O in
-    report_evaluated_rule_exn ();
-    let is_action_dynamic = Action.is_dynamic action_ast in
-    let sandbox_mode =
-      select_sandbox_mode
-        ~loc
-        props.sandbox
-        ~sandboxing_preference:config.sandboxing_preference
-    in
-    (* CR-someday amokhov: More [always_rerun] and [can_go_in_shared_cache]
-       to [Rule_cache] too. *)
-    let always_rerun =
-      let is_test =
-        (* jeremiedimino: what about:
-
-           {v (rule (alias runtest) (targets x) (action ...)) v}
-
-           These will be treated as [Normal_rule], and the below match means
-           that [--force] will have no effect on them. Is that what we want?
-
-           The doc says:
-
-           -f, --force Force actions associated to aliases to be re-executed
-           even if their dependencies haven't changed.
-
-           So it seems to me that such rules should be re-executed. TBC *)
-        match rule_kind with
-        | Normal_rule -> false
-        | Anonymous_action _ -> true
-      in
-      let force_rerun = !Clflags.force && is_test in
-      force_rerun || Dep.Map.mem facts Dep.universe
-    in
-    let rule_digest =
-      compute_rule_digest ~targets ~facts ~action ~sandbox_mode ~execution_parameters
-    in
-    let can_go_in_shared_cache =
-      props.can_go_in_shared_cache
-      && (not
-            (always_rerun
-             || is_action_dynamic
-             || Action.is_useful_to_memoize action_ast = Clearly_not))
-      &&
-      match sandbox_mode with
-      | Some Patch_back_source_tree ->
-        (* Action in this mode cannot go in the shared cache *)
-        false
-      | _ -> true
-    in
     let* (produced_targets : Digest.t Targets.Produced.t) =
-      (* Step I. Check if the workspace-local cache is up to date. *)
-      Rule_cache.Workspace_local.lookup
-        ~always_rerun
-        ~rule_digest
-        ~targets
-        ~env:props.env
-        ~build_deps
-      >>= function
+      match cached_targets with
       | Some produced_targets -> Fiber.return produced_targets
       | None ->
         Path.mkdir_p (Path.build targets.root);

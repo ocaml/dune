@@ -6,44 +6,32 @@ module Name = struct
   let default = of_string "default"
 end
 
-module T : sig
-  type t = private
-    { dir : Path.Build.t
-    ; name : Name.t
-    }
+type t =
+  { dir : Path.Build.t
+  ; name : Name.t
+  }
 
-  val make : Name.t -> dir:Path.Build.t -> t
-  val of_user_written_path : loc:Loc.t -> Path.t -> t
-end = struct
-  type t =
-    { dir : Path.Build.t
-    ; name : Name.t
-    }
+let make name ~dir = { dir; name }
 
-  let make name ~dir = { dir; name }
-
-  let of_user_written_path ~loc path =
-    match Path.as_in_build_dir path with
-    | Some path ->
-      let name =
-        Path.Build.basename path
-        |> Filename.to_string
-        |> Name.of_string_opt_loose
-        |> Option.value_exn
-      in
-      { dir = Path.Build.parent_exn path; name }
-    | None ->
-      User_error.raise
-        ~loc
-        [ Pp.text "Invalid alias!"
-        ; Pp.textf
-            "Tried to reference path outside build dir: %S"
-            (Path.to_string_maybe_quoted path)
-        ]
-  ;;
-end
-
-include T
+let of_user_written_path ~loc path =
+  match Path.as_in_build_dir path with
+  | Some path ->
+    let name =
+      Path.Build.basename path
+      |> Filename.to_string
+      |> Name.of_string_opt_loose
+      |> Option.value_exn
+    in
+    { dir = Path.Build.parent_exn path; name }
+  | None ->
+    User_error.raise
+      ~loc
+      [ Pp.text "Invalid alias!"
+      ; Pp.textf
+          "Tried to reference path outside build dir: %S"
+          (Path.to_string_maybe_quoted path)
+      ]
+;;
 
 let compare { dir; name } t =
   match Name.compare name t.name with

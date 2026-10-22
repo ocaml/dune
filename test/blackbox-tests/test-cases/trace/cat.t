@@ -64,3 +64,27 @@ All the event types from chrome and field per type:
       ]
     }
   ]
+
+Reject malformed event headers, duration pairs, argument fields, and process
+argument lists. These are valid Csexp frames but not valid trace events.
+
+  $ printf '%s' '(3:bad)' > input.csexp
+  $ dune trace cat --trace-file input.csexp
+  Error: invalid sexp
+  (bad)
+  [1]
+  $ printf '%s' '(4:test4:data())' > input.csexp
+  $ dune trace cat --trace-file input.csexp
+  Error: invalid sexp
+  ()
+  [1]
+  $ printf '%s' '(4:test4:data1:0(3:bad))' > input.csexp
+  $ dune trace cat --trace-file input.csexp
+  Error: invalid sexp
+  (test data 0 (bad))
+  [1]
+  $ printf '%s' '(4:test4:data1:0(12:process_args(())))' > input.csexp
+  $ dune trace cat --trace-file input.csexp
+  Error: invalid sexp
+  (test data 0 (process_args (())))
+  [1]

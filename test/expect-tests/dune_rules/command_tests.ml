@@ -15,6 +15,46 @@ let expand args =
   Appendable_list.to_list result
 ;;
 
+let%expect_test "dependency set digest encoding" =
+  let module Dep = Dune_engine.Dep in
+  let module Alias = Dune_engine.Alias in
+  let module Digest = Dune_digest.Digest in
+  let dir = Path.Build.relative Path.Build.root "default/dependencies" in
+  let cases =
+    [ "env", Dep.env (Env.Var.of_string "DUNE_TEST_DEP_DIGEST")
+    ; "file", Dep.file (Path.build (Path.Build.relative dir "file"))
+    ; "alias", Dep.alias (Alias.make (Alias.Name.of_string "test") ~dir)
+    ; ( "selector"
+      , Dep.file_selector
+          (Dune_engine.File_selector.of_predicate_lang
+             ~dir:(Path.build dir)
+             Predicate_lang.true_) )
+    ; "universe", Dep.universe
+    ]
+  in
+  let print_digest name deps =
+    let digest = Digest.Manual.create () in
+    Dep.Set.digest deps digest;
+    printfn "%s: %s" name (Digest.to_string (Digest.Manual.get digest))
+  in
+  print_digest "empty" Dep.Set.empty;
+  List.iter cases ~f:(fun (name, dep) -> print_digest name (Dep.Set.singleton dep));
+  let deps = List.map cases ~f:snd in
+  print_digest "all" (Dep.Set.of_list deps);
+  print_digest "reversed" (Dep.Set.of_list (List.rev deps));
+  [%expect
+    {|
+    empty: af1349b9f5f9a1a6a0404dea36dcc949
+    env: 8207bb77ced4c5c379c6131bba780a0f
+    file: 5daf2b80cce9c80447af0a286098da6d
+    alias: 404f27abc43904a90df236b530f225b5
+    selector: 6ef1a176ddddab81b386615e9de8b744
+    universe: 846333980f613b6bffc8021457063c93
+    all: 7468558d36373d40865356e5a37c8257
+    reversed: 7468558d36373d40865356e5a37c8257
+    |}]
+;;
+
 let%expect_test "nested argument groups preserve order" =
   let open Command.Args in
   let args =

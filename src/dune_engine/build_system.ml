@@ -1363,19 +1363,11 @@ let run_build_requests ?restart_started_at ~build_started_at ?build (request : R
     | exns -> Error exns)
 ;;
 
-let run ?restart_started_at ?build f =
-  run_with_error_collection
-    ?restart_started_at
-    ~build_started_at:(Time.now ())
-    ~build
-    (fun () ->
-       Fiber.collect_errors (fun () ->
-         Memo.run_with_error_handler ~handle_error_no_raise:report_early_exn f))
-;;
-
 let run_exn f =
   let open Fiber.O in
-  run f
+  run_with_error_collection ~build_started_at:(Time.now ()) ~build:None (fun () ->
+    Fiber.collect_errors (fun () ->
+      Memo.run_with_error_handler ~handle_error_no_raise:report_early_exn f))
   >>| function
   | Ok res -> res
   | Error `Already_reported -> raise Dune_util.Report_error.Already_reported

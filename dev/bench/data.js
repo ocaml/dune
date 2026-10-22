@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792636902742,
+  "lastUpdate": 1792636910151,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -471132,6 +471132,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 55.60725193121334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7bf618bbf8204f02de3fb32aba2e2972284ca3f5",
+          "message": "refactor(engine): prefix rule actions directly (#16674)\n\nPrefix collected rule actions directly in `Rules.prefix_rules`, removing\ntwo single-use mapping helpers and their changed/unchanged callback\nprotocol. Preserve alias identities and continue assigning fresh IDs to\nmodified rules.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-22T10:23:11+08:00",
+          "tree_id": "696f90b69bf09a86fd72cb9e338bc51d7fc9d023",
+          "url": "https://github.com/ocaml/dune/commit/7bf618bbf8204f02de3fb32aba2e2972284ca3f5"
+        },
+        "date": 1792636909102,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5135109819533333,
             "unit": "seconds"
           }
         ]

@@ -205,7 +205,9 @@ let extract_directory_targets ~jsoo_enabled ~dir stanzas =
     | Executables.T exes | Tests.T { exes; _ } ->
       directory_targets_of_executables ~jsoo_enabled ~dir exes
     | Library.T lib -> directory_targets_of_library ~jsoo_enabled ~dir lib
-    | Rocq_stanza.Theory.T m -> Rocq_doc.rocqdoc_directory_targets ~dir m
+    | Rocq_stanza.Theory.T m ->
+      Rocq_doc.rocqdoc_directory_targets ~dir m
+      >>= when_enabled ~dir ~enabled_if:m.enabled_if
     | _ -> Memo.return Path.Build.Map.empty)
   >>| Path.Build.Map.union_all ~f:(fun path loc1 loc2 ->
     User_error.raise

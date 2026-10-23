@@ -103,6 +103,15 @@ val cleanup_subreaper_child_processes : unit -> unit Fiber.t
 (** Prevent subreaper cleanup from treating [pid] as an escaped action child. *)
 val preserve_child_process : Pid.t -> unit
 
+(** Sandbox directories that must not outlive the scheduler. Call
+    [register_sandbox] before creating the directory and [unregister_sandbox]
+    after deleting it. When the scheduler stops, it deletes every directory
+    still registered, even if the fiber that created it never resumed, as
+    happens when a signal interrupts the build. *)
+val register_sandbox : Path.t -> unit
+
+val unregister_sandbox : Path.t -> unit
+
 (** [sleep duration] waits for [duration] to elapse. *)
 val sleep : Time.Span.t -> unit Fiber.t
 

@@ -378,6 +378,7 @@ let create_real
     let sandbox_suffix = rule_digest |> Digest.to_string in
     Path.Build.relative sandbox_dir sandbox_suffix
   in
+  Scheduler.register_sandbox (Path.build sandbox_dir);
   let t =
     { dir = sandbox_dir
     ; snapshot = None
@@ -578,6 +579,7 @@ let destroy = function
             t.dir
             (Unix_error.Detailed.pp (Unix_error.Detailed.create error ~syscall ~arg)))
     in
+    Scheduler.unregister_sandbox (Path.build t.dir);
     Dune_trace.emit ~buffered:true Sandbox (fun () ->
       Dune_trace.Event.sandbox `Destroy ~start ~stop ~queued t.loc ~dir:t.dir)
 ;;

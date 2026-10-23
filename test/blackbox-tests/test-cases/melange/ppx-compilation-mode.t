@@ -1,5 +1,5 @@
 PPX drivers need the compilation target when the same source is compiled for
-OCaml and Melange. Dune supplies the dune-compilation-mode cookie for Melange
+OCaml and Melange. Dune supplies the compilation-mode cookie for Melange
 starting with language version 3.26.
 
   $ make_melange_project 3.26 1.0
@@ -18,7 +18,7 @@ starting with language version 3.26.
   >   Driver.Cookies.add_handler (fun cookies ->
   >     mode :=
   >       Option.value ~default:"absent"
-  >         (Driver.Cookies.get cookies "dune-compilation-mode"
+  >         (Driver.Cookies.get cookies "compilation-mode"
   >            Ast_pattern.(estring __)))
   > let selected ~loc name =
   >   let module_ =
@@ -165,8 +165,8 @@ compilation target for Melange modules without changing the native view.
   >         .[0] == "B" and (.[1] | endswith($obj_dir))))
   >     | .config[] | select(.[0] == "FLG" and .[1][0] == "-ppx")
   >     | .[1][1]
-  >     | if contains("dune-compilation-mode")
-  >       then capture("dune-compilation-mode=\"(?<mode>[^\"]+)\"").mode
+  >     | if contains("compilation-mode")
+  >       then capture("compilation-mode=\"(?<mode>[^\"]+)\"").mode
   >       else "absent" end' --arg source "$2" --arg obj_dir "$3" | sort -u
   > }
   $ merlin_mode "$PWD/editor" editor.ml .editor.objs/melange
@@ -196,4 +196,35 @@ Projects using Dune 3.25 retain the existing cookie behavior.
   lint interface: absent
   $ dune build editor/.merlin-conf/lib-editor
   $ merlin_mode "$PWD/editor" editor.ml .editor.objs/melange
+  absent
+
+A PPX library may request the same cookie value as Dune. Its request also
+applies to OCaml and to older projects, where Dune does not add the cookie.
+
+  $ cat >ppx/dune <<'EOF'
+  > (library
+  >  (name mode_ppx)
+  >  (kind (ppx_rewriter (cookies (compilation-mode melange))))
+  >  (libraries ppxlib))
+  > EOF
+  $ dune build @emit/melange
+  $ node _build/default/emit/out/emit/main.js
+  melange
+  $ make_melange_project 3.26 1.0
+  $ dune build ordinary/main.exe @emit/melange
+  $ _build/default/ordinary/main.exe
+  melange
+  $ node _build/default/emit/out/emit/main.js
+  melange
+
+A conflicting library request currently hides Dune's compilation target.
+
+  $ cat >ppx/dune <<'EOF'
+  > (library
+  >  (name mode_ppx)
+  >  (kind (ppx_rewriter (cookies (compilation-mode absent))))
+  >  (libraries ppxlib))
+  > EOF
+  $ dune build @emit/melange
+  $ node _build/default/emit/out/emit/main.js
   absent

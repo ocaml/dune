@@ -331,7 +331,7 @@ let ppx_driver_and_flags_internal
     | Compilation_mode.Ocaml -> []
     | Melange ->
       if dune_version >= (3, 26)
-      then [ "--cookie"; "dune-compilation-mode=\"melange\"" ]
+      then [ "--cookie"; "compilation-mode=\"melange\"" ]
       else []
   in
   ppx_driver_exe, flags @ cookies @ compilation_mode_cookie

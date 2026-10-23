@@ -6,7 +6,7 @@ Workspaces also allow you to set the env for a context:
   (ocamlc_flags
    (-g -verbose))
   (ocamlopt_flags (-g))
-  (melange.compile_flags (-g))
+  (melange.flags (-g))
   (c_flags ())
   (cxx_flags ())
   (link_flags ())

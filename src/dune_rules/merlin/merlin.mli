@@ -1,10 +1,9 @@
 (** This module ensures that one merlin configuration file is generated for each
     stanza. Each of these configuration files is accompanied by a merlin exist
-    file. Each of these files contain a map from every module involved in the
-    stanza to a standard merlin configuration. The [Processed.t] type represents
-    the Merlin configuration as it will be marshalled to and from the
-    configuration files, while [Merlin.t] represents raw information coming from
-    the build system. *)
+    file. Each configuration file contains the information needed for every
+    module involved in the stanza. The [Processed.t] type represents the loaded
+    Merlin configuration, indexed by source file, while [Merlin.t] represents
+    raw information coming from the build system. *)
 
 open Import
 
@@ -34,6 +33,14 @@ module Processed : sig
   val pp_args : pp_flag -> string
   val load_file : Path.t -> (t, string) result
 
+  type file_configuration =
+    { mode : Compilation_mode.t
+    ; is_default : bool
+    ; kind : Ml_kind.t
+    ; counterpart : Path.t option
+    ; directives : Sexp.t
+    }
+
   (** [print_file path] reads the configuration at path [path] and print it as a
       s-expression *)
   val print_file : Path.t -> unit
@@ -45,6 +52,10 @@ module Processed : sig
   val print_generic_dot_merlin : Path.t list -> unit
 
   val get : t -> file:Path.Build.t -> Sexp.t option
+
+  (** Unlike [get], this omits matches whose source kind is ambiguous.
+      Counterparts refer only to files present in the source tree. *)
+  val configurations : t -> file:Path.Build.t -> file_configuration Nonempty_list.t option
 end
 
 val make

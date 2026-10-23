@@ -273,16 +273,19 @@ let get_cookies ~loc ~expander ~lib_name ~compilation_mode ~dune_version libs =
       then Some ("compilation-mode", ("melange", "dune"))
       else None
   in
-  let+ cookies =
-    Memo.List.concat_map libs ~f:(fun t ->
+  let cookies =
+    List.concat_map libs ~f:(fun t ->
       let info = Lib.info t in
       let kind = Lib_info.kind info in
       match (kind : Lib_kind.t) with
-      | Virtual | Parameter | Dune_file Normal -> Memo.return []
+      | Virtual | Parameter | Dune_file Normal -> []
       | Dune_file (Ppx_rewriter { cookies } | Ppx_deriver { cookies }) ->
-        Memo.List.map cookies ~f:(fun { Lib_kind.Ppx_args.Cookie.name; value } ->
-          let+ value = Expander.No_deps.expand_str expander value in
-          name, (value, Lib_name.to_string (Lib.name t))))
+        List.map cookies ~f:(fun cookie -> Lib.name t, cookie))
+  in
+  let+ cookies =
+    Memo.List.map cookies ~f:(fun (lib_name, { Lib_kind.Ppx_args.Cookie.name; value }) ->
+      let+ value = Expander.No_deps.expand_str expander value in
+      name, (value, Lib_name.to_string lib_name))
   in
   List.filter_opt [ library_name_cookie; compilation_mode_cookie ] @ cookies
   |> String.Map.of_list_reducei ~f:(fun name ((val1, lib1) as res) (val2, lib2) ->

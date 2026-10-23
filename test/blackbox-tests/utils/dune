@@ -25,6 +25,11 @@
  (libraries stdune fs_io unix))
 
 (executable
+ (name merlin_configurations)
+ (modules merlin_configurations)
+ (libraries stdune dune_rules dune_lang ocaml))
+
+(executable
  (name refmt)
  (modules refmt)
  (libraries compiler-libs.common))

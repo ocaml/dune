@@ -546,6 +546,32 @@ end = struct
       String.starts_with ~prefix fn)
   ;;
 
+  (* Explicit [(install)] stanzas win over the auto-detected odig doc files
+     (README, LICENSE, CHANGE, HISTORY) when they target the same
+     [(section, dst)]. This allows e.g. installing a per-package LICENSE
+     file while keeping the default auto-detection otherwise. *)
+  let filter_overridden_odig_files
+        (entries : Install.Entry.Sourced.Unexpanded.t list)
+    =
+    let overridden (e : Install.Entry.Sourced.Unexpanded.t) =
+      match e.source with
+      | User _ -> false
+      | Dune ->
+        if not (Section.equal e.entry.section Section.Doc)
+        then false
+        else
+          List.exists entries ~f:(fun o ->
+            match o.source with
+            | Dune -> false
+            | User _ ->
+              Section.equal o.entry.section e.entry.section
+              && Path.Local.equal
+                   (Install.Entry.Dst.local o.entry.dst)
+                   (Install.Entry.Dst.local e.entry.dst)))
+    in
+    List.filter entries ~f:(fun e -> not (overridden e))
+  ;;
+
   let entries_of_install_stanza ~dir ~expander ~package_db (install_conf : Install_conf.t)
     =
     let expand = Expander.No_deps.expand expander ~mode:Single in
@@ -716,6 +742,7 @@ end = struct
       | None -> acc
       | Some (name, entries) -> Package.Name.Map.Multi.add_all acc name entries)
     |> Package.Name.Map.map ~f:(fun entries ->
+      let entries = filter_overridden_odig_files entries in
       (* Sort entries so that the ordering in [dune-package] is independent
          of Dune's current implementation. *)
       (* jeremiedimino: later on, we group this list by section and sort

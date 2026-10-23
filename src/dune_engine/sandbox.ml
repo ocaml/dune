@@ -144,34 +144,21 @@ let link_function ~(mode : Sandbox_mode.some) =
             (Path.to_string_maybe_quoted src)
         ]
   in
-  let copy_file =
-    match mode with
-    | Hardlink -> Io.portable_hardlink
-    | Copy | Patch_back_source_tree ->
-      (* We need to let the action modify its dependencies, so we copy
-         dependencies and make them writable. *)
-      fun ~src ~dst -> Io.copy_file ~overwrite:false ~chmod:chmod_file ~src ~dst ()
-    | Symlink ->
-      (match Sys.win32 with
-       | true ->
-         User_error.raise
-           [ Pp.text
-               "Sandboxing mode symlink is not supported on Windows. Use copy or \
-                hardlink instead."
-           ]
-       | false -> Io.portable_symlink)
-  in
   let mkdir_with_perms ~src ~dst =
     let perms =
       (Unix.stat (Path.to_string src)).st_perm |> Permissions.Mode.of_int |> chmod_dir
     in
     Path.mkdir_p ~perms dst
   in
-  let copy_recursively ~src ~dst =
+  let copy_file ~src ~dst =
+    Io.copy_file ~overwrite:false ~chmod:chmod_file ~src ~dst ()
+  in
+  let copy_recursively ~strategy =
+    fun ~src ~dst ->
     Tree_copy.copy
       ~src
       ~dst
-      ~copy_file
+      ~copy_file:strategy
       ~mkdir:mkdir_with_perms
       ~on_unsupported:raise_other_kind
       ~on_symlink:(`Call resolve_symlink_kind)
@@ -182,7 +169,17 @@ let link_function ~(mode : Sandbox_mode.some) =
      | Patch_back_source_tree ->
        (* CR-someday: this doesn't work with directory targets *)
        copy_file
-     | Copy | Symlink | Hardlink -> copy_recursively)
+     | Copy -> copy_recursively ~strategy:copy_file
+     | Hardlink -> copy_recursively ~strategy:Io.portable_hardlink
+     | Symlink ->
+       if Sys.win32
+       then
+         User_error.raise
+           [ Pp.text
+               "Sandboxing mode symlink is not supported on Windows. Use copy or \
+                hardlink instead."
+           ];
+       copy_recursively ~strategy:Io.portable_symlink)
 ;;
 
 let create_dir t dir =

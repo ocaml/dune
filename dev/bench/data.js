@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792756007140,
+  "lastUpdate": 1792756014440,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -472118,6 +472118,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.123161816759996,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "76683e3409f53de934e6cb375248059c3f7df5b9",
+          "message": "test(rpc): cover status and stale registry entries (#16692)\n\nExtend the RPC registry cram test to cover `dune rpc status` and `--all`\nwith empty, live, and stale registries. Check negotiated RPC versions\nand verify that stale entries report connection failures without failing\nthe whole query.\n\nIsolate the runtime directory so concurrent watchers from other tests\ncannot affect registry queries.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T19:28:28+08:00",
+          "tree_id": "e5c0afdc4663d8c9dbe31f5b0f134d470f975f73",
+          "url": "https://github.com/ocaml/dune/commit/76683e3409f53de934e6cb375248059c3f7df5b9"
+        },
+        "date": 1792756013614,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5649415718666666,
             "unit": "seconds"
           }
         ]

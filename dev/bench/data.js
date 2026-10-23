@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792771825763,
+  "lastUpdate": 1792771833097,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -472698,6 +472698,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.31357937854,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d1a0f17b64473e444f0eccccac690e45d87380cf",
+          "message": "test(cache): cover no-op trimming and mixed cache entries (#16705)\n\nExtend cache-trimming blackbox tests to pin existing behavior for zero\nand negative trimming goals, mixed cache versions, directory-only\nmetadata, ignored filenames and shards, and oversized goals including\nzero-byte artifacts.\n\nThis protects metadata garbage collection and cache-size accounting\nwhile the trimmer is optimized.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T23:51:33+08:00",
+          "tree_id": "3555639642ab41b19078ba4a97841fbb34e19448",
+          "url": "https://github.com/ocaml/dune/commit/d1a0f17b64473e444f0eccccac690e45d87380cf"
+        },
+        "date": 1792771832167,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5363272142266667,
             "unit": "seconds"
           }
         ]

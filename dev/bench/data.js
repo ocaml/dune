@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792760139024,
+  "lastUpdate": 1792760146633,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -472350,6 +472350,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 59.158931234806666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "807d0cd1f87af8f51ac9b536b981fafe95a39e50",
+          "message": "test(engine): preserve source-copy behavior before refactoring (#16698)\n\nAdd characterization tests for source-backed target replacement and\nhints, source-copy freshness and executable-bit changes, unsupported\nFIFO sources, and promotion event suppression after artifact\nsubstitution.\n\nThe tests pass with the existing engine and establish the behavior to\npreserve when removing source-copy rules. No production code changes.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T20:37:32+08:00",
+          "tree_id": "1426aa9557b9471335632716abdc978d5b0b8a26",
+          "url": "https://github.com/ocaml/dune/commit/807d0cd1f87af8f51ac9b536b981fafe95a39e50"
+        },
+        "date": 1792760145425,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5618336552200001,
             "unit": "seconds"
           }
         ]

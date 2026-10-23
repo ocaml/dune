@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792725396744,
+  "lastUpdate": 1792725417093,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -471683,6 +471683,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4371843816666667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7c12bc606484c1c837d5888f50d671b4f0a36cbd",
+          "message": "test(findlib): cover installed library listings (#16688)\n\nAdd a self-contained cram test for `dune installed-libraries`, covering\nversioned and unversioned META subpackages and the flat META layout.\n\nCheck `exists_if` availability changes, malformed `dune-package` files,\n`--not-available`/`--na` output, empty results, and wrong-kind\n`OCAMLPATH` entries. A fixture-local findlib configuration excludes\nunrelated installed packages; filter compiler-provided libraries out of\nthe available list to keep expectations portable.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T10:58:30+08:00",
+          "tree_id": "f782c3c2a6cba9ddeece166307763f3e96ced6ae",
+          "url": "https://github.com/ocaml/dune/commit/7c12bc606484c1c837d5888f50d671b4f0a36cbd"
+        },
+        "date": 1792725414844,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 60.66302357318,
             "unit": "seconds"
           }
         ]

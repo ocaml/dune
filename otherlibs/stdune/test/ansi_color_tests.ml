@@ -338,7 +338,7 @@ let%expect_test "parse 24-bit colors" =
 |}]
 ;;
 
-let%expect_test "RGB background colors incorrectly use foreground SGR codes" =
+let%expect_test "RGB foreground and background colors use distinct SGR codes" =
   let color8 = Ansi_color.RGB8.of_int 67 in
   let color24 = Ansi_color.RGB24.make ~red:17 ~green:83 ~blue:249 in
   List.iter
@@ -351,7 +351,7 @@ let%expect_test "RGB background colors incorrectly use foreground SGR codes" =
   [%expect
     {|
     "\027[0;38;5;67m"
-    "\027[0;38;5;67m"
+    "\027[0;48;5;67m"
     "\027[0;38;2;17;83;249m"
-    "\027[0;38;2;17;83;249m" |}]
+    "\027[0;48;2;17;83;249m" |}]
 ;;

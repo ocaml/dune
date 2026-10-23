@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792755605917,
+  "lastUpdate": 1792755643820,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -655660,6 +655660,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.563125593406667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "395c50ca6ed668c95dcecfab13fc6572f5def4b4",
+          "message": "test(pkg): preserve interrupted lockdir backups (#16694)\n\nExtend the lock directory regeneration safety test to cover an existing\nhidden backup left by an interrupted regeneration, including a backup\npath that is a regular file. Verify that regeneration is refused and\nboth the current lock directory and the backup retain their contents.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T19:27:33+08:00",
+          "tree_id": "e45fbccce18b2f39a80c907a275917dd300b0f01",
+          "url": "https://github.com/ocaml/dune/commit/395c50ca6ed668c95dcecfab13fc6572f5def4b4"
+        },
+        "date": 1792755259197,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.577391344013334,
             "unit": "seconds"
           }
         ]

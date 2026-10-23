@@ -46,6 +46,15 @@ client.
   $ test -f connection
   $ action_id=$(sed -n 1p connection)
   $ dune_rpc=$(sed -n 2p connection)
+
+An unknown action ID is rejected without disrupting the active action. The
+subsequent request with the real ID must still initialize successfully.
+
+  $ (cd _build/default &&
+  >  env DUNE_DYNAMIC_RUN_ACTION_ID=missing-action DUNE_RPC="$dune_rpc" \
+  >    ./foo.exe initialize)
+  dune rpc error: unknown dynamic action "missing-action"
+  [1]
   $ (cd _build/default &&
   >  env DUNE_DYNAMIC_RUN_ACTION_ID="$action_id" DUNE_RPC="$dune_rpc" \
   >    ./foo.exe initialize)

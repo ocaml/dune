@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792773210039,
+  "lastUpdate": 1792773524470,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -472843,6 +472843,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5391195949866667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "357340e30996024be92aad03f95f62172f1fa612",
+          "message": "test(trace): cover malformed and incomplete events (#16708)\n\nExtend the trace cram tests to cover malformed event structures and\nincomplete process events. Check rejection of invalid event fields,\ncurrent handling of invalid exit values, exit-code fallback rendering,\nand omission of events without a program.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T00:01:05+08:00",
+          "tree_id": "3a29b1f24cfdb5872f3d3098195dc8d7c58366ea",
+          "url": "https://github.com/ocaml/dune/commit/357340e30996024be92aad03f95f62172f1fa612"
+        },
+        "date": 1792773522791,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 60.87616849886667,
             "unit": "seconds"
           }
         ]

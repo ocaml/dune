@@ -356,3 +356,22 @@ still reported.
   @@ -0,0 +1 @@
   +surprise
   [1]
+
+Empty glob dependencies belong to the initial snapshot
+------------------------------------------------------
+
+Record their directories and parents even though no dependency files are copied.
+
+  $ mkdir -p initially-empty/nested
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (alias snapshot-empty)
+  >  (deps
+  >   (glob_files initially-empty/nested/*.txt)
+  >   (sandbox patch_back_source_tree))
+  >  (action (bash "rmdir initially-empty/nested initially-empty")))
+  > EOF
+  $ dune build @snapshot-empty 2>&1 | grep '^Error:'
+  Error: Directory initially-empty should be deleted
+  Error: Directory initially-empty/nested should be deleted
+  [1]

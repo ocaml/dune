@@ -214,6 +214,17 @@ let unlinked_deps t deps =
   Path.Set.fold deps ~init:Path.Set.empty ~f:loop
 ;;
 
+let record_input_files t files =
+  t.snapshot
+  <- Option.map t.snapshot ~f:(fun snapshot ->
+       Path.Set.fold files ~init:snapshot ~f:(fun path snapshot ->
+         match Path.as_in_build_dir path with
+         | None -> snapshot
+         | Some p ->
+           let dst = Path.build (map_real_path t p) in
+           Path.Map.set snapshot dst (`File (Stat.stat (Path.to_string dst)))))
+;;
+
 let add_deps t facts ~expand_aliases =
   match t with
   | No_sandbox _ -> Fiber.return ()
@@ -227,14 +238,7 @@ let add_deps t facts ~expand_aliases =
           create_dirs t dirs;
           let unlinked = unlinked_deps t deps in
           link_deps t ~deps:unlinked;
-          t.snapshot
-          <- Option.map t.snapshot ~f:(fun snapshot ->
-               Path.Set.fold unlinked ~init:snapshot ~f:(fun path snapshot ->
-                 match Path.as_in_build_dir path with
-                 | None -> snapshot
-                 | Some p ->
-                   let dst = Path.build (map_real_path t p) in
-                   Path.Map.set snapshot dst (`File (Stat.stat (Path.to_string dst)))));
+          record_input_files t unlinked;
           t.deps <- Path.Set.union t.deps deps)
       in
       ())
@@ -329,7 +333,7 @@ let register_corrected_file_promotions t ~deps =
 ;;
 
 let create_real
-      ~mode
+      ~(mode : Sandbox_mode.some)
       (corrections : Corrections.t)
       ~rule_loc
       ~dirs
@@ -338,13 +342,20 @@ let create_real
       ~rule_digest
   =
   init ();
+  let snapshot =
+    match corrections, mode with
+    | Ignore, Patch_back_source_tree -> Some Path.Map.empty
+    | Produce, Patch_back_source_tree ->
+      Code_error.raise "a patch back sandboxed rule may not produce corrections" []
+    | _, (Symlink | Copy | Hardlink) -> None
+  in
   let sandbox_dir =
     let sandbox_suffix = rule_digest |> Digest.to_string in
     Path.Build.relative sandbox_dir sandbox_suffix
   in
   let t =
     { dir = sandbox_dir
-    ; snapshot = None
+    ; snapshot
     ; deps
     ; mutex = Fiber.Mutex.create ()
     ; mode
@@ -362,11 +373,13 @@ let create_real
   in
   Dune_trace.emit ~buffered:true Sandbox (fun () ->
     Dune_trace.Event.sandbox `Create ~start ~stop ~queued t.loc ~dir:t.dir);
-  (match corrections, mode with
-   | Ignore, Patch_back_source_tree -> t.snapshot <- Some (snapshot t)
-   | Produce, Patch_back_source_tree ->
-     Code_error.raise "a patch back sandboxed rule may not produce corrections" []
-   | _, (Symlink | Copy | Hardlink) -> ());
+  if Option.is_some t.snapshot
+  then (
+    let start = Time.now () in
+    record_input_files t deps;
+    let stop = Time.now () in
+    Dune_trace.emit ~buffered:true Sandbox (fun () ->
+      Dune_trace.Event.sandbox `Snapshot ~start ~stop ~queued:None t.loc ~dir:t.dir));
   t
 ;;
 

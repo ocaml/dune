@@ -1,6 +1,6 @@
 open Import
 
-let copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ?(on_symlink = `Raise) () =
+let copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ?(on_symlink = `Resolve) () =
   let handle_kind ~src ~dst kind =
     match (kind : Unix.file_kind) with
     | S_REG -> copy_file ~src ~dst
@@ -25,6 +25,7 @@ let copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ?(on_symlink = `Raise) () =
                 on_unsupported ~src kind))
         ~on_symlink:
           (match on_symlink with
+           | `Resolve -> `Resolve
            | `Ignore -> `Ignore
            | `Raise -> `Raise
            | `Call f ->

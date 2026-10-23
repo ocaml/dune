@@ -43,15 +43,19 @@ let not_found ~loc t revision =
 ;;
 
 let fetch_failed ~loc ~git_output t obj =
-  let git_output = List.map ~f:Pp.verbatim git_output in
+  let git_output =
+    List.map ~f:Pp.(Pp.verbatimf "git| %s")
+    @@ List.concat
+    @@ List.map ~f:(fun line -> String.split ~on:'\n' @@ String.trim line) git_output
+  in
   Error
     (User_message.make ~loc
-     @@ git_output
-     @ [ Pp.textf
+     @@ (Pp.textf
            "could not fetch revision %S from %s"
            (Rev_store.Object.to_hex obj)
            (base_url t)
-       ])
+         :: Pp.text ""
+         :: git_output))
 ;;
 
 let resolve t ~loc rev_store =

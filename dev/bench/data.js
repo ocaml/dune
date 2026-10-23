@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792771833097,
+  "lastUpdate": 1792772366692,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -656762,6 +656762,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.6342169231533332,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a118e9c72cb397f72dcd2f0ef627c072cf100333",
+          "message": "test(virtual-libraries): cover default implementation cycles (#16707)\n\nExtend the default-implementation cram test with a dependency cycle\nthrough two virtual libraries, with neither implementation selected\nexplicitly. Check that Dune reports the default implementation cycle and\nthe dependency chain leading to the executable.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T00:00:44+08:00",
+          "tree_id": "9cd1db8ac66abb121af2c4dfce5bdf0744d1e68f",
+          "url": "https://github.com/ocaml/dune/commit/a118e9c72cb397f72dcd2f0ef627c072cf100333"
+        },
+        "date": 1792772150388,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.517926033333333,
             "unit": "seconds"
           }
         ]

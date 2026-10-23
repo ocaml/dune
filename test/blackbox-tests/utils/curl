@@ -46,6 +46,11 @@ if [ "$VERSIONINFO" = "YES" ]; then
   exit 0
 fi
 
+if [ "${FAKE_CURL_RESPONSE+x}" = x ]; then
+  printf '%s' "$FAKE_CURL_RESPONSE"
+  exit 0
+fi
+
 # Simulate curl failing before any HTTP exchange takes place, e.g. because the
 # host could not be resolved (6) or the connection was refused (7). Like the
 # real curl invoked with -s, nothing is written to stderr, but --write-out

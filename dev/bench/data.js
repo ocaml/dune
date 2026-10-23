@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792755709136,
+  "lastUpdate": 1792755830691,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -655747,6 +655747,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.78613865022,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5fda205d7a9733fd6fb411a2594ac9c3de384cc2",
+          "message": "test(subst): cover malformed and overlapping watermarks (#16693)\n\nExtend the repository-free `dune subst` test to check scanner recovery\naround malformed, unknown, and overlapping watermarks. Verify that\nincomplete watermarks at EOF remain unchanged in each scanner state, and\nthat missing package metadata reports the watermark's source location\nafter a newline.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T19:28:09+08:00",
+          "tree_id": "21b99d2e1a799c09afe828484ad9ee688f1e84c2",
+          "url": "https://github.com/ocaml/dune/commit/5fda205d7a9733fd6fb411a2594ac9c3de384cc2"
+        },
+        "date": 1792755611580,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.60178265116,
             "unit": "seconds"
           }
         ]

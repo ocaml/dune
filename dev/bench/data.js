@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792773532241,
+  "lastUpdate": 1792773845556,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -657023,6 +657023,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.5284442918599996,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a4d4a3de0bb9866cc49fb32f59f5ca09ada1a644",
+          "message": "perf(cache): decode metadata entries in one result traversal (#16712)\n\nDecode artifact metadata with `Result.List.map` instead of `List.map`\nfollowed by `Result.List.all`. This avoids an intermediate list on every\nmetadata load and stops decoding at the first malformed entry.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T00:15:56+08:00",
+          "tree_id": "2e0566160197710469bd4e09823f7e4c9cc701cb",
+          "url": "https://github.com/ocaml/dune/commit/a4d4a3de0bb9866cc49fb32f59f5ca09ada1a644"
+        },
+        "date": 1792773459261,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.6880358412333334,
             "unit": "seconds"
           }
         ]

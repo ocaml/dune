@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792760146633,
+  "lastUpdate": 1792761199568,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -656240,6 +656240,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.65163123738,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "33eeef9f8b40eb687dc6c3d4682102331f9b8cac",
+          "message": "perf(fiber): unbox map reduce contexts (#16702)\n\nMark the existential `map_reduce_context` wrapper as unboxed so it uses\nthe underlying context record directly, avoiding a wrapper allocation\nwithout changing fiber error-handling behavior.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T20:59:29+08:00",
+          "tree_id": "11a015a08f6be44bdaa1372923fd9f584cbdc7dd",
+          "url": "https://github.com/ocaml/dune/commit/33eeef9f8b40eb687dc6c3d4682102331f9b8cac"
+        },
+        "date": 1792760818672,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7525972237066667,
             "unit": "seconds"
           }
         ]

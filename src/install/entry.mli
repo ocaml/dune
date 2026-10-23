@@ -34,6 +34,7 @@ module Expanded : sig
 
   val set_src : _ t -> 'src -> 'src t
   val add_install_prefix : 'src t -> paths:Path.t Paths.t -> prefix:Path.t -> 'src t
+  val install_in_sysroot : 'src t -> paths:Path.t Paths.t -> prefix:Path.t -> 'src t
   val gen_install_file : Path.t t list -> string
   val load_install_file : Path.t -> (Path.Local.t -> Path.t) -> Path.t t list
 end

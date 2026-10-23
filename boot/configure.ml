@@ -129,6 +129,7 @@ let () =
   pr "  ; bin = %s" (option string !bindir);
   pr "  ; sbin = %s" (option string !sbindir);
   pr "  ; libexec_root = %s" (option string !libexecdir);
+  pr "  ; prefix = %s" (option string !prefix);
   pr "  }";
   pr "";
   pr "let prefix : string option = %s" (option string !prefix);

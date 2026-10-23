@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792774440820,
+  "lastUpdate": 1792774445784,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -472988,6 +472988,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 60.16047974891333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6cdfb8c464b8f404e68e52722d365863dad653e4",
+          "message": "test(pkg): report unsupported source backends when fetching (#16715)\n\nCheck that fetching package sources with Mercurial or Darcs URLs reports\na source-located unsupported-backend error. This complements the\nexisting lockfile-conversion coverage, which preserves a Mercurial URL\nbut never attempts to fetch it.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T00:35:15+08:00",
+          "tree_id": "485ae761346fca8a1281e7d7c34d54f3dea7ea60",
+          "url": "https://github.com/ocaml/dune/commit/6cdfb8c464b8f404e68e52722d365863dad653e4"
+        },
+        "date": 1792774442263,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 48.176533196633336,
             "unit": "seconds"
           }
         ]

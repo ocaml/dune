@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792725102269,
+  "lastUpdate": 1792725354148,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -655225,6 +655225,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.6407351236733336,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2ceac4f29f0bb9739ae5f116776a80abf15a8b0f",
+          "message": "test(select): cover conflicting dependency declarations (#16689)\n\nAdd cram coverage for dependency validation before library resolution:\nduplicate required libraries, contradictory requirements within a select\nclause, and required/optional or required/forbidden conflicts across\ndeclarations.\n\nExercise both declaration orders so neither form can silently overwrite\nan earlier dependency classification.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T11:04:06+08:00",
+          "tree_id": "5657b32472857cb364996b40d30aa8f508db80bc",
+          "url": "https://github.com/ocaml/dune/commit/2ceac4f29f0bb9739ae5f116776a80abf15a8b0f"
+        },
+        "date": 1792725139899,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.6401347518133336,
             "unit": "seconds"
           }
         ]

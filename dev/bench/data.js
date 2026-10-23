@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792771782271,
+  "lastUpdate": 1792771790000,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -472640,6 +472640,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 60.09508802675333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "211b9d99b98ee6909c8281608415b6f9da74e8ba",
+          "message": "test(configurator): cover CRLF process logging (#16706)\n\nAdd a test through the public Configurator API using a real shell to\nverify CRLF normalization, empty log lines, and embedded carriage\nreturns, while preserving raw stdout and stderr bytes.\n\nThe shell-based test runs on non-Windows platforms.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T23:50:45+08:00",
+          "tree_id": "45b3888912fdb1664bc6ba07900a32757545670e",
+          "url": "https://github.com/ocaml/dune/commit/211b9d99b98ee6909c8281608415b6f9da74e8ba"
+        },
+        "date": 1792771788947,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.53918617778,
             "unit": "seconds"
           }
         ]

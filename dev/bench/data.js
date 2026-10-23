@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792784582197,
+  "lastUpdate": 1792784897107,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -473191,6 +473191,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.44409630583333337,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b10ce71178369a7fce3a18da1fc9eb52d1f97d73",
+          "message": "test(sandbox): cover directory copy actions across sandbox modes (#16634)\n\nExercise a directory copy action with a generated directory dependency,\nwithout Melange or package management. Record the current behavior in\nsymlink, copy, and hardlink sandbox modes before changing input\ntraversal.",
+          "timestamp": "2026-10-23T21:29:52+02:00",
+          "tree_id": "69f7d4200a43f1f3c1cac2c365704a1bd724c172",
+          "url": "https://github.com/ocaml/dune/commit/b10ce71178369a7fce3a18da1fc9eb52d1f97d73"
+        },
+        "date": 1792784895861,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 61.4335370164,
             "unit": "seconds"
           }
         ]

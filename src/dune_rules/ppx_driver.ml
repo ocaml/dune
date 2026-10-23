@@ -266,12 +266,15 @@ let get_cookies ~loc ~expander ~lib_name ~compilation_mode ~dune_version libs =
       , Some ("library-name", (library_name, library_name)) )
   in
   let compilation_mode_cookie =
-    match compilation_mode with
-    | Compilation_mode.Ocaml -> None
-    | Melange ->
-      if dune_version >= (3, 26)
-      then Some ("compilation-mode", ("melange", "dune"))
-      else None
+    if dune_version >= (3, 26)
+    then (
+      let value =
+        match compilation_mode with
+        | Compilation_mode.Ocaml -> "ocaml"
+        | Melange -> "melange"
+      in
+      Some ("compilation-mode", (value, "dune")))
+    else None
   in
   let cookies =
     List.concat_map libs ~f:(fun t ->

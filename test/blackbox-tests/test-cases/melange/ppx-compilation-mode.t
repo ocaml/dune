@@ -1,5 +1,5 @@
 PPX drivers need the compilation target when the same source is compiled for
-OCaml and Melange. Dune supplies the compilation-mode cookie for Melange
+OCaml and Melange. Dune supplies the compilation-mode cookie for both modes
 starting with language version 3.26.
 
   $ make_melange_project 3.26 1.0
@@ -24,6 +24,7 @@ starting with language version 3.26.
   >   let module_ =
   >     match !mode with
   >     | "melange" -> "Target_melange"
+  >     | "ocaml" -> "Target_ocaml"
   >     | "absent" -> "Target_absent"
   >     | other -> Location.raise_errorf ~loc "Unexpected mode: %s" other
   >   in
@@ -64,7 +65,7 @@ The generated references must also be found during dependency analysis.
   > (library
   >  (name $1_shared)
   >  (wrapped false)
-  >  (modules shared target_absent target_melange)
+  >  (modules shared target_absent target_ocaml target_melange)
   >  (modes :standard melange)
   >  (preprocess ($2 mode_ppx)))
   > (executable
@@ -80,6 +81,11 @@ The generated references must also be found during dependency analysis.
   > type t = int
   > let value = 0
   > let to_string (_ : t) = "absent"
+  > EOF
+  >   cat >"$1/target_ocaml.ml" <<'EOF'
+  > type t = bool
+  > let value = true
+  > let to_string (_ : t) = "ocaml"
   > EOF
   >   cat >"$1/target_melange.ml" <<'EOF'
   > type t = string
@@ -104,16 +110,19 @@ scan explicit implementation references; the interface still needs PPX to
 discover its dependency.
 
   $ cat >>staged/shared.ml <<'EOF'
-  > let () = ignore Target_absent.value; ignore Target_melange.value
+  > let () =
+  >   ignore Target_absent.value;
+  >   ignore Target_ocaml.value;
+  >   ignore Target_melange.value
   > EOF
   $ dune build ordinary/main.exe @ordinary/melange \
   >   staged/main.exe @staged/melange
   $ _build/default/ordinary/main.exe
-  absent
+  ocaml
   $ node _build/default/ordinary/out/ordinary/main.js
   melange
   $ _build/default/staged/main.exe
-  absent
+  ocaml
   $ node _build/default/staged/out/staged/main.js
   melange
 
@@ -130,7 +139,7 @@ The cookie is also supplied when preprocessing a melange.emit stanza directly.
   $ node _build/default/emit/out/emit/main.js
   melange
 
-Melange lint drivers need the same information for both implementations and
+Lint drivers need the same information for both implementations and
 interfaces.
 
   $ mkdir linted
@@ -145,8 +154,19 @@ interfaces.
   lint implementation: melange
   lint interface: melange
 
+  $ mkdir native_linted
+  $ cat >native_linted/dune <<'EOF'
+  > (library
+  >  (name native_linted)
+  >  (lint (pps mode_ppx -- --report-lint)))
+  > EOF
+  $ touch native_linted/native_linted.ml native_linted/native_linted.mli
+  $ dune build @native_linted/lint 2>&1 | sort
+  lint implementation: ocaml
+  lint interface: ocaml
+
 Merlin uses a separate PPX invocation. Its configuration must retain the
-compilation target for Melange modules without changing the native view.
+compilation target for both OCaml and Melange modules.
 
   $ mkdir editor
   $ cat >editor/dune <<'EOF'
@@ -172,7 +192,7 @@ compilation target for Melange modules without changing the native view.
   $ merlin_mode "$PWD/editor" editor.ml .editor.objs/melange
   melange
   $ merlin_mode "$PWD/ordinary" ordinary/shared.ml .ordinary_shared.objs/byte
-  absent
+  ocaml
   $ merlin_mode "$PWD/ordinary" ordinary/shared.ml .ordinary_shared.objs/melange
   melange
 
@@ -194,12 +214,19 @@ Projects using Dune 3.25 retain the existing cookie behavior.
   $ dune build @linted/lint 2>&1 | sort
   lint implementation: absent
   lint interface: absent
+  $ echo >>native_linted/native_linted.ml
+  $ echo >>native_linted/native_linted.mli
+  $ dune build @native_linted/lint 2>&1 | sort
+  lint implementation: absent
+  lint interface: absent
   $ dune build editor/.merlin-conf/lib-editor
   $ merlin_mode "$PWD/editor" editor.ml .editor.objs/melange
   absent
+  $ merlin_mode "$PWD/ordinary" ordinary/shared.ml .ordinary_shared.objs/byte
+  absent
 
 A PPX library may request the same cookie value as Dune. Its request also
-applies to OCaml and to older projects, where Dune does not add the cookie.
+applies to older projects, where Dune does not add the cookie.
 
   $ cat >ppx/dune <<'EOF'
   > (library
@@ -211,9 +238,7 @@ applies to OCaml and to older projects, where Dune does not add the cookie.
   $ node _build/default/emit/out/emit/main.js
   melange
   $ make_melange_project 3.26 1.0
-  $ dune build ordinary/main.exe @emit/melange
-  $ _build/default/ordinary/main.exe
-  melange
+  $ dune build @emit/melange
   $ node _build/default/emit/out/emit/main.js
   melange
 
@@ -233,7 +258,7 @@ A conflicting library request is rejected when Dune supplies the cookie.
   "compilation-mode"; dune requests "melange" and mode_ppx requests "absent"
   [1]
 
-The same request remains valid for OCaml and for Melange before Dune 3.26.
+Conflicting requests are also rejected for OCaml.
 
   $ mkdir native
   $ cp ordinary/*.ml ordinary/shared.mli native/
@@ -243,9 +268,30 @@ The same request remains valid for OCaml and for Melange before Dune 3.26.
   >  (preprocess (pps mode_ppx)))
   > EOF
   $ dune build native/main.exe
+  File "native/dune", line 3, characters 13-27:
+  3 |  (preprocess (pps mode_ppx)))
+                   ^^^^^^^^^^^^^^
+  Error: dune and mode_ppx have inconsistent requests for cookie
+  "compilation-mode"; dune requests "ocaml" and mode_ppx requests "absent"
+  [1]
+
+Matching requests are accepted for OCaml.
+
+  $ cat >ppx/dune <<'EOF'
+  > (library
+  >  (name mode_ppx)
+  >  (kind (ppx_rewriter (cookies (compilation-mode ocaml))))
+  >  (libraries ppxlib))
+  > EOF
+  $ dune build native/main.exe
   $ _build/default/native/main.exe
-  absent
+  ocaml
+
+Before Dune 3.26 the library's cookie is used for either target.
+
   $ make_melange_project 3.25 1.0
-  $ dune build @emit/melange
+  $ dune build native/main.exe @emit/melange
+  $ _build/default/native/main.exe
+  ocaml
   $ node _build/default/emit/out/emit/main.js
-  absent
+  ocaml

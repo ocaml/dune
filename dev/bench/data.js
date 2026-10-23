@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792755960499,
+  "lastUpdate": 1792755969409,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -655892,6 +655892,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.60178265116,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "50ad65ac6a2d1bf59138a220ebb0e9cb97331fbc",
+          "message": "test(configurator): cover missing and malformed Dune metadata (#16696)\n\nExtend the existing Configurator test by invoking its C-test executable\nwithout Dune metadata and with synthetic malformed metadata. Cover\ninvocation outside Dune, old Dune protocols, missing or invalid\n`configurator.v2` data, malformed `ocamlc` fields, and absent compiler\nconfiguration variables.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T19:26:49+08:00",
+          "tree_id": "faa0b15b53e79f1d96ebb163f8be533b9a31f361",
+          "url": "https://github.com/ocaml/dune/commit/50ad65ac6a2d1bf59138a220ebb0e9cb97331fbc"
+        },
+        "date": 1792755588118,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7138568507399996,
             "unit": "seconds"
           }
         ]

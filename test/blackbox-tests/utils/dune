@@ -11,7 +11,7 @@
 (executable
  (name action_plugin_helper)
  (modules action_plugin_helper)
- (libraries dune-rpc-lwt lwt lwt.unix unix))
+ (libraries dune-rpc-lwt dune-rpc stdune csexp lwt lwt.unix unix))
 
 (ocamllex dunepp)
 

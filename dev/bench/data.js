@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792725354148,
+  "lastUpdate": 1792725396744,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -655254,6 +655254,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.6401347518133336,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "71c5f2a2c4b430726e0055bae30eae233f3fb066",
+          "message": "test(copy_files): demonstrate promoted source matching (#16683)\n\nAdd cram coverage showing that `(copy_files (only_sources true) ...)`\nexcludes a missing promoted target, includes it once it has been\npromoted into the source tree, and continues to exclude unpromoted\ngenerated files.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T11:03:03+08:00",
+          "tree_id": "492f9d3a89a276c11da9d85ff21820d39bc8956c",
+          "url": "https://github.com/ocaml/dune/commit/71c5f2a2c4b430726e0055bae30eae233f3fb066"
+        },
+        "date": 1792725022545,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.9103613988466672,
             "unit": "seconds"
           }
         ]

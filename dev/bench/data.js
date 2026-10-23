@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792755689841,
+  "lastUpdate": 1792755709136,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -655718,6 +655718,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.67568551256,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "416f46982e2ef7a9a4be01b15d586277845dad70",
+          "message": "test(dialects): cover extension and implementation-kind errors (#16695)\n\nExtend the existing dialect cram tests to reject extensions containing\ndirectory separators and verify that omitting `(implementation)`\nrequires Dune language 3.9 or newer.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T19:28:44+08:00",
+          "tree_id": "1b0de1f70e76c522b829390905f8036c67679748",
+          "url": "https://github.com/ocaml/dune/commit/416f46982e2ef7a9a4be01b15d586277845dad70"
+        },
+        "date": 1792755336179,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.78613865022,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792725616015,
+  "lastUpdate": 1792725721971,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -655428,6 +655428,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.9620021837800006,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "52e4cd21dd64042ca670a498d88ee34067abbf54",
+          "message": "test(cram): cover quoted setup-script paths (#16690)\n\nExtend the existing cram setup-script test with a filename containing an\napostrophe. Verify that Bash can load the helper and run the test,\nexercising shell escaping of setup-script paths in the generated script.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T11:08:14+08:00",
+          "tree_id": "e84a9fc6fd1a81c9a0e91b87f44de9c0cd6cf484",
+          "url": "https://github.com/ocaml/dune/commit/52e4cd21dd64042ca670a498d88ee34067abbf54"
+        },
+        "date": 1792725421614,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.9696852669066662,
             "unit": "seconds"
           }
         ]

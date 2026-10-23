@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792755830691,
+  "lastUpdate": 1792755917369,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -471973,6 +471973,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4607774881866667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f006263ab7b7cd787471411c045940c7d1a1ca97",
+          "message": "test(workspace): cover duplicate contexts and missing files (#16697)\n\nExtend the workspace context-name test to reject duplicate names with a\nlocation pointing to the second definition. Also check that an\nexplicitly requested missing workspace file is reported as an error\nrather than falling back to the workspace file in the current directory.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T19:27:10+08:00",
+          "tree_id": "cbd430780ced257ce0ac02b8f49dd1bd9e436369",
+          "url": "https://github.com/ocaml/dune/commit/f006263ab7b7cd787471411c045940c7d1a1ca97"
+        },
+        "date": 1792755914750,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 60.123552163873335,
             "unit": "seconds"
           }
         ]

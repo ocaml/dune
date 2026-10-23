@@ -95,6 +95,10 @@ The cookie is supplied for ``pps``, ``staged_pps``, PPX linting, and the PPX
 command in Merlin configurations targeting Melange. This applies to both
 libraries and ``melange.emit`` stanzas.
 
+When Dune supplies this cookie, PPX libraries declaring their own
+``compilation-mode`` cookie must request the same value. Conflicting library
+requests are rejected.
+
 Dune does not add this cookie for OCaml compilation or for projects using
 earlier language versions. Bytecode, native code, and js_of_ocaml share OCaml
 preprocessing, so none receives the automatic cookie. Libraries built for both

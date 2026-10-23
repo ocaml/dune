@@ -253,7 +253,7 @@ let build_ppx_driver =
     ()
 ;;
 
-let get_cookies ~loc ~expander ~lib_name libs =
+let get_cookies ~loc ~expander ~lib_name ~compilation_mode ~dune_version libs =
   let expander, library_name_cookie =
     match lib_name with
     | None -> expander, None
@@ -263,7 +263,15 @@ let get_cookies ~loc ~expander ~lib_name libs =
         Pform.Map.singleton (Var Library_name) [ Value.String library_name ]
       in
       ( Expander.add_bindings expander ~bindings
-      , Some ("library-name", (library_name, Lib_name.of_local (loc, lib_name))) )
+      , Some ("library-name", (library_name, library_name)) )
+  in
+  let compilation_mode_cookie =
+    match compilation_mode with
+    | Compilation_mode.Ocaml -> None
+    | Melange ->
+      if dune_version >= (3, 26)
+      then Some ("compilation-mode", ("melange", "dune"))
+      else None
   in
   let cookies =
     List.concat_map libs ~f:(fun t ->
@@ -277,17 +285,13 @@ let get_cookies ~loc ~expander ~lib_name libs =
   let+ cookies =
     Memo.List.map cookies ~f:(fun (lib_name, { Lib_kind.Ppx_args.Cookie.name; value }) ->
       let+ value = Expander.No_deps.expand_str expander value in
-      name, (value, lib_name))
+      name, (value, Lib_name.to_string lib_name))
   in
-  (match library_name_cookie with
-   | None -> cookies
-   | Some cookie -> cookie :: cookies)
+  List.filter_opt [ library_name_cookie; compilation_mode_cookie ] @ cookies
   |> String.Map.of_list_reducei ~f:(fun name ((val1, lib1) as res) (val2, lib2) ->
     if String.equal val1 val2
     then res
-    else (
-      let lib1 = Lib_name.to_string lib1 in
-      let lib2 = Lib_name.to_string lib2 in
+    else
       User_error.raise
         ~loc
         [ Pp.textf
@@ -300,7 +304,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
             val1
             lib2
             val2
-        ]))
+        ])
   |> String.Map.to_list_map ~f:(fun name (value, _) ->
     [ "--cookie"; sprintf "%s=%S" name value ])
   |> List.concat
@@ -327,17 +331,10 @@ let ppx_driver_and_flags_internal
            ~f:(List.map ~f:(Value.to_string ~dir:(Path.build @@ Expander.dir expander)))
   and+ cookies =
     let* libs = Resolve.Memo.read (Lib.closure libs ~linking:true ~for_) in
-    Action_builder.of_memo (get_cookies ~loc ~lib_name ~expander libs)
+    Action_builder.of_memo
+      (get_cookies ~loc ~lib_name ~expander ~compilation_mode ~dune_version libs)
   and+ ppx_driver_exe = Action_builder.of_memo @@ Ppx_exe.ppx_driver_exe context libs in
-  let compilation_mode_cookie =
-    match compilation_mode with
-    | Compilation_mode.Ocaml -> []
-    | Melange ->
-      if dune_version >= (3, 26)
-      then [ "--cookie"; "compilation-mode=\"melange\"" ]
-      else []
-  in
-  ppx_driver_exe, flags @ cookies @ compilation_mode_cookie
+  ppx_driver_exe, flags @ cookies
 ;;
 
 let resolve_pps scope pps = Resolve.Memo.read (Lib.DB.resolve_pps (Scope.libs scope) pps)

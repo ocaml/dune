@@ -288,6 +288,11 @@ let for_alias_module t alias_module =
          [@jane.non_erasable.instances] *)
       Ocaml_flags.append_common flags [ "-w"; "-53" ]
   in
+  let flags =
+    match Module.kind alias_module with
+    | Alias _ -> Ocaml_flags.append_common flags [ "-intf-suffix"; ".dummy-ignore-mli" ]
+    | _ -> flags
+  in
   let sandbox =
     (* If the compiler reads the cmi for module alias even with [-w -49
        -no-alias-deps], we must sandbox the build of the alias module since the

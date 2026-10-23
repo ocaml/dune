@@ -25,3 +25,109 @@ must be invalidated.
   $ dune build foo/child
   $ cat _build/default/foo/child
   generated
+
+A source-backed file must replace a generated symlink even when their
+contents match, so unrelated builds cannot mutate the source snapshot.
+
+  $ mkdir symlink-transition
+  $ cd symlink-transition
+  $ make_dune_project 3.0
+  $ echo one > seed
+  $ echo initial > trigger
+  $ cat > dune <<EOF
+  > (rule
+  >  (target x)
+  >  (deps seed (sandbox none))
+  >  (action (run ln -s seed x)))
+  > (rule
+  >  (target result)
+  >  (deps x trigger)
+  >  (action (copy x result)))
+  > EOF
+  $ dune build result
+  $ cp seed x
+  $ cat > dune <<EOF
+  > (alias (name idle))
+  > (rule
+  >  (target result)
+  >  (deps x trigger)
+  >  (action (copy x result)))
+  > EOF
+  $ start_dune @idle
+  $ build result
+  Success
+  $ if test -L _build/default/x; then echo symlink; else echo file; fi
+  file
+  $ echo two > seed
+  $ build seed
+  Success
+  $ echo changed > trigger
+  $ build result
+  Success
+  $ cat x _build/default/result
+  one
+  one
+  $ stop_dune_quiet
+  $ cd ..
+
+Missing-target hints should include source-backed targets.
+
+  $ mkdir source-hints
+  $ cd source-hints
+  $ make_dune_project 3.0
+  $ echo content > source.txt
+  $ dune build sourc.txt
+  Error: Don't know how to build sourc.txt
+  Hint: did you mean source.txt?
+  [1]
+  $ cd ..
+
+A null build must not digest an unchanged source file again.
+
+  $ mkdir freshness
+  $ cd freshness
+  $ make_dune_project 3.0
+  $ dd if=/dev/zero of=payload bs=1048576 count=1 2>/dev/null
+  $ dune build payload --wait-for-filesystem-clock
+  $ DUNE_TRACE=digest dune build payload
+  $ dune trace cat | jq -s '
+  >   [.[] | select(.cat == "digest" and .name == "redigest"
+  >                and .args.path == "payload")] | length'
+  0
+
+Same-size changes at comparison-buffer boundaries must update the build copy.
+
+  $ printf x | dd of=payload bs=1 seek=65535 conv=notrunc 2>/dev/null
+  $ dune build payload
+  $ cmp payload _build/default/payload
+  $ printf y | dd of=payload bs=1 seek=1048575 conv=notrunc 2>/dev/null
+  $ dune build payload
+  $ cmp payload _build/default/payload
+
+Handle partial final buffers, size changes, and empty files too.
+
+  $ printf tail >> payload
+  $ dune build payload
+  $ cmp payload _build/default/payload
+  $ printf z | dd of=payload bs=1 seek=1048577 conv=notrunc 2>/dev/null
+  $ dune build payload
+  $ cmp payload _build/default/payload
+  $ : > payload
+  $ dune build payload
+  $ cmp payload _build/default/payload
+
+Executable-bit changes must invalidate the copy independently of its bytes.
+
+  $ chmod +x payload
+  $ dune build payload
+  $ test -x _build/default/payload && echo executable
+  executable
+  $ chmod -x payload
+  $ dune build payload
+  $ if test -x _build/default/payload; then
+  >   echo executable
+  > else
+  >   echo non-executable
+  > fi
+  non-executable
+  $ cd ..

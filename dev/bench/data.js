@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792772572792,
+  "lastUpdate": 1792772576864,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -656820,6 +656820,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.517926033333333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c67c9370b9075c8fd79d7e7d2be7c56c65e089d0",
+          "message": "test(pforms): cover read-strings and unavailable values (#16709)\n\nExtend pform coverage for escaped filenames in `%{read-strings:...}`\ndependencies, dependency invalidation, and malformed escape diagnostics.\nAlso check that `%{version:...}` rejects sublibrary names and\n`%{toolchains}` reports an error when no findlib toolchain is defined.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T00:00:24+08:00",
+          "tree_id": "72cb6395a4ccdd1dd084409317716dbc885cb6ad",
+          "url": "https://github.com/ocaml/dune/commit/c67c9370b9075c8fd79d7e7d2be7c56c65e089d0"
+        },
+        "date": 1792772199466,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.56444241262,
             "unit": "seconds"
           }
         ]

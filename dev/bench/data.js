@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792766874836,
+  "lastUpdate": 1792766894200,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -656356,6 +656356,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.531434085106666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2bd61698082b3f98caa0ff41d23efffe7a05bd31",
+          "message": "test(ocaml): reproduce generated alias interface collisions (#16701)\n\nStrengthen the existing regression for #5267 by first compiling the\ngenerated alias while the unrelated interface is absent from the build\ndirectory. Then explicitly copy that interface and switch profiles to\nforce recompilation, recording the existing missing-CMI error.\n\nThis isolates the undeclared interface dependency without relying on the\nscheduling of a full executable build. No production code changes.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T22:34:54+08:00",
+          "tree_id": "7409f5178abb5f4dfa193c5dff643cbc065c72c3",
+          "url": "https://github.com/ocaml/dune/commit/2bd61698082b3f98caa0ff41d23efffe7a05bd31"
+        },
+        "date": 1792766519281,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.864354536506667,
             "unit": "seconds"
           }
         ]

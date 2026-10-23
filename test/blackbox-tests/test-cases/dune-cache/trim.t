@@ -251,6 +251,49 @@ Test metadata for multiple file targets produced by the same rule.
     ]
   }
 
+A zero or negative file-trimming goal must still collect broken metadata,
+without deleting unused artifacts. Directory-only metadata is not broken.
+
+  $ reset
+  $ cache="$PWD/.xdg-cache/dune/db"
+  $ key=00000000000000000000000000000000
+  $ for version in v3 v4; do
+  >   mkdir -p "$cache/files/$version/00"
+  >   printf artifact > "$cache/files/$version/00/$key"
+  > done
+  $ for version in v3 v4 v5; do
+  >   mkdir -p "$cache/meta/$version/00"
+  >   printf '((8:metadata)(5:files(3:dir5:<dir>)))' > "$cache/meta/$version/00/$key"
+  >   printf broken > "$cache/meta/$version/00/00000000000000000000000000000001"
+  > done
+  $ dune cache trim --trimmed-size 0
+  Freed 18B (3 files removed)
+  $ dune cache trim --size 1MB
+  Freed 0B (0 files removed)
+  $ dune cache size --machine-readable
+  16
+  $ find "$cache/meta" -type f | dune_cmd count-lines
+  3
+
+Ignored filenames and shard directories must not contribute to the cache size.
+
+  $ mkdir -p "$cache/files/v4/not-a-shard"
+  $ printf ignored > "$cache/files/v4/not-a-shard/$key"
+  $ printf ignored > "$cache/files/v4/00/not-a-digest"
+  $ dune cache size --machine-readable
+  16
+
+Trimming more than the total unused size removes everything, including files
+of size zero. Metadata containing only directories survives.
+
+  $ touch "$cache/files/v4/00/00000000000000000000000000000002"
+  $ dune cache trim --trimmed-size 1MB
+  Freed 16B (3 files removed)
+  $ find "$cache/meta" -type f | dune_cmd count-lines
+  3
+  $ dune cache size --machine-readable
+  0
+
 Test metadata for directory targets, which are stored with no digest.
 
   $ reset

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792767221493,
+  "lastUpdate": 1792769983857,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -656501,6 +656501,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.864354536506667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c65231f2d752d8f4931a2af99a6b24a4ce607283",
+          "message": "fix(ocaml): ignore unrelated interfaces for generated aliases (#16704)\n\nGenerated aliases have no user-written interface, but the compiler can\ndiscover an unrelated same-named .mli in the build directory. This makes\ncompilation depend on source-copy order and can break warm rebuilds.\n\nPass `-intf-suffix .dummy-ignore-mli` only for generated aliases,\nreusing the existing legacy compiler flag. Update the regression from\n#16701 to require successful compilation before and after copying the\nunrelated interface, including a profile change that forces\nrecompilation.\n\nFixes #5267.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-23T23:26:16+08:00",
+          "tree_id": "c7a5f9c7c36745381e644df6dcb2ead9afa5db06",
+          "url": "https://github.com/ocaml/dune/commit/c65231f2d752d8f4931a2af99a6b24a4ce607283"
+        },
+        "date": 1792769587357,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.182065650346667,
             "unit": "seconds"
           }
         ]

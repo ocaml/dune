@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792774791145,
+  "lastUpdate": 1792774860902,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -473075,6 +473075,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.46860859919333336,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7518e9b0f0eaa053d3ed7a271955947ee75f1e3d",
+          "message": "test(rpc): cover pending initialization and direct connection errors (#16710)\n\nExtend RPC status coverage to include a client that has initialized but\nhas not yet negotiated protocol versions, plus connection failure\nreporting for an explicitly selected unavailable endpoint. Add a helper\nmode that pauses after receiving the initialization response so the\npending-negotiation check is synchronized with the server.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T00:34:44+08:00",
+          "tree_id": "171f184c9ba10f35f45744954f67a0ef03e3bd75",
+          "url": "https://github.com/ocaml/dune/commit/7518e9b0f0eaa053d3ed7a271955947ee75f1e3d"
+        },
+        "date": 1792774857598,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 59.663935478893336,
             "unit": "seconds"
           }
         ]

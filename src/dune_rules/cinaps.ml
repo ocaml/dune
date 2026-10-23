@@ -194,6 +194,7 @@ let gen_rules sctx t ~dir ~scope =
         let* preprocess =
           Pp_spec_rules.make
             sctx
+            ~for_
             ~dir
             ~expander
             ~lint:(Preprocess.Per_module.no_preprocessing ())

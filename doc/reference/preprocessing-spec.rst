@@ -80,6 +80,30 @@ following ``preprocess`` field::
 The list of libraries will be ``ppx1`` and ``ppx2``, and the command line
 arguments will be: ``-foo -bar 42``.
 
+Compilation Mode
+----------------
+
+.. versionadded:: 3.26
+
+With ``(lang dune 3.26)`` or later, Dune passes the ``compilation-mode`` cookie
+to PPX rewriters with the string value ``"ocaml"`` or ``"melange"``, depending
+on the compilation target. Rewriters can read this cookie through
+``Ppxlib.Driver.Cookies`` to select platform-specific code without requiring
+a flag in each ``preprocess`` field.
+
+The cookie is supplied for ``pps``, ``staged_pps``, PPX linting, and the PPX
+command in Merlin configurations. This applies to libraries, executables,
+and ``melange.emit`` stanzas.
+
+When Dune supplies this cookie, PPX libraries declaring their own
+``compilation-mode`` cookie must request the same value. Conflicting library
+requests are rejected.
+
+Bytecode, native code, and js_of_ocaml share the ``"ocaml"`` preprocessing mode.
+Libraries built for both OCaml and Melange are preprocessed separately for
+each target. Dune does not add this cookie for projects using earlier language
+versions.
+
 Future Syntax
 -------------
 

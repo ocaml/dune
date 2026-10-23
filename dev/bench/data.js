@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792721897699,
+  "lastUpdate": 1792721903974,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -471654,6 +471654,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 39.95005936112,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rudi.grinberg@gmail.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f1a8aba2111c8ec4168f833af9eae9c331c033b8",
+          "message": "fix(action): follow symlinks during recursive copying (#16686)\n\nMake recursive copy actions follow symlinks, matching ordinary file\ncopies and the existing root-path handling. Linked files and directories\nare materialized at the destination rather than rejected.\n\nThis fixes recursive copies of file dependencies in symlink sandboxes\nand supports the traversal change in #16675. Update the regressions from\n#16653 and #16685; directory-link cycles still fail with ELOOP.",
+          "timestamp": "2026-10-23T10:05:49+08:00",
+          "tree_id": "94569564539afd3291b8a7bccc0da1eecb7a76b9",
+          "url": "https://github.com/ocaml/dune/commit/f1a8aba2111c8ec4168f833af9eae9c331c033b8"
+        },
+        "date": 1792721903048,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4371843816666667,
             "unit": "seconds"
           }
         ]

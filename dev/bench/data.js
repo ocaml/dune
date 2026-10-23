@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792773845556,
+  "lastUpdate": 1792774129769,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -657052,6 +657052,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.6880358412333334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8c97cc380378c47fa44c15147d18587e2e7c1222",
+          "message": "test(cram): diagnose unavailable selected shells (#16714)\n\nCheck that a cram test selecting `sh` reports a useful error when that\nshell is absent from `PATH`.\n\nKeep the OCaml toolchain available so context initialization succeeds,\nisolating the missing-shell diagnostic and its dependency trace.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T00:31:32+08:00",
+          "tree_id": "e1acdccd4e94a6555615ddb9680f10fad1256ed4",
+          "url": "https://github.com/ocaml/dune/commit/8c97cc380378c47fa44c15147d18587e2e7c1222"
+        },
+        "date": 1792773756273,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.6129576637399996,
             "unit": "seconds"
           }
         ]

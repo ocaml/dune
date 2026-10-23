@@ -1,5 +1,6 @@
-A signal received while Dune is running a cram test leaves the cram action's
-sandbox behind.
+A signal received while Dune is running a cram test must not leave the cram
+action's sandbox behind. The fiber running the action never resumes after the
+signal, so the scheduler deletes the sandboxes registered with it on shutdown.
 
 Run a nested Dune so the cram test can signal its parent without interrupting
 this test's own runner. The wrapper exports its PID before replacing itself
@@ -29,10 +30,10 @@ with Dune.
   $ wait "$dune_pid"
   [130]
 
-The nested Dune has exited, but an ordinary file is still present in its
-sandbox. No socket, FIFO, or other special filesystem entry is needed to
-reproduce the leak.
+The nested Dune has exited and its sandbox is gone, including the marker file
+the interrupted action wrote into it. Only the markers that keep git and hg
+from escaping the sandbox root remain.
 
   $ find _build/.sandbox -type f -path '*/default/residue/marker' \
   >   | sed -E 's#_build/.sandbox/[0-9a-f]+#_build/.sandbox/<hash>#'
-  _build/.sandbox/<hash>/default/residue/marker
+  $ find _build/.sandbox -mindepth 1 -maxdepth 1 ! -name .git ! -name .hg

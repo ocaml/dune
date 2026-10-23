@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792774551501,
+  "lastUpdate": 1792774791145,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -657313,6 +657313,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.654026004166667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8f2a216f9244a62e661919c93f677d211907dce3",
+          "message": "test(action-plugin): reject unknown action identifiers (#16718)\n\nCheck that an action-plugin client using an unknown dynamic action ID\ngets a clear RPC error.\n\nFollow the rejected request with initialization using the real action\nID, verifying that the rejection does not disrupt the active action.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T00:42:42+08:00",
+          "tree_id": "e9e8af48a5083914629e6d1db9ba1445f44a3c3f",
+          "url": "https://github.com/ocaml/dune/commit/8f2a216f9244a62e661919c93f677d211907dce3"
+        },
+        "date": 1792774572676,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.5626817350866666,
             "unit": "seconds"
           }
         ]

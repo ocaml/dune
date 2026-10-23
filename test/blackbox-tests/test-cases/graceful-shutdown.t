@@ -33,16 +33,9 @@ be ready, sends SIGINT to dune, and checks if the cleanup handler ran.
   $ wait $DUNE_PID
   [130]
 
-  $ dune trace cat | jq 'select(.name | startswith("process-cleanup-")) | { name, args }'
-  {
-    "name": "process-cleanup-start",
-    "args": {}
-  }
-  {
-    "name": "process-cleanup-sigkill",
-    "args": {}
-  }
-  {
-    "name": "process-cleanup-finish",
-    "args": {}
-  }
+The interrupted build is cancelled, which sends SIGTERM to the action and
+escalates to SIGKILL once the grace period expires.
+
+  $ dune trace cat | jq -c 'select(.name == "signal_sent") | { signal: .args.signal, source: .args.source }'
+  {"signal":"TERM","source":"cancel"}
+  {"signal":"KILL","source":"cancel"}

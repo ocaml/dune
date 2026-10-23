@@ -68,6 +68,9 @@ module Scheduler = struct
     ; signal_watcher : Thread.t
     ; async_io : Async_io.t
     ; mutable preserved_child_processes : Pid.Set.t
+    ; shutdown_cancellation : Fiber.Cancel.t
+    ; mutable shutdown_scopes : int
+    ; mutable pending_shutdown : (Shutdown.Reason.t * Time.t) option
     }
 
   let current : t option ref = ref None

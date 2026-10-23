@@ -130,6 +130,30 @@ let preserve_child_process pid =
     t.preserved_child_processes <- Pid.Set.add t.preserved_child_processes pid)
 ;;
 
+(* How long a [cancel_on_shutdown] scope may take to wind down after a shutdown
+   request before the scheduler stops regardless. *)
+let shutdown_grace_period = Time.Span.of_secs 1.
+
+let cancel_on_shutdown cancellation f =
+  let* () = Fiber.return () in
+  let t = t () in
+  t.shutdown_scopes <- t.shutdown_scopes + 1;
+  Fiber.finalize_now
+    (fun () ->
+       let+ res, (_ : unit Fiber.Cancel.outcome) =
+         Fiber.Cancel.with_handler t.shutdown_cancellation f ~on_cancel:(fun () ->
+           Fiber.Cancel.fire cancellation)
+       in
+       res)
+    ~finally:(fun () ->
+      t.shutdown_scopes <- t.shutdown_scopes - 1;
+      match t.pending_shutdown with
+      | Some (reason, _) when t.shutdown_scopes = 0 ->
+        (* Nothing is left to wind down: let [Run_once.iter] stop the loop. *)
+        Event.Queue.send_shutdown t.events reason
+      | Some _ | None -> ())
+;;
+
 let trace_child_process_cleanup pids stage =
   Dune_trace.emit Process (fun () ->
     let pids = Pid.Set.to_list pids in
@@ -336,6 +360,12 @@ let terminate_process_group =
    scheduler explicitly *)
 let wait_for_build_process t ?cancellation ~is_process_group_leader pid =
   let sigkill_alarm = ref None in
+  let trace_signal_sent signal =
+    Dune_trace.emit Process (fun () ->
+      Dune_trace.Event.signal_sent
+        signal
+        (`Cancel { Dune_trace.Event.pid; group_leader = is_process_group_leader }))
+  in
   let wait () =
     let* r = wait_for_process t ~is_process_group_leader pid in
     let* () = terminate_process_group t pid ~is_process_group_leader in
@@ -356,13 +386,17 @@ let wait_for_build_process t ?cancellation ~is_process_group_leader pid =
         cancel
         ~on_cancel:(fun () ->
           if not Sys.win32
-          then Process_watcher.kill_process_group pid Term ~is_process_group_leader;
+          then (
+            Process_watcher.kill_process_group pid Term ~is_process_group_leader;
+            trace_signal_sent Term);
           let sleep = Async_io.sleep t.async_io sigterm_grace_period in
           sigkill_alarm := Some sleep;
           Async_io.Task.await sleep
           >>| function
           | Error `Cancelled -> ()
-          | Ok () -> Process_watcher.kill_process_group pid Kill ~is_process_group_leader
+          | Ok () ->
+            Process_watcher.kill_process_group pid Kill ~is_process_group_leader;
+            trace_signal_sent Kill
           | Error (`Exn _) -> assert false)
         wait
     in
@@ -492,6 +526,9 @@ let prepare (config : Config.t) ~events ~file_watcher =
          with
          | None -> Pid.Set.empty
          | Some p -> Pid.Set.singleton p)
+    ; shutdown_cancellation = Fiber.Cancel.create ()
+    ; shutdown_scopes = 0
+    ; pending_shutdown = None
     }
   in
   current := Some t;
@@ -513,9 +550,14 @@ module Run_once = struct
 
       - notifying completed jobs
       - starting cancellations
-      - terminating the scheduler on signals *)
+      - winding down [cancel_on_shutdown] scopes on shutdown requests
+      - terminating the scheduler once nothing is left to wind down *)
   let rec iter (t : t) : Fiber.fill list =
     Console.Status_line.refresh ();
+    (match t.pending_shutdown with
+     | Some (reason, deadline) when Time.(now () >= deadline) ->
+       raise @@ Abort (Shutdown_requested reason)
+     | Some _ | None -> ());
     match Event.Queue.next t.events with
     | Job_complete_ready ->
       (match Process_watcher.wait_unix t.process_watcher with
@@ -524,7 +566,18 @@ module Run_once = struct
     | Fiber_fill_ivar fill -> [ fill ]
     | Shutdown reason ->
       got_shutdown reason;
-      raise @@ Abort (Shutdown_requested reason)
+      (match t.pending_shutdown with
+       | Some (reason, _) -> raise @@ Abort (Shutdown_requested reason)
+       | None when t.shutdown_scopes = 0 -> raise @@ Abort (Shutdown_requested reason)
+       | None ->
+         (* Fire the cancellation of the active scopes and keep going so that
+            they can wind down. The timer wakes this loop up at the deadline
+            even if nothing else does. *)
+         t.pending_shutdown <- Some (reason, Time.add (Time.now ()) shutdown_grace_period);
+         ignore (Async_io.sleep t.async_io shutdown_grace_period : unit Async_io.Task.t);
+         (match Fiber.Cancel.fire' t.shutdown_cancellation with
+          | [] -> iter t
+          | fills -> fills))
   ;;
 
   let run t f : _ result =
@@ -536,13 +589,21 @@ module Run_once = struct
           Dune_util.Report_error.report e;
           Fiber.return ())
     in
-    match Fiber.run fiber ~iter:(fun () -> iter t) with
-    | Ok res ->
-      assert (Process_watcher.running_count t.process_watcher = 0);
-      Result.Ok res
-    | Error () -> Error Already_reported
-    | exception Abort err -> Error err
-    | exception exn -> Error (Exn (Exn_with_backtrace.capture exn))
+    let res =
+      match Fiber.run fiber ~iter:(fun () -> iter t) with
+      | Ok res ->
+        assert (Process_watcher.running_count t.process_watcher = 0);
+        Result.Ok res
+      | Error () -> Error Already_reported
+      | exception Abort err -> Error err
+      | exception exn -> Error (Exn (Exn_with_backtrace.capture exn))
+    in
+    match res, t.pending_shutdown with
+    | (Ok _ | Error Already_reported), Some (reason, _) ->
+      (* The scopes wound down before the loop had to stop: still report the
+         shutdown. *)
+      Error (Shutdown_requested reason)
+    | _, _ -> res
   ;;
 
   let run_and_cleanup t f =

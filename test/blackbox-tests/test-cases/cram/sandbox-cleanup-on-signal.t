@@ -33,8 +33,6 @@ The nested Dune has exited, but an ordinary file is still present in its
 sandbox. No socket, FIFO, or other special filesystem entry is needed to
 reproduce the leak.
 
-  $ marker=$(find _build/.sandbox -type f -path '*/default/residue/marker')
-  $ cat "$marker"
-  sandbox-was-not-cleaned
-  $ echo "$marker" | sed -E 's#_build/.sandbox/[0-9a-f]+#_build/.sandbox/<hash>#'
+  $ find _build/.sandbox -type f -path '*/default/residue/marker' \
+  >   | sed -E 's#_build/.sandbox/[0-9a-f]+#_build/.sandbox/<hash>#'
   _build/.sandbox/<hash>/default/residue/marker

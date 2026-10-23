@@ -86,7 +86,7 @@ Melange Compilation
 .. versionadded:: 3.26
 
 With ``(lang dune 3.26)`` or later, Dune passes the
-``dune-compilation-mode`` cookie with the string value ``"melange"`` to PPX
+``compilation-mode`` cookie with the string value ``"melange"`` to PPX
 rewriters when preprocessing for Melange. Rewriters can read this cookie
 through ``Ppxlib.Driver.Cookies`` to select platform-specific code without
 requiring a flag in each ``preprocess`` field.
@@ -96,8 +96,9 @@ command in Merlin configurations targeting Melange. This applies to both
 libraries and ``melange.emit`` stanzas.
 
 Dune does not add this cookie for OCaml compilation or for projects using
-earlier language versions. Libraries built for both OCaml and Melange are
-preprocessed separately for each target.
+earlier language versions. Bytecode, native code, and js_of_ocaml share OCaml
+preprocessing, so none receives the automatic cookie. Libraries built for both
+OCaml and Melange are preprocessed separately for each target.
 
 Future Syntax
 -------------

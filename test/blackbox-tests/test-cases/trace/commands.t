@@ -55,3 +55,22 @@ Check that failed processes show exit code and stderr:
   # exited with code 1
   # Stderr:
   Error message
+
+Older or incomplete events may lack optional fields. An invalid exit code is
+currently treated as success; a numeric failure without an error description
+uses the exit-code fallback.
+
+  $ printf '%s' \
+  > '(7:process6:finish1:0(4:prog4:tool)(4:exit3:bad))' > partial.csexp
+  $ dune trace commands --trace-file partial.csexp
+  (tool)
+  $ printf '%s' \
+  > '(7:process6:finish1:0(4:prog4:tool)(4:exit1:2))' > partial.csexp
+  $ dune trace commands --trace-file partial.csexp
+  (tool)
+  # Exit code: 2
+
+An event without a program is ignored, rather than rendered as an empty command.
+
+  $ printf '%s' '(7:process6:finish1:0)' > partial.csexp
+  $ dune trace commands --trace-file partial.csexp

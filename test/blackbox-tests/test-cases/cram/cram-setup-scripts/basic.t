@@ -72,3 +72,19 @@ Run the test:
   
     $ ! [ -e *.sh ] && echo "No sh files"
     No sh files
+
+Setup script paths containing quotes must be shell-escaped, not interpolated
+into the generated script. Use Bash because this requires its $'...' quoting.
+
+  $ make_dune_project 3.22
+  $ cp helpers.sh "helper's.sh"
+  $ cat > dune <<'EOF'
+  > (cram
+  >  (shell bash)
+  >  (setup_scripts "helper's.sh"))
+  > EOF
+  $ cat >quoted.t <<'EOF'
+  >   $ test_helper quoted
+  >   Helper called: quoted
+  > EOF
+  $ dune runtest quoted.t

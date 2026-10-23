@@ -217,7 +217,7 @@ applies to OCaml and to older projects, where Dune does not add the cookie.
   $ node _build/default/emit/out/emit/main.js
   melange
 
-A conflicting library request currently hides Dune's compilation target.
+A conflicting library request is rejected when Dune supplies the cookie.
 
   $ cat >ppx/dune <<'EOF'
   > (library
@@ -225,6 +225,27 @@ A conflicting library request currently hides Dune's compilation target.
   >  (kind (ppx_rewriter (cookies (compilation-mode absent))))
   >  (libraries ppxlib))
   > EOF
+  $ dune build @emit/melange
+  File "emit/dune", line 3, characters 13-27:
+  3 |  (preprocess (pps mode_ppx)))
+                   ^^^^^^^^^^^^^^
+  Error: dune and mode_ppx have inconsistent requests for cookie
+  "compilation-mode"; dune requests "melange" and mode_ppx requests "absent"
+  [1]
+
+The same request remains valid for OCaml and for Melange before Dune 3.26.
+
+  $ mkdir native
+  $ cp ordinary/*.ml ordinary/shared.mli native/
+  $ cat >native/dune <<'EOF'
+  > (executable
+  >  (name main)
+  >  (preprocess (pps mode_ppx)))
+  > EOF
+  $ dune build native/main.exe
+  $ _build/default/native/main.exe
+  absent
+  $ make_melange_project 3.25 1.0
   $ dune build @emit/melange
   $ node _build/default/emit/out/emit/main.js
   absent

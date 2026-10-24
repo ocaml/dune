@@ -16,6 +16,82 @@ let print_deps label m =
   | Some dyn -> printfn "%s: %s" label (Dyn.to_string dyn)
 ;;
 
+let%expect_test "map_reduce_seq consumes a one-shot sequence once" =
+  let nodes =
+    List.map
+      [ "a", 1; "b", 2; "c", 3 ]
+      ~f:(fun (name, value) -> Memo.lazy_node ~name (fun () -> Memo.return value))
+  in
+  let remaining = ref nodes in
+  let pulls = ref 0 in
+  let rec next () =
+    incr pulls;
+    match !remaining with
+    | [] -> Seq.Nil
+    | node :: rest ->
+      remaining := rest;
+      Seq.Cons (node, next)
+  in
+  print_deps
+    "one-shot"
+    (let+ sum = Memo.map_reduce_seq next ~f:read ~empty:0 ~combine:( + ) in
+     printfn "sum: %d" sum);
+  printfn "pulls: %d" !pulls;
+  [%expect
+    {|
+    sum: 6
+    one-shot: Seq
+      [ Singleton (Some "a", ())
+      ; Singleton (Some "b", ())
+      ; Singleton (Some "c", ())
+      ]
+    pulls: 4
+    |}]
+;;
+
+let%expect_test "map_reduce_seq preserves branch order and sequential sections" =
+  let node name = Memo.lazy_node ~name (fun () -> Memo.return ()) in
+  let before, after = node "before", node "after" in
+  let a, b, c, d = node "a", node "b", node "c", node "d" in
+  print_deps
+    "empty"
+    (Memo.map_reduce_seq Seq.empty ~f:read ~empty:() ~combine:(fun () () -> ()));
+  print_deps
+    "singleton"
+    (Memo.map_reduce_seq (Seq.return a) ~f:read ~empty:() ~combine:(fun () () -> ()));
+  print_deps
+    "sections"
+    (let* () = read before in
+     let* () =
+       Memo.map_reduce_seq
+         (List.to_seq [ a, b; c, d ])
+         ~empty:()
+         ~combine:(fun () () -> ())
+         ~f:(fun (first, second) ->
+           let* () = read first in
+           let* () =
+             if first == a
+             then Memo.of_reproducible_fiber (Scheduler.yield ())
+             else Memo.return ()
+           in
+           read second)
+     in
+     read after);
+  [%expect
+    {|
+    empty: Empty
+    singleton: Singleton (Some "a", ())
+    sections: Seq
+      [ Singleton (Some "before", ())
+      ; Singleton (Some "a", ())
+      ; Singleton (Some "c", ())
+      ; Singleton (Some "d", ())
+      ; Singleton (Some "b", ())
+      ; Singleton (Some "after", ())
+      ]
+    |}]
+;;
+
 let%expect_test "dependency structure of Memo combinators" =
   let a = Memo.lazy_node ~name:"a" (fun () -> Memo.return ())
   and b = Memo.lazy_node ~name:"b" (fun () -> Memo.return ())

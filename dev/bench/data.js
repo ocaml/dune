@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792856950477,
+  "lastUpdate": 1792857262877,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -474235,6 +474235,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5216703497666667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a6e732aa592d1120f13a7bad329eabb8e0429ff2",
+          "message": "test(watch): cover partial outputs from failed unsandboxed actions (#16737)\n\nExtend the RPC watch-mode failure test with an explicitly unsandboxed\naction that writes file and directory targets before failing.\n\nCheck that the client receives the failure and that partial outputs\ncurrently remain on disk, pinning the existing behavior for future\nchanges.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T23:32:25+08:00",
+          "tree_id": "3a163f1955fbb7c7dc3bf6101f24b3dd4214ac01",
+          "url": "https://github.com/ocaml/dune/commit/a6e732aa592d1120f13a7bad329eabb8e0429ff2"
+        },
+        "date": 1792857261599,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 60.717072060153335,
             "unit": "seconds"
           }
         ]

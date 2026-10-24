@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792857603120,
+  "lastUpdate": 1792857610472,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -474322,6 +474322,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 60.99488191534667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "40b8a58cbf28df394170ae57415137cb88ba2816",
+          "message": "test: stabilize unordered promotion and cycle diagnostics (#16736)\n\nStabilize two order-sensitive blackbox tests: sort the combined `dune\npromotion show` output, and enter the executable module-dependency cycle\nthrough a single dependency.\n\nThis preserves the assertions without relying on promotion order or\nwhich dependency discovers the cycle first.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T23:37:48+08:00",
+          "tree_id": "a5030ee5b0a817245bc06162aa7f1130a10a3446",
+          "url": "https://github.com/ocaml/dune/commit/40b8a58cbf28df394170ae57415137cb88ba2816"
+        },
+        "date": 1792857609432,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5551155658066667,
             "unit": "seconds"
           }
         ]

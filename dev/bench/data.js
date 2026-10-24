@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792845580043,
+  "lastUpdate": 1792845733406,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -474119,6 +474119,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5243838176066666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4c0093cdf744ae191fa2864bd2fc117975778a5b",
+          "message": "test(watch): cover unsandboxed RPC cancellation (#16734)\n\nExercise an RPC-client disconnect during an unsandboxed rule with two\nfile targets and a directory target, followed by an unrelated successful\nrule.\n\nThis characterizes an existing cleanup bug: the cancelled rule leaves\npartial outputs in `_build`, while the successful rule keeps its\ncompleted output. The test deliberately expects the current buggy\nbehavior, so a separate fix can change the three existence checks from\n`true` to `false`.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T20:23:17+08:00",
+          "tree_id": "81f5862d5a2313f0e5c9e7bb7b819e93774f27ce",
+          "url": "https://github.com/ocaml/dune/commit/4c0093cdf744ae191fa2864bd2fc117975778a5b"
+        },
+        "date": 1792845730937,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 47.343950051713335,
             "unit": "seconds"
           }
         ]

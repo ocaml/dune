@@ -4,6 +4,7 @@ type t =
   { local_packages : Local_package.t Package_name.Map.t
   ; lock_dir : Lock_dir.t
   ; platform : Solver_env.t
+  ; lock_packages : Lock_dir.Pkg.t Package_name.Map.t
   ; version_by_package_name : Package_version.t Package_name.Map.t
   }
 
@@ -18,14 +19,13 @@ let lockdir_regenerate_hints =
   ]
 ;;
 
-let version_by_package_name ~platform local_packages (lock_dir : Lock_dir.t) =
+let version_by_package_name local_packages lock_packages =
   let from_local_packages =
     Package_name.Map.map local_packages ~f:(fun (local_package : Local_package.t) ->
       local_package.version)
   in
   let from_lock_dir =
-    Lock_dir.Packages.pkgs_on_platform_by_name ~platform lock_dir.packages
-    |> Package_name.Map.map ~f:(fun (pkg : Lock_dir.Pkg.t) -> pkg.info.version)
+    Package_name.Map.map lock_packages ~f:(fun (pkg : Lock_dir.Pkg.t) -> pkg.info.version)
   in
   let exception Duplicate_package of Package_name.t in
   try
@@ -88,52 +88,6 @@ let all_non_local_dependencies_of_local_packages t =
   Package_name.Set.diff
     all_dependencies_of_local_packages
     (Package_name.Set.of_keys t.local_packages)
-;;
-
-let check_for_unnecessary_packges_in_lock_dir
-      ~platform
-      (lock_dir : Lock_dir.t)
-      all_non_local_dependencies_of_local_packages
-  =
-  let packages = Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform in
-  let unneeded_packages_in_lock_dir =
-    let locked_transitive_closure_of_local_package_dependencies =
-      match
-        Lock_dir.transitive_dependency_closure
-          lock_dir
-          ~platform
-          all_non_local_dependencies_of_local_packages
-      with
-      | Ok x -> x
-      | Error (`Missing_packages missing_packages) ->
-        (* Resolving the dependency formulae would have failed if there were any missing packages in the lockdir. *)
-        Code_error.raise
-          "Missing packages from lockdir after confirming no missing packages in lockdir"
-          [ "missing package", Package_name.Set.to_dyn missing_packages ]
-    in
-    let all_locked_packages = Package_name.Set.of_keys packages in
-    Package_name.Set.diff
-      all_locked_packages
-      locked_transitive_closure_of_local_package_dependencies
-  in
-  if Package_name.Set.is_empty unneeded_packages_in_lock_dir
-  then ()
-  else (
-    let packages =
-      Package_name.Set.to_list unneeded_packages_in_lock_dir
-      |> List.map ~f:(Package_name.Map.find_exn packages)
-    in
-    User_error.raise
-      ~hints:lockdir_regenerate_hints
-      [ Pp.text
-          "The lockdir contains packages which are not among the transitive dependencies \
-           of any local package:"
-      ; Pp.enumerate packages ~f:(fun (package : Lock_dir.Pkg.t) ->
-          Pp.textf
-            "%s.%s"
-            (Package_name.to_string package.info.name)
-            (Package_version.to_string package.info.version))
-      ])
 ;;
 
 let dependency_digest local_packages =
@@ -226,88 +180,124 @@ let validate_dependency_hash local_packages ~saved_dependency_hash =
         ]
 ;;
 
-let validate t =
-  validate_dependency_hash
-    t.local_packages
-    ~saved_dependency_hash:t.lock_dir.dependency_hash;
-  all_non_local_dependencies_of_local_packages t
-  |> check_for_unnecessary_packges_in_lock_dir ~platform:t.platform t.lock_dir
+let make ~platform local_packages lock_dir =
+  let lock_packages =
+    Lock_dir.Packages.pkgs_on_platform_by_name ~platform lock_dir.Lock_dir.packages
+  in
+  let version_by_package_name = version_by_package_name local_packages lock_packages in
+  { local_packages; lock_dir; platform; lock_packages; version_by_package_name }
 ;;
 
-let create ~platform local_packages lock_dir =
-  try
-    let version_by_package_name =
-      version_by_package_name ~platform local_packages lock_dir
-    in
-    let t = { local_packages; lock_dir; platform; version_by_package_name } in
-    validate t;
-    Ok t
-  with
-  | User_error.E e -> Error e
-;;
-
-let local_transitive_dependency_closure_without_test =
-  let module Top_closure = Top_closure.Make (Package_name.Set) (Monad.Id) in
-  fun t start ->
-    match
-      Top_closure.top_closure
-        ~deps:(fun a ->
-          concrete_dependencies_of_local_package t a ~with_test:false
-          |> List.filter ~f:(Package_name.Map.mem t.local_packages))
-        ~key:Fun.id
-        start
-    with
-    | Ok s -> Package_name.Set.of_list s
-    | Error _ -> Code_error.raise "cycles aren't allowed because we forbid post deps" []
+(* The immediate dependencies of a node of the combined workspace/lockdir
+   dependency graph. Local packages contribute the concrete dependencies of
+   their formula; lock packages contribute the dependencies declared for the
+   current platform. Names that resolve to neither kind of package are
+   leaves: for valid input they can only be dune or a package disabled on
+   the current platform. *)
+let immediate_build_dependencies (t : t) package_name =
+  match Package_name.Map.find t.local_packages package_name with
+  | Some _ -> concrete_dependencies_of_local_package t package_name ~with_test:false
+  | None ->
+    (match Package_name.Map.find t.lock_packages package_name with
+     | None -> []
+     | Some package ->
+       Lock_dir.Conditional_choice.choose_for_platform
+         package.depends
+         ~platform:t.platform
+       |> Option.value ~default:[]
+       |> List.map ~f:(fun (dependency : Lock_dir.Dependency.t) -> dependency.name))
 ;;
 
 let transitive_dependency_closure_without_test t start =
-  let local_package_names = Package_name.Set.of_keys t.local_packages in
-  let local_transitive_dependency_closure =
-    local_transitive_dependency_closure_without_test
-      t
-      (Package_name.Set.inter local_package_names start |> Package_name.Set.to_list)
+  let rec loop seen = function
+    | [] -> seen
+    | name :: names ->
+      if Package_name.Set.mem seen name
+      then loop seen names
+      else
+        loop (Package_name.Set.add seen name) (immediate_build_dependencies t name @ names)
   in
-  let non_local_transitive_dependency_closure =
-    let non_local_immediate_dependencies_of_local_transitive_dependency_closure =
-      local_transitive_dependency_closure
-      |> Package_name.Set.to_list
-      |> Package_name.Set.union_map ~f:(fun name ->
-        let all_deps =
-          concrete_dependencies_of_local_package t name ~with_test:false
-          |> Package_name.Set.of_list
-        in
-        Package_name.Set.diff all_deps local_package_names)
-    in
-    match
-      Lock_dir.transitive_dependency_closure
-        t.lock_dir
-        ~platform:t.platform
-        Package_name.Set.(
-          union
-            non_local_immediate_dependencies_of_local_transitive_dependency_closure
-            (diff start local_package_names))
-    with
-    | Ok x -> x
-    | Error (`Missing_packages missing_packages) ->
-      Code_error.raise
-        "Attempted to find non-existent packages in lockdir after validation which \
-         should not be possible"
-        (Package_name.Set.to_list missing_packages
-         |> List.map ~f:(fun p -> "missing package", Package_name.to_dyn p))
-  in
-  Package_name.Set.union
-    local_transitive_dependency_closure
-    non_local_transitive_dependency_closure
+  loop Package_name.Set.empty (Package_name.Set.to_list start)
 ;;
 
 let contains_package t package_name =
   let in_local_packages = Package_name.Map.mem t.local_packages package_name in
-  let lock_dir_packages =
-    Lock_dir.Packages.pkgs_on_platform_by_name ~platform:t.platform t.lock_dir.packages
-  in
-  let in_lock_dir = Package_name.Map.mem lock_dir_packages package_name in
+  let in_lock_dir = Package_name.Map.mem t.lock_packages package_name in
   in_local_packages || in_lock_dir
+;;
+
+let check_lock_packages_do_not_depend_on_local_packages t =
+  Package_name.Map.iter
+    t.lock_packages
+    ~f:(fun { Lock_dir.Pkg.depends; info = { name = package_name; _ }; _ } ->
+      Lock_dir.Conditional_choice.choose_for_platform depends ~platform:t.platform
+      |> Option.value ~default:[]
+      |> List.iter ~f:(fun { Lock_dir.Dependency.name = dependency_name; loc } ->
+        if
+          (not (Package_name.equal dependency_name Dune_dep.name))
+          && Package_name.Map.mem t.local_packages dependency_name
+        then
+          User_error.raise
+            ~loc
+            [ Pp.textf
+                "Dune does not support packages outside the workspace depending on \
+                 packages in the workspace. The package %S is not in the workspace but \
+                 it depends on the package %S which is in the workspace."
+                (Package_name.to_string package_name)
+                (Package_name.to_string dependency_name)
+            ]))
+;;
+
+let check_for_unnecessary_packges_in_lock_dir
+      t
+      all_non_local_dependencies_of_local_packages
+  =
+  let unneeded_packages_in_lock_dir =
+    let locked_transitive_closure_of_local_package_dependencies =
+      transitive_dependency_closure_without_test
+        t
+        all_non_local_dependencies_of_local_packages
+    in
+    Package_name.Set.diff
+      (Package_name.Set.of_keys t.lock_packages)
+      locked_transitive_closure_of_local_package_dependencies
+  in
+  if Package_name.Set.is_empty unneeded_packages_in_lock_dir
+  then ()
+  else (
+    let packages =
+      Package_name.Set.to_list unneeded_packages_in_lock_dir
+      |> List.map ~f:(Package_name.Map.find_exn t.lock_packages)
+    in
+    User_error.raise
+      ~hints:lockdir_regenerate_hints
+      [ Pp.text
+          "The lockdir contains packages which are not among the transitive dependencies \
+           of any local package:"
+      ; Pp.enumerate packages ~f:(fun (package : Lock_dir.Pkg.t) ->
+          Pp.textf
+            "%s.%s"
+            (Package_name.to_string package.info.name)
+            (Package_version.to_string package.info.version))
+      ])
+;;
+
+let validate t =
+  validate_dependency_hash
+    t.local_packages
+    ~saved_dependency_hash:t.lock_dir.dependency_hash;
+  check_lock_packages_do_not_depend_on_local_packages t;
+  all_non_local_dependencies_of_local_packages t
+  |> check_for_unnecessary_packges_in_lock_dir t
+;;
+
+let create ~platform local_packages lock_dir =
+  try
+    let t = make ~platform local_packages lock_dir in
+    validate t;
+    Ok t
+  with
+  | User_error.E e -> Error e
 ;;
 
 let check_contains_package t package_name =

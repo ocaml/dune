@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792809152313,
+  "lastUpdate": 1792809168644,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -657748,6 +657748,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.722230467213333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "98a82abc21886dc9b147a2cda55ee4a35328f8da",
+          "message": "test(stdune): demonstrate RGB background escape errors (#16713)\n\nAdd serialization checks for indexed and true-color\nforeground/background styles, complementing the existing escape-parsing\ntests.\n\nThis passing reproducer intentionally records the current bug:\nbackgrounds emit foreground SGR prefixes (`38`) instead of background\nprefixes (`48`). The implementation fix is kept separate.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T10:15:36+08:00",
+          "tree_id": "495c86815000a936a78bd92a0f1db03348a88480",
+          "url": "https://github.com/ocaml/dune/commit/98a82abc21886dc9b147a2cda55ee4a35328f8da"
+        },
+        "date": 1792808791541,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.64039452552,
             "unit": "seconds"
           }
         ]

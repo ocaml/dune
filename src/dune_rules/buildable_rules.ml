@@ -80,6 +80,7 @@ let modules_rules
       modules
       ~lib_name
       ~empty_intf_modules
+      ~for_
   =
   let { Preprocess.config = preprocess; preprocessor_deps } = preprocess in
   let* pp =
@@ -103,6 +104,7 @@ let modules_rules
       ~instrumentation_deps
       ~lint
       ~lib_name
+      ~mode:for_
   in
   let add_empty_intf =
     let default = empty_module_interface_if_absent in
@@ -177,4 +179,5 @@ let modules_rules sctx kind expander ~dir scope modules ~for_ =
     modules
     ~lib_name
     ~empty_intf_modules
+    ~for_
 ;;

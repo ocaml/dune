@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792809287194,
+  "lastUpdate": 1792809472684,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -473365,6 +473365,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5434552858866667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5124c87f5d3633eaadf9f5b4057933a9433f30bc",
+          "message": "test(pkg): validate repository layouts and archive URLs (#16720)\n\nExtend invalid opam repository tests to cover a `packages` entry that is\na regular file and an archive URL.\n\nVerify the repository-layout error and that archive URLs are rejected\nbefore any download is attempted.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T10:15:27+08:00",
+          "tree_id": "06199cd2b55e073a8717144454f85bca03b304a3",
+          "url": "https://github.com/ocaml/dune/commit/5124c87f5d3633eaadf9f5b4057933a9433f30bc"
+        },
+        "date": 1792809470669,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 61.80469602764666,
             "unit": "seconds"
           }
         ]

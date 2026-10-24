@@ -46,15 +46,15 @@ sandboxing.
   $ with_timeout dune_cmd wait-for-file-to-appear "$cancelled"
   $ build_quiet fast
 
-Cancellation currently leaves partial outputs in place, while a subsequent
-successful rule keeps its completed output.
+Cancellation removes partial outputs, while a subsequent successful rule keeps
+its completed output.
 
   $ dune_cmd exists _build/default/slow
-  true
+  false
   $ dune_cmd exists _build/default/partial-file
-  true
+  false
   $ dune_cmd exists _build/default/partial-dir
-  true
+  false
   $ cat _build/default/fast
   fast
   $ stop_dune_quiet
@@ -111,8 +111,8 @@ Shutdown cancels pending RPC build requests.
   $ wait_for_pid_to_exit_with_timeout "$SLOW" 200 || (cat slow.out; false)
   $ wait "$SLOW" || true
 
-RPC build failures are reported to the client. Failed unsandboxed actions
-currently retain their partial outputs too.
+RPC build failures are reported to the client. Failed unsandboxed actions have
+their partial outputs removed too.
 
   $ cat > dune <<EOF
   > (rule
@@ -130,9 +130,9 @@ currently retain their partial outputs too.
   Failure
   [1]
   $ dune_cmd exists _build/default/fail
-  true
+  false
   $ dune_cmd exists _build/default/failed-file
-  true
+  false
   $ dune_cmd exists _build/default/failed-dir
-  true
+  false
   $ stop_dune_quiet

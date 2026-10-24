@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792859369558,
+  "lastUpdate": 1792859401389,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -474409,6 +474409,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.55820457288,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4ea21749eddc1af1bd03460af72d57971fd5c3de",
+          "message": "fix(stdune): emit background codes for RGB styles (#16738)\n\nEmit background SGR codes (`48;5;...` and `48;2;...`) for indexed and\ntrue-color background styles instead of the foreground codes they\ncurrently use.\n\nSelect the foreground/background prefix in the style encoder, preserving\nforeground output, and update the existing regression expectations.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T00:12:23+08:00",
+          "tree_id": "1d70eee60cd11efeb877bcd46148ef7d3ea5fd3d",
+          "url": "https://github.com/ocaml/dune/commit/4ea21749eddc1af1bd03460af72d57971fd5c3de"
+        },
+        "date": 1792859398953,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 48.67052195970666,
             "unit": "seconds"
           }
         ]

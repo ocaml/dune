@@ -161,10 +161,12 @@ module Artifact = struct
   type t =
     { odoc_file : Path.Build.t
     ; target : target
+    ; open_modules : Module_name.t list
     }
 
-  let make ~target odoc_file = { odoc_file; target }
+  let make ~target ~open_modules odoc_file = { odoc_file; target; open_modules }
   let odoc_file t = t.odoc_file
+  let open_modules t = t.open_modules
 
   let basename t =
     Path.Build.basename t.odoc_file |> Filename.remove_extension |> Filename.to_string
@@ -463,6 +465,15 @@ let odoc_include_flags ctx pkg requires =
         :: List.concat_map paths ~f:(fun dir -> [ Command.Args.A "-I"; Path dir ])))
 ;;
 
+let open_flags = function
+  | [] -> Command.Args.empty
+  | open_modules ->
+    Command.Args.As
+      (List.concat_map
+         ("Stdlib" :: List.map open_modules ~f:Module_name.to_string)
+         ~f:(fun name -> [ "--open"; name ]))
+;;
+
 let link_odoc_rules sctx (odoc_file : Artifact.t) ~pkg ~requires =
   let ctx = Super_context.context sctx in
   let deps = Dep.deps ctx pkg requires in
@@ -475,6 +486,7 @@ let link_odoc_rules sctx (odoc_file : Artifact.t) ~pkg ~requires =
       ~quiet:false
       ~flags_for:(Some (Artifact.odoc_file odoc_file))
       [ odoc_include_flags ctx pkg requires
+      ; open_flags (Artifact.open_modules odoc_file)
       ; A "-o"
       ; Target (Artifact.odocl_file ctx odoc_file)
       ; Dep (Path.build (Artifact.odoc_file odoc_file))
@@ -783,14 +795,16 @@ let libs_of_pkg ctx ~pkg =
     is_documentation_relevant (Lib.Local.to_lib lib))
 ;;
 
-let entry_modules_by_lib sctx lib =
+let modules_by_lib sctx lib =
   let info = Lib.Local.info lib in
   let for_merlin =
     Compilation_mode.Set.of_lib_mode_set (Lib_info.modes info)
     |> Compilation_mode.Set.for_merlin
   in
-  Dir_contents.modules_of_local_lib sctx lib ~for_:for_merlin >>| Modules.entry_modules
+  Dir_contents.modules_of_local_lib sctx lib ~for_:for_merlin
 ;;
+
+let entry_modules_by_lib sctx lib = modules_by_lib sctx lib >>| Modules.entry_modules
 
 let entry_modules sctx ~pkg =
   let* l =
@@ -870,12 +884,17 @@ let odoc_artefacts sctx target =
         | Some _ as s -> s)
     in
     String.Map.to_list_map mlds ~f:(fun _ (path, name) ->
-      Mld.create ~path ~name |> Mld.odoc_file ~doc_dir:dir |> Artifact.make ~target)
+      Mld.create ~path ~name
+      |> Mld.odoc_file ~doc_dir:dir
+      |> Artifact.make ~target ~open_modules:[])
   | Lib lib ->
     let info = Lib.Local.info lib in
     let obj_dir = Lib_info.obj_dir info in
-    let+ modules = entry_modules_by_lib sctx lib in
-    List.map modules ~f:(fun m -> Obj_dir.Module.odoc obj_dir m |> Artifact.make ~target)
+    let+ modules = modules_by_lib sctx lib in
+    let with_vlib = Modules.With_vlib.modules modules in
+    List.map (Modules.entry_modules modules) ~f:(fun m ->
+      Obj_dir.Module.odoc obj_dir m
+      |> Artifact.make ~target ~open_modules:(Modules.With_vlib.local_open with_vlib m))
 ;;
 
 let setup_lib_odocl_rules_def =

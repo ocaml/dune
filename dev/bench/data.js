@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792813514304,
+  "lastUpdate": 1792813634055,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -658241,6 +658241,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.45173341292,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5e3f31f82c11f8389b92470a8f168b407056c2fb",
+          "message": "test: remove incidental ordering assumptions (#16728)\n\nMake two existing blackbox tests independent of incidental rule\nordering:\n\n- Test source/generated-file conflicts one at a time in\n`files-stanza.t`, while retaining the check that both artifacts can be\nexcluded.\n- Sort independent alias output in `shadow-bindings.t/run.t`, keeping\nthe Dune invocation separate so failures are not hidden by a pipeline.\n\nNo production changes.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T11:30:20+08:00",
+          "tree_id": "51a4f7c5e79c69b40e59e5207b048b5770e5874f",
+          "url": "https://github.com/ocaml/dune/commit/5e3f31f82c11f8389b92470a8f168b407056c2fb"
+        },
+        "date": 1792813257429,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.63807567752,
             "unit": "seconds"
           }
         ]

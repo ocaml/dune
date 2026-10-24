@@ -14,6 +14,26 @@ val create
   -> Lock_dir.t
   -> (t, User_message.t) result
 
+(** Like [create], but doesn't check that the lockdir is the exact solution for
+    the local packages, so the lockdir may contain packages which no local
+    package needs. Raises if a package is both local and in the lockdir. *)
+val create_unvalidated
+  :  platform:Solver_env.t
+  -> Local_package.t Package_name.Map.t
+  -> Lock_dir.t
+  -> t
+
+(** The packages which the solver selects as dependencies of a local package:
+    the packages of its dependency formula, with filters evaluated against the
+    solver variables of the lockdir, and its optional dependencies present in
+    the universe. Raises a [User_error] if the formula can't be satisfied from
+    the universe. *)
+val selected_dependencies_of_local_package
+  :  t
+  -> Package_name.t
+  -> with_test:bool
+  -> Package_name.t list
+
 val dependency_digest
   :  Local_package.t Package_name.Map.t
   -> Local_package.Dependency_hash.t option

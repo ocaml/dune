@@ -316,6 +316,8 @@ CAMLprim value dune_spawn_pipe()
    | Code executed in the child                                      |
    +-----------------------------------------------------------------+ */
 
+#if !defined(USE_POSIX_SPAWN)
+
 enum error_arg { NOTHING, CWD, PROG };
 
 /* Structure used to communicate errors from the child to the
@@ -387,6 +389,8 @@ static void subprocess_failure(int failure_fd,
   _exit(127);
 }
 
+#endif
+
 /* same as [dup] but ensures the result is -1 or >= 3. */
 static int safe_dup(int fd)
 {
@@ -400,6 +404,8 @@ static int safe_dup(int fd)
   }
 }
 
+#if !defined(USE_POSIX_SPAWN)
+
 /* same as [safe_dup] but writes errors to a file descriptor,
    as from a subprocess. */
 static int safe_dup_failure_fd(int failure_fd, int fd)
@@ -408,6 +414,8 @@ static int safe_dup_failure_fd(int failure_fd, int fd)
   if (new_fd == -1) subprocess_failure(failure_fd, "dup", NOTHING);
   return new_fd;
 }
+
+#endif
 
 enum working_dir_kind { PATH, FD, INHERIT };
 
@@ -428,6 +436,8 @@ struct spawn_info {
   pid_t parent_pid;
   sigset_t child_sigmask;
 };
+
+#if !defined(USE_POSIX_SPAWN)
 
 static void reset_signal_to_default(int signal)
 {
@@ -549,6 +559,8 @@ static void raise_subprocess_failure(struct subprocess_failure* failure,
   assert(memchr(failure->function, 0, sizeof(failure->function)));
   unix_error(failure->error, failure->function, arg);
 }
+
+#endif
 
 /* Convert a list of [(variable, value)] pairs into a NULL terminated array
    of C strings. */

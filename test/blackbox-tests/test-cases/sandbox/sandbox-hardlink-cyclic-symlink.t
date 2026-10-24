@@ -73,15 +73,10 @@ So, it seems like we must play dirty to create a symbolic link loop.
 
   $ (cd ..; rm link; ln -s file link)
 
-Finally, we get to see the error message printed out at sandbox creation.
+The shared traversal catches the cycle with [stat] during sandbox population,
+before attempting to create a hardlink.
 
   $ dune build t --sandbox hardlink
-  File "dune", lines 8-11, characters 0-103:
-   8 | (rule
-   9 |  (targets t)
-  10 |  (deps link dirty-rule)
-  11 |  (action (bash "cp %{deps} t; dune_cmd stat kind %{deps}")))
-  Error: Sandbox creation error: cannot resolve symbolic link
-  "_build/default/link".
-  Reason: Too many indirections; is this a cyclic symbolic link?
+  Error: stat(_build/default/link): Too many levels of symbolic links
+  -> required by _build/default/t
   [1]

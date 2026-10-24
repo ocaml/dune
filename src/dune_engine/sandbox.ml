@@ -114,7 +114,7 @@ let map_path t p =
   | No_sandbox _ -> p
 ;;
 
-let copy_recursively =
+let link_function ~(mode : Sandbox_mode.some) =
   let chmod_file = Permissions.add Permissions.write in
   let chmod_dir p =
     Permissions.add Permissions.execute p |> Permissions.add Permissions.write
@@ -125,7 +125,7 @@ let copy_recursively =
         [ Pp.text "Re-run Dune to delete the stale artifact, or manually delete this file"
         ]
       [ Pp.textf
-          "Failed to copy file %s of kind %S while creating a copy sandbox"
+          "Failed to sandbox file %s of kind %S"
           (Path.to_string_maybe_quoted src)
           (File_kind.to_string_hum kind)
       ]
@@ -140,13 +140,26 @@ let copy_recursively =
               "Re-run Dune to delete the stale artifact, or manually delete this file"
           ]
         [ Pp.textf
-            "Failed to copy file %s because it is a broken symbolic link while creating \
-             a copy sandbox"
+            "Failed to sandbox file %s because it is a broken symbolic link"
             (Path.to_string_maybe_quoted src)
         ]
   in
-  let copy_file ~src ~dst =
-    Io.copy_file ~overwrite:false ~chmod:chmod_file ~src ~dst ()
+  let copy_file =
+    match mode with
+    | Hardlink -> Io.portable_hardlink
+    | Copy | Patch_back_source_tree ->
+      (* We need to let the action modify its dependencies, so we copy
+         dependencies and make them writable. *)
+      fun ~src ~dst -> Io.copy_file ~overwrite:false ~chmod:chmod_file ~src ~dst ()
+    | Symlink ->
+      (match Sys.win32 with
+       | true ->
+         User_error.raise
+           [ Pp.text
+               "Sandboxing mode symlink is not supported on Windows. Use copy or \
+                hardlink instead."
+           ]
+       | false -> Io.portable_symlink)
   in
   let mkdir_with_perms ~src ~dst =
     let perms =
@@ -154,7 +167,7 @@ let copy_recursively =
     in
     Path.mkdir_p ~perms dst
   in
-  fun ~src ~dst ->
+  let copy_recursively ~src ~dst =
     Tree_copy.copy
       ~src
       ~dst
@@ -163,6 +176,13 @@ let copy_recursively =
       ~on_unsupported:raise_other_kind
       ~on_symlink:(`Call resolve_symlink_kind)
       ()
+  in
+  Staged.stage
+    (match mode with
+     | Patch_back_source_tree ->
+       (* CR-someday: this doesn't work with directory targets *)
+       copy_file
+     | Copy | Symlink | Hardlink -> copy_recursively)
 ;;
 
 let create_dir t dir =
@@ -183,31 +203,6 @@ let create_dir t dir =
 
 let create_dirs t dirs = Path.Build.Set.iter dirs ~f:(fun dir -> create_dir t dir)
 
-let link_function ~(mode : Sandbox_mode.some) =
-  let win32_error mode =
-    let mode = Sandbox_mode.to_string (Some mode) in
-    User_error.raise
-      [ Pp.textf
-          "Sandboxing mode %s is not supported on Windows. Use copy or hardlink instead."
-          mode
-      ]
-  in
-  Staged.stage
-    (match mode with
-     | Symlink ->
-       (match Sys.win32 with
-        | true -> win32_error mode
-        | false -> fun src dst -> Io.portable_symlink ~src ~dst)
-     | Copy -> fun src dst -> copy_recursively ~src ~dst
-     | Hardlink -> fun src dst -> Io.portable_hardlink ~src ~dst
-     | Patch_back_source_tree ->
-       (* We need to let the action modify its dependencies, so we copy
-          dependencies and make them writable. *)
-       (* CR-someday: this doesn't work with directory targets *)
-       let chmod = Permissions.add Permissions.write in
-       fun src dst -> Io.copy_file ~overwrite:false ~src ~dst ~chmod ())
-;;
-
 let link_deps t ~deps =
   let link = Staged.unstage (link_function ~mode:t.mode) in
   Path.Set.iter deps ~f:(fun path ->
@@ -221,7 +216,7 @@ let link_deps t ~deps =
           "Action depends on source tree. All actions should depend on the copies in the \
            build directory instead."
           [ "path", Path.to_dyn path ]
-    | Some p -> link path (Path.build (map_real_path t p)))
+    | Some p -> link ~src:path ~dst:(Path.build (map_real_path t p)))
 ;;
 
 let unlinked_deps t deps =

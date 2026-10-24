@@ -369,6 +369,25 @@ A later collection must notice that the previously live artifact is now unused.
   $ dune cache size --machine-readable
   0
 
+Entry-name validation accepts both hexadecimal cases, but rejects wrong lengths
+and non-hexadecimal characters. The two valid names remain distinct even on a
+case-insensitive filesystem.
+
+  $ reset
+  $ mkdir -p "$cache/files/v4/ab"
+  $ printf x > "$cache/files/v4/ab/abcdef0123456789abcdef0123456789"
+  $ printf xx > "$cache/files/v4/ab/ABCDEF0123456789ABCDEF0123456788"
+  $ printf ignored > "$cache/files/v4/ab/$(printf '%031d' 0)"
+  $ printf ignored > "$cache/files/v4/ab/$(printf '%033d' 0)"
+  $ printf ignored > "$cache/files/v4/ab/zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+  $ printf ignored > "$cache/files/v4/ab/ABCDEF0123456789ABCDEF012345678G"
+  $ dune cache size --machine-readable
+  3
+  $ dune cache trim --size 0
+  Freed 3B (2 files removed)
+  $ find "$cache/files/v4/ab" -type f | dune_cmd count-lines
+  4
+
 Test metadata for directory targets, which are stored with no digest.
 
   $ reset

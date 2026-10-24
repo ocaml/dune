@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792845573479,
+  "lastUpdate": 1792845580043,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -474090,6 +474090,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 59.7638656871,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a1d1a0db8daf978d9e48bd1d20c165359bce047b",
+          "message": "refactor(opam): share Dune 3 build command generation (#16732)\n\nDeduplicate the Dune 3 opam build-command templates into one generator\nwith explicit install-alias and runtest-target choices.\n\nPreserve substitution, sites/install handling, and the existing command\ndifferences for pre-3.23 projects and exclusive package directories.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T20:17:40+08:00",
+          "tree_id": "cdf47aae366dbae3dc37846beafbb01a79eba836",
+          "url": "https://github.com/ocaml/dune/commit/a1d1a0db8daf978d9e48bd1d20c165359bce047b"
+        },
+        "date": 1792845579255,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5243838176066666,
             "unit": "seconds"
           }
         ]

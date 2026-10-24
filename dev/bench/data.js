@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792814941952,
+  "lastUpdate": 1792814949121,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -473916,6 +473916,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 59.36929033550666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e5a6758be9b682b941adba84efc93335120f96ae",
+          "message": "test(runtime): preserve action runtime parameters (#16726)\n\nAdd a blackbox test verifying that Dune's internal runtime defaults and\nmarker do not leak into build actions, while explicit `OCAMLRUNPARAM`\nand legacy `CAMLRUNPARAM` values are preserved by `dune exec`.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T11:46:54+08:00",
+          "tree_id": "7681687fb83033df116a29e353b482a4d1e92aac",
+          "url": "https://github.com/ocaml/dune/commit/e5a6758be9b682b941adba84efc93335120f96ae"
+        },
+        "date": 1792814948012,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5199649406933334,
             "unit": "seconds"
           }
         ]

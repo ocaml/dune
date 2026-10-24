@@ -337,3 +337,21 @@ let%expect_test "parse 24-bit colors" =
           Tag ([ Bg_24_bit_color [ 0; 0; 255 ] ], Verbatim "green background")))
 |}]
 ;;
+
+let%expect_test "RGB background colors incorrectly use foreground SGR codes" =
+  let color8 = Ansi_color.RGB8.of_int 67 in
+  let color24 = Ansi_color.RGB24.make ~red:17 ~green:83 ~blue:249 in
+  List.iter
+    [ `Fg_8_bit_color color8
+    ; `Bg_8_bit_color color8
+    ; `Fg_24_bit_color color24
+    ; `Bg_24_bit_color color24
+    ]
+    ~f:(fun style -> printfn "%S" (Ansi_color.Style.escape_sequence [ style ]));
+  [%expect
+    {|
+    "\027[0;38;5;67m"
+    "\027[0;38;5;67m"
+    "\027[0;38;2;17;83;249m"
+    "\027[0;38;2;17;83;249m" |}]
+;;

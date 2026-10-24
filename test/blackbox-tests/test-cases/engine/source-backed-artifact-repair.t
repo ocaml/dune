@@ -26,6 +26,34 @@ must be invalidated.
   $ cat _build/default/foo/child
   generated
 
+Replacing a source with identical contents must not rerun dependent rules.
+
+  $ mkdir identical-contents
+  $ cd identical-contents
+  $ make_dune_project 3.0
+  $ cat > dune <<EOF
+  > (rule
+  >  (target result)
+  >  (deps payload)
+  >  (action
+  >   (progn
+  >    (run echo rebuilt)
+  >    (copy payload result))))
+  > EOF
+  $ echo original > payload
+  $ dune build result
+  rebuilt
+  $ cmp payload _build/default/result
+  $ cp payload .#replacement
+  $ mv .#replacement payload
+  $ dune build result
+  $ cmp payload _build/default/result
+  $ echo changed > payload
+  $ dune build result
+  rebuilt
+  $ cmp payload _build/default/result
+  $ cd ..
+
 A source-backed file must replace a generated symlink even when their
 contents match, so unrelated builds cannot mutate the source snapshot.
 

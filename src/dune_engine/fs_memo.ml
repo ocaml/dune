@@ -168,13 +168,12 @@ module Cached_digest = struct
     cache.max_timestamp <- Time.max cache.max_timestamp stat.mtime
   ;;
 
-  let set_with_stat ~table path contents stat =
-    let cache = Lazy.force cache in
+  let set_with_stat (cache : t) ~table path contents stat =
     needs_dumping := true;
     Workspace_cache.mark_dirty ();
     set_max_timestamp cache stat;
     Path.Table.set
-      (table cache)
+      table
       path
       ({ contents; stats = Stats.of_stat stat; stats_checked = cache.checked_key }
        : _ file)
@@ -192,7 +191,8 @@ module Cached_digest = struct
          return [No_such_file] even if the caller managed to obtain the [stats]. *)
       let result = digest_path_with_stats path stats in
       Result.iter result ~f:(fun digest ->
-        set_with_stat ~table:(fun t -> t.table) path digest stats);
+        let ({ table; _ } as cache : t) = Lazy.force cache in
+        set_with_stat cache ~table path digest stats);
       result
     in
     fun path ->
@@ -207,9 +207,8 @@ module Cached_digest = struct
            | _stats_so_must_be_a_symlink -> Error Broken_symlink))
   ;;
 
-  let peek ~table path ~f ~emit =
-    let cache = Lazy.force cache in
-    match Path.Table.find (table cache) path with
+  let peek (cache : t) ~table path ~f ~emit =
+    match Path.Table.find table path with
     | None -> None
     | Some (x : _ file) ->
       Some
@@ -258,9 +257,11 @@ module Cached_digest = struct
   module Untracked = struct
     let source_or_external_file path =
       let path = Path.outside_build_dir path in
+      let ({ table; _ } as cache : t) = Lazy.force cache in
       match
         peek
-          ~table:(fun x -> x.table)
+          cache
+          ~table
           path
           ~f:digest_path_with_stats
           ~emit:(fun path ~old_contents ~new_contents ~old_stats ~new_stats ->
@@ -276,10 +277,9 @@ module Cached_digest = struct
       | None -> refresh path
     ;;
 
-    let invalidate_cached_timestamp ~table path =
+    let invalidate_cached_timestamp (cache : t) ~table path =
       let path = Path.outside_build_dir path in
-      let cache = Lazy.force cache in
-      match Path.Table.find (table cache) path with
+      match Path.Table.find table path with
       | None -> ()
       | Some (entry : _ file) ->
         (* Make [stats_checked] unequal to [cache.checked_key] so that [peek]
@@ -288,11 +288,13 @@ module Cached_digest = struct
     ;;
 
     let invalidate_cached_timestamp_file path =
-      invalidate_cached_timestamp ~table:(fun t -> t.table) path
+      let ({ table; _ } as cache : t) = Lazy.force cache in
+      invalidate_cached_timestamp cache ~table path
     ;;
 
     let invalidate_cached_timestamp_dirs path =
-      invalidate_cached_timestamp ~table:(fun t -> t.dir_contents) path
+      let ({ dir_contents = table; _ } as cache : t) = Lazy.force cache in
+      invalidate_cached_timestamp cache ~table path
     ;;
 
     let readdir =
@@ -314,9 +316,11 @@ module Cached_digest = struct
       fun path ->
         match
           let path = Path.outside_build_dir path in
+          let ({ dir_contents = table; _ } as cache : t) = Lazy.force cache in
           match
             peek
-              ~table:(fun x -> x.dir_contents)
+              cache
+              ~table
               path
               ~f:(fun path _stat -> readdir path)
               ~emit:(fun path ~old_contents ~new_contents ~old_stats ~new_stats ->
@@ -336,7 +340,7 @@ module Cached_digest = struct
              | stat ->
                let contents = readdir path in
                Result.iter contents ~f:(fun contents ->
-                 set_with_stat ~table:(fun t -> t.dir_contents) path contents stat);
+                 set_with_stat cache ~table path contents stat);
                contents)
         with
         | Ok s -> Ok s

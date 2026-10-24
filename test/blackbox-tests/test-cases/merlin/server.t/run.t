@@ -181,3 +181,42 @@ Dune should also provide configuration when the file is in the build folder
    (FLG
     (-open Mylib3))
    (UNIT_NAME mylib3__Lib3))
+
+An incompatible configuration from another stanza prevents finding the valid
+configuration for lib3.ml.
+
+  $ config=_build/default/.merlin-conf/lib-mylib
+  $ mv "$config" mylib.merlin-conf
+  $ printf invalid > "$config"
+  $ query_ocaml_merlin_pp lib3.ml \
+  >   | grep -Eo 'incompatible, version of Dune|UNIT_NAME [^)]*'
+  incompatible, version of Dune
+
+The file owned by the incompatible configuration also reports the error.
+
+  $ query_ocaml_merlin_pp lib.ml \
+  >   | grep -Eo 'incompatible, version of Dune|UNIT_NAME [^)]*'
+  incompatible, version of Dune
+
+Restoring only the other stanza's configuration makes the lookup succeed.
+
+  $ mv mylib.merlin-conf "$config"
+  $ query_ocaml_merlin_pp lib3.ml \
+  >   | grep -Eo 'incompatible, version of Dune|UNIT_NAME [^)]*'
+  UNIT_NAME mylib3__Lib3
+
+An incompatible configuration in a child directory also prevents finding a
+valid configuration in its parent.
+
+  $ mkdir -p _build/default/foobar/.merlin-conf
+  $ printf invalid > _build/default/foobar/.merlin-conf/lib-stale
+  $ query_ocaml_merlin_pp foobar/lib3.foobar.ml \
+  >   | grep -Eo 'incompatible, version of Dune|UNIT_NAME [^)]*'
+  incompatible, version of Dune
+
+Removing that configuration allows the parent lookup again.
+
+  $ rm _build/default/foobar/.merlin-conf/lib-stale
+  $ query_ocaml_merlin_pp foobar/lib3.foobar.ml \
+  >   | grep -Eo 'incompatible, version of Dune|UNIT_NAME [^)]*'
+  UNIT_NAME mylib3__Lib3

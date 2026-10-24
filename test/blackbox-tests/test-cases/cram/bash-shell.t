@@ -82,6 +82,7 @@ If the selected shell is missing, report that before attempting the test. Keep
 an OCaml toolchain on PATH so context initialization can still succeed.
 
   $ dune_bin=$(command -v dune)
+  $ export OCAMLLIB=$(ocamlc -where)
   $ mkdir toolchain
   $ for tool in ocamlc ocamldep ocamlopt; do
   >   ln -s "$(command -v "$tool")" "toolchain/$tool"

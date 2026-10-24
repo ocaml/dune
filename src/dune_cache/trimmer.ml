@@ -28,7 +28,7 @@ let trim_broken_metadata_entries ~trimmed_so_far =
         Layout.Versioned.file_path (Version.Metadata.file_version version)
       in
       Layout.Versioned.list_metadata_entries version
-      |> List.fold_left
+      |> Seq.fold_left
            ~init:trimmed_so_far
            ~f:(fun trimmed_so_far (path, rule_or_action_digest) ->
              let should_be_removed =
@@ -71,8 +71,7 @@ let garbage_collect () =
 ;;
 
 let files_in_cache_for_all_supported_versions () =
-  List.concat_map Version.File.all ~f:(fun file_version ->
-    Layout.Versioned.list_file_entries file_version)
+  Version.File.all |> List.to_seq |> Seq.concat_map ~f:Layout.Versioned.list_file_entries
 ;;
 
 (* We call a cached file "unused" if there are currently no hard links to it
@@ -92,7 +91,7 @@ end
 
 let unused_files_in_cache () =
   files_in_cache_for_all_supported_versions ()
-  |> List.filter_map ~f:(fun (path, _) ->
+  |> Seq.filter_map ~f:(fun (path, _) ->
     match Path.stat path with
     | Error _ -> None
     | Ok stats ->
@@ -119,6 +118,7 @@ let trim ~goal =
     then []
     else
       unused_files_in_cache ()
+      |> List.of_seq
       |> List.sort ~compare:(fun x y -> Float.compare x.Unused_file.ctime y.ctime)
   in
   let delete (trimmed_so_far : Trimming_result.t) { Unused_file.path; size; _ } =
@@ -136,8 +136,8 @@ let trim ~goal =
 
 let overhead_size () =
   unused_files_in_cache ()
-  |> List.fold_left ~init:0L ~f:(fun acc file ->
-    Int64.add acc (Int64.of_int file.Unused_file.size))
+  |> Seq.fold_left ~init:0L ~f:(fun total file ->
+    Int64.add total (Int64.of_int file.Unused_file.size))
 ;;
 
 let clear () =

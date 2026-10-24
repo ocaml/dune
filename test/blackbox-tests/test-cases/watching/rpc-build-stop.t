@@ -111,16 +111,28 @@ Shutdown cancels pending RPC build requests.
   $ wait_for_pid_to_exit_with_timeout "$SLOW" 200 || (cat slow.out; false)
   $ wait "$SLOW" || true
 
-RPC build failures are reported to the client.
+RPC build failures are reported to the client. Failed unsandboxed actions
+currently retain their partial outputs too.
 
   $ cat > dune <<EOF
   > (rule
-  >  (target fail)
-  >  (action (bash "exit 1")))
+  >  (targets fail failed-file (dir failed-dir))
+  >  (deps (sandbox none))
+  >  (action
+  >   (progn
+  >    (write-file fail partial)
+  >    (write-file failed-file partial)
+  >    (bash "mkdir -p failed-dir; echo partial > failed-dir/output; exit 1"))))
   > EOF
 
   $ start_dune
   $ dune rpc build --wait fail
   Failure
   [1]
+  $ dune_cmd exists _build/default/fail
+  true
+  $ dune_cmd exists _build/default/failed-file
+  true
+  $ dune_cmd exists _build/default/failed-dir
+  true
   $ stop_dune_quiet

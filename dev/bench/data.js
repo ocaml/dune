@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792843616168,
+  "lastUpdate": 1792843845460,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -473945,6 +473945,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5199649406933334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ad9df44b7cb94214329f47f0c9c822eb6970e4cc",
+          "message": "test(rpc): cover eager diagnostic rendering (#16711)\n\nCheck that `dune diagnostics` renders the eager watcher's current sticky\nerror with its source location.\n\nThe overlapping passive-watcher snapshot and error-clearing checks have\nlanded in #16721 and are retained unchanged by this rebase.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T19:53:00+08:00",
+          "tree_id": "ac3a8a1e7ee4b0bdece01fe553e14a4b831257c5",
+          "url": "https://github.com/ocaml/dune/commit/ad9df44b7cb94214329f47f0c9c822eb6970e4cc"
+        },
+        "date": 1792843842935,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 47.69650156742666,
             "unit": "seconds"
           }
         ]

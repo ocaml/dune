@@ -46,3 +46,28 @@ Test the error cases for invalid opam repositories
   doesn't look like a path to an opam repository as it lacks a subdirectory
   named "packages"
   [1]
+
+The packages entry itself must also be a directory.
+
+  $ mkdir packages-is-file
+  $ touch packages-is-file/packages
+  $ rm dune-workspace
+  $ add_mock_repo_if_needed "file://$PWD/packages-is-file"
+  $ lock
+  File "dune-workspace", line 6, characters X-X:
+  6 |  (url ..))
+  Error:
+  $TESTCASE_ROOT/packages-is-file/packages
+  is not a directory
+  [1]
+
+Archive URLs are rejected as repositories before attempting a download.
+
+  $ rm dune-workspace
+  $ add_mock_repo_if_needed "https://example.invalid/repository.tar.gz"
+  $ lock
+  File "dune-workspace", line 6, characters X-X:
+  6 |  (url ..))
+  Error: Repositories stored in archives
+  (https://example.invalid/repository.tar.gz) are currently unsupported
+  [1]

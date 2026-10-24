@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792811692573,
+  "lastUpdate": 1792811699568,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -473626,6 +473626,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.641117576393334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b6f0dbae91e6a357a661b302d4b47c192c4a1076",
+          "message": "test(monitor): cover waiting and diagnostic state transitions (#16721)\n\nCover `dune monitor` waiting for an RPC server, initializing, observing\nfailed and successful builds, and exiting when the server disconnects.\nUse separate monitor processes for the initial waiting check and the\n`--quit-on-disconnect` lifecycle so shutdown is deterministic.\n\nA passive watcher keeps the multi-error diagnostic snapshot stable while\nthe monitor transitions are checked.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T10:52:34+08:00",
+          "tree_id": "832f263d327ae4a4ab443e1a73676cd579586dee",
+          "url": "https://github.com/ocaml/dune/commit/b6f0dbae91e6a357a661b302d4b47c192c4a1076"
+        },
+        "date": 1792811698713,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5419287019000001,
             "unit": "seconds"
           }
         ]

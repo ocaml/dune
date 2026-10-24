@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792810942274,
+  "lastUpdate": 1792811251975,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -473539,6 +473539,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.53050181628,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "675a27797a9637d83a10656b105de85ce77aa549",
+          "message": "fix(stdune): use the expanded length when escaping strings (#16725)\n\nUse the expanded escaped length, rather than the input length, when\nallocating and quoting strings. This enables escaping of quotes,\nbackslashes, control characters, and non-printable bytes instead of\ncopying them verbatim.\n\nFlip the existing `dune trace cat --sexp` regression test from incorrect\nescaping to the expected output.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T10:45:06+08:00",
+          "tree_id": "06357b2edf0db45180f71744aa8fdabdb0d81164",
+          "url": "https://github.com/ocaml/dune/commit/675a27797a9637d83a10656b105de85ce77aa549"
+        },
+        "date": 1792811250390,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 59.94160892584667,
             "unit": "seconds"
           }
         ]

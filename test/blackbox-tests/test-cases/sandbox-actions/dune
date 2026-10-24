@@ -9,6 +9,11 @@
   (= %{system} linux)))
 
 (cram
+ (applies_to bwrap-errors.t)
+ (enabled_if
+  (= %{system} linux)))
+
+(cram
  (applies_to shared-cache.t))
 
 (cram

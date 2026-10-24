@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792808574006,
+  "lastUpdate": 1792808579424,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -657574,6 +657574,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.6079288300266668,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "071013857d463bac5e52492aa977a0862d18296d",
+          "message": "test(cache): pin metadata validation before specializing garbage collection (#16716)\n\nExtend cache-trimming tests across supported metadata versions to cover\nempty and directory-only metadata, header extensions, repeated\nreferences, uppercase digests, and malformed entries.\n\nVerify that later garbage-collection passes invalidate references after\ntheir artifacts are trimmed.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T10:06:12+08:00",
+          "tree_id": "d57e02ba76fc4c0df51fd0cff72ca59ad9769bbb",
+          "url": "https://github.com/ocaml/dune/commit/071013857d463bac5e52492aa977a0862d18296d"
+        },
+        "date": 1792808205340,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.642603471133333,
             "unit": "seconds"
           }
         ]

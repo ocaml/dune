@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792814555431,
+  "lastUpdate": 1792814563023,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -473800,6 +473800,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 60.58875983825334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3b4d008bfd5c8972ac0afe3ba268337af376ec4d",
+          "message": "test(rules): cover action path rendering (#16729)\n\nExtend `dune rules` tests to check path rendering for nested working\ndirectories and `copy#` extension payloads, unresolved programs without\nexecuting them, and symlink sources relative to the destination's\nparent.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T11:40:12+08:00",
+          "tree_id": "d2a20d6489a262fa99d87184b61463ae87cda4ab",
+          "url": "https://github.com/ocaml/dune/commit/3b4d008bfd5c8972ac0afe3ba268337af376ec4d"
+        },
+        "date": 1792814561716,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5353943308866667,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792814563023,
+  "lastUpdate": 1792814610806,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -658415,6 +658415,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.7468761669533337,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0db587dbc41786ac4bec2ef471379baae236e1a4",
+          "message": "test(cram): preserve OCAMLLIB when restricting PATH (#16723)\n\nThe missing-shell test symlinks the OCaml tools into a restricted PATH.\nOn macOS, a relocatable compiler can then look for its standard library\nrelative to the symlink and fail during context initialization, before\nreaching the expected missing-shell error.\n\nPreserve the original standard-library location through OCAMLLIB before\nrestricting PATH.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T11:46:38+08:00",
+          "tree_id": "7e05d900ba015722408378d4136587aaa070a873",
+          "url": "https://github.com/ocaml/dune/commit/0db587dbc41786ac4bec2ef471379baae236e1a4"
+        },
+        "date": 1792814236326,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.534877636546667,
             "unit": "seconds"
           }
         ]

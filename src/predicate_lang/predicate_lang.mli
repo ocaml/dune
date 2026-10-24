@@ -38,8 +38,8 @@ module Glob : sig
       inside the list [xs] *)
   val of_string_list : string list -> t
 
-  (** [of_string_list xs] return an expression that will only match any element
-      inside the set [xs] *)
+  (** [of_string_set xs] matches literal strings in [xs] using a sorted array
+      with logarithmic membership checks. *)
   val of_string_set : String.Set.t -> t
 
   val compare : t -> t -> Ordering.t

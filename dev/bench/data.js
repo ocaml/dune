@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792809168644,
+  "lastUpdate": 1792809287194,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -657777,6 +657777,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.64039452552,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fed3634256abc8c87bacebf2631d355fd82bac07",
+          "message": "test(bwrap): cover missing backends and command failures (#16719)\n\nAdd Linux-only cram coverage for missing commands, unavailable\nbubblewrap backends, and backend failures in `dune internal with-bwrap`.\nA fake backend verifies argument boundaries and exit-status propagation\nwithout creating a user namespace.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T10:17:22+08:00",
+          "tree_id": "a2b4d1bd950e2ae41dd4668e2b2a84acb373811e",
+          "url": "https://github.com/ocaml/dune/commit/fed3634256abc8c87bacebf2631d355fd82bac07"
+        },
+        "date": 1792808912738,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.541658537673333,
             "unit": "seconds"
           }
         ]

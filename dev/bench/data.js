@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792808888433,
+  "lastUpdate": 1792808893947,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -473278,6 +473278,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 60.11285421506667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "eb10066db71870462ec46b9e57927f355af895f0",
+          "message": "test(trace): demonstrate missing S-expression atom escaping (#16717)\n\nAdd a regression test for `dune trace cat --sexp` with atoms containing\nquotes, backslashes, control characters, and a high byte.\n\nRecord the current incorrect escaping explicitly, keeping the\nreproduction separate from the fix.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T10:05:54+08:00",
+          "tree_id": "aef3db661eb1a5278616acc140b96e21edefe3c3",
+          "url": "https://github.com/ocaml/dune/commit/eb10066db71870462ec46b9e57927f355af895f0"
+        },
+        "date": 1792808887539,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 60.98810577752667,
             "unit": "seconds"
           }
         ]

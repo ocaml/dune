@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792859362485,
+  "lastUpdate": 1792859369558,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -474380,6 +474380,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.20445330647333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "92f760e8614d05ea534f014f72401748f3bccf6a",
+          "message": "refactor(install): share directory option construction (#16739)\n\nFactor seven repeated install-directory override definitions into a\nlocal helper, preserving option names, defaults, absolute-path\nvalidation, and help text.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T00:05:37+08:00",
+          "tree_id": "85738b2491e861d3bbdf0391a43082958f4fa7d0",
+          "url": "https://github.com/ocaml/dune/commit/92f760e8614d05ea534f014f72401748f3bccf6a"
+        },
+        "date": 1792859368692,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.55820457288,
             "unit": "seconds"
           }
         ]

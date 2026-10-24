@@ -115,8 +115,11 @@ let unused_files_in_cache () =
      starting from the one that was least recently created or used. *)
 let trim ~goal =
   let files =
-    unused_files_in_cache ()
-    |> List.sort ~compare:(fun x y -> Float.compare x.Unused_file.ctime y.ctime)
+    if goal <= 0L
+    then []
+    else
+      unused_files_in_cache ()
+      |> List.sort ~compare:(fun x y -> Float.compare x.Unused_file.ctime y.ctime)
   in
   let delete (trimmed_so_far : Trimming_result.t) { Unused_file.path; size; _ } =
     if trimmed_so_far.trimmed_bytes >= goal

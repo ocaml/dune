@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792845740369,
+  "lastUpdate": 1792854943512,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -658937,6 +658937,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.9590027673733332,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8e74fc7c8b272940d6c439b8d0b3684dd828c1ca",
+          "message": "perf(cache): skip artifact scans for nonpositive trim goals (#16735)\n\n`dune cache trim --size ...` computes its byte goal as `overhead_size()\n- size`, which is zero or negative when the cache is already within the\nrequested limit.\n\nSkip the redundant artifact enumeration, stat calls, and sorting in that\ncase. Metadata garbage collection still runs. Existing regression tests\ncover zero and negative goals, including metadata collection.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T22:58:48+08:00",
+          "tree_id": "28d5c74c4a9a1acafc6e03d853e107c9a9ee23e4",
+          "url": "https://github.com/ocaml/dune/commit/8e74fc7c8b272940d6c439b8d0b3684dd828c1ca"
+        },
+        "date": 1792854566442,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.5355258223,
             "unit": "seconds"
           }
         ]

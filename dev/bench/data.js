@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792843923908,
+  "lastUpdate": 1792843930607,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -474032,6 +474032,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 59.63200502403333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "92569cd8bb9f8a1bb2e1bb792f2248c36ee6183a",
+          "message": "test(memo): characterize sequence dependency collection (#16727)\n\nCharacterize one-shot sequence consumption, branch ordering, cutoff\nrestoration, cached failures, and non-incremental error handling. The\nexpectations expose the current sequential dependency recording and\nrestoration before adding collector-aware sequence reduction.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T19:49:56+08:00",
+          "tree_id": "33ad0048309962852b28d47d731a49fbbc07cb32",
+          "url": "https://github.com/ocaml/dune/commit/92569cd8bb9f8a1bb2e1bb792f2248c36ee6183a"
+        },
+        "date": 1792843929779,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5168415542,
             "unit": "seconds"
           }
         ]

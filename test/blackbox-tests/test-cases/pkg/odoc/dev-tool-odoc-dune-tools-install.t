@@ -62,7 +62,7 @@ dep — dune will invoke it instead of relying on PATH:
 
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dev_tool_odoc_deps
   [
-    "_build/_private/default/.dev-tool/odoc/target/bin/odoc"
+    "_build/_private/default/.dev-tool/odoc/odoc/target/bin/odoc"
   ]
 
 Without the flag, `dune build @doc` also picks up the locked odoc (mirroring
@@ -71,7 +71,7 @@ rule deps:
 
   $ dev_tool_odoc_deps
   [
-    "_build/_private/default/.dev-tool/odoc/target/bin/odoc"
+    "_build/_private/default/.dev-tool/odoc/odoc/target/bin/odoc"
   ]
 
 Removing the lockdir reverts the rule graph to the baseline — with no lockdir

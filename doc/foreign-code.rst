@@ -137,7 +137,7 @@ file:
 .. code:: dune
 
   (lang dune {{latest}})
-  (using ctypes 0.3)
+  (using ctypes 0.4)
 
 
 Next, here is a ``dune`` file you can use to define an OCaml program that binds
@@ -303,11 +303,16 @@ descriptions by referencing them as the module specified in optional
    - ``(headers (preamble <preamble>)`` adds directly the preamble. Variables
      can be used in ``<preamble>`` such as ``%{read: }``.
 
-- ``(deps <deps-conf list>)`` declares additional dependencies, such as local
-  headers or libraries. Ctypes stub generation is sandboxed, so all such
-  dependencies must be declared. For example, use
+- ``(deps <deps-conf list>)`` declares additional dependencies for Ctypes stub
+  generation and compilation, such as local headers. Ctypes stub generation is
+  sandboxed, so all such dependencies must be declared. For example, use
   ``(deps (source_tree vendor))`` for headers kept in ``vendor``. See
   :doc:`concepts/dependency-spec` for more details.
+
+- ``(link_deps <deps-conf list>)`` declares dependencies for links that consume
+  ``c_library_flags``. This field is available since version 0.4 of the Ctypes
+  extension. These links are sandboxed, so vendored libraries and other local
+  link inputs must be declared.
 
 ``<optional-function-description-fields>`` are:
 

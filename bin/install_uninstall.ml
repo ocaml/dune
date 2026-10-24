@@ -741,6 +741,15 @@ let make ~what =
           else Ok path)
       , Arg.conv_printer Arg.string )
   in
+  let install_dir_arg name contents =
+    let doc =
+      sprintf
+        "Manually override the directory to install %s. Only absolute path accepted."
+        contents
+    in
+    Arg.(
+      value & opt (some absolute_path) None & info [ name ] ~docv:"PATH" ~doc:(Some doc))
+  in
   let term =
     let+ builder = Common.Builder.term
     and+ prefix_from_command_line =
@@ -776,69 +785,14 @@ let make ~what =
                  "Directory where library files are copied, relative to $(b,prefix) or \
                   absolute. If $(b,--prefix) is specified the default is \
                   $(i,\\$prefix/lib). Only absolute path accepted."))
-    and+ mandir_from_command_line =
-      let doc =
-        "Manually override the directory to install man pages. Only absolute path \
-         accepted."
-      in
-      Arg.(
-        value
-        & opt (some absolute_path) None
-        & info [ "mandir" ] ~docv:"PATH" ~doc:(Some doc))
-    and+ docdir_from_command_line =
-      let doc =
-        "Manually override the directory to install documentation files. Only absolute \
-         path accepted."
-      in
-      Arg.(
-        value
-        & opt (some absolute_path) None
-        & info [ "docdir" ] ~docv:"PATH" ~doc:(Some doc))
-    and+ etcdir_from_command_line =
-      let doc =
-        "Manually override the directory to install configuration files. Only absolute \
-         path accepted."
-      in
-      Arg.(
-        value
-        & opt (some absolute_path) None
-        & info [ "etcdir" ] ~docv:"PATH" ~doc:(Some doc))
-    and+ bindir_from_command_line =
-      let doc =
-        "Manually override the directory to install public binaries. Only absolute path \
-         accepted."
-      in
-      Arg.(
-        value
-        & opt (some absolute_path) None
-        & info [ "bindir" ] ~docv:"PATH" ~doc:(Some doc))
-    and+ sbindir_from_command_line =
-      let doc =
-        "Manually override the directory to install files from sbin section. Only \
-         absolute path accepted."
-      in
-      Arg.(
-        value
-        & opt (some absolute_path) None
-        & info [ "sbindir" ] ~docv:"PATH" ~doc:(Some doc))
-    and+ datadir_from_command_line =
-      let doc =
-        "Manually override the directory to install files from share section. Only \
-         absolute path accepted."
-      in
-      Arg.(
-        value
-        & opt (some absolute_path) None
-        & info [ "datadir" ] ~docv:"PATH" ~doc:(Some doc))
+    and+ mandir_from_command_line = install_dir_arg "mandir" "man pages"
+    and+ docdir_from_command_line = install_dir_arg "docdir" "documentation files"
+    and+ etcdir_from_command_line = install_dir_arg "etcdir" "configuration files"
+    and+ bindir_from_command_line = install_dir_arg "bindir" "public binaries"
+    and+ sbindir_from_command_line = install_dir_arg "sbindir" "files from sbin section"
+    and+ datadir_from_command_line = install_dir_arg "datadir" "files from share section"
     and+ libexecdir_from_command_line =
-      let doc =
-        "Manually override the directory to install executable library files. Only \
-         absolute path accepted."
-      in
-      Arg.(
-        value
-        & opt (some absolute_path) None
-        & info [ "libexecdir" ] ~docv:"PATH" ~doc:(Some doc))
+      install_dir_arg "libexecdir" "executable library files"
     and+ dry_run =
       Arg.(
         value

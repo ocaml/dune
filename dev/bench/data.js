@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792813508083,
+  "lastUpdate": 1792813514304,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -473684,6 +473684,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 42.2711269378,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "755bd4ae1130834636a85f5381ae1d2641613256",
+          "message": "fix(stdune): exclude fork-only helpers from posix_spawn builds (#16724)\n\nmacOS uses the posix_spawn backend, but spawn_stubs.c also compiles\nhelpers used only by the fork backend. This produces unused-function\nwarnings for subprocess and raise_subprocess_failure.\n\nCompile the fork-only helpers and their private dependencies only when\nUSE_POSIX_SPAWN is not defined, while retaining the helpers shared by\nboth backends.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-24T11:30:44+08:00",
+          "tree_id": "3494cfc46a55872117c2c7d19cf1a48a91fbcc31",
+          "url": "https://github.com/ocaml/dune/commit/755bd4ae1130834636a85f5381ae1d2641613256"
+        },
+        "date": 1792813513400,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.41275690564000006,
             "unit": "seconds"
           }
         ]

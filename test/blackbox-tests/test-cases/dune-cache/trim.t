@@ -294,6 +294,50 @@ of size zero. Metadata containing only directories survives.
   $ dune cache size --machine-readable
   0
 
+Check metadata validation, repeated references, and hexadecimal case across
+all supported versions. Extra fields in the metadata header are supported.
+
+  $ reset
+  $ lower=abcdef0123456789abcdef0123456789
+  $ upper=ABCDEF0123456789ABCDEF0123456789
+  $ for version in v3 v4; do
+  >   mkdir -p "$cache/files/$version/ab"
+  >   printf artifact > "$cache/files/$version/ab/$lower"
+  > done
+  $ write_metadata () {
+  >   for version in v3 v4 v5; do
+  >     mkdir -p "$cache/meta/$version/00"
+  >     name=$(printf '%032d' "$1")
+  >     printf '%s' "$2" > "$cache/meta/$version/00/$name"
+  >   done
+  > }
+  $ write_metadata 1 '((8:metadata)(5:files))'
+  $ write_metadata 2 '((8:metadata)(5:files(3:dir5:<dir>)))'
+  $ write_metadata 3 "((8:metadata)(5:files(1:a32:$lower)))"
+  $ write_metadata 4 "((8:metadata)(5:files(1:a32:$lower)(1:b32:$lower)(3:dir5:<dir>)))"
+  $ write_metadata 5 "((8:metadata(5:extra))(5:files(1:a32:$lower)))"
+  $ write_metadata 6 "((8:metadata)(5:files(6:dir/up32:$upper)))"
+  $ write_metadata 7 'broken'
+  $ write_metadata 8 ''
+  $ write_metadata 9 '((8:metadata)(5:files))()'
+  $ write_metadata 10 '((8:metadata)(5:files(1:a3:abc)))'
+  $ write_metadata 11 '((8:metadata)(5:files(1:a32:zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz)))'
+  $ write_metadata 12 '((8:metadata)(5:files(1:a)))'
+  $ write_metadata 13 '((8:not-meta)(5:files))'
+  $ write_metadata 14 "((8:metadata)(5:files(1:a32:$lower(5:extra))))"
+  $ write_metadata 15 "((8:metadata)(5:files(1:a32:$lower)(3:bad)))"
+  $ find "$cache/meta" -type f | dune_cmd count-lines
+  45
+  $ dune cache trim --trimmed-size 0 > /dev/null
+  $ find "$cache/meta" -type f | dune_cmd count-lines
+  18
+
+The next collection must notice references to artifacts deleted by trimming.
+
+  $ dune cache trim --trimmed-size 1MB > /dev/null
+  $ find "$cache/meta" -type f | dune_cmd count-lines
+  6
+
 Test metadata for directory targets, which are stored with no digest.
 
   $ reset

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792909837727,
+  "lastUpdate": 1792909956905,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -660358,6 +660358,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.63815234542,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "354d5130445d2842d1d57eec22e9e0069a9b1db4",
+          "message": "refactor(action): remove redundant execution context fields (#16754)\n\nRemove the unused build context from action inputs and execution\ncontexts, and stop duplicating the target set in the recursive execution\ncontext.\n\nRead directory-target information from the existing process purpose\ninstead, preserving directory-aware copy behavior.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T14:21:16+08:00",
+          "tree_id": "dbcf7666192fe2313a5c8eb2d74932b704d57727",
+          "url": "https://github.com/ocaml/dune/commit/354d5130445d2842d1d57eec22e9e0069a9b1db4"
+        },
+        "date": 1792909739625,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.5602168013266664,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792959202528,
+  "lastUpdate": 1792959209370,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -476004,6 +476004,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.19917707,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a0f7f1f92c88ba43bdcee6d6df4f39ead8de6f71",
+          "message": "build: use cached Melange and utop from nix-overlays (#16775)\n\nUpdate nix-overlays and remove the separate Melange input and redundant\nmanpage overrides so Dune uses the cached packages from\nnix-ocaml/nix-overlays#2759.\n\n01a170dc-9ab7-74b2-8b9c-acd99156b58f\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-25T12:50:21-07:00",
+          "tree_id": "358a9716ea160b08bb39a70064571604d95c5e59",
+          "url": "https://github.com/ocaml/dune/commit/a0f7f1f92c88ba43bdcee6d6df4f39ead8de6f71"
+        },
+        "date": 1792959208519,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5451115523933333,
             "unit": "seconds"
           }
         ]

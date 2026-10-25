@@ -543,9 +543,8 @@ and execute_action_for_rule
     match process_sandbox with
     | None -> execute ()
     | Some process_sandbox ->
-      Fiber.finalize execute ~finally:(fun () ->
-        Process.Sandbox.destroy process_sandbox;
-        Fiber.return ())
+      Fiber.finalize_now execute ~finally:(fun () ->
+        Process.Sandbox.destroy process_sandbox)
   in
   let deps, sandbox_dirs =
     match sandbox_mode with
@@ -1194,7 +1193,7 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
              (Live (fun () -> Pp.text (Build_timing.format_now build_started_at))))
       | Watch _ -> None
     in
-    Fiber.finalize
+    Fiber.finalize_now
       (fun () ->
          let* () = State.reset_errors () in
          let* outcome = collect_errors () in
@@ -1272,8 +1271,7 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
          |> Option.iter ~f:Dune_trace.always_emit;
          outcome)
       ~finally:(fun () ->
-        Option.iter timing_section ~f:Console.Status_line.remove_section;
-        Fiber.return ())
+        Option.iter timing_section ~f:Console.Status_line.remove_section)
   in
   Fiber.finalize
     (fun () ->

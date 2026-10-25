@@ -309,19 +309,18 @@ let exec_plan
     let target_is_copied_from_source_tree =
       is_copied_from_source_tree (Path.build file2)
     in
-    Fiber.finalize
+    Fiber.finalize_now
       (fun () ->
          Fiber.parallel_iter changes ~f:(run_change loc ~patch_back ~sandbox mode))
       ~finally:(fun () ->
-        (match optional with
-         | false ->
-           if in_source_or_target && not target_is_copied_from_source_tree
-           then register_promotions `Copy promotions
-         | true ->
-           if in_source_or_target
-           then register_promotions `Move promotions
-           else remove_intermediate_target file2);
-        Fiber.return ())
+        match optional with
+        | false ->
+          if in_source_or_target && not target_is_copied_from_source_tree
+          then register_promotions `Copy promotions
+        | true ->
+          if in_source_or_target
+          then register_promotions `Move promotions
+          else remove_intermediate_target file2)
 ;;
 
 let exec ~sandbox loc ~patch_back diff =

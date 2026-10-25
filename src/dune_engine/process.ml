@@ -307,9 +307,7 @@ module Build = struct
   let with_ t f =
     let previous = !current in
     current := Some t;
-    Fiber.finalize f ~finally:(fun () ->
-      current := previous;
-      Fiber.return ())
+    Fiber.finalize_now f ~finally:(fun () -> current := previous)
   ;;
 
   let cancel_current () =
@@ -1206,7 +1204,7 @@ let exec_locally
     ; stderr
     }
   in
-  Fiber.finalize
+  Fiber.finalize_now
     (fun () ->
        let t =
          spawn
@@ -1238,9 +1236,7 @@ let exec_locally
        ; times
        ; trace_args = []
        })
-    ~finally:(fun () ->
-      Io.release stdin;
-      Fiber.return ())
+    ~finally:(fun () -> Io.release stdin)
 ;;
 
 let run_internal

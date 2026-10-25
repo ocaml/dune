@@ -26,6 +26,7 @@ type _ t =
       -> ('b, 'a) result t
   | Collect_errors_t : (unit -> 'a t) -> ('a, Exn_with_backtrace.t list) result t
   | Finalize_t : (unit -> 'a t) * (unit -> unit t) -> 'a t
+  | Finalize_now_t : (unit -> 'a t) * (unit -> unit) -> 'a t
   | Suspend_t : ('a k -> unit) -> 'a t
   | Resume_t : 'a k * 'a -> unit t
   | Reraise_all_t : Exn_with_backtrace.t list -> 'a t
@@ -85,6 +86,9 @@ and 'a continuation =
   | Finalize_body_complete :
       (unit -> unit t) * 'a continuation
       -> ('a, Exn_with_backtrace.t Appendable_list.t) result continuation
+  | Finalize_now_complete :
+      (unit -> unit) * 'a continuation
+      -> ('a, Exn_with_backtrace.t Appendable_list.t) result continuation
   | Finalize_finally_complete :
       ('a, Exn_with_backtrace.t Appendable_list.t) result * 'a continuation
       -> (unit, Exn_with_backtrace.t Appendable_list.t) result continuation
@@ -123,6 +127,7 @@ and eff =
       (unit -> 'a t) * ('a, Exn_with_backtrace.t list) result continuation
       -> eff
   | Run_finalize : (unit -> 'a t) * (unit -> unit t) * 'a continuation -> eff
+  | Run_finalize_now : (unit -> 'a t) * (unit -> unit) * 'a continuation -> eff
   | Run_finally :
       (unit -> unit t)
       * ('a, Exn_with_backtrace.t Appendable_list.t) result
@@ -199,6 +204,17 @@ let finalize_result body_result finally_result =
     Error Appendable_list.(body_errors @ finally_errors)
 ;;
 
+let finalize_now_result body_result finally =
+  match finally () with
+  | () -> body_result
+  | exception exn ->
+    let exn = Exn_with_backtrace.capture exn in
+    let errors = Appendable_list.singleton exn in
+    (match body_result with
+     | Ok _ -> Error errors
+     | Error body_errors -> Error Appendable_list.(body_errors @ errors))
+;;
+
 let rec continue : type a. a continuation -> a -> eff =
   fun k x ->
   match k with
@@ -268,6 +284,10 @@ let rec continue : type a. a continuation -> a -> eff =
        | Ok x -> Ok x
        | Error errors -> Error (Appendable_list.to_list errors))
   | Finalize_body_complete (finally, k) -> Run_finally (finally, x, k)
+  | Finalize_now_complete (finally, k) ->
+    (match finalize_now_result x finally with
+     | Ok x -> continue k x
+     | Error errors -> Reraise_all (Appendable_list.to_list errors))
   | Finalize_finally_complete (body_result, k) ->
     (match finalize_result body_result x with
      | Ok x -> continue k x
@@ -324,6 +344,7 @@ let rec eval : type a. a t -> a continuation -> eff =
   | Map_reduce_errors_t (m, on_error, f) -> Map_reduce_errors (m, on_error, f, k)
   | Collect_errors_t f -> Run_collect_errors (f, k)
   | Finalize_t (f, finally) -> Run_finalize (f, finally, k)
+  | Finalize_now_t (f, finally) -> Run_finalize_now (f, finally, k)
   | Suspend_t f -> Suspend (f, k)
   | Resume_t (suspended, x) -> Resume (suspended, x, k)
   | Reraise_all_t exns ->
@@ -701,3 +722,4 @@ module Exns = Monoid.Appendable_list (Exn_with_backtrace)
 let collect_error e = return (Appendable_list.singleton e)
 let collect_errors f = Collect_errors_t f
 let finalize f ~finally = Finalize_t (f, finally)
+let finalize_now f ~finally = Finalize_now_t (f, finally)

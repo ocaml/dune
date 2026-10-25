@@ -164,10 +164,9 @@ let extract t ~archive ~target =
     Temp_dir.dir_for_target ~target ~prefix ~suffix
   in
   let temp_stderr_path = Temp.create File ~prefix ~suffix:"stderr" in
-  Fiber.finalize ~finally:(fun () ->
+  Fiber.finalize_now ~finally:(fun () ->
     Temp.destroy Dir target_in_temp;
-    Temp.destroy File temp_stderr_path;
-    Fiber.return ())
+    Temp.destroy File temp_stderr_path)
   @@ fun () ->
   Path.mkdir_p target_in_temp;
   let+ (), exit_code =

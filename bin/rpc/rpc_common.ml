@@ -152,9 +152,7 @@ let with_rpc_connected_status_line f =
     Console.Status_line.add_section
       (Live (fun () -> Pp.verbatim "Connected to RPC server"))
   in
-  Fiber.finalize f ~finally:(fun () ->
-    Console.Status_line.remove_section section;
-    Fiber.return ())
+  Fiber.finalize_now f ~finally:(fun () -> Console.Status_line.remove_section section)
 ;;
 
 let send_request ~f connection name =

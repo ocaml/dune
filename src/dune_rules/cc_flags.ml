@@ -93,7 +93,7 @@ module Detect = struct
 
     let action { c_compiler; ccomp_type } ~(ectx : Action.context) ~(eenv : Action.env) =
       let header = Temp.create File ~prefix:"dune-cc-vendor" ~suffix:".h" in
-      Fiber.finalize
+      Fiber.finalize_now
         (fun () ->
            Io.write_file_exn header header_file_content;
            Process.run
@@ -108,9 +108,7 @@ module Detect = struct
              ~dir:eenv.working_dir
              ~env:eenv.env
              ?sandbox:ectx.sandbox)
-        ~finally:(fun () ->
-          Temp.destroy File header;
-          Fiber.return ())
+        ~finally:(fun () -> Temp.destroy File header)
     ;;
   end
 

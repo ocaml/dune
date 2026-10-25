@@ -83,10 +83,9 @@ let prepare_workspace () =
   Fiber.parallel_iter duniverse ~f:(fun (pkg : Package.t) ->
     Fpath.rm_rf pkg.name;
     Console.printf "cloning %s/%s" pkg.org pkg.name;
-    Fiber.finalize
+    Fiber.finalize_now
       (fun () -> Package.clone pkg)
-      ~finally:(fun () ->
-        Fiber.return @@ Console.printf "finished cloning %s/%s" pkg.org pkg.name))
+      ~finally:(fun () -> Console.printf "finished cloning %s/%s" pkg.org pkg.name))
 ;;
 
 let dune_build ~name ~sandbox =

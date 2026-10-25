@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792905868840,
+  "lastUpdate": 1792905912853,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -474989,6 +474989,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4643927369533334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "45e38d1048b05629b8108b6d2b958d6582bc0ea6",
+          "message": "test(watch): reproduce a lost sync notification on overflow (#16749)\n\nAdd a Linux-only regression test for #16625 using strace to replace the\nfirst sync-file notification with an inotify overflow and suppress its\nclose notification.\n\nThe test records the current hang: the rule finishes and Dune receives\nthe overflow, but the forwarded build times out instead of restarting.\nIt preserves the failing behavior as expected output, so the suite\nremains green.\n\nThis PR contains only the reproduction; overflow recovery will follow\nseparately.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T13:07:07+08:00",
+          "tree_id": "9a10e26041ff71d1104a496e965967fc3757cab4",
+          "url": "https://github.com/ocaml/dune/commit/45e38d1048b05629b8108b6d2b958d6582bc0ea6"
+        },
+        "date": 1792905908376,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 43.59432704967333,
             "unit": "seconds"
           }
         ]

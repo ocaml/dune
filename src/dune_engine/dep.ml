@@ -63,8 +63,6 @@ module Map = struct
   module M = Map.Make (T)
   include M
   include Memo.Map (M)
-
-  let has_universe t = mem t Universe
 end
 
 let as_in_build_dir_no_source = function
@@ -308,7 +306,6 @@ module Facts = struct
   let singleton = Map.singleton
   let equal x y = Map.equal ~equal:Fact.equal x y
   let empty = Map.empty
-  let record_facts set ~f = Map.parallel_map set ~f:(fun dep () -> f dep)
 
   let union a b =
     Map.union a b ~f:(fun _ a b ->

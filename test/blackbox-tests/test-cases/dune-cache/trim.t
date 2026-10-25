@@ -470,3 +470,19 @@ collects broken metadata.
   $ dune_cmd stat hardlinks "$pinned"
   2
 
+Stat failures are ignored when sizing and trimming the cache.
+
+  $ reset
+  $ files="$cache/files/v4/00"
+  $ broken="$files/$(printf '%032x' 1)"
+  $ mkdir -p "$files"
+  $ printf artifact > "$files/$key"
+  $ ln -s missing "$broken"
+  $ dune cache size --machine-readable
+  8
+  $ dune cache trim --trimmed-size 1B
+  Freed 8B (1 files removed)
+  $ dune cache size --machine-readable
+  0
+  $ test -L "$broken"
+

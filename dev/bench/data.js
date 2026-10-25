@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792904413932,
+  "lastUpdate": 1792904638787,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -659894,6 +659894,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.7927221850533335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fbe7e359570f86fe87984f8028a108128ca5fdae",
+          "message": "fix(engine): clean outputs from failed unsandboxed actions (#16743)\n\nFailed or cancelled unsandboxed actions currently unregister their\ntargets in a finalizer, so end-of-build cleanup misses their partial\noutputs.\n\nUnregister targets only after successful completion. Keep failed and\ncancelled targets pending for cleanup, repairing unreadable directory\npermissions without masking the original error. Successful outputs and\nsandboxed cleanup are unchanged.\n\nUpdates the regression expectations introduced in #16734 and #16737.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T12:46:44+08:00",
+          "tree_id": "dc57e149f7fc4d4a75d289c9feca3003ffc82ea7",
+          "url": "https://github.com/ocaml/dune/commit/fbe7e359570f86fe87984f8028a108128ca5fdae"
+        },
+        "date": 1792904261445,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.6350055468066667,
             "unit": "seconds"
           }
         ]

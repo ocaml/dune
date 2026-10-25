@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792891168778,
+  "lastUpdate": 1792891476045,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -474467,6 +474467,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.49278459947333336,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4c9230fd373b9f715a2029300a6e7ba73e01d013",
+          "message": "test(engine): cover identical source replacements (#16741)\n\nAdd a baseline test that replaces a source file with a new file\ncontaining identical bytes and verifies that its dependent rule does not\nrerun. Check the resulting output, then change the contents to verify\nthat the rule does rerun.\n\nThe test uses ordinary action output and does not depend on the\nsource-copy refactor or its tracing API.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T09:02:47+08:00",
+          "tree_id": "a2a15aa9feef3a40e82aadb20fae6c8d44219ccd",
+          "url": "https://github.com/ocaml/dune/commit/4c9230fd373b9f715a2029300a6e7ba73e01d013"
+        },
+        "date": 1792891474434,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 59.526812500333335,
             "unit": "seconds"
           }
         ]

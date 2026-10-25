@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792943159025,
+  "lastUpdate": 1792943928776,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -660938,6 +660938,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.602624068346667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2379e4c0c341a8588bc0c43f574d53a5096ab9bc",
+          "message": "test(sandbox): cover empty initial patch-back dependencies (#16757)\n\nCover empty glob dependencies in patch-back source-tree sandboxes. Even\nwhen no dependency files are copied, the initial snapshot must include\ntheir directories and parents, so deleting those directories reports\nboth deletions.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T23:43:58+08:00",
+          "tree_id": "c628554d3fb129df99a1a34260799b0a647cf4cd",
+          "url": "https://github.com/ocaml/dune/commit/2379e4c0c341a8588bc0c43f574d53a5096ab9bc"
+        },
+        "date": 1792943711416,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.51919897586,
             "unit": "seconds"
           }
         ]

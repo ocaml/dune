@@ -338,6 +338,37 @@ The next collection must notice references to artifacts deleted by trimming.
   $ find "$cache/meta" -type f | dune_cmd count-lines
   6
 
+Artifact inventories must keep file versions separate, including when the same
+digest exists in both. Keep a live v3 artifact while evicting its unused v4 copy;
+v3 metadata survives, but v4 and v5 metadata must be collected.
+
+  $ reset
+  $ for version in v3 v4; do
+  >   mkdir -p "$cache/files/$version/00"
+  >   printf artifact > "$cache/files/$version/00/$key"
+  > done
+  $ ln "$cache/files/v3/00/$key" live-artifact
+  $ for version in v3 v4 v5; do
+  >   mkdir -p "$cache/meta/$version/00"
+  >   printf '((8:metadata)(5:files(1:a32:%s)))' "$key" > "$cache/meta/$version/00/$key"
+  > done
+  $ dune cache trim --size 0 > /dev/null
+  $ for version in v3 v4 v5; do
+  >   find "$cache/meta/$version" -type f | dune_cmd count-lines
+  > done
+  1
+  0
+  0
+
+A later collection must notice that the previously live artifact is now unused.
+
+  $ rm live-artifact
+  $ dune cache trim --size 0 > /dev/null
+  $ find "$cache/meta" -type f | dune_cmd count-lines
+  0
+  $ dune cache size --machine-readable
+  0
+
 Test metadata for directory targets, which are stored with no digest.
 
   $ reset

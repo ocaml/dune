@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792903396655,
+  "lastUpdate": 1792903403268,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -474728,6 +474728,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 60.29977907586667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bd819765d7a177561d71369ac228d8cb01bd6693",
+          "message": "test(engine): cover reassigned multi-target cache outputs (#16745)\n\nExercise cache ownership when a non-head output moves from a\nmulti-target rule to another rule, then back.\n\nCheck that restoring the original declaration regenerates both artifacts\nand that the subsequent null build does not rerun the action. Disable\nthe shared cache so the test exercises local incremental state.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T12:20:58+08:00",
+          "tree_id": "4c7ab595217c146e6ab739d7349d41e5564d5840",
+          "url": "https://github.com/ocaml/dune/commit/bd819765d7a177561d71369ac228d8cb01bd6693"
+        },
+        "date": 1792903402415,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5386129617133333,
             "unit": "seconds"
           }
         ]

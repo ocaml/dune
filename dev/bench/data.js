@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792924514211,
+  "lastUpdate": 1792924522350,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -475366,6 +475366,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.829002728599995,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0ba83325aa3044dd79bae5d30301ea98dd932966",
+          "message": "test(stdune): run spawn tests on Windows (#15482)\n\nAdd the stdune spawn test suite to the runtest-windows alias so the\nWindows\ntest target exercises the spawn coverage too.\n\n---------\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T18:12:21+08:00",
+          "tree_id": "a573bc202dbc51d6bc54ed6ac8161a9a2c6c4ccf",
+          "url": "https://github.com/ocaml/dune/commit/0ba83325aa3044dd79bae5d30301ea98dd932966"
+        },
+        "date": 1792924521166,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.6242429223266667,
             "unit": "seconds"
           }
         ]

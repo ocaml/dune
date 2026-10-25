@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792925569125,
+  "lastUpdate": 1792942837284,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -660851,6 +660851,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.5327460438466662,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3e919979bf19f3baa0dacaebeab738d75465533b",
+          "message": "feat(fiber): add finalize_now for synchronous finalizers (#16761)\n\nAdd `Fiber.finalize_now` for finalizers that return `unit` rather than a\nfiber. Run cleanup directly after collecting body errors, avoiding the\nextra error-collection context used by `Fiber.finalize` while preserving\nexception ordering.\n\nUse it for synchronous cleanup throughout Dune, including `Fiber.Temp`,\nand cover lazy/reusable execution, body and finalizer failures,\nconcurrent children, nesting, stalled bodies, and error-handler\nrestoration.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T23:23:44+08:00",
+          "tree_id": "7444e30d015b7ed98063762e7de8c6b7dd76565d",
+          "url": "https://github.com/ocaml/dune/commit/3e919979bf19f3baa0dacaebeab738d75465533b"
+        },
+        "date": 1792942458885,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.602624068346667,
             "unit": "seconds"
           }
         ]

@@ -643,7 +643,7 @@ and execute_rule_action
         | Anonymous_action _ -> true
       in
       let force_rerun = !Clflags.force && is_test in
-      force_rerun || Dep.Map.has_universe facts
+      force_rerun || Dep.Map.mem facts Dep.universe
     in
     let rule_digest =
       compute_rule_digest ~targets ~facts ~action ~sandbox_mode ~execution_parameters

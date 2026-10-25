@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792904406346,
+  "lastUpdate": 1792904413932,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -474786,6 +474786,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.57939036486666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "017c6d63fd294418b0d49ca6757adc420ca3c428",
+          "message": "refactor(action): remove unused constructor wrappers (#16748)\n\nRemove ten unused constructor helpers from the internal engine action\ninterface and implementation. The concrete AST constructors remain\navailable, and helpers with callers are retained.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T12:36:19+08:00",
+          "tree_id": "c730098c0e1210ac365dbae9f7425bcfd22ccb2e",
+          "url": "https://github.com/ocaml/dune/commit/017c6d63fd294418b0d49ca6757adc420ca3c428"
+        },
+        "date": 1792904412779,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.54895616278,
             "unit": "seconds"
           }
         ]

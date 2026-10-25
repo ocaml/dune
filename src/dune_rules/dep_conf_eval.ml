@@ -17,7 +17,24 @@ let make_sandboxing_config config =
 
 let make_alias expander s =
   let loc = String_with_vars.loc s in
-  Expander.expand_path expander s >>| Alias.of_user_written_path ~loc
+  let+ path = Expander.expand_path expander s in
+  match Path.as_in_build_dir path with
+  | Some path ->
+    let name =
+      Path.Build.basename path
+      |> Filename.to_string
+      |> Alias.Name.of_string_opt_loose
+      |> Option.value_exn
+    in
+    Alias.make name ~dir:(Path.Build.parent_exn path)
+  | None ->
+    User_error.raise
+      ~loc
+      [ Pp.text "Invalid alias!"
+      ; Pp.textf
+          "Tried to reference path outside build dir: %S"
+          (Path.to_string_maybe_quoted path)
+      ]
 ;;
 
 let expand_package_name expander swv =

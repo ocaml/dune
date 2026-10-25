@@ -29,6 +29,10 @@ We test the behavior of watch mode when we have multiple errors
   Failure
   [1]
 
+RPC completion can precede the watch-mode summary. Wait before shutting down.
+
+  $ wait_for_line_with_timeout .#dune-output \
+  >   'Had 2 errors, waiting for filesystem changes...' 200
   $ stop_dune
   File "x", line 1, characters 0-0:
   --- x

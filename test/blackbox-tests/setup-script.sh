@@ -1474,12 +1474,16 @@ wait_for_pid_to_exit_with_timeout () {
     done
 }
 
-wait_for_line_with_timeout () {
-    output="$1"
-    line="$2"
-    iterations="$3"
-    while ! grep -qx "$line" "$output" 2>/dev/null
+wait_for_line_count_with_timeout () {
+    local output="$1" line="$2" count="$3" iterations="$4"
+    local matches
+    while true
     do
+        matches=$(grep -cx "$line" "$output" 2>/dev/null || true)
+        if [ "${matches:-0}" -ge "$count" ]
+        then
+            return 0
+        fi
         if [ "$iterations" = 0 ]
         then
             return 124
@@ -1487,6 +1491,10 @@ wait_for_line_with_timeout () {
         iterations=$((iterations - 1))
         sleep 0.01
     done
+}
+
+wait_for_line_with_timeout () {
+    wait_for_line_count_with_timeout "$1" "$2" 1 "$3"
 }
 
 wait_for_success_with_timeout () {
@@ -1526,6 +1534,7 @@ make_fs_memo_project () {
 fs_memo_test () {
     local action="$1"
     local before between after
+    local completed='.*, waiting for filesystem changes...'
 
     echo "------------------------------------------"
     before=$(cat _build/default/result 2>/dev/null)
@@ -1533,9 +1542,12 @@ fs_memo_test () {
     # shellcheck disable=SC2119
     start_dune
     build . | grep -v Success
+    # RPC completion can precede post-build cleanup and the watch-mode summary.
+    wait_for_line_count_with_timeout .#dune-output "$completed" 1 200 || return
     between=$(cat _build/default/result)
     bash -c "$action"
     build . | grep -v Success
+    wait_for_line_count_with_timeout .#dune-output "$completed" 2 200 || return
     stop_dune >> .#tmp
     after=$(cat _build/default/result)
     cat .#tmp

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792906045500,
+  "lastUpdate": 1792909837727,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -660329,6 +660329,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.861531706573333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ffed14661d2904b8f141ece26eaf65adab73516d",
+          "message": "test(pkg): reproduce copy-mode package dependency overlap (#16733)\n\nExtend Puneeth’s reproducer from #16546 to cover #16547 under copy\nsandboxing too. Record the overlapping-input failure and verify that\nremoving the explicit package dependency lets both modes succeed.\n\nTests only; this precedes #16675.\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2026-10-25T14:13:25+08:00",
+          "tree_id": "08ed9a8fd881328695c7e217da58638529f5c1c8",
+          "url": "https://github.com/ocaml/dune/commit/ffed14661d2904b8f141ece26eaf65adab73516d"
+        },
+        "date": 1792909459837,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.63815234542,
             "unit": "seconds"
           }
         ]

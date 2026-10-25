@@ -36,7 +36,8 @@ module Pending_targets = struct
       ~f:(fun () ->
         Path.Build.Table.iteri files ~f:(fun path () ->
           Path.Build.to_string path |> Fpath.unlink_no_err);
-        Path.Build.Table.iteri dirs ~f:(fun path () -> Path.rm_rf (Path.build path)))
+        Path.Build.Table.iteri dirs ~f:(fun path () ->
+          Path.rm_rf ~chmod:true (Path.build path)))
       ~finally:(fun () ->
         Path.Build.Table.clear files;
         Path.Build.Table.clear dirs)
@@ -585,9 +586,12 @@ let destroy = function
 let with_ ~mode corrections ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest ~targets ~f =
   match mode with
   | None ->
+    let open Fiber.O in
     Pending_targets.add targets;
     let sandbox = No_sandbox { targets } in
-    Fiber.finalize ~finally:(fun () -> destroy sandbox) (fun () -> f sandbox)
+    let* result = f sandbox in
+    let+ () = destroy sandbox in
+    result
   | Some mode ->
     with_live_sandbox_slot ~f:(fun () ->
       let open Fiber.O in

@@ -34,8 +34,7 @@ without recording the input whose absence caused the fallback.
   1
   $ grep 'No rule found for' build.output
   Error: No rule found for some_absent_dependency
-  $ cat _build/default/result
-  fallback
+  $ test ! -e _build/default/result
   $ printf available > some_absent_dependency
   $ dune build result
   $ cat _build/default/result

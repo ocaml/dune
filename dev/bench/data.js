@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792948994926,
+  "lastUpdate": 1792949002743,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -475714,6 +475714,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 63.165470387686675,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4fa2e4721770e5300d887d346bc8c0811d4a424b",
+          "message": "refactor(action): use one concrete action representation (#16731)\n\nUse a single concrete `Action.t` instead of the parameterized AST and\nprint-only representation. Encode actions directly when printing rules,\ntracking the working directory for relative paths and preserving\nsymlink-source handling.\n\nSpecialize sandbox rewriting to concrete paths, retaining unchanged\nstrings and argument lists. Remove the generic mapper, unused simplified\nAST, and recursive modules.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-26T00:58:06+08:00",
+          "tree_id": "5b928efc26df1ac9533dbdd9670cf82041fa4679",
+          "url": "https://github.com/ocaml/dune/commit/4fa2e4721770e5300d887d346bc8c0811d4a424b"
+        },
+        "date": 1792949001600,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5648087403400001,
             "unit": "seconds"
           }
         ]

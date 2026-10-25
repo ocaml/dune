@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792922937566,
+  "lastUpdate": 1792923246484,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -475279,6 +475279,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4430158483733333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "77f658012f030db178401b2b560970423856772b",
+          "message": "test(sandbox): cover overlapping directory materialization (#16755)\n\nExtend the dynamic action-plugin sandbox test to request a directory\nafter reading and modifying one of its files and creating another\ndestination subdirectory.\n\nCheck that local modifications and action-created files survive while\nmissing dependency files are added. Exercise copy mode alongside symlink\nand hardlink modes, retaining the existing cache, invalidation, and\nisolation checks.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T17:52:09+08:00",
+          "tree_id": "bf9d86960963f57f6b69ffeabd9f13edc86041f9",
+          "url": "https://github.com/ocaml/dune/commit/77f658012f030db178401b2b560970423856772b"
+        },
+        "date": 1792923245155,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 59.716508947013345,
             "unit": "seconds"
           }
         ]

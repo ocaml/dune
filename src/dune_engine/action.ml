@@ -62,28 +62,18 @@ let run prog args =
 ;;
 
 let chdir path t = Chdir (path, t)
-let setenv var value t = Setenv (var, value, t)
 let with_stdout_to ?(perm = File_perm.Normal) path t = Redirect_out (Stdout, path, perm, t)
-let with_stderr_to ?(perm = File_perm.Normal) path t = Redirect_out (Stderr, path, perm, t)
 
 let with_outputs_to ?(perm = File_perm.Normal) path t =
   Redirect_out (Outputs, path, perm, t)
 ;;
 
-let with_stdin_from path t = Redirect_in (Stdin, path, t)
-let ignore_stdout t = Ignore (Stdout, t)
-let ignore_stderr t = Ignore (Stderr, t)
-let ignore_outputs t = Ignore (Outputs, t)
 let progn ts = Progn ts
 let concurrent ts = Concurrent ts
 let echo s = Echo s
 let cat ps = Cat ps
 let copy a b = Copy (a, b)
-let symlink a b = Symlink (a, b)
-let system s = System s
-let bash script = Bash { script; can_run_in_action_runner = true }
 let write_file ?(perm = File_perm.Normal) p s = Write_file (p, perm, s)
-let rename a b = Rename (a, b)
 let remove_tree path = Remove_tree path
 let mkdir path = Mkdir path
 

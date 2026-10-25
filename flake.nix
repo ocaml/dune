@@ -1,9 +1,5 @@
 {
   inputs = {
-    melange = {
-      url = "github:melange-re/melange/v7-55";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     nixpkgs.url = "github:nix-ocaml/nix-overlays";
     ocaml-trunk = {
       url = "github:ocaml/ocaml/trunk";
@@ -23,7 +19,6 @@
   outputs =
     {
       self,
-      melange,
       nixpkgs,
       ocaml-trunk,
       revdeps-dune,
@@ -41,12 +36,6 @@
                     ocaml = osuper.ocaml.override {
                       flambdaSupport = false;
                       framePointerSupport = true;
-                    };
-                    utop = osuper.utop.overrideAttrs {
-                      dontGzipMan = true;
-                    };
-                    lambda-term = osuper.lambda-term.overrideAttrs {
-                      dontGzipMan = true;
                     };
                     odoc-parser = osuper.odoc-parser.overrideAttrs (old: {
                       doCheck = false;
@@ -77,7 +66,6 @@
                   ocamlPackages_5_5 = self.ocamlPackages;
                 };
               })
-              melange.overlays.default
             ];
           in
           f pkgs

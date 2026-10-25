@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792905794275,
+  "lastUpdate": 1792905862872,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -474931,6 +474931,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5252355740800002,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8bd2a4ad9a8edecf2cc29b849f31d73be27efe3f",
+          "message": "refactor(engine): keep user alias parsing in dependency expansion (#16752)\n\nMove user-written alias path parsing from the engine alias API into\ndependency expansion, its only caller.\n\nRemove `Alias.of_user_written_path` from the engine interface while\npreserving alias names, source locations, and invalid-path diagnostics.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T13:06:40+08:00",
+          "tree_id": "1ff786c2a1a614458150cd3784ffbe7396b9d8bb",
+          "url": "https://github.com/ocaml/dune/commit/8bd2a4ad9a8edecf2cc29b849f31d73be27efe3f"
+        },
+        "date": 1792905860183,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 47.35674468302667,
             "unit": "seconds"
           }
         ]

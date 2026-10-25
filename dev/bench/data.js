@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792896322189,
+  "lastUpdate": 1792896528619,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -474583,6 +474583,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4262082228533333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "59be1ad052c036061cbcf12373387ad7960b4a14",
+          "message": "refactor(install): share expanded binding validation (#15804)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T10:32:35+08:00",
+          "tree_id": "c39e6d5ce4fab76fee995874e0302f2e9bbc8fa3",
+          "url": "https://github.com/ocaml/dune/commit/59be1ad052c036061cbcf12373387ad7960b4a14"
+        },
+        "date": 1792896525346,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 38.11326847073334,
             "unit": "seconds"
           }
         ]

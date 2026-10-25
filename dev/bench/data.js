@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792948175709,
+  "lastUpdate": 1792948183167,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -475598,6 +475598,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 59.91515492072667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "20fdd060549ce2388f5ada48058697c1fa447c2c",
+          "message": "refactor(engine): specialize action usefulness to memoization (#16764)\n\nAction usefulness is only queried for memoization, but the traversal and\nextension specs still accept a `memoize` flag for an unused alternative\nmode.\n\nReplace the extension callback with an `is_useful_to_memoize` boolean\nand specialize the traversal to the existing `memoize=true` behavior.\nThe `Maybe`/`Clearly_not` classification and all extension decisions\nremain unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-26T00:47:22+08:00",
+          "tree_id": "7c88ed5ec672aae133b5efaa84208ba2f67cfb5f",
+          "url": "https://github.com/ocaml/dune/commit/20fdd060549ce2388f5ada48058697c1fa447c2c"
+        },
+        "date": 1792948181960,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.53878108066,
             "unit": "seconds"
           }
         ]

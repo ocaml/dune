@@ -38,14 +38,38 @@ module Prog : sig
   val ok_exn : t -> Path.t
 end
 
-include
-  Action_intf.Ast
-  with type program := Prog.t
-  with type path := Path.t
-  with type target := Path.Build.t
-  with type string := string
-  with type ext :=
-    (module Ext.Instance with type target = Path.Build.t and type path = Path.t)
+type t =
+  | Run of
+      { prog : Prog.t
+      ; args : string Appendable_list.t
+      ; can_run_in_action_runner : bool
+      }
+  | With_accepted_exit_codes of int Predicate_lang.t * t
+  | Chdir of Path.t * t
+  | Setenv of string * string * t
+  | Redirect_out of Outputs.t * Path.Build.t * File_perm.t * t
+  | Redirect_in of Inputs.t * Path.t * t
+  | Ignore of Outputs.t * t
+  | Progn of t list
+  | Concurrent of t list
+  | Echo of string list
+  | Cat of Path.t list
+  | Copy of Path.t * Path.Build.t
+  | Symlink of Path.t * Path.Build.t
+  | Hardlink of Path.t * Path.Build.t
+  | System of string
+  | Bash of
+      { script : string
+      ; can_run_in_action_runner : bool
+      }
+  | Write_file of Path.Build.t * File_perm.t * string
+  | Rename of Path.Build.t * Path.Build.t
+  | Remove_tree of Path.Build.t
+  | Mkdir of Path.Build.t
+  | Pipe of Outputs.t * t list
+  | Diff of (Path.t, Path.Build.t) Diff.t
+  | Extension of
+      (module Ext.Instance with type target = Path.Build.t and type path = Path.t)
 
 val run : Prog.t -> string list -> t
 val chdir : Path.t -> t -> t
@@ -69,19 +93,6 @@ val diff
   -> t
 
 include Monoid with type t := t
-
-module For_shell : sig
-  include
-    Action_intf.Ast
-    with type program := string
-    with type path := string
-    with type target := string
-    with type string := string
-    with type ext := Sexp.t
-end
-
-(** Convert the action to a format suitable for printing *)
-val for_shell : t -> For_shell.t
 
 val digest : Dune_digest.Manual.t -> t -> unit
 

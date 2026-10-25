@@ -119,8 +119,8 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
 
            [Copy] stays file-oriented by default. We only use recursive copying
            when [dst] is a directory target. *)
-      match ectx.targets with
-      | Some { dirs; _ } when Filename.Set.mem dirs (Path.basename dst) ->
+      match ectx.metadata.purpose with
+      | Build_job (Some { dirs; _ }) when Filename.Set.mem dirs (Path.basename dst) ->
         Tree_copy.copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ()
       | _ -> copy_file ~src ~dst
     in
@@ -260,7 +260,6 @@ and exec_pipe outputs ts ~ectx ~eenv : unit Fiber.t =
 type input =
   { targets : Targets.Validated.t option (* Some Jane Street actions use [None] *)
   ; root : Path.t
-  ; context : Build_context.t option
   ; env : Env.t
   ; rule_loc : Loc.t
   ; execution_parameters : Execution_parameters.t
@@ -304,7 +303,6 @@ let eval_job_slots job_slots ~ectx ~(eenv : env) =
 let exec
       { targets
       ; root
-      ; context
       ; env
       ; rule_loc
       ; execution_parameters
@@ -323,7 +321,7 @@ let exec
       let+ facts = build_deps deps in
       dynamic_deps_stages := (deps, facts) :: !dynamic_deps_stages
     in
-    { targets; root; metadata; context; sandbox; rule_loc; build_deps }
+    { root; metadata; sandbox; rule_loc; build_deps }
   and eenv =
     let env =
       match

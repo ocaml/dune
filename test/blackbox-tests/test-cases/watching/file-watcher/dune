@@ -3,6 +3,12 @@
  (deps %{bin:strace}))
 
 (cram
+ (applies_to sync-overflow.t)
+ (enabled_if
+  (= %{system} linux))
+ (deps %{bin:strace} %{bin:od}))
+
+(cram
  ;; see https://github.com/ocaml/dune/pull/4728
  (enabled_if
   (<> "macosx" %{ocaml-config:system}))

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792968484863,
+  "lastUpdate": 1792968492180,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -476178,6 +476178,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 60.60275649008,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dd2e4c2612d7df4677f340a6e8e1354605ccb1f8",
+          "message": "test(merlin): reproduce lookup blocked by incompatible configurations (#16788)\n\nReproduce incompatible Merlin configurations blocking valid lookups in\nother stanzas and parent directories.\n\nRegression coverage for anmonteiro/dune#270.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\n---------\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-25T15:25:31-07:00",
+          "tree_id": "579b96c91b0228467c7c2ceece5bd2f3601b2715",
+          "url": "https://github.com/ocaml/dune/commit/dd2e4c2612d7df4677f340a6e8e1354605ccb1f8"
+        },
+        "date": 1792968491135,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5323527550199999,
             "unit": "seconds"
           }
         ]

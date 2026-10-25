@@ -49,24 +49,14 @@ include
 
 val run : Prog.t -> string list -> t
 val chdir : Path.t -> t -> t
-val setenv : string -> string -> t -> t
 val with_stdout_to : ?perm:File_perm.t -> Path.Build.t -> t -> t
-val with_stderr_to : ?perm:File_perm.t -> Path.Build.t -> t -> t
 val with_outputs_to : ?perm:File_perm.t -> Path.Build.t -> t -> t
-val with_stdin_from : Path.t -> t -> t
-val ignore_stdout : t -> t
-val ignore_stderr : t -> t
-val ignore_outputs : t -> t
 val progn : t list -> t
 val concurrent : t list -> t
 val echo : string list -> t
 val cat : Path.t list -> t
 val copy : Path.t -> Path.Build.t -> t
-val symlink : Path.t -> Path.Build.t -> t
-val system : string -> t
-val bash : string -> t
 val write_file : ?perm:File_perm.t -> Path.Build.t -> string -> t
-val rename : Path.Build.t -> Path.Build.t -> t
 val remove_tree : Path.Build.t -> t
 val mkdir : Path.Build.t -> t
 

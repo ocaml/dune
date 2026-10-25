@@ -40,7 +40,7 @@ Without injection the first probe is nproc.
 Observe which probe runs after the failed spawn.
 
   $ cat .#probes-called
-  nproc
+  getconf
 
 A fixed concurrency setting must not run either detection command.
 

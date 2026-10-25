@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792905717708,
+  "lastUpdate": 1792905794275,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -660126,6 +660126,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.8032665936066667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "371d0acc463fd2819f595c382c3a2b564d40c39b",
+          "message": "test(pkg): record explicit and automatic locking mismatches (#16742)\n\nCompare explicit and automatic locking for named workspace pin groups\nand custom platform settings.\n\nRecord the current pin-name error and platform-metadata mismatch,\nkeeping the regression cases separate from the follow-up fix.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T13:10:01+08:00",
+          "tree_id": "9e1152d6f55b995e5c74760e9e96d9a56128ed72",
+          "url": "https://github.com/ocaml/dune/commit/371d0acc463fd2819f595c382c3a2b564d40c39b"
+        },
+        "date": 1792905491131,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.861531706573333,
             "unit": "seconds"
           }
         ]

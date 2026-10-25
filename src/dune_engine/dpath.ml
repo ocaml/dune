@@ -51,11 +51,6 @@ module Target_dir = struct
   ;;
 end
 
-type 'build path_kind =
-  | Source of Path.Source.t
-  | External of Path.External.t
-  | Build of 'build
-
 let is_digest s = String.length s = 32
 
 let analyse_target (fn as original_fn) : target_kind =
@@ -88,13 +83,6 @@ let describe_target fn =
   | Regular (ctx, fn) ->
     sprintf "%s%s" (Path.Source.to_string_maybe_quoted fn) (ctx_suffix ctx)
   | Other fn -> Path.Build.to_string_maybe_quoted fn
-;;
-
-let analyse_dir (fn : Path.t) =
-  match fn with
-  | In_source_tree src -> Source src
-  | External e -> External e
-  | In_build_dir build -> Build (Target_dir.of_target build)
 ;;
 
 type t = Path.t

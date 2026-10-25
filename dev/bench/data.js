@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792956219476,
+  "lastUpdate": 1792958161998,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -661547,6 +661547,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.5445320368399997,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4dc39f87ea89a1dbbccb87a75197249f41c5960f",
+          "message": "refactor(melange): share library metadata during emission (#16774)\n\nResolve each library's metadata once and share it across Melange\nJS-emission helpers.\n\nUpstreams anmonteiro/dune#156.\n\n01a15050-6eae-7cb2-97c9-ed7b73a94c21\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-25T12:44:35-07:00",
+          "tree_id": "dd8e8d95bbbc7bf16085fc060466f2c8a1639974",
+          "url": "https://github.com/ocaml/dune/commit/4dc39f87ea89a1dbbccb87a75197249f41c5960f"
+        },
+        "date": 1792957930357,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.6409373696799996,
             "unit": "seconds"
           }
         ]

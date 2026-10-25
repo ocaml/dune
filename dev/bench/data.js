@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792954921189,
+  "lastUpdate": 1792955901939,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -661460,6 +661460,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.5265500147333335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f794d6bc007c052475d5b7fb7309fde57d67fdf5",
+          "message": "fix(melange): separate melange.flags from shared flags (#16574)\n\nMake `melange.flags` override shared `flags`, falling back when omitted,\nwhile preserving the additive behavior of `melange.compile_flags`.\n\nFollow-up to #16573.\n\n---------\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-25T12:01:25-07:00",
+          "tree_id": "540ddc4f9c2c317fdf714072f97f8cfad477f4ed",
+          "url": "https://github.com/ocaml/dune/commit/f794d6bc007c052475d5b7fb7309fde57d67fdf5"
+        },
+        "date": 1792955523117,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.5445320368399997,
             "unit": "seconds"
           }
         ]

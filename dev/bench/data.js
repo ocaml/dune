@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792910419325,
+  "lastUpdate": 1792910629691,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -475221,6 +475221,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.43091217454,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "94c25b0f6097c990817a45e18b5266a3bc175ab7",
+          "message": "refactor(engine): clean unsandboxed targets within the action scope (#16751)\n\nFollow up on #16743 by moving unsandboxed target cleanup into\n`Sandbox.with_`. Collect action errors, delete targets on failure, and\npropagate the original errors alongside any cleanup errors.\n\nRemove the global pending-target tables and end-of-build cleanup hook.\nSuccessful outputs remain untouched, real sandbox destruction stays\nunconditional, and existing test expectations are unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T14:29:27+08:00",
+          "tree_id": "319ea5168bfeed266fbdf2063ebb91df47af7039",
+          "url": "https://github.com/ocaml/dune/commit/94c25b0f6097c990817a45e18b5266a3bc175ab7"
+        },
+        "date": 1792910627672,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 40.210969040613335,
             "unit": "seconds"
           }
         ]

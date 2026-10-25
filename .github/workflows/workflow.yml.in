@@ -295,11 +295,6 @@ jobs:
         run: opam exec -- make test-windows
         if: ${{ matrix.os == 'windows-latest' && matrix.run_tests }}
 
-      # We never build configurator
-      - name: Build configurator
-        run: opam install dune-configurator
-        if: ${{ matrix.configurator == true }}
-
       - name: Save cache when not Windows
         uses: actions/cache/save@v6
         if: steps.opam-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
@@ -410,7 +405,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Setup Cygwin
-        uses: cygwin/cygwin-install-action@v6
+        uses: cygwin/cygwin-install-action@v7
         with:
           packages: ocaml gcc-core make
       - name: Build Dune

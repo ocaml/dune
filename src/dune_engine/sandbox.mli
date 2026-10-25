@@ -11,14 +11,10 @@ val map_path : t -> Path.Build.t -> Path.Build.t
 
 val add_deps : t -> Dep.Facts.t -> expand_aliases:bool -> unit Fiber.t
 
-(** Delete targets left behind by interrupted non-sandboxed actions. *)
-val cleanup_pending_targets : unit -> unit
-
 (** Run [f] with a sandboxing context.
 
-    [mode = None] is represented as a sandboxing context that maps paths to
-    themselves and only tracks pending targets for cleanup. It is not affected
-    by the live-sandbox throttle. *)
+    [mode = None] maps paths to themselves and removes targets if [f] fails.
+    It is not affected by the live-sandbox throttle. *)
 val with_
   :  mode:Sandbox_mode.some option
   -> Corrections.t

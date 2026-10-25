@@ -499,7 +499,6 @@ and execute_action_for_rule
           let input =
             let env = Action_trace.add_to_env action_trace env in
             { Action_exec.root
-            ; context (* can be derived from the root *)
             ; env
             ; targets = Some targets
             ; rule_loc = loc

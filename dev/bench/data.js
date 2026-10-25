@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792924522350,
+  "lastUpdate": 1792925255434,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -660764,6 +660764,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.5702822528800002,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c50b9ec0e577cf9bccfba35e11615a8633d65c7c",
+          "message": "test(cache): preserve mixed-version metadata when trimming to size (#16758)\n\nExtend cache-trimming coverage to artifacts with the same digest in both\nv3 and v4. Keep the v3 artifact live via a hardlink and verify that\ntrimming removes only the unused v4 copy, preserving v3 metadata while\ncollecting v4/v5 metadata.\n\nAfter removing the hardlink, verify that a subsequent trim also collects\nthe previously retained artifact and metadata.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T18:30:50+08:00",
+          "tree_id": "7f0b2e6db36f6116ec15aa0f9632621ddabfea24",
+          "url": "https://github.com/ocaml/dune/commit/c50b9ec0e577cf9bccfba35e11615a8633d65c7c"
+        },
+        "date": 1792924879276,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.5327460438466662,
             "unit": "seconds"
           }
         ]

@@ -352,10 +352,8 @@ module File_ops_real (W : sig
       let open Fiber.O in
       let ic, oc = Io.setup_copy ~chmod ~src ~dst () in
       let+ status =
-        Fiber.finalize
-          ~finally:(fun () ->
-            Io.close_both (ic, oc);
-            Fiber.return ())
+        Fiber.finalize_now
+          ~finally:(fun () -> Io.close_both (ic, oc))
           (fun () ->
              let f =
                match sf with

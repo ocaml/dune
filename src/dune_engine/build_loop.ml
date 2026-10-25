@@ -218,9 +218,7 @@ let wait_for_file_event_debounce t =
       ignore (Debouncer.take_if_latest t.file_event_debouncer token : bool);
       loop ()
   in
-  Fiber.finalize loop ~finally:(fun () ->
-    clear_status_overlay t;
-    Fiber.return ())
+  Fiber.finalize_now loop ~finally:(fun () -> clear_status_overlay t)
 ;;
 
 let flush_file_watcher t =
@@ -282,20 +280,18 @@ let run t f =
   match Scheduler.file_watcher () with
   | None ->
     ignore (Fs_memo.init ~dune_file_watcher:None : Memo.Invalidation.t);
-    Fiber.finalize f ~finally:(fun () ->
+    Fiber.finalize_now f ~finally:(fun () ->
       clear_status_overlay t;
-      clear_build_duration_section t;
-      Fiber.return ())
+      clear_build_duration_section t)
   | Some file_watcher ->
     Fs_memo.init ~dune_file_watcher:(Some file_watcher) |> Memo.reset;
     Fiber.fork_and_join_unit
       (fun () -> handle_file_events t file_watcher)
       (fun () ->
-         Fiber.finalize f ~finally:(fun () ->
+         Fiber.finalize_now f ~finally:(fun () ->
            clear_status_overlay t;
            clear_build_duration_section t;
-           File_watcher.close file_watcher;
-           Fiber.return ()))
+           File_watcher.close file_watcher))
 ;;
 
 let reset_wakeup t =
@@ -335,7 +331,7 @@ let run_current_build
        (fun () -> build_timing_status run_id (Build_timing.format_now build_started_at)));
   t.current_request <- Some request;
   let* outcome =
-    Fiber.finalize
+    Fiber.finalize_now
       (fun () ->
          let build_ctx =
            Process.Build.create
@@ -348,9 +344,7 @@ let run_current_build
            ~build_started_at
            ~build:build_ctx
            request)
-      ~finally:(fun () ->
-        t.current_request <- None;
-        Fiber.return ())
+      ~finally:(fun () -> t.current_request <- None)
   in
   let+ () = Scheduler.cleanup_subreaper_child_processes () in
   let build_duration = Time.diff (Time.now ()) build_started_at in

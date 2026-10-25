@@ -50,10 +50,8 @@ let%expect_test "Stream.parallel_iter is indeed parallel" =
 let%expect_test "Stream.*_iter can be finalized" =
   let test ~iter_function =
     Scheduler.run
-      (Fiber.finalize
-         ~finally:(fun () ->
-           Printf.printf "finalized";
-           Fiber.return ())
+      (Fiber.finalize_now
+         ~finally:(fun () -> Printf.printf "finalized")
          (fun () -> iter_function (stream 1 3) ~f:(fun _ -> Fiber.return ())))
   in
   test ~iter_function:Fiber.Stream.In.sequential_iter;

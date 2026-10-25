@@ -504,7 +504,7 @@ module H = struct
     let kind = Request id in
     Event.emit (Message { kind; meth_; stage = `Start }) (Session.id session);
     let () = Session.Stage1.request_started session.base (id, r) in
-    Fiber.finalize
+    Fiber.finalize_now
       (fun () ->
          let* response =
            let+ result =
@@ -539,9 +539,7 @@ module H = struct
              Session.Stage1.write session.base (Response (id, response))
            in
            ())
-      ~finally:(fun () ->
-        Session.Stage1.request_finished session.base id;
-        Fiber.return ())
+      ~finally:(fun () -> Session.Stage1.request_finished session.base id)
   ;;
 
   let run_session (type a) (t : a t) (session : a Session.t) =
@@ -811,7 +809,7 @@ module Make (S : Session) = struct
       in
       Table.set active_sessions session.id session;
       Console.Status_line.refresh ();
-      Fiber.finalize
+      Fiber.finalize_now
         (fun () ->
            let id = session.id in
            Event.emit (Session `Start) id;
@@ -840,8 +838,7 @@ module Make (S : Session) = struct
              ())
         ~finally:(fun () ->
           Table.remove active_sessions session.id;
-          Console.Status_line.refresh ();
-          Fiber.return ()))
+          Console.Status_line.refresh ()))
   ;;
 
   let serve sessions server =
@@ -901,27 +898,22 @@ module Lifecycle = struct
              print_uncaught_rpc_error exn;
              Exn_with_backtrace.reraise exn))
         ~finally:(fun () ->
-          Fiber.finalize
+          Fiber.finalize_now
             (fun () -> close_all t.active_sessions)
-            ~finally:(fun () ->
-              Rpc_registry.cleanup t.registry;
-              Fiber.return ()))
+            ~finally:(fun () -> Rpc_registry.cleanup t.registry))
     in
     let section =
       Console.Status_line.add_section (Live (fun () -> pp_active_sessions t))
     in
-    Fiber.finalize run_with_cleanup ~finally:(fun () ->
-      Console.Status_line.remove_section section;
-      Fiber.return ())
+    Fiber.finalize_now run_with_cleanup ~finally:(fun () ->
+      Console.Status_line.remove_section section)
   ;;
 
   let stop t =
-    Fiber.finalize
+    Fiber.finalize_now
       (fun () ->
          let* () = Csexp_rpc.Server.stop t.server in
          close_all t.active_sessions)
-      ~finally:(fun () ->
-        Rpc_registry.cleanup t.registry;
-        Fiber.return ())
+      ~finally:(fun () -> Rpc_registry.cleanup t.registry)
   ;;
 end

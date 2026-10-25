@@ -300,10 +300,8 @@ let solve
      in
      let overlay = Progress_indicator.add_overlay progress_indicator in
      let+ result =
-       Fiber.finalize
-         ~finally:(fun () ->
-           Console.Status_line.remove_overlay overlay;
-           Fiber.return ())
+       Fiber.finalize_now
+         ~finally:(fun () -> Console.Status_line.remove_overlay overlay)
          (fun () ->
             Fiber.parallel_map progress_indicator ~f:(fun { lockdir_path; state } ->
               solve_lock_dir

@@ -233,6 +233,11 @@ val collect_errors : (unit -> 'a t) -> ('a, Exn_with_backtrace.t list) Result.t 
     fails or succeeds. *)
 val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
 
+(** Like [finalize], but [finally] runs synchronously without returning a fiber.
+    Exceptions from [f] and [finally] are both passed to the current error handler,
+    with exceptions from [f] first. *)
+val finalize_now : (unit -> 'a t) -> finally:(unit -> unit) -> 'a t
+
 (** [reraise_all exns] re-raises all [exns] to the current error handler *)
 val reraise_all : Exn_with_backtrace.t list -> 'a t
 

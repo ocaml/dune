@@ -487,7 +487,7 @@ let create_sh_script cram_stanzas ~temp_dir ~setup_scripts (shell : Cram_stanza.
   =
   let script = Path.relative temp_dir "main.sh" in
   let oc = Io.open_out ~binary:true script in
-  Fiber.finalize ~finally:(fun () -> Fiber.return @@ close_out oc)
+  Fiber.finalize_now ~finally:(fun () -> close_out oc)
   @@ fun () ->
   let file name = Path.relative temp_dir name in
   let open Fiber.O in

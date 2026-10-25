@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792896025177,
+  "lastUpdate": 1792896031108,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -474554,6 +474554,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 39.47284249948667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b818b8b7340819bdf2e3e1de882da0374bbbcaa9",
+          "message": "refactor(pkg): minor cleanup of pin extraction (#16730)\n\nMinor refactor of workspace pin extraction in lock rules.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T10:24:17+08:00",
+          "tree_id": "6f277bc41420272dd8041341454e6d5e3e814a74",
+          "url": "https://github.com/ocaml/dune/commit/b818b8b7340819bdf2e3e1de882da0374bbbcaa9"
+        },
+        "date": 1792896030368,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4262082228533333,
             "unit": "seconds"
           }
         ]

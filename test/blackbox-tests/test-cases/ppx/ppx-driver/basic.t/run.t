@@ -67,8 +67,21 @@ Test the argument syntax
   - test_ppx_args.pp.ml
   [1]
 
-Test that going through the -ppx option of the compiler works
+Test that going through the -ppx option of the compiler works. The two PPXs
+request the same expanded value for "france", and one explicitly requests
+Dune's "library-name" value. Each cookie is passed only once.
 
   $ dune build test_ppx_staged.cma
   tool name: ocamlc
   args:--as-ppx -arg1 -arg2 -arg3=Oreo -foo bar Snickerdoodle --cookie france="Petit Beurre" --cookie italy="Biscotti" --cookie library-name="test_ppx_staged"
+
+A PPX request that conflicts with Dune's automatic "library-name" cookie is
+rejected.
+
+  $ dune build bad.cma
+  File "dune", line 156, characters 13-26:
+  156 |  (preprocess (pps bad_ppx)))
+                     ^^^^^^^^^^^^^
+  Error: bad and bad_ppx have inconsistent requests for cookie "library-name";
+  bad requests "bad" and bad_ppx requests "other"
+  [1]

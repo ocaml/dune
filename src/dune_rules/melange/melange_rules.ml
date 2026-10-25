@@ -81,8 +81,7 @@ let output_of_lib =
             (Lib_name.to_string lib_name)
       }
   in
-  fun ~target_dir lib ->
-    let info = Lib.info lib in
+  fun ~target_dir ~info lib ->
     match Lib_info.status info with
     | Private (_, None) -> Output_kind.Private_library_or_emit target_dir
     | Private (_, Some pkg) ->
@@ -145,8 +144,8 @@ let add_rule sctx ?mode ?loc ~dir build =
 
 let for_ = Compilation_mode.Melange
 
-let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
-  match Lib_info.modules (Lib.info lib) ~for_ with
+let impl_only_modules_defined_in_this_lib ~sctx ~scope ~info lib =
+  match Lib_info.modules info ~for_ with
   | External None ->
     User_error.raise
       [ Pp.textf
@@ -162,7 +161,6 @@ let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
         |> List.filter ~f:(Module.has ~ml_kind:Impl) )
   | Local ->
     let lib = Lib.Local.of_lib_exn lib in
-    let info = Lib.Local.info lib in
     let+ modules =
       let* modules = Dir_contents.modules_of_local_lib sctx lib ~for_ in
       let preprocess = Lib_info.preprocess info ~for_ in
@@ -350,8 +348,9 @@ let js_targets_of_modules modules ~module_systems ~output =
 
 let js_targets_of_libs ~sctx ~scope ~module_systems ~target_dir libs =
   let of_lib lib =
-    let+ _, modules = impl_only_modules_defined_in_this_lib ~sctx ~scope lib in
-    let output = output_of_lib ~target_dir lib in
+    let info = Lib.info lib in
+    let+ _, modules = impl_only_modules_defined_in_this_lib ~sctx ~scope ~info lib in
+    let output = output_of_lib ~target_dir ~info lib in
     List.concat_map modules ~f:(fun m ->
       js_outputs_of_module ~module_systems ~output m
       |> List.map ~f:(fun (_, target) -> Path.build target))
@@ -800,9 +799,10 @@ let setup_entries_js
 
 let setup_js_rules_libraries =
   let parallel_build_source_modules ~compile_flags ~sctx ~scope ~f:build_js lib =
+    let info = Lib.info lib in
     let* same_lib_emission_deps, source_modules =
       let+ lib_modules, source_modules =
-        impl_only_modules_defined_in_this_lib ~sctx ~scope lib
+        impl_only_modules_defined_in_this_lib ~sctx ~scope ~info lib
       in
       let same_lib_emission_deps =
         match Lib.Local.of_lib lib with
@@ -812,7 +812,7 @@ let setup_js_rules_libraries =
              depend on all Melange object dirs so sandboxed emission can still
              resolve same-library private modules and future cross-module
              optimization has the interface metadata it needs. *)
-          make_external_lib_emission_deps ~obj_dir:(Lib_info.obj_dir (Lib.info lib))
+          make_external_lib_emission_deps ~obj_dir:(Lib_info.obj_dir info)
         | Some lib ->
           make_same_lib_emission_deps
             ~sctx
@@ -860,7 +860,7 @@ let setup_js_rules_libraries =
           let pkg_name = Lib_info.package info in
           build_js ~loc ~promote_in_source ~pkg_name ~obj_dir
         in
-        let output = output_of_lib ~target_dir lib in
+        let output = output_of_lib ~target_dir ~info lib in
         let* includes =
           let+ requires_link =
             requires_link_for_lib
@@ -886,7 +886,8 @@ let setup_js_rules_libraries =
           | None -> Memo.return ()
           | Some vlib ->
             let* vlib = Resolve.Memo.read_memo vlib in
-            let vlib_output = output_of_lib ~target_dir vlib in
+            let vlib_info = Lib.info vlib in
+            let vlib_output = output_of_lib ~target_dir ~info:vlib_info vlib in
             (match vlib_output, output with
              | Public_library _, Private_library_or_emit _ ->
                User_error.raise

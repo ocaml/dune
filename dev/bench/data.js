@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792948188407,
+  "lastUpdate": 1792948196136,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -475656,6 +475656,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 63.57028125592,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e041c1582df3547da01257193effcf5607051364",
+          "message": "test(promotion): ignore non-diff exit statuses when capturing output (#16766)\n\nCover custom diff commands exiting with status 0 (no differences) or 2\n(an error) when capturing output for `dune promotion diff`. Verify that\ntheir stdout is discarded and that these preview requests leave the\npending promotion intact.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-26T00:46:54+08:00",
+          "tree_id": "f24d8fb0a6afa52a4bb839ecabcae41e53291bd8",
+          "url": "https://github.com/ocaml/dune/commit/e041c1582df3547da01257193effcf5607051364"
+        },
+        "date": 1792948194935,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5699418391333334,
             "unit": "seconds"
           }
         ]

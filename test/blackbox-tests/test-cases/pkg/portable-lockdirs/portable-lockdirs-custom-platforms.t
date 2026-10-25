@@ -48,6 +48,20 @@ Create a custom dune-workspace to solve for openbsd.
    ((arch x86_64)
     (os openbsd)))
 
+Automatic locking must solve for the same configured platforms.
+CR: it currently uses the default platform list instead.
+
+  $ mv dune.lock explicit-lock
+  $ autolock=_build/_private/default/.lock/dune.lock
+  $ dune build "$autolock"
+  $ if cmp -s explicit-lock/lock.dune "$autolock/lock.dune"; then
+  >   echo 'same lock metadata'
+  > else
+  >   echo 'different lock metadata'
+  > fi
+  different lock metadata
+  $ mv explicit-lock dune.lock
+
 Build as though we were on openbsd.
   $ export DUNE_CONFIG__OS=openbsd DUNE_CONFIG__ARCH=x86_64
   $ dune build

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792904955207,
+  "lastUpdate": 1792905401198,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -659981,6 +659981,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.6350055468066667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "965cbe49785b7596f1c672b4c9a537c6de9dd1d5",
+          "message": "refactor(engine): inline dependency map convenience operations (#16750)\n\nInline two one-caller dependency helpers: use `Dep.Map.parallel_map`\ndirectly when recording facts and map membership to check for universe\ndependencies.\n\nRemove the corresponding wrapper APIs while preserving the existing\nparallel map traversal and diagnostic scheduling.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-25T12:59:30+08:00",
+          "tree_id": "63df62bc9ceb7d2c1e7ca4674b26616f2d03448b",
+          "url": "https://github.com/ocaml/dune/commit/965cbe49785b7596f1c672b4c9a537c6de9dd1d5"
+        },
+        "date": 1792905025067,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.5386617230799993,
             "unit": "seconds"
           }
         ]

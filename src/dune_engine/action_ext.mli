@@ -6,7 +6,7 @@ module Make (S : sig
 
     val name : string
     val version : int
-    val is_useful_to : memoize:bool -> bool
+    val is_useful_to_memoize : bool
     val runs_process : bool
     val can_run_in_action_runner : bool
     val encode : ('p, 't) t -> ('p -> Sexp.t) -> ('t -> Sexp.t) -> Sexp.t

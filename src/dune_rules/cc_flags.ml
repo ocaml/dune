@@ -72,7 +72,7 @@ module Detect = struct
     let name = "detect-cc-vendor"
     let version = 1
     let bimap t f _ = { t with c_compiler = f t.c_compiler }
-    let is_useful_to ~memoize:_ = true
+    let is_useful_to_memoize = true
     let runs_process = true
     let can_run_in_action_runner = true
 

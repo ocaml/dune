@@ -57,7 +57,7 @@ module Spec = struct
   let version = 1
   let runs_process = false
   let can_run_in_action_runner = false
-  let is_useful_to ~memoize:_ = true
+  let is_useful_to_memoize = true
   let bimap t _f _g = t
   let encode t _ _ = Message.encode t
 

@@ -511,15 +511,13 @@ end = struct
     ;;
 
     let check_all_sub_dirs_rule_dirs_are_descendant ~of_:dir build_dir_only_sub_dirs =
-      Build_only_sub_dirs.iter_dirs_containing_sub_dirs
-        build_dir_only_sub_dirs
-        ~f:(fun p ->
-          if not (Path.Build.is_descendant p ~of_:dir)
-          then
-            Code_error.raise
-              "[gen_rules] returned sub-directories in a directory that is not a \
-               descendant of the directory it was called for"
-              [ "dir", Path.Build.to_dyn dir; "example", Path.Build.to_dyn p ])
+      Path.Build.Map.iteri build_dir_only_sub_dirs ~f:(fun p _ ->
+        if not (Path.Build.is_descendant p ~of_:dir)
+        then
+          Code_error.raise
+            "[gen_rules] returned sub-directories in a directory that is not a \
+             descendant of the directory it was called for"
+            [ "dir", Path.Build.to_dyn dir; "example", Path.Build.to_dyn p ])
     ;;
 
     let check_all_rules_are_descendant ~of_:dir rules =
@@ -824,7 +822,8 @@ end = struct
       Memo.return (Loaded.Build_under_directory_target { directory_target_ancestor })
     | Normal { rules; build_dir_only_sub_dirs; directory_targets } ->
       let build_dir_only_sub_dirs =
-        Build_only_sub_dirs.find build_dir_only_sub_dirs dir
+        Path.Build.Map.find build_dir_only_sub_dirs dir
+        |> Option.value ~default:Subdir_set.empty
       in
       Path.Build.Map.iteri directory_targets ~f:(fun dir_target loc ->
         let name = Path.Build.basename dir_target in

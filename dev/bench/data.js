@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792953955119,
+  "lastUpdate": 1792954268837,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -475743,6 +475743,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5648087403400001,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f209e0ac13407e1d9cfceca23f0eb1f85daf4d82",
+          "message": "build: update Nix flake inputs (#16744)\n\nUpdate the Nix flake inputs, including OCaml 5.5.2 from nix-overlays.\n\n01a170dc-9ab7-74b2-8b9c-acd99156b58f\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-25T11:28:57-07:00",
+          "tree_id": "e9ed1ccb856aecbc7c9fc846d9afd28f433ffe68",
+          "url": "https://github.com/ocaml/dune/commit/f209e0ac13407e1d9cfceca23f0eb1f85daf4d82"
+        },
+        "date": 1792954267215,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 60.73738325648001,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792961243070,
+  "lastUpdate": 1792961551984,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -476091,6 +476091,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5281535188800001,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "93de48c7cd5bd41455bda6d1216bfc8a1606d715",
+          "message": "ci: remove obsolete configurator step and update Cygwin action (#16780)\n\nRemove the unused step referencing the nonexistent `matrix.configurator`\nflag and bump `cygwin/cygwin-install-action` to v7.\n\n01a170dc-9ab7-74b2-8b9c-acd99156b58f\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-25T13:30:23-07:00",
+          "tree_id": "45cc417b3be6a338fffbe4b7d32d575f3bae00fd",
+          "url": "https://github.com/ocaml/dune/commit/93de48c7cd5bd41455bda6d1216bfc8a1606d715"
+        },
+        "date": 1792961550562,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 59.9143951031,
             "unit": "seconds"
           }
         ]

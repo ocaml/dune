@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792959463123,
+  "lastUpdate": 1792959779390,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -476033,6 +476033,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5451115523933333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9f5061f0c833d6438c76b91eb30062c623c64b6a",
+          "message": "perf(merlin): avoid unused compilation dependency facts (#16644)\n\nBuild Merlin configuration prerequisites without collecting dependency\nfacts that compilation prefixes discard.\n\nCovered by #16571. Upstreams anmonteiro/dune#248.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-25T12:58:29-07:00",
+          "tree_id": "36d5dbb31576fba1f85209c9d3136edfdfac2245",
+          "url": "https://github.com/ocaml/dune/commit/9f5061f0c833d6438c76b91eb30062c623c64b6a"
+        },
+        "date": 1792959777642,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 61.24812471492667,
             "unit": "seconds"
           }
         ]

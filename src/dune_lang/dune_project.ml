@@ -327,7 +327,6 @@ module Extension = struct
 
   type automatic =
     | Selected of instance
-    | Default of packed_extension * Syntax.Version.t
     | Not_selected of packed_extension
 
   let automatic ~dune_lang_ver ~explicitly_selected : automatic list =
@@ -341,7 +340,12 @@ module Extension = struct
            if
              dune_lang_ver >= (3, 26)
              && Syntax.Name.equal name (Syntax.name Melange.syntax)
-           then Default (e, (1, 0)) :: acc
+           then (
+             let loc = Loc.of_pos __POS__ in
+             let parse_args args =
+               Decoder.parse (Decoder.enter args) Univ_map.empty (List (loc, []))
+             in
+             Selected { extension = e; version = 1, 0; loc; parse_args } :: acc)
            else Not_selected e :: acc))
   ;;
 
@@ -400,7 +404,6 @@ let make_parsing_context ~(lang : Lang.Instance.t) extensions =
       List.fold_left extensions ~init:[] ~f:(fun acc (ext : Extension.automatic) ->
         match ext with
         | Not_selected _ -> acc
-        | Default (Packed { syntax; _ }, version) -> (syntax, version) :: acc
         | Selected ext ->
           let syntax =
             let (Extension.Packed ext) = ext.extension in
@@ -418,14 +421,13 @@ let make_parsing_context ~(lang : Lang.Instance.t) extensions =
       let (Extension.Packed ext) =
         match ext with
         | Selected e -> e.extension
-        | Default (e, _) | Not_selected e -> e
+        | Not_selected e -> e
       in
       ext.syntax
     in
     let status : Syntax.Key.t =
       match ext with
       | Selected ext -> Active ext.version
-      | Default (_, version) -> Active version
       | Not_selected (Packed e) ->
         Inactive { lang = e.syntax; dune_lang_ver = lang.version }
     in
@@ -476,14 +478,6 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
                   assert false) ))
           in
           args_acc, stanzas :: stanzas_acc
-        | Default (Packed e, _) ->
-          let arg, stanzas =
-            Decoder.parse
-              (Decoder.enter e.stanzas)
-              parsing_context
-              (List (Loc.of_pos __POS__, []))
-          in
-          Univ_map.set args_acc e.key arg, stanzas :: stanzas_acc
         | Selected instance ->
           let (Packed e) = instance.extension in
           let args_acc, stanzas =

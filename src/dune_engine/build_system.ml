@@ -1207,7 +1207,6 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
                [ "state", State.to_dyn state ]
          in
          Dtemp.clear ();
-         Sandbox.cleanup_pending_targets ();
          Target_promotion.save ();
          let* outcome =
            let finalize_diff_promotion () =

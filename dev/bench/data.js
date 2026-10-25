@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792954914883,
+  "lastUpdate": 1792954921189,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -475830,6 +475830,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 42.76708450919333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b5bc3fb25e553a2e6660be0d4206202477200fe4",
+          "message": "ci: update Windows OCaml matrix to 5.5.2 (#16772)\n\nUpdate the MSVC and MinGW opam compiler pins and cache prefixes to OCaml\n5.5.2. Complements #16744.\n\n01a170dc-9ab7-74b2-8b9c-acd99156b58f\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-25T11:37:15-07:00",
+          "tree_id": "1b582b73b9795a570ad464ce6352bc2cb631a2bd",
+          "url": "https://github.com/ocaml/dune/commit/b5bc3fb25e553a2e6660be0d4206202477200fe4"
+        },
+        "date": 1792954920074,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.40537428148000004,
             "unit": "seconds"
           }
         ]

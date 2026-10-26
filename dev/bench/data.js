@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793025320877,
+  "lastUpdate": 1793026491994,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -662591,6 +662591,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.6895920549933336,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9f9f5a70e1a809a63d9e23d4520c1718151fd8ca",
+          "message": "perf(cache): stream unused artifacts for size queries (#16790)\n\n`dune cache size` folds over unused artifacts instead of materializing\nthe eviction-candidate list. Lazily concatenate supported cache\nversions, sharing enumeration/stat/filter logic with trimming; only\neviction materializes a list for sorting.\n\nPer-version layout enumeration remains list-based. The sequence still\nallocates transient candidates and nodes, and local size-query timings\nwere effectively unchanged. No trimming-policy or CLI behavior changes.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-26T22:38:07+08:00",
+          "tree_id": "39bf5f62e3c4f566a6fa7c4a48fe1073856effb1",
+          "url": "https://github.com/ocaml/dune/commit/9f9f5a70e1a809a63d9e23d4520c1718151fd8ca"
+        },
+        "date": 1793026101039,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.61967196314,
             "unit": "seconds"
           }
         ]

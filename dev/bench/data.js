@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793026806655,
+  "lastUpdate": 1793029558414,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -662678,6 +662678,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.61967196314,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "42d5733108e202a6e6e3b05ec806f6856c939e7f",
+          "message": "perf(cache): share lazy artifact storage directories by version (#16802)\n\nReuse one lazy artifact-storage directory path per supported file-format\nversion in `Layout.Versioned.file_storage_dir`, instead of allocating\nand forcing a new directory-path lazy for every artifact-reference\nlookup.\n\nCache-root resolution remains lazy, and the existing API and cache\nlayout are unchanged. No per-artifact cache is introduced.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-26T23:31:39+08:00",
+          "tree_id": "c06618781d7df1a6c66312fe34317901b8dd0b12",
+          "url": "https://github.com/ocaml/dune/commit/42d5733108e202a6e6e3b05ec806f6856c939e7f"
+        },
+        "date": 1793029283343,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.4331479547800003,
             "unit": "seconds"
           }
         ]

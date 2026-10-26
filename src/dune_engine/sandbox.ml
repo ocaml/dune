@@ -135,10 +135,10 @@ let link_function ~(mode : Sandbox_mode.some) =
     Path.mkdir_p ~perms dst
   in
   let link_recursively ~src ~dst =
-    Tree_copy.copy
+    Tree_traversal.traverse
       ~src
       ~dst
-      ~copy_file:link_file
+      ~on_file:link_file
       ~mkdir:mkdir_with_perms
       ~on_unsupported:raise_other_kind
       ~on_symlink:(`Call resolve_symlink_kind)

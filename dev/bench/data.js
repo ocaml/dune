@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793030177107,
+  "lastUpdate": 1793030372028,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -662852,6 +662852,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.004777517866667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b356ef33e4c2f22f61d551b1f20127fc03498d0a",
+          "message": "test(config): characterize concurrency detection after a spawn failure (#16801)\n\nInject a single EAGAIN failure into the first CPU-count probe and record\nwhich probe runs next. The current implementation retries `nproc`;\n#16767 will change the expectation to `getconf`.\n\nBoth implementations terminate normally after the one-shot failure, so\nthe test does not wait for a timeout or repeatedly spawn failing\ncommands. Also verify that explicitly selecting a job count bypasses\ndetection.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-26T23:43:36+08:00",
+          "tree_id": "075174175010a20554b985888db4cd0b1a02c82f",
+          "url": "https://github.com/ocaml/dune/commit/b356ef33e4c2f22f61d551b1f20127fc03498d0a"
+        },
+        "date": 1793030144447,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.5542196786933338,
             "unit": "seconds"
           }
         ]

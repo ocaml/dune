@@ -29,13 +29,9 @@ rewriters at runtime.
   > print_endline [%message]
   > EOF
 
-Both toplevels should print "hello". Currently, the shell strips the cookie's
-quotes and the PPX rejects it.
+Both toplevels preserve the cookie's string value.
 
   $ dune exec ./tt.exe -- init.ml
-  File "<command-line>", line 1, characters 0-5:
-  Error: constant expected
+  hello
   $ dune utop . -- init.ml
-  File "<command-line>", line 1, characters 0-5:
-  Error: constant expected
-  [2]
+  hello

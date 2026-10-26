@@ -317,15 +317,13 @@ let runs_process t =
     ~extension:(fun (module A) -> A.Spec.runs_process)
 ;;
 
-let maybe_sandbox_path sandbox p =
-  match Path.as_in_build_dir p with
-  | None -> p
-  | Some p -> Path.build (Sandbox.map_path sandbox p)
-;;
-
-let sandbox t sandbox =
-  let path = maybe_sandbox_path sandbox in
-  let target = Sandbox.map_path sandbox in
+let sandbox t sandbox_dir =
+  let target p = Path.Build.append sandbox_dir p in
+  let path p =
+    match Path.as_in_build_dir p with
+    | None -> p
+    | Some p -> Path.build (target p)
+  in
   let rec loop = function
     | Run ({ prog; _ } as run) -> Run { run with prog = Result.map prog ~f:path }
     | With_accepted_exit_codes (pred, t) -> With_accepted_exit_codes (pred, loop t)

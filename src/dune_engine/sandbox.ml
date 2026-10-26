@@ -180,6 +180,17 @@ let rec is_covered paths path =
 
 let link_deps t ~deps =
   let link = Staged.unstage (link_function ~mode:t.mode) in
+  let last_parent = ref None in
+  let has_cached_ancestor path =
+    match Path.Build.parent path, !last_parent with
+    | None, _ -> false
+    | Some parent, Some (previous, covered) when Path.Build.equal parent previous ->
+      covered
+    | Some parent, _ ->
+      let covered = is_covered deps (Path.build parent) in
+      last_parent := Some (parent, covered);
+      covered
+  in
   Path.Set.iter deps ~f:(fun path ->
     match Path.as_in_build_dir path with
     | None ->
@@ -192,9 +203,7 @@ let link_deps t ~deps =
            build directory instead."
           [ "path", Path.to_dyn path ]
     | Some p ->
-      (match Path.parent path with
-       | Some parent when is_covered deps parent -> ()
-       | None | Some _ -> link path (Path.build (map_real_path t p))))
+      if not (has_cached_ancestor p) then link path (Path.build (map_real_path t p)))
 ;;
 
 let unlinked_deps t deps =

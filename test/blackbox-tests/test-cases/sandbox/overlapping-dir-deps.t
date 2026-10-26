@@ -52,3 +52,42 @@ Hardlink mode: both dependencies also expose the expected contents.
   contents
   $ dune build @overlap --sandbox hardlink
   contents
+
+Nested directory and file dependencies must also be populated only once.
+A sibling whose name shares the directory's prefix is still a separate input.
+The empty directory must remain available too.
+
+  $ echo sibling > outer-other
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target (dir outer))
+  >  (action
+  >   (progn
+  >    (run mkdir -p outer/inner/empty)
+  >    (system "echo nested > outer/inner/file"))))
+  > (rule
+  >  (alias nested-overlap)
+  >  (deps outer/inner/file outer-other outer/inner outer (sandbox always))
+  >  (action
+  >   (progn
+  >    (run cat outer/inner/file outer-other)
+  >    (run test -d outer/inner/empty))))
+  > EOF
+
+  $ dune build @nested-overlap --sandbox symlink
+  nested
+  sibling
+  $ dune build @nested-overlap --sandbox hardlink
+  nested
+  sibling
+
+CR: Copy mode also tries to populate the nested file more than once.
+
+  $ dune build @nested-overlap --sandbox copy > nested-copy.log 2>&1
+  [1]
+  $ sed -E \
+  >   -e '/^Error.*:$/ { N; s/\n/ /; }' \
+  >   -e 's/(open|copyfile)\((.*)\): File exists$/\2: File exists/' \
+  >   nested-copy.log | censor
+  Error: _build/.sandbox/$DIGEST/default/outer/inner/file: File exists
+  -> required by alias nested-overlap in dune:18

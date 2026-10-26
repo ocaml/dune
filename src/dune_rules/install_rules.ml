@@ -535,7 +535,10 @@ end = struct
              in
              let+ requires = Lib.Compile.direct_requires compile_info ~for_:Ocaml in
              Resolve.is_ok requires)
-      | Rocq_stanza.Theory.T d -> Memo.return (Option.is_some d.package)
+      | Rocq_stanza.Theory.T d ->
+        if Option.is_some d.package
+        then Expander.eval_blang expander d.enabled_if
+        else Memo.return false
       | _ -> Memo.return false
     in
     Option.some_if keep stanza

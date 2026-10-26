@@ -818,6 +818,100 @@ module Result = struct
       { state; on_success; limit; unexpected_output = false }
     ;;
 
+    let%expect_test "captured output truncation" =
+      let path = Temp.create File ~prefix:"dune" ~suffix:"output" in
+      Exn.protect
+        ~finally:(fun () -> Temp.destroy File path)
+        ~f:(fun () ->
+          let read contents n =
+            Stdune.Io.write_file_exn path contents;
+            get (make (Some path) ~on_success:Print ~limit:n)
+          in
+          Printf.printf "empty: %S\n" (read "" 0);
+          Printf.printf "under limit: %S\n" (read "short\n" 100);
+          Printf.printf "at limit: %S\n" (read "short\n" 6);
+          Printf.printf "over limit: %S\n" (read "short\n" 5);
+          Printf.printf "zero limit: %S\n" (read "short\n" 0);
+          Printf.printf "single line: %S\n" (read (String.make 100 'x') 30);
+          let lines =
+            List.init 100 ~f:(fun i -> sprintf "%02d\n" i) |> String.concat ~sep:""
+          in
+          Printf.printf "lines:\n%s" (read lines 40);
+          Printf.printf
+            "long lines: %S\n"
+            (read (String.make 100 'x' ^ "\n" ^ String.make 100 'y') 30);
+          let overlapping =
+            List.init 20 ~f:(fun i -> sprintf "%02d\n" i) |> String.concat ~sep:""
+          in
+          Printf.printf "overlapping windows:\n%s" (read overlapping 40);
+          [%expect
+            {|
+            empty: ""
+            under limit: "short\n"
+            at limit: "short\n"
+            over limit: "\n...TRUNCATED BY DUNE...\n"
+            zero limit: "\n...TRUNCATED BY DUNE...\n"
+            single line: "xxxxx\n...TRUNCATED BY DUNE...\n"
+            lines:
+            00
+            01
+            02
+            03
+            04
+            05
+            06
+            ...TRUNCATED BY DUNE...
+            93
+            94
+            95
+            96
+            97
+            98
+            99
+            long lines: "xxxxx\n...TRUNCATED BY DUNE...\n"
+            overlapping windows:
+            00
+            01
+            02
+            03
+            04
+            05
+            06
+            ...TRUNCATED BY DUNE...
+            13
+            14
+            15
+            16
+            17
+            18
+            19
+            |}])
+    ;;
+
+    let%expect_test "truncation with long lines around the cut points" =
+      let path = Temp.create File ~prefix:"dune" ~suffix:"output" in
+      Exn.protect
+        ~finally:(fun () -> Temp.destroy File path)
+        ~f:(fun () ->
+          let contents =
+            "header\n"
+            ^ String.make 40 'x'
+            ^ "\nmiddle\n"
+            ^ String.make 40 'y'
+            ^ "\ntail\n"
+          in
+          Stdune.Io.write_file_exn path contents;
+          print_string (get (make (Some path) ~on_success:Print ~limit:30));
+          [%expect
+            {|
+            header
+            xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            ...TRUNCATED BY DUNE...
+            yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+            tail
+            |}])
+    ;;
+
     let check_unexpected_output_and_swallow_on_success t =
       (match t.state with
        | Closed -> Code_error.raise "already closed" []

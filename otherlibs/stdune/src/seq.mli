@@ -14,3 +14,4 @@ val filter : 'a t -> f:('a -> bool) -> 'a t
 val filter_map : 'a t -> f:('a -> 'b option) -> 'b t
 val fold_left : 'b t -> init:'a -> f:('a -> 'b -> 'a) -> 'a
 val iter : 'a t -> f:('a -> unit) -> unit
+val concat_map : 'a t -> f:('a -> 'b t) -> 'b t

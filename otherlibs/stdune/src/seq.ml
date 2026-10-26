@@ -19,3 +19,5 @@ let rec concat seq () =
   | Nil -> Nil
   | Cons (x, next) -> append x (concat next) ()
 ;;
+
+let concat_map t ~f = concat_map f t

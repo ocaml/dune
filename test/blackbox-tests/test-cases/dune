@@ -108,6 +108,12 @@
    (<> %{architecture} arm64))))
 
 (cram
+ (applies_to auto-concurrency-spawn-failure.t)
+ (enabled_if
+  (= %{system} linux))
+ (deps %{bin:strace} %{bin:awk}))
+
+(cram
  (applies_to corrupt-persistent.t)
  (deps %{bin:truncate}))
 

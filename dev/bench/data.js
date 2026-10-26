@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792989207906,
+  "lastUpdate": 1792991503425,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -662069,6 +662069,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.1916309704600003,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "171559512e2a9fa9121e963ac64e433aab06f779",
+          "message": "test: keep installed bytecode independent of build stub paths (#16797)\n\nCover execution of installed bytecode after moving its prefix and hiding\nthe build trees, guarding against embedding staging paths in a fix for\n#9979.\n\n01a1756d-a133-74d0-a14c-87897f444664\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-25T21:54:59-07:00",
+          "tree_id": "257a017f84790fdab6986f52dd6a998e25929912",
+          "url": "https://github.com/ocaml/dune/commit/171559512e2a9fa9121e963ac64e433aab06f779"
+        },
+        "date": 1792991125252,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.5693524745466667,
             "unit": "seconds"
           }
         ]

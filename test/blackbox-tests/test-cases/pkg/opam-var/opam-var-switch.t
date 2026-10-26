@@ -49,15 +49,15 @@ opam-var-unsupported.t
 
   $ build_pkg testpkg 2>&1 | censor
   dune
-  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/testpkg.0.0.1-$DIGEST2/source
-  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/testpkg.0.0.1-$DIGEST2/target
-  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/testpkg.0.0.1-$DIGEST2/target/lib
-  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/testpkg.0.0.1-$DIGEST2/target/lib
-  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/testpkg.0.0.1-$DIGEST2/target/bin
-  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/testpkg.0.0.1-$DIGEST2/target/sbin
-  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/testpkg.0.0.1-$DIGEST2/target/share
-  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/testpkg.0.0.1-$DIGEST2/target/doc
-  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/testpkg.0.0.1-$DIGEST2/target/etc
-  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/testpkg.0.0.1-$DIGEST2/target/man
-  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/testpkg.0.0.1-$DIGEST2/target/lib/toplevel
-  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/testpkg.0.0.1-$DIGEST2/target/lib/stublibs
+  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/source
+  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target
+  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/lib
+  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/lib
+  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/bin
+  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/sbin
+  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/share
+  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/doc
+  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/etc
+  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/man
+  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/lib/toplevel
+  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/lib/stublibs

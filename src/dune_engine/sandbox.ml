@@ -203,6 +203,14 @@ let create_dir t dir =
 
 let create_dirs t dirs = Path.Build.Set.iter dirs ~f:(fun dir -> create_dir t dir)
 
+let rec is_covered paths path =
+  Path.Set.mem paths path
+  ||
+  match Path.parent path with
+  | None -> false
+  | Some parent -> is_covered paths parent
+;;
+
 let link_deps t ~deps =
   let link = Staged.unstage (link_function ~mode:t.mode) in
   Path.Set.iter deps ~f:(fun path ->
@@ -216,19 +224,15 @@ let link_deps t ~deps =
           "Action depends on source tree. All actions should depend on the copies in the \
            build directory instead."
           [ "path", Path.to_dyn path ]
-    | Some p -> link path (Path.build (map_real_path t p)))
+    | Some p ->
+      (match Path.parent path with
+       | Some parent when is_covered deps parent -> ()
+       | None | Some _ -> link path (Path.build (map_real_path t p))))
 ;;
 
 let unlinked_deps t deps =
-  let rec already_linked paths path =
-    Path.Set.mem paths path
-    ||
-    match Path.parent path with
-    | None -> false
-    | Some parent -> already_linked paths parent
-  in
   let rec loop path acc =
-    if already_linked t.deps path || already_linked acc path
+    if is_covered t.deps path || is_covered acc path
     then acc
     else (
       match Path.as_in_build_dir path with

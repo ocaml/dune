@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793019524524,
+  "lastUpdate": 1793019827834,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -476497,6 +476497,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.54385480788,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d41552e3e6bb4a63034b2e1be0b26b090756f1d5",
+          "message": "perf(sexp): reuse empty field decoder states (#16103)\n\nField decoder state retains recognized names only to generate hints for\nunknown input fields. Once no unparsed fields remain, those names are no\nlonger observable.\n\nCanonicalize these terminal states to a shared empty value and avoid\nextending recognized names after the final field is consumed. This\nremoves state-record and known-name list allocations from the\nrecord-decoding path without changing decoding errors.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-26T20:28:04+08:00",
+          "tree_id": "0ec09fa88fde0eda2570e08a9ef2b3ea14baddda",
+          "url": "https://github.com/ocaml/dune/commit/d41552e3e6bb4a63034b2e1be0b26b090756f1d5"
+        },
+        "date": 1793019826288,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 59.01023900335333,
             "unit": "seconds"
           }
         ]

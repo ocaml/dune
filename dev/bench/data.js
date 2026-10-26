@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793029894971,
+  "lastUpdate": 1793030168849,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -476729,6 +476729,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4042392607266667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "eeb8090e058dc297a51bbe2df489ede65443318d",
+          "message": "test(process): characterize captured output truncation (#16800)\n\nAdd correctness tests around the existing capture reader without\nchanging its implementation. Check exact output at length boundaries,\nline-oriented head/tail truncation, overlapping windows, and long lines\naround the cut points.\n\nThe expectations record current behavior, including excessive retention\nfor long lines, so this test-only PR passes before #16769 changes that\nbehavior. No allocation measurements or timing assertions.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-26T23:35:56+08:00",
+          "tree_id": "c660da9745282941954e507b1b519538877c95bf",
+          "url": "https://github.com/ocaml/dune/commit/eeb8090e058dc297a51bbe2df489ede65443318d"
+        },
+        "date": 1793030166564,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 53.02556502598,
             "unit": "seconds"
           }
         ]

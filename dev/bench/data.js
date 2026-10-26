@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792968492180,
+  "lastUpdate": 1792988929793,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -661982,6 +661982,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.5312759733533334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f7300e3baeebbb7e8048e5ce51117cb68b80b519",
+          "message": "test(toplevel): reproduce PPX cookie quoting failures (#16781)\n\nReproduce lost PPX cookie quoting in custom toplevels and `dune utop`.\nRelated to #16699.\n\n01a1505e-b5cd-7cc2-828d-c113fa04a556\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-25T21:12:04-07:00",
+          "tree_id": "f9908cb9dd6aab4ae6ae63186b7f9d410e3f0f83",
+          "url": "https://github.com/ocaml/dune/commit/f7300e3baeebbb7e8048e5ce51117cb68b80b519"
+        },
+        "date": 1792988530913,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.1916309704600003,
             "unit": "seconds"
           }
         ]

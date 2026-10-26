@@ -335,8 +335,6 @@ Generated files inside directory targets remain build targets and are omitted
 from promotion output. Unrelated source-tree changes made by the same action are
 still reported.
 
-CR: The directory output's contents are currently offered for promotion too.
-
   $ rm -rf out sub dune
   $ make_dune_project 3.24
   $ cat >dune<<EOF
@@ -347,11 +345,6 @@ CR: The directory output's contents are currently offered for promotion too.
   > EOF
 
   $ dune build out
-  File "out/file", line 1, characters 0-0:
-  --- out/file
-  +++ _build/default/out/file
-  @@ -0,0 +1 @@
-  +target
   File "sub/out", line 1, characters 0-0:
   --- sub/out
   +++ _build/default/sub/out

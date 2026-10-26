@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793019307838,
+  "lastUpdate": 1793019315236,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -476468,6 +476468,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 60.75011666906,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e0dbbbc7e43f52117343740d973174ae2f8fc570",
+          "message": "refactor(engine): classify source and external paths in the rule loader (#16762)\n\nMatch `Path.t` directly during directory triage instead of routing\nthrough the one-use `Dpath.analyse_dir` wrapper and its duplicate\nsource/external/build type.\n\nRetain the typed build path through context lookup, removing the\nredundant conversion back from `Path.t`. Rule-loading behavior is\nunchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-26T20:33:01+08:00",
+          "tree_id": "f00f4355faca33f0596888ca33acdc449ff8f8f1",
+          "url": "https://github.com/ocaml/dune/commit/e0dbbbc7e43f52117343740d973174ae2f8fc570"
+        },
+        "date": 1793019314397,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.54385480788,
             "unit": "seconds"
           }
         ]

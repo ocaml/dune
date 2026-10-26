@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793049021297,
+  "lastUpdate": 1793049573950,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -663200,6 +663200,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.606440962,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "72f6fefe36e1b2579575622f9af2e50d7140b3d1",
+          "message": "test(sandbox): cover nested overlapping dependencies (#16808)\n\nCover nested directory/file dependencies, a similarly prefixed sibling,\nand an empty directory across sandbox modes.\n\nRecord the current copy-mode `File exists` failure before the fix in\n#16806.",
+          "timestamp": "2026-10-26T22:05:18+01:00",
+          "tree_id": "56aa88cae831113fa149dc95460dfd7aefc937b6",
+          "url": "https://github.com/ocaml/dune/commit/72f6fefe36e1b2579575622f9af2e50d7140b3d1"
+        },
+        "date": 1793049227779,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.6441591671466664,
             "unit": "seconds"
           }
         ]

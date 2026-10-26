@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792992083018,
+  "lastUpdate": 1792992336316,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -476323,6 +476323,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5315614793066666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fa8eee913e0112231952c68f0e1f8c5541b201f6",
+          "message": "fix(toplevel): quote runtime PPX commands (#16782)\n\nPreserve PPX cookie values in custom toplevels and `dune utop` by\nquoting the runtime PPX command. Fixes the failure covered by #16781;\nrelated to #16699.\n\n01a1505e-b5cd-7cc2-828d-c113fa04a556\n\n---------\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-25T22:04:24-07:00",
+          "tree_id": "01d0f9356b52083d0b9262025b28a25884bd5ad9",
+          "url": "https://github.com/ocaml/dune/commit/fa8eee913e0112231952c68f0e1f8c5541b201f6"
+        },
+        "date": 1792992334323,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 48.725489353473336,
             "unit": "seconds"
           }
         ]

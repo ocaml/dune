@@ -75,8 +75,8 @@ module Dir_triage = struct
 end
 
 let get_dir_triage ~dir =
-  match Dpath.analyse_dir dir with
-  | Source dir ->
+  match (dir : Path.t) with
+  | In_source_tree dir ->
     let module Source_tree = (val (Build_config.get ()).source_tree) in
     Source_tree.find_dir dir
     >>| (function
@@ -102,32 +102,32 @@ let get_dir_triage ~dir =
         |> Filename.Array.Set.of_list
     in
     Dir_triage.Known (External { filenames })
-  | Build (Regular Root) ->
-    let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
-    let allowed_subdirs =
-      [ Path.Build.basename Dpath.Build.anonymous_actions_dir ]
-      @ (Context_name.Map.keys contexts
-         |> List.map ~f:(fun name -> Filename.of_string_exn (Context_name.to_string name))
-        )
-      |> Subdir_set.of_list
-      |> Subdir_set.to_dir_set
-    in
-    Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
-  | Build (Anonymous_action p) ->
-    let build_dir = Dpath.Target_dir.build_dir p in
-    Code_error.raise
-      "Called get_dir_triage on an anonymous action directory"
-      [ "dir", Path.Build.to_dyn build_dir ]
-  | Build (Invalid _) ->
-    Memo.return @@ Dir_triage.Known (Loaded.no_rules ~allowed_subdirs:Dir_set.empty)
-  | Build (Regular (With_context (context_name, sub_dir))) ->
-    let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
-    (match Context_name.Map.find contexts context_name with
-     | None -> Dir_triage.no_rules
-     | Some ((_ : Build_context.t), context_type) ->
-       (* In this branch, [dir] is in the build directory. *)
-       let dir = Path.as_in_build_dir_exn dir in
-       Dir_triage.Build_directory { dir; context_name; context_type; sub_dir })
+  | In_build_dir dir ->
+    (match Dpath.Target_dir.of_target dir with
+     | Regular Root ->
+       let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
+       let allowed_subdirs =
+         [ Path.Build.basename Dpath.Build.anonymous_actions_dir ]
+         @ (Context_name.Map.keys contexts
+            |> List.map ~f:(fun name ->
+              Filename.of_string_exn (Context_name.to_string name)))
+         |> Subdir_set.of_list
+         |> Subdir_set.to_dir_set
+       in
+       Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
+     | Anonymous_action p ->
+       let build_dir = Dpath.Target_dir.build_dir p in
+       Code_error.raise
+         "Called get_dir_triage on an anonymous action directory"
+         [ "dir", Path.Build.to_dyn build_dir ]
+     | Invalid _ ->
+       Memo.return @@ Dir_triage.Known (Loaded.no_rules ~allowed_subdirs:Dir_set.empty)
+     | Regular (With_context (context_name, sub_dir)) ->
+       let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
+       (match Context_name.Map.find contexts context_name with
+        | None -> Dir_triage.no_rules
+        | Some ((_ : Build_context.t), context_type) ->
+          Dir_triage.Build_directory { dir; context_name; context_type; sub_dir }))
 ;;
 
 let describe_rule (rule : Rule.t) =

@@ -21,15 +21,8 @@ type target_kind =
   | Anonymous_action of Context_name.t
   | Other of Path.Build.t
 
-type 'build path_kind =
-  | Source of Path.Source.t
-  | External of Path.External.t
-  | Build of 'build
-
 (** Return the name of an alias from its stamp file *)
 val analyse_target : Path.Build.t -> target_kind
-
-val analyse_dir : Path.t -> Target_dir.t path_kind
 
 (** Nice description of a target *)
 val describe_target : Path.Build.t -> string

@@ -40,7 +40,7 @@ let%expect_test "map_reduce_seq consumes a one-shot sequence once" =
   [%expect
     {|
     sum: 6
-    one-shot: Seq
+    one-shot: Par
       [ Singleton (Some "a", ())
       ; Singleton (Some "b", ())
       ; Singleton (Some "c", ())
@@ -83,10 +83,10 @@ let%expect_test "map_reduce_seq preserves branch order and sequential sections" 
     singleton: Singleton (Some "a", ())
     sections: Seq
       [ Singleton (Some "before", ())
-      ; Singleton (Some "a", ())
-      ; Singleton (Some "c", ())
-      ; Singleton (Some "d", ())
-      ; Singleton (Some "b", ())
+      ; Par
+          [ Seq [ Singleton (Some "a", ()); Singleton (Some "b", ()) ]
+          ; Seq [ Singleton (Some "c", ()); Singleton (Some "d", ()) ]
+          ]
       ; Singleton (Some "after", ())
       ]
     |}]

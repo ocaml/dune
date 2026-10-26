@@ -2,7 +2,7 @@ open! Import
 
 (* These mirror the parallel combinators in [Fiber], but while a Memo computation is running
    they record the dependencies discovered by independent parallel branches as a parallel
-   section (via [Deps_collector.run_parallel]) rather than sequentially, so that
+   section (via [Deps_collector]) rather than sequentially, so that
    [restore_from_cache] can later check those dependencies concurrently. When no computation
    is running (no active collector) they behave exactly like the [Fiber] versions.
 
@@ -79,6 +79,13 @@ let map_reduce l ~f ~empty ~combine =
     | None -> Fiber.map_reduce l ~f ~empty ~combine
     | Some { Deps_collector.run } ->
       Fiber.map_reduce l ~f:(fun x -> run ~f x) ~empty ~combine)
+;;
+
+let map_reduce_seq seq ~f ~empty ~combine =
+  Deps_collector.run_parallel_dynamic (function
+    | None -> Fiber.map_reduce_seq seq ~f ~empty ~combine
+    | Some { Deps_collector.run } ->
+      Fiber.map_reduce_seq seq ~f:(fun x -> run ~f x) ~empty ~combine)
 ;;
 
 let map_reduce_array arr ~f ~empty ~combine =

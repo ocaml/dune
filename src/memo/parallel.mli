@@ -25,6 +25,13 @@ val map_reduce
   -> combine:('b -> 'b -> 'b)
   -> 'b Fiber.t
 
+val map_reduce_seq
+  :  'a Seq.t
+  -> f:('a -> 'b Fiber.t)
+  -> empty:'b
+  -> combine:('b -> 'b -> 'b)
+  -> 'b Fiber.t
+
 val map_reduce_array
   :  'a array
   -> f:('a -> 'b Fiber.t)

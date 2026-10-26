@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793048702435,
+  "lastUpdate": 1793049013711,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -476961,6 +476961,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.51446260044,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5068819aad339d5c49aa66c3e47efeaf8a1f9866",
+          "message": "fix(build): use the context stdlib for configuration scripts (#16805)\n\nRun the SHA/LMDB flag generators and setup-defaults configuration script\nwith\n`-noinit` and an explicit `-I` for the context's standard library. Bind\nthat\ndirectory as a named dependency so it is materialized in action\nsandboxes.\n\nThis fixes `Unbound module Stdlib` when using the compiler installed by\npackage\nmanagement, as reproduced by locking and building a shallow `ocaml/dune`\nclone\nwith Dune from `prototype/flatten-dune-v2`. Passing `-I` alone still\nfails;\ndeclaring the stdlib dependency makes the binary build and setup checks\npass.\n\nValidation:\n- Formatting and scoped build/setup checks passed.\n- The shallow-clone reproduction's binary build and focused setup checks\npassed.\n- Full-suite run was interrupted after `actions/subreaper.t` timed out.",
+          "timestamp": "2026-10-26T21:40:55+01:00",
+          "tree_id": "6806bc9bac09ce58c09fefe7a201d0d8e9c41ffe",
+          "url": "https://github.com/ocaml/dune/commit/5068819aad339d5c49aa66c3e47efeaf8a1f9866"
+        },
+        "date": 1793049012055,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 60.41044162226,
             "unit": "seconds"
           }
         ]

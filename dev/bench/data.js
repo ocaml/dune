@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793030608527,
+  "lastUpdate": 1793033784995,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -662939,6 +662939,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.5542196786933338,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "07f5da9aa5ca2ab8c35fa69b40f99a9c6343c18e",
+          "message": "test(cache): pin hexadecimal entry-name validation (#16803)\n\nPin existing hexadecimal cache-entry validation before optimizing\nenumeration: accept upper- and lower-case 32-character names, while\nignoring wrong lengths and non-hexadecimal characters.\n\nVerify that size queries count only valid entries and trimming leaves\nignored files untouched. The valid digests differ beyond their case, so\nthe fixtures also work on case-insensitive filesystems.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-27T00:25:40+08:00",
+          "tree_id": "1ca43336b0ea84d7900166996411f8c7c8f60ab1",
+          "url": "https://github.com/ocaml/dune/commit/07f5da9aa5ca2ab8c35fa69b40f99a9c6343c18e"
+        },
+        "date": 1793033477195,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.187921570546667,
             "unit": "seconds"
           }
         ]

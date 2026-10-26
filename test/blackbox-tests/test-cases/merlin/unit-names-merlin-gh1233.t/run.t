@@ -133,6 +133,5 @@
   }
 
 module Foo is not unbound, the correct result is [], "no errors"
-This test is disabled because it depends on root detection and is not reproducible.
-$ ocamlmerlin single errors -filename foo.ml < foo.ml | jq ".value"
-[]
+  $ ocamlmerlin single errors -filename foo.ml < foo.ml | jq ".value"
+  []

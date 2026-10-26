@@ -28,18 +28,12 @@ correctly under both default and copy sandboxing.
   >   (with-stdout-to out (run mybin))))
   > EOF
 
-Default sandboxing fails while populating the overlapping package-directory
-and executable dependencies.
+With default sandboxing, the overlapping package-directory and executable
+dependencies are both available to the action.
 
-  $ dune build @all 2>&1 | censor
-  Error:
-  symlink(_build/.sandbox/$DIGEST1/_private/default/.pkg/provider.0.0.1-$DIGEST2/target): File exists
-  -> required by _build/default/out
-  -> required by alias all
-  [1]
+  $ dune build @all
   $ cat _build/default/out
-  cat: _build/default/out: No such file or directory
-  [1]
+  from provider
 
 CR: Copy mode tries to populate the package executable twice and fails.
 The package-directory and executable dependencies still need deduplication.
@@ -70,8 +64,7 @@ Without [(deps (package provider))], both sandbox modes should succeed.
   >   (with-stdout-to out (run mybin))))
   > EOF
 
-  $ dune build @all 2>&1 | censor
-  
+  $ dune build @all
   $ cat _build/default/out
   from provider
 

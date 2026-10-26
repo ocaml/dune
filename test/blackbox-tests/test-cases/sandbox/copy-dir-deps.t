@@ -18,7 +18,8 @@ First check that the directory dependency contains a regular file.
   $ dune_cmd stat kind _build/default/tree/file
   regular file
 
-Symlink mode: the copy action follows the directory link and copies its files.
+Symlink mode: the copy action follows the sandbox's file links and produces
+regular output files.
 
   $ dune build copied --sandbox symlink
   $ cat _build/default/copied/file
@@ -26,7 +27,7 @@ Symlink mode: the copy action follows the directory link and copies its files.
   $ dune_cmd stat kind _build/default/copied/file
   regular file
 
-Copy mode also produces a regular file with the expected contents.
+Copy mode produces a regular file with the expected contents.
 
   $ dune build copied --sandbox copy
   $ cat _build/default/copied/file
@@ -34,11 +35,10 @@ Copy mode also produces a regular file with the expected contents.
   $ dune_cmd stat kind _build/default/copied/file
   regular file
 
-Hardlink mode currently fails while populating the directory dependency,
-before the copy action runs.
+Hardlink mode also produces a regular file with the expected contents.
 
-  $ dune build copied --sandbox hardlink 2>&1 | censor
-  Error:
-  link(_build/.sandbox/$DIGEST/default/tree): Operation not permitted
-  -> required by _build/default/copied
-  [1]
+  $ dune build copied --sandbox hardlink
+  $ cat _build/default/copied/file
+  contents
+  $ dune_cmd stat kind _build/default/copied/file
+  regular file

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793042789904,
+  "lastUpdate": 1793042799586,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -476932,6 +476932,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 52.95772608502667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "17392adf9fa010a8973ed75598371a6fd44b9cbb",
+          "message": "fix(sandbox): support directory dependencies in hardlink sandboxes (#16675)\n\nShare directory traversal across copy, symlink, and hardlink sandboxes,\napplying the selected mode only to files. This fixes directory\ndependencies in hardlink mode by avoiding hardlinks to directories.\n\nOverlapping-dependency deduplication and patch-back changes remain\nseparate follow-ups.",
+          "timestamp": "2026-10-26T20:04:42+01:00",
+          "tree_id": "17def48be9740b4122b55307426e8739a890a89d",
+          "url": "https://github.com/ocaml/dune/commit/17392adf9fa010a8973ed75598371a6fd44b9cbb"
+        },
+        "date": 1793042797500,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.51446260044,
             "unit": "seconds"
           }
         ]

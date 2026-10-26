@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792992343218,
+  "lastUpdate": 1793017779265,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -662243,6 +662243,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.0347789368066667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c02a68a2c705afdda8c96ef0e6a77c72e959849b",
+          "message": "test(engine): cover source-copy watch invalidation (#16771)\n\nAdd standalone watch-mode coverage for:\n\n- Executable-bit changes across contexts when one build copy is already\ncurrent.\n- Same-content versus real content changes to a `source_tree`\ndependency.\n- Touching an input during a running build versus editing its contents:\nonly the edit should cancel and restart the build.\n\nThe running action blocks on a FIFO rather than a polling loop; watcher\nflushes and build traces check the restart behavior. No production\nchanges or dependency on the source-copy refactor.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-26T20:12:47+08:00",
+          "tree_id": "1ddc8300c8bce0fd82ffa7bbe9a6fc9e9594c0b7",
+          "url": "https://github.com/ocaml/dune/commit/c02a68a2c705afdda8c96ef0e6a77c72e959849b"
+        },
+        "date": 1793017400015,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.5639361893333334,
             "unit": "seconds"
           }
         ]

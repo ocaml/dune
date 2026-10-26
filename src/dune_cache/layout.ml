@@ -33,8 +33,15 @@ module Versioned = struct
     lazy (Lazy.force build_cache_dir / "meta" / Version.Metadata.to_string t)
   ;;
 
-  let file_storage_dir t =
-    lazy (Lazy.force build_cache_dir / "files" / Version.File.to_string t)
+  let file_storage_dir =
+    let directory version =
+      lazy (Lazy.force build_cache_dir / "files" / Version.File.to_string version)
+    in
+    let v3 = directory Version.File.V3 in
+    let v4 = directory Version.File.V4 in
+    function
+    | Version.File.V3 -> v3
+    | V4 -> v4
   ;;
 
   let metadata_path t ~rule_or_action_digest =

@@ -1,5 +1,3 @@
-open Import
-
 (** [traverse ~src ~dst ... ()] calls [on_file] for regular files and [mkdir] for
     directories, preserving relative paths under [dst].
 

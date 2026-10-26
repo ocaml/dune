@@ -1,5 +1,3 @@
-open Import
-
 let traverse ~src ~dst ~on_file ~mkdir ~on_unsupported ?(on_symlink = `Resolve) () =
   let handle_kind ~src ~dst kind =
     match (kind : Unix.file_kind) with

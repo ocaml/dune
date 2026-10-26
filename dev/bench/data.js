@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793024990661,
+  "lastUpdate": 1793025313526,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -476555,6 +476555,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5152897618866668,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a35154cfe26ab4a747bf6f6ba66548489f36306e",
+          "message": "test(rocq): reproduce crash on a disabled rocq.theory (#16798)\n\n## Description\n\nRepro for #16700, split out of #16703 as requested.\n\nThis adds `test/blackbox-tests/test-cases/rocq/theory-enabled-if.t`,\nwhich\nrecords the current behaviour: a `rocq.theory` whose `enabled_if`\nevaluates to\nfalse makes dune raise \"gen_rules returned a set of directory targets\nthat\ndoesn't match the set of directory targets from returned rules\" for its\nrocqdoc directories `Foo.html` and `Foo.tex`.\n\nThe test covers:\n\n- `(enabled_if false)` with `dune build` and `dune build @install`;\n- `(enabled_if %{env:FOO_ENABLED=false})`, unset and set to `true`, the\n  enabled case also building `Foo.html/`;\n- a theory attached to a package, with and without `(allow_empty)`.\n\nThe fix in #16703 flips the internal errors into the expected output.\n\n## Related Issue and Motivation\n\nRepro for #16700.\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [ ] Change log entry added for any user-facing changes: not needed,\ntest\n  only; the entry is in #16703.\n- [ ] Documentation added for any user-facing changes: not applicable.\n\nChecked locally in the repository's nix dev shells (OCaml 5.5.2, Rocq\n9.2),\non top of e0dbbbc7e4: `make test-rocq` and `dune build @fmt` pass.",
+          "timestamp": "2026-10-26T15:12:29+01:00",
+          "tree_id": "076a43a96725748c1a9b6351596d151147a59619",
+          "url": "https://github.com/ocaml/dune/commit/a35154cfe26ab4a747bf6f6ba66548489f36306e"
+        },
+        "date": 1793025312263,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.50553467021333,
             "unit": "seconds"
           }
         ]

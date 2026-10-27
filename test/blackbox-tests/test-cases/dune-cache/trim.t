@@ -294,6 +294,24 @@ of size zero. Metadata containing only directories survives.
   $ dune cache size --machine-readable
   0
 
+A goal equal to the unused byte total does not necessarily remove every file:
+older zero-byte artifacts precede the last positive-size artifact, while newer
+zero-byte artifacts survive after the goal is met.
+
+  $ reset
+  $ mkdir -p "$cache/files/v4/00"
+  $ touch "$cache/files/v4/00/00000000000000000000000000000000"
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ printf artifact > "$cache/files/v4/00/00000000000000000000000000000001"
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ touch "$cache/files/v4/00/00000000000000000000000000000002"
+  $ dune cache trim --trimmed-size 8B
+  Freed 8B (2 files removed)
+  $ find "$cache/files" -type f | dune_cmd count-lines
+  1
+  $ dune cache trim --trimmed-size 1B
+  Freed 0B (1 files removed)
+
 Check metadata validation, repeated references, and hexadecimal case across
 all supported versions. Extra fields in the metadata header are supported.
 

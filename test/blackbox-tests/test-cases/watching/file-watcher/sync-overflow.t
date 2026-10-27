@@ -28,7 +28,7 @@ The inotify event header uses native byte order.
   > esac
   $ strace -f -qq -o .#strace \
   >   -P anon_inode:inotify \
-  >   -P "$PWD/_build/.sync/0" -P "$PWD/_build/.sync/1" \
+  >   -P "$PWD/_build/.sync/0.0" -P "$PWD/_build/.sync/0.1" \
   >   -e trace=read,close \
   >   -e inject=read:poke_exit=@arg2=$overflow:when=1..2 \
   >   -e inject=close:retval=0 \
@@ -44,8 +44,8 @@ notifications must not acknowledge the retried sync.
   client exit: 0
   $ cat .#client-output
   Success
-  $ test ! -e _build/.sync/0
-  $ test ! -e _build/.sync/1
+  $ test ! -e _build/.sync/0.0
+  $ test ! -e _build/.sync/0.1
   $ cat _build/default/x; echo
   built
   $ grep -c '(INJECTED' .#strace
@@ -63,15 +63,18 @@ The same watcher continues to track source changes and synchronize later builds.
   $ wait "$STRACE_PID"
 
 There are three builds: the interrupted one, its restart, and the later build.
-The first acknowledged sync must have a fresh ID, not either lost marker's ID.
+The first acknowledged sync must retain its request ID and report two retries.
 
   $ dune trace cat | jq -s '
   > {overflows: [.[] | select(.name == "queue_overflow")] | length,
   >  builds: [.[] | select(.name == "build-start")] | length,
   >  first_sync: [.[] | select(.cat == "file_watcher" and .name == "sync")]
-  >              | first | .args.id}'
+  >              | first | .args}'
   {
     "overflows": 2,
     "builds": 3,
-    "first_sync": 2
+    "first_sync": {
+      "id": 0,
+      "retries": 2
+    }
   }

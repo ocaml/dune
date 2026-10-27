@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793105239679,
+  "lastUpdate": 1793105247169,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -477396,6 +477396,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.355560801673334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0592dffbf8fe71d6332abb397b9a8b90881993e8",
+          "message": "fix(config): fall back when a concurrency probe cannot spawn (#16767)\n\nWhen a CPU-count command such as `nproc` cannot be spawned, try the next\ndetection command instead of retrying the same command indefinitely.\n\nUpdate the existing one-shot spawn-failure test to expect `getconf`\nrather than a retry of `nproc`.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-27T20:24:53+08:00",
+          "tree_id": "d7e274837bda37870b9a14a28089adfa382b4cec",
+          "url": "https://github.com/ocaml/dune/commit/0592dffbf8fe71d6332abb397b9a8b90881993e8"
+        },
+        "date": 1793105246128,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.52953239938,
             "unit": "seconds"
           }
         ]

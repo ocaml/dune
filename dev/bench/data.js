@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793080304480,
+  "lastUpdate": 1793080469713,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -477251,6 +477251,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5169573790866667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "10a664530f0b1eba1d57f3d8bd5d6bf70d205e89",
+          "message": "test(ppx): cover generated dependencies for OCaml and Melange (#16786)\n\nTest PPX-generated module dependencies in ordinary and staged\nOCaml/Melange preprocessing, including interfaces. Extracted from #16699\nand independent of the compilation-mode cookie.\n\n01a1505e-b5cd-7cc2-828d-c113fa04a556\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-26T22:39:17-07:00",
+          "tree_id": "05bd4877f4380f85c8e100971e7a31a340ecc433",
+          "url": "https://github.com/ocaml/dune/commit/10a664530f0b1eba1d57f3d8bd5d6bf70d205e89"
+        },
+        "date": 1793080467320,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 41.49676914492667,
             "unit": "seconds"
           }
         ]

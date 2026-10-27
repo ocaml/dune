@@ -104,7 +104,7 @@ let%expect_test "portable symlink through symlinked dst dir" =
      Unix.symlink (Path.to_string real) (Path.to_string link);
      Path.relative link "self-in-path/dune"
    in
-   Io.portable_symlink ~src ~dst;
+   Io.portable_symlink ~overwrite:true ~src ~dst;
    match Io.read_file dst with
    | Ok "contents" -> print_endline "target reachable"
    | Ok contents -> Printf.printf "unexpected contents: %s\n" contents

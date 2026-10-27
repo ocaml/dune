@@ -23,13 +23,15 @@ First check that the directory target produces the expected input.
   $ cat _build/default/tree/file
   contents
 
-Symlink mode: both dependencies expose the expected contents. This does not
-establish that overlapping files are populated only once.
+CR: Symlink mode rejects the second attempt to populate an existing file.
 
   $ dune build @directory --sandbox symlink
   contents
-  $ dune build @overlap --sandbox symlink
-  contents
+  $ dune build @overlap --sandbox symlink 2>&1 | censor
+  Error:
+  symlink(_build/.sandbox/$DIGEST/default/tree/file): File exists
+  -> required by alias overlap in dune:8
+  [1]
 
 Copy mode: reject the second attempt to populate an already copied file.
 This exposes the overlap rather than silently overwriting its contents. Normalize
@@ -74,9 +76,14 @@ The empty directory must remain available too.
   >    (run test -d outer/inner/empty))))
   > EOF
 
-  $ dune build @nested-overlap --sandbox symlink
-  nested
-  sibling
+CR: Symlink mode also tries to populate the nested file more than once.
+
+  $ dune build @nested-overlap --sandbox symlink 2>&1 | censor
+  Error:
+  symlink(_build/.sandbox/$DIGEST/default/outer/inner/file): File exists
+  -> required by alias nested-overlap in dune:18
+  [1]
+
   $ dune build @nested-overlap --sandbox hardlink
   nested
   sibling

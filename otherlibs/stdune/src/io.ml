@@ -468,9 +468,9 @@ module String_path = struct
   let copy_file = Copyfile.copyfile
 end
 
-let portable_symlink ~src ~dst =
+let portable_symlink ~overwrite ~src ~dst =
   if Stdlib.Sys.win32
-  then copy_file ~overwrite:true ~src ~dst ()
+  then copy_file ~overwrite ~src ~dst ()
   else (
     let src =
       match Path.parent dst with
@@ -486,15 +486,18 @@ let portable_symlink ~src ~dst =
          | _ -> Path.reach ~from src)
     in
     let dst = Path.to_string dst in
-    match Unix.readlink dst with
-    | target ->
-      if target <> src
-      then (
-        (* @@DRA Win32 remove read-only attribute needed when symlinking
+    if overwrite
+    then (
+      match Unix.readlink dst with
+      | target ->
+        if target <> src
+        then (
+          (* @@DRA Win32 remove read-only attribute needed when symlinking
            enabled *)
-        Unix.unlink dst;
-        Unix.symlink src dst)
-    | exception Unix.Unix_error _ -> Unix.symlink src dst)
+          Unix.unlink dst;
+          Unix.symlink src dst)
+      | exception Unix.Unix_error _ -> Unix.symlink src dst)
+    else Unix.symlink src dst)
 ;;
 
 let portable_hardlink ~src ~dst =

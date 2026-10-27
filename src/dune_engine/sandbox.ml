@@ -159,7 +159,7 @@ let link_function ~(mode : Sandbox_mode.some) =
     | Symlink ->
       (match Sys.win32 with
        | true -> win32_error mode
-       | false -> Io.portable_symlink)
+       | false -> Io.portable_symlink ~overwrite:false)
   in
   let mkdir_with_perms ~src ~dst =
     let perms =

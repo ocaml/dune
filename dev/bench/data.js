@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793080942252,
+  "lastUpdate": 1793080949812,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -477338,6 +477338,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.88199736312,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c549f83f38e5316d704faa39e32dc005bf121b63",
+          "message": "test(ppx): cover matching and automatic cookie requests (#16787)\n\nTest deduplication of matching PPX cookie requests and conflicts with\nthe existing automatic library-name cookie. Related to #16699; exercises\nexisting behavior without the compilation-mode cookie.\n\n01a1505e-b5cd-7cc2-828d-c113fa04a556\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-26T22:39:53-07:00",
+          "tree_id": "c11a47c07a6c80a7ba0ca35a380b1e9a95d22d8c",
+          "url": "https://github.com/ocaml/dune/commit/c549f83f38e5316d704faa39e32dc005bf121b63"
+        },
+        "date": 1793080948952,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5877798951333334,
             "unit": "seconds"
           }
         ]

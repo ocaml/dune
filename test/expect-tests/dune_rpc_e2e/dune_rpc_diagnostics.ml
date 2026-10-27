@@ -84,6 +84,57 @@ let on_diagnostic_event diagnostics =
       printfn "%s" (Dyn.to_string (Diagnostic.Event.to_dyn e)))
 ;;
 
+let%expect_test "diagnostic event identifiers" =
+  let diagnostic id message =
+    { Diagnostic.id = Diagnostic.Id.create id
+    ; message = Pp.text message
+    ; targets = []
+    ; loc = None
+    ; severity = Some Error
+    ; promotion = []
+    ; directory = None
+    ; related = []
+    }
+  in
+  let first = diagnostic 41 "first" in
+  let second = diagnostic 73 "second" in
+  on_diagnostic_event [ Add first; Add second ];
+  on_diagnostic_event [ Remove first ];
+  [%expect
+    {|
+    [ "Add"
+    ; [ [ "id"; "41" ]
+      ; [ "message"; [ "Verbatim"; "first\n\
+                                    " ] ]
+      ; [ "promotion"; [] ]
+      ; [ "related"; [] ]
+      ; [ "severity"; "error" ]
+      ; [ "targets"; [] ]
+      ]
+    ]
+    [ "Add"
+    ; [ [ "id"; "73" ]
+      ; [ "message"; [ "Verbatim"; "second\n\
+                                    " ] ]
+      ; [ "promotion"; [] ]
+      ; [ "related"; [] ]
+      ; [ "severity"; "error" ]
+      ; [ "targets"; [] ]
+      ]
+    ]
+    [ "Remove"
+    ; [ [ "id"; "41" ]
+      ; [ "message"; [ "Verbatim"; "first\n\
+                                    " ] ]
+      ; [ "promotion"; [] ]
+      ; [ "related"; [] ]
+      ; [ "severity"; "error" ]
+      ; [ "targets"; [] ]
+      ]
+    ]
+    |}]
+;;
+
 let setup_diagnostics f =
   let exec _pid =
     run_client (fun client ->

@@ -500,7 +500,7 @@ let portable_symlink ~overwrite ~src ~dst =
     else Unix.symlink src dst)
 ;;
 
-let portable_hardlink ~src ~dst =
+let portable_hardlink ~overwrite ~src ~dst =
   let user_error msg =
     User_error.raise
       [ Pp.textf
@@ -518,7 +518,7 @@ let portable_hardlink ~src ~dst =
     | Error (Unix_error error) -> user_error (Unix_error.Detailed.to_string_hum error)
   in
   try Fpath.link (Path.to_string src) (Path.to_string dst) with
-  | Unix.Unix_error (Unix.EEXIST, _, _) ->
+  | Unix.Unix_error (Unix.EEXIST, _, _) when overwrite ->
     (* CR-someday amokhov: Investigate why we need to occasionally clear the
         destination (we also do this in the symlink case above). Perhaps, the
         list of dependencies may have duplicates? If yes, it may be better to
@@ -534,5 +534,5 @@ let portable_hardlink ~src ~dst =
     (* If we can't make a new hard link because we reached the limit on the
         number of hard links per file, we fall back to copying. We expect
         that this happens very rarely (probably only for empty files). *)
-    copy_file ~overwrite:true ~src ~dst ()
+    copy_file ~overwrite ~src ~dst ()
 ;;

@@ -128,7 +128,7 @@ let store_metadata ~mode ~rule_digest (artifacts : Digest.t Targets.Produced.t) 
 let store_targets_to ~temp_dir ~(targets : _ Targets.Produced.t) ~mode : unit Or_exn.t =
   let portable_hardlink_or_copy =
     match (mode : Mode.t) with
-    | Hardlink -> Io.portable_hardlink
+    | Hardlink -> Io.portable_hardlink ~overwrite:true
     | Copy -> fun ~src ~dst -> Io.copy_file ~overwrite:true ~src ~dst ()
   in
   Result.try_with (fun () ->

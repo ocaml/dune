@@ -118,7 +118,7 @@ let link_function ~(mode : Sandbox_mode.some) =
   in
   let link_file =
     match mode with
-    | Hardlink -> Io.portable_hardlink
+    | Hardlink -> Io.portable_hardlink ~overwrite:false
     | Copy | Patch_back_source_tree ->
       (* We need to let the action modify its dependencies, so we copy
          dependencies and make them writable. *)

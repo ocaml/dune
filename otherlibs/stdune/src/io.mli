@@ -20,8 +20,9 @@ val portable_symlink : overwrite:bool -> src:Path.t -> dst:Path.t -> unit
 
 (** Hardlink with fallback to copy on systems that don't support it.
 
-    [portable_hardlink ~src ~dst] will create [dst] as a hard link pointing to
-    [src]. In case of EMLINK or EINVAL it will simply copy [src] to [dst]. *)
-val portable_hardlink : src:Path.t -> dst:Path.t -> unit
+    [portable_hardlink ~overwrite ~src ~dst] will create [dst] as a hard link
+    pointing to [src]. In case of EMLINK or EINVAL it will simply copy [src] to
+    [dst]. *)
+val portable_hardlink : overwrite:bool -> src:Path.t -> dst:Path.t -> unit
 
 val set_copy_impl : [ `Portable | `Best ] -> unit

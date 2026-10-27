@@ -1972,7 +1972,7 @@ module Install_action = struct
                 Filename.concat (Path.to_absolute_filename base) link
                 |> Path.External.of_string)
          in
-         Io.portable_hardlink ~src ~dst);
+         Io.portable_hardlink ~overwrite:true ~src ~dst);
         maybe_set_executable entry.section dst;
         Some (entry.section, dst)
     ;;
@@ -1998,6 +1998,7 @@ module Install_action = struct
              (* CR-someday rgrinberg: pass chmod:true here? *)
              Fpath.unlink_exn path;
              Io.portable_hardlink
+               ~overwrite:true
                ~src:(Path.of_string resolved)
                ~dst:(Path.of_string path)
            | _ -> ());

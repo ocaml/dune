@@ -31,3 +31,8 @@
  (deps
   (package odoc))
  (applies_to odoc.t))
+
+(cram
+ (deps
+  (package ppxlib))
+ (applies_to ppx-merlin-cookies.t))

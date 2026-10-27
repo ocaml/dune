@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793105247169,
+  "lastUpdate": 1793114080003,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -663809,6 +663809,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.6665302912200004,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6254ced0056dc37296333cc5987faa90a613f0fe",
+          "message": "test(engine): cover nested globs across sibling directory targets (#16811)\n\nExercise nested globs in both directory targets of a rule that also\nproduces a file target. Check requested-subtree rooting and copy-sandbox\nmaterialization, then change the producer input and verify the updated\ncontents.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-27T23:01:10+08:00",
+          "tree_id": "9ded59ca4aa0960c38807343d4f4cb474c301f20",
+          "url": "https://github.com/ocaml/dune/commit/6254ced0056dc37296333cc5987faa90a613f0fe"
+        },
+        "date": 1793113771837,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.087434922,
             "unit": "seconds"
           }
         ]

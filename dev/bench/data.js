@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793079993890,
+  "lastUpdate": 1793080001018,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -477164,6 +477164,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.047653176826664,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5bb47dd580c76da49270d89a98d6f5db6d8ab0b1",
+          "message": "test(merlin): reproduce ambiguous copy destinations (#16776)\n\nRecord typed and legacy Merlin lookup when one source is copied to\nmultiple OCaml modules. Tests only; precedes the copy-mapping fix in\nanmonteiro/dune#218.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-26T22:24:00-07:00",
+          "tree_id": "3015f0727cd6dda69abbd90eb998e81cd1cbf198",
+          "url": "https://github.com/ocaml/dune/commit/5bb47dd580c76da49270d89a98d6f5db6d8ab0b1"
+        },
+        "date": 1793080000271,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5609305211400001,
             "unit": "seconds"
           }
         ]

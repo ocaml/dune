@@ -9,6 +9,11 @@
  (alias runtest-melange))
 
 (cram
+ (deps
+  (package ppxlib))
+ (applies_to ppx-generated-dependencies.t))
+
+(cram
  (deps %{bin:melc_stdlib_prefix} %{bin:merlin_configurations})
  (enabled_if
   ; CR-soon Alizter: re-enable this test inside Nix

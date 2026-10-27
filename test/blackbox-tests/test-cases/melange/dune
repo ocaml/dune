@@ -24,5 +24,10 @@
 
 (cram
  (deps
+  (package ppxlib))
+ (applies_to ppx-cookies.t))
+
+(cram
+ (deps
   (package odoc))
  (applies_to odoc.t))

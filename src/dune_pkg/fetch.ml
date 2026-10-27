@@ -329,12 +329,12 @@ let resolve_symlinks_in root =
               | S_REG -> Io.portable_hardlink ~src ~dst
               (* To avoid recursing here, we create symlinks will get resolved
                  one step down in [traverse]. *)
-              | S_DIR -> Io.portable_symlink ~src ~dst
+              | S_DIR -> Io.portable_symlink ~overwrite:true ~src ~dst
               | S_LNK ->
                 Fpath.follow_symlink (Path.to_string src)
                 |> Result.iter ~f:(fun linked_path ->
                   let src = Path.of_string linked_path in
-                  Io.portable_symlink ~src ~dst)
+                  Io.portable_symlink ~overwrite:true ~src ~dst)
               | _ -> ());
             (), Some Unix.S_DIR)
        | { st_kind = S_REG; _ } ->

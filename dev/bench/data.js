@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793079671307,
+  "lastUpdate": 1793079689346,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -663316,6 +663316,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.680749758193334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "db7a9bb1c74411db0644d75b60dcddd0e54ad0ec",
+          "message": "test(merlin): cover library PPX cookies for both targets (#16783)\n\nTest that Merlin preserves library-declared PPX string cookies for OCaml\nand Melange with ordinary and staged preprocessing. Extracted from\n#16699 and independent of the compilation-mode cookie.\n\n01a1505e-b5cd-7cc2-828d-c113fa04a556\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-26T22:30:06-07:00",
+          "tree_id": "d6abb73ee7a4b6648f1013ec9cda20f25f88c5bd",
+          "url": "https://github.com/ocaml/dune/commit/db7a9bb1c74411db0644d75b60dcddd0e54ad0ec"
+        },
+        "date": 1793079468981,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.6722442392200008,
             "unit": "seconds"
           }
         ]

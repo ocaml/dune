@@ -208,6 +208,7 @@ let setup sctx ~dir =
       ~dir
       ~expander
       ~scope
+      ~mode:Ocaml
       ~lib_name:None
       ~lint:Lint.no_lint
       ~preprocess

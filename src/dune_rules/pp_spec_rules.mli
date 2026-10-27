@@ -12,6 +12,7 @@ val make
   -> instrumentation_deps:Dep_conf.t list
   -> lib_name:Lib_name.Local.t option
   -> scope:Scope.t
+  -> mode:Compilation_mode.t
   -> Pp_spec.t Memo.t
 
 val gen_rules : Super_context.t -> string list -> unit Memo.t

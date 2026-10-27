@@ -10,6 +10,11 @@ let equal a b =
   | Ocaml, Melange | Melange, Ocaml -> false
 ;;
 
+let to_string = function
+  | Ocaml -> "ocaml"
+  | Melange -> "melange"
+;;
+
 let repr =
   Repr.variant
     "compilation-mode"

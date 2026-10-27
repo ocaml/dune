@@ -141,7 +141,7 @@ let driver_flags expander ~corrected_suffix ~driver_flags ~standard =
   Expander.expand_and_eval_set expander driver_flags ~standard
 ;;
 
-let lint_module sctx ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope =
+let lint_module sctx ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope ~mode =
   let open Action_builder.O in
   let add_alias build =
     Super_context.add_alias_action sctx [ Alias.make Alias0.lint ~dir ] build ~dir
@@ -181,6 +181,7 @@ let lint_module sctx ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope
                  ~loc
                  ~lib_name
                  ~flags
+                 ~mode
                  ~scope
                  pps
              in
@@ -222,6 +223,7 @@ let pp_one_module
       ~context
       ~lib_name
       ~scope
+      ~mode
       ~preprocessor_deps
       ~env
       ~(lint_module : source:_ -> ast:_ -> unit Memo.t)
@@ -279,6 +281,7 @@ let pp_one_module
                  ~scope
                  ~flags
                  ~lib_name
+                 ~mode
                  pps
              in
              let* driver_flags =
@@ -326,6 +329,7 @@ let pp_one_module
                ~loc
                ~lib_name
                ~flags
+               ~mode
                ~scope
                pps
            in
@@ -392,6 +396,7 @@ let make
       ~instrumentation_deps
       ~lib_name
       ~scope
+      ~mode
   =
   let preprocessor_deps = preprocessor_deps @ instrumentation_deps in
   let context = Super_context.context sctx in
@@ -429,7 +434,7 @@ let make
     in
     let sandbox = sandbox_of_setting sandbox in
     Staged.unstage
-      (lint_module sctx ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope)
+      (lint_module sctx ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope ~mode)
   in
   Module_reference.Per_item.map preprocess ~f:(fun spec ->
     Staged.unstage
@@ -438,6 +443,7 @@ let make
          ~context
          ~lib_name
          ~scope
+         ~mode
          ~preprocessor_deps
          ~env
          ~lint_module

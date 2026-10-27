@@ -28,6 +28,7 @@ val ppx_driver_and_flags
   -> scope:Scope.t
   -> loc:Loc.t
   -> flags:String_with_vars.t list
+  -> mode:Compilation_mode.t
   -> (Loc.t * Lib_name.t) list
   -> (Path.Build.t * Driver.t * string list) Action_builder.t
 
@@ -41,5 +42,6 @@ val get_ppx_driver
   -> scope:Scope.t
   -> lib_name:Lib_name.Local.t option
   -> flags:String_with_vars.t list
+  -> mode:Compilation_mode.t
   -> (Loc.t * Lib_name.t) list
   -> (Path.Build.t * string list) Action_builder.t

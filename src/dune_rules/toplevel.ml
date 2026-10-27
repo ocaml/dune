@@ -93,6 +93,7 @@ let pp_flags t =
           ~lib_name:None
           ~flags
           ~scope
+          ~mode:Ocaml
           pps
       in
       Dyn.list
@@ -201,6 +202,7 @@ module Stanza = struct
             ~dir
             ~expander
             ~scope
+            ~mode:Ocaml
             ~lib_name:None
             ~lint:Lint.no_lint
             ~preprocess

@@ -16,9 +16,10 @@ Callback exceptions and unexpected exits currently produce internal errors.
   > EOF
   $ cat > plugin/rules.ml <<'EOF'
   > open Dune_rules_plugin
-  > let signal file = close_out (open_out file)
+  > let gate file = Filename.concat (Sys.getenv "PLUGIN_TEST_DIR") file
+  > let signal file = close_out (open_out (gate file))
   > let rec wait_for file =
-  >   if not (Sys.file_exists file) then (
+  >   if not (Sys.file_exists (gate file)) then (
   >     Unix.sleepf 0.01;
   >     wait_for file)
   > let rule target contents =
@@ -32,6 +33,12 @@ Callback exceptions and unexpected exits currently produce internal errors.
   >       ]
   >   ]
   > let () =
+  >   if Sys.file_exists (gate ".stall-start") then (
+  >     Sys.remove (gate ".stall-start");
+  >     signal ".starting";
+  >     wait_for ".release-start");
+  >   if Sys.getenv_opt "STALL_AT_EXIT" = Some "1" then
+  >     Sys.set_signal Sys.sigterm Sys.Signal_ignore;
   >   at_exit (fun () ->
   >     if Sys.getenv_opt "STALL_AT_EXIT" = Some "1" then (
   >       signal ".exiting";
@@ -57,10 +64,17 @@ Callback exceptions and unexpected exits currently produce internal errors.
   >         ]
   >     | _ -> [])
   > EOF
+Keep synchronization gates under _build so they cannot trigger rebuilds.
+
+  $ export PLUGIN_TEST_DIR="$PWD/_build/plugin-gates"
+  $ mkdir -p "$PLUGIN_TEST_DIR"
   $ dune build plugin/rules.exe
   $ export DUNE_CONFIG__TRACE_RULE_PLUGINS=enabled
   $ export DUNE_TRACE=action,build
-  $ trap 'touch plugin/.release-exit plugin/.release-request' EXIT
+  $ trap '
+  >   touch "$PLUGIN_TEST_DIR/.release-exit" "$PLUGIN_TEST_DIR/.release-request"
+  >   touch "$PLUGIN_TEST_DIR/.release-start"
+  > ' EXIT
   $ plugin_events () {
   >   trace_jq '
   >     [ .[]
@@ -128,57 +142,76 @@ all four requests, and the final expansion supplies an ordinary build rule.
   rule-plugin-spawn 1
   rule-plugin-stop 1
 
+Normal completion closes the connection and reaps the plugin, even if it
+ignores SIGTERM and stalls in its exit handler. The scheduler's ordinary
+SIGKILL escalation handles this without releasing the exit-handler gate.
+
+  $ echo '(plugin.generate)' > use/dune
+  $ STALL_AT_EXIT=1 dune build use > .#dune-output 2>&1
+  $ cat .#dune-output
+  $ test ! -e "$PLUGIN_TEST_DIR/.release-exit"
+  $ plugin_events
+  rule-plugin-connected 1
+  rule-plugin-disconnected 1
+  rule-plugin-exited 1
+  rule-plugin-request-finish 1
+  rule-plugin-request-start 1
+  rule-plugin-spawn 1
+  rule-plugin-stop 1
+
 Dune reaps a connected plugin blocked in its exit handler when interrupted.
 The exit-handler gate stays closed throughout shutdown.
 
+  $ rm -f "$PLUGIN_TEST_DIR/.exiting"
   $ echo '(plugin.generate exit)' > use/dune
   $ STALL_AT_EXIT=1 dune build use > .#dune-output 2>&1 &
   $ DUNE_PID=$!
-  $ wait_for_file plugin/.exiting
+  $ wait_for_file "$PLUGIN_TEST_DIR/.exiting"
+  $ wait_for_trace_jq_true 'any(.[]; .name == "rule-plugin-spawn")'
   $ PLUGIN_PID=$(trace_jq '
   >   first(.[] | select(.name == "rule-plugin-spawn")) | .args.pid')
   $ kill -INT "$DUNE_PID"
   $ wait "$DUNE_PID"
   [130]
   $ wait_for_pid_to_exit_with_timeout "$PLUGIN_PID" 200
-  $ test ! -e plugin/.release-exit
+  $ test ! -e "$PLUGIN_TEST_DIR/.release-exit"
 
-Change an invocation while its request is active. Wait for Dune to request a
-restart before releasing the old response. The replacement build must use the
-new invocation, not the stale response. No elapsed-time assertion is needed.
+Restarting a build terminates its blocked plugin and ignores the interrupted
+RPC request. The replacement build succeeds without releasing the old callback.
+The timeout is only a guard: on failure, release the callback to allow cleanup.
 
   $ echo '(plugin.generate block after-change.txt)' > use/dune
   $ start_dune
   $ dune rpc build --wait use/after-change.txt > .#build-result 2>&1 &
   $ REQUEST_PID=$!
-  $ wait_for_file plugin/.blocked
-  $ echo '(plugin.generate recurse 0 after-change.txt)' > use/dune
+  $ wait_for_file "$PLUGIN_TEST_DIR/.blocked"
+  $ wait_for_trace_jq_true 'any(.[]; .name == "rule-plugin-spawn")'
+  $ OLD_PLUGIN_PID=$(trace_jq '
+  >   first(.[] | select(.name == "rule-plugin-spawn")) | .args.pid')
+  $ echo '(plugin.generate recurse 0 after-change.txt)' > use/.#dune
+  $ mv use/.#dune use/dune
   $ with_timeout dune rpc flush-file-watcher --wait
-  $ wait_for_trace_jq_true 'any(.[]; .name == "build-restart")'
-  $ trace_jq '
-  >   [ .[]
-  >   | select(.name == "rule-plugin-request-start"
-  >            or .name == "rule-plugin-request-finish"
-  >            or .name == "build-restart")
-  >   | .name
-  >   ]'
-  [
-    "rule-plugin-request-start",
-    "build-restart"
-  ]
-  $ touch plugin/.release-request
+  $ wait_for_success_with_timeout .#build-result 1000 || {
+  >   touch "$PLUGIN_TEST_DIR/.release-request"
+  >   false
+  > }
   $ wait "$REQUEST_PID"
   $ cat .#build-result
   Success
+  $ awk '/^Error:/' .#dune-output
   $ cat _build/default/use/after-change.txt
   recursive expansion works
+  $ wait_for_pid_to_exit_with_timeout "$OLD_PLUGIN_PID" 200
+  $ test ! -e "$PLUGIN_TEST_DIR/.release-request"
+  $ wait_for_trace_jq_true '
+  >   [.[] | select(.name == "rule-plugin-spawn")] | length == 2'
   $ PLUGIN_PID=$(trace_jq '
   >   last(.[] | select(.name == "rule-plugin-spawn")) | .args.pid')
   $ stop_dune_quiet
   $ wait_for_pid_to_exit_with_timeout "$PLUGIN_PID" 200
 
-The previous run's process was retired normally. The watch server's final
-process is terminated by scheduler shutdown rather than the plugin stop fiber.
+The cancelled run's process was reaped before the replacement completed. The
+watch server's final process is terminated by scheduler shutdown.
 
   $ plugin_events
   rule-plugin-connected 2
@@ -186,5 +219,47 @@ process is terminated by scheduler shutdown rather than the plugin stop fiber.
   rule-plugin-exited 1
   rule-plugin-request-finish 2
   rule-plugin-request-start 2
+  rule-plugin-spawn 2
+  rule-plugin-stop 1
+
+Cancellation also terminates a plugin that has not connected yet. The startup
+marker is one-shot, so the replacement process can connect normally while the
+original startup gate remains closed.
+
+  $ touch "$PLUGIN_TEST_DIR/.stall-start"
+  $ echo '(plugin.generate)' > use/dune
+  $ start_dune
+  $ dune rpc build --wait use/after-start.txt > .#build-result 2>&1 &
+  $ REQUEST_PID=$!
+  $ wait_for_file "$PLUGIN_TEST_DIR/.starting"
+  $ wait_for_trace_jq_true 'any(.[]; .name == "rule-plugin-spawn")'
+  $ OLD_PLUGIN_PID=$(trace_jq '
+  >   first(.[] | select(.name == "rule-plugin-spawn")) | .args.pid')
+  $ echo '(plugin.generate recurse 0 after-start.txt)' > use/.#dune
+  $ mv use/.#dune use/dune
+  $ with_timeout dune rpc flush-file-watcher --wait
+  $ wait_for_success_with_timeout .#build-result 1000 || {
+  >   touch "$PLUGIN_TEST_DIR/.release-start"
+  >   false
+  > }
+  $ wait "$REQUEST_PID"
+  $ cat .#build-result
+  Success
+  $ awk '/^Error:/' .#dune-output
+  $ cat _build/default/use/after-start.txt
+  recursive expansion works
+  $ wait_for_pid_to_exit_with_timeout "$OLD_PLUGIN_PID" 200
+  $ test ! -e "$PLUGIN_TEST_DIR/.release-start"
+  $ wait_for_trace_jq_true '
+  >   [.[] | select(.name == "rule-plugin-spawn")] | length == 2'
+  $ PLUGIN_PID=$(trace_jq '
+  >   last(.[] | select(.name == "rule-plugin-spawn")) | .args.pid')
+  $ stop_dune_quiet
+  $ wait_for_pid_to_exit_with_timeout "$PLUGIN_PID" 200
+  $ plugin_events
+  rule-plugin-connected 1
+  rule-plugin-exited 1
+  rule-plugin-request-finish 1
+  rule-plugin-request-start 1
   rule-plugin-spawn 2
   rule-plugin-stop 1

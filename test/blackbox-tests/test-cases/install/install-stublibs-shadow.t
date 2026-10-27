@@ -1,8 +1,6 @@
-This test shows that when libraries `libA` and `libB` containing both C stubs
-are installed, and a bytecode executable `exeA` that depends on a local version
-of `libA` and the installed version of `libB` is being built, then the C stubs
-from the installed `libA` (on which `exeA` does not depend) are put in the load
-path and take precendence over the local copy of `libA`.
+Bytecode linking can pick C stubs from an unrelated installed or local library
+when a shared search directory contains a DLL with the same name. Changing the
+order of local and installed directories can expose either collision.
 
 See https://github.com/ocaml/dune/issues/9979.
 
@@ -12,6 +10,7 @@ Begin by installing libraries `libA` and `libB` with C stubs.
   $ cat >libA.ml <<EOF
   > EOF
   $ cat >libB.ml <<EOF
+  > external f : int -> int = "dummy1"
   > EOF
   $ cat >dune <<EOF
   > (library
@@ -90,3 +89,50 @@ flags look like `-I libA -I ./install/lib/pkgA/../stublibs`:
   > EOF
 
   $ OCAMLPATH=./install/lib dune build exeA.bc
+
+Local directories can also contain unrelated stubs. Remove the unused installed
+`libA` stubs to isolate the opposite collision, then build a private `libB` in
+the same directory as local `libA`. The executable still uses installed
+`pkgA.libB`, so it must not load this private library's stubs.
+
+  $ rm install/lib/stublibs/dlllibA_stubs.so
+  $ cat >libA/libB.ml <<EOF
+  > let unused = ()
+  > EOF
+  $ cat >libA/other_stubs.c <<EOF
+  > int dummy3() { return 0; }
+  > EOF
+  $ cat >>libA/dune <<EOF
+  > (library
+  >  (name libB)
+  >  (modules libB)
+  >  (foreign_stubs (language c) (names other_stubs)))
+  > EOF
+  $ OCAMLPATH=./install/lib dune build libA/dlllibB_stubs.so
+  $ cat >exeA.ml <<EOF
+  > let _ = LibA.f
+  > let _ = LibB.f
+  > EOF
+  $ cat >dune <<EOF
+  > (executable
+  >  (name exeA)
+  >  (modes byte)
+  >  (libraries pkgA.libB libA)
+  >  (modules exeA))
+  > EOF
+  $ OCAMLPATH=./install/lib dune build exeA.bc
+
+Putting the local directory first now selects the unrelated local `libB` stubs.
+
+  $ cat >dune <<EOF
+  > (executable
+  >  (name exeA)
+  >  (modes byte)
+  >  (libraries libA pkgA.libB)
+  >  (modules exeA))
+  > EOF
+  $ OCAMLPATH=./install/lib dune build exeA.bc
+  File "_none_", line 1:
+  Error: Error while linking .exeA.eobjs/byte/dune__exe__ExeA.cmo:
+         The external function dummy1 is not available
+  [1]

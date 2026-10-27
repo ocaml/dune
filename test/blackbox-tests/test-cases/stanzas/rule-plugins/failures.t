@@ -39,6 +39,7 @@ Callback exceptions and unexpected exits currently produce internal errors.
   >   run (function
   >     | [Sexp.Atom "error"] -> failwith "invalid plugin input"
   >     | [Sexp.Atom "crash"] -> exit 1
+  >     | [Sexp.Atom "exit"] -> exit 0
   >     | [Sexp.Atom "block"; Atom target] ->
   >       signal ".blocked";
   >       wait_for ".release-request";
@@ -127,26 +128,20 @@ all four requests, and the final expansion supplies an ordinary build rule.
   rule-plugin-spawn 1
   rule-plugin-stop 1
 
-Dune closes the connection after a successful build. Hold the plugin in its
-exit handler until both sides have observed the disconnect, then release it.
-The exit event is emitted only after the plugin process has been reaped.
+Dune reaps a connected plugin blocked in its exit handler when interrupted.
+The exit-handler gate stays closed throughout shutdown.
 
-  $ echo '(plugin.generate)' > use/dune
+  $ echo '(plugin.generate exit)' > use/dune
   $ STALL_AT_EXIT=1 dune build use > .#dune-output 2>&1 &
   $ DUNE_PID=$!
   $ wait_for_file plugin/.exiting
-  $ wait_for_trace_jq_true 'any(.[]; .name == "rule-plugin-disconnected")'
-  $ touch plugin/.release-exit
+  $ PLUGIN_PID=$(trace_jq '
+  >   first(.[] | select(.name == "rule-plugin-spawn")) | .args.pid')
+  $ kill -INT "$DUNE_PID"
   $ wait "$DUNE_PID"
-  $ cat .#dune-output
-  $ plugin_events
-  rule-plugin-connected 1
-  rule-plugin-disconnected 1
-  rule-plugin-exited 1
-  rule-plugin-request-finish 1
-  rule-plugin-request-start 1
-  rule-plugin-spawn 1
-  rule-plugin-stop 1
+  [130]
+  $ wait_for_pid_to_exit_with_timeout "$PLUGIN_PID" 200
+  $ test ! -e plugin/.release-exit
 
 Change an invocation while its request is active. Wait for Dune to request a
 restart before releasing the old response. The replacement build must use the

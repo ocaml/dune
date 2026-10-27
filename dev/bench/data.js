@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793114342385,
+  "lastUpdate": 1793114500059,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -663925,6 +663925,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.672432740153333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9da68122a600aed16528ed06702e2915f1b34125",
+          "message": "fix(watch): retry pending syncs after watcher overflow (#16756)\n\nA watcher overflow can lose a sync-file notification while a build is\nwaiting for it, preventing the build from returning and applying the\nqueued cache invalidation.\n\nRetry pending syncs with fresh marker IDs while retaining their original\nwaiters. Remove superseded markers so delayed notifications cannot\nsatisfy a retry. A flush completes only when the watcher observes its\nreplacement marker; the watcher itself stays running.\n\nAlso recognize directory-wide overflow notifications on the FSEvents\nsync stream. The regression from #16749 now loses both the original\nmarker and its first retry, checks that only a fresh marker is\nacknowledged, and verifies restart and continued source tracking.\n\nFixes #16625, reported by @samoht. This does not add a timeout for a\nwatcher that delivers no events.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-27T23:10:12+08:00",
+          "tree_id": "9c76ee92471f22ad57ec7da2c81d5a61b5caadc1",
+          "url": "https://github.com/ocaml/dune/commit/9da68122a600aed16528ed06702e2915f1b34125"
+        },
+        "date": 1793114281410,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.8045338834466667,
             "unit": "seconds"
           }
         ]

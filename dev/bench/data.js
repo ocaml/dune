@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793114500059,
+  "lastUpdate": 1793114651251,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -477483,6 +477483,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.49140400744666674,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2c08ca4cbc99f90013dfca0e6b1114d64163bfc9",
+          "message": "test(watch): wait for summaries after RPC builds (#16810)\n\nRPC requests can complete before post-build cleanup and the final\nwatch-mode status message. Starting another build or shutting down\nimmediately can therefore omit summaries expected by the tests.\n\nWait for each completed-build summary in `fs_memo_test`, counting both\nsuccessful and failed builds, and wait for the two-error summary before\nshutting down `multiple-errors.t`.\n\nUse bounded polling and preserve all existing expected output. This\nchanges test synchronization only, not production RPC completion.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-27T23:01:24+08:00",
+          "tree_id": "fcfdb0d1a1ee075271fdd45ad991d26f33f624f2",
+          "url": "https://github.com/ocaml/dune/commit/2c08ca4cbc99f90013dfca0e6b1114d64163bfc9"
+        },
+        "date": 1793114648591,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 63.104146599753335,
             "unit": "seconds"
           }
         ]

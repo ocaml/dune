@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793115152648,
+  "lastUpdate": 1793115160601,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -477628,6 +477628,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 49.370145170840004,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bf19343034ce7f415ced8e9d59fdab78b32b5280",
+          "message": "test(cache): preserve zero-byte ordering at exact trim goals (#16809)\n\nPin oldest-first eviction when the byte goal exactly equals the unused\nbyte total: an older zero-byte artifact is removed before the\npositive-size artifact, while a newer zero-byte artifact survives once\nthe goal is met.\n\nAlso verify that a subsequent oversized goal collects the remaining\nempty artifact. This is test-only coverage for the full-eviction\noptimization; production behavior is unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-27T23:01:46+08:00",
+          "tree_id": "d6226d1ef70dd969ec76de429853f3c7eaec9e3c",
+          "url": "https://github.com/ocaml/dune/commit/bf19343034ce7f415ced8e9d59fdab78b32b5280"
+        },
+        "date": 1793115158972,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4808813703066667,
             "unit": "seconds"
           }
         ]

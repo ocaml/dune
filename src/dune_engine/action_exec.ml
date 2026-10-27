@@ -176,7 +176,7 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
     Io.portable_symlink ~overwrite:true ~src ~dst:(Path.build dst);
     Fiber.return ()
   | Hardlink (src, dst) ->
-    Io.portable_hardlink ~src ~dst:(Path.build dst);
+    Io.portable_hardlink ~overwrite:true ~src ~dst:(Path.build dst);
     Fiber.return ()
   | System command ->
     let prog, arg =

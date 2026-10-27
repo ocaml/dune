@@ -28,12 +28,16 @@ correctly under both default and copy sandboxing.
   >   (with-stdout-to out (run mybin))))
   > EOF
 
-With default sandboxing, the overlapping package-directory and executable
-dependencies are both available to the action.
+CR: Default sandboxing tries to populate the package executable twice and
+fails before the action starts.
 
-  $ dune build @all
-  $ cat _build/default/out
-  from provider
+  $ dune build @all 2>&1 | censor
+  Error:
+  symlink(_build/.sandbox/$DIGEST1/_private/default/.pkg/provider.0.0.1-$DIGEST2/target/bin/mybin): File exists
+  -> required by _build/default/out
+  -> required by alias all
+  [1]
+  $ test ! -e _build/default/out
 
 CR: Copy mode tries to populate the package executable twice and fails.
 The package-directory and executable dependencies still need deduplication.

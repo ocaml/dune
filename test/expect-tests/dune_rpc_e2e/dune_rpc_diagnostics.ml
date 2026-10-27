@@ -25,7 +25,7 @@ let%expect_test "turn on and shutdown" =
 
 let files = List.iter ~f:(fun (f, contents) -> Io.String_path.write_file_exn f contents)
 
-let on_diagnostic_event diagnostics =
+let on_diagnostic_event ids diagnostics =
   let cwd = Sys.getcwd () in
   let sanitize_path path =
     match String.drop_prefix path ~prefix:cwd with
@@ -47,6 +47,19 @@ let on_diagnostic_event diagnostics =
     | Add e -> Add (f e)
   in
   let sanitize (d : Diagnostic.t) =
+    let id =
+      match
+        List.find_map !ids ~f:(fun (original, normalized) ->
+          if Ordering.is_eq (Diagnostic.Id.compare original d.id)
+          then Some normalized
+          else None)
+      with
+      | Some id -> id
+      | None ->
+        let id = Diagnostic.Id.create (List.length !ids) in
+        ids := (d.id, id) :: !ids;
+        id
+    in
     let directory = Option.map d.directory ~f:sanitize_path in
     let promotion =
       List.map d.promotion ~f:(fun (p : Diagnostic.Promotion.t) ->
@@ -61,7 +74,8 @@ let on_diagnostic_event diagnostics =
         { Diagnostic.Related.message; loc })
     in
     { d with
-      message = sanitize_pp d.message
+      id
+    ; message = sanitize_pp d.message
     ; loc = Option.map d.loc ~f:sanitize_loc
     ; directory
     ; promotion
@@ -98,12 +112,13 @@ let%expect_test "diagnostic event identifiers" =
   in
   let first = diagnostic 41 "first" in
   let second = diagnostic 73 "second" in
-  on_diagnostic_event [ Add first; Add second ];
-  on_diagnostic_event [ Remove first ];
+  let ids = ref [] in
+  on_diagnostic_event ids [ Add first; Add second ];
+  on_diagnostic_event ids [ Remove first ];
   [%expect
     {|
     [ "Add"
-    ; [ [ "id"; "41" ]
+    ; [ [ "id"; "0" ]
       ; [ "message"; [ "Verbatim"; "first\n\
                                     " ] ]
       ; [ "promotion"; [] ]
@@ -113,7 +128,7 @@ let%expect_test "diagnostic event identifiers" =
       ]
     ]
     [ "Add"
-    ; [ [ "id"; "73" ]
+    ; [ [ "id"; "1" ]
       ; [ "message"; [ "Verbatim"; "second\n\
                                     " ] ]
       ; [ "promotion"; [] ]
@@ -123,8 +138,22 @@ let%expect_test "diagnostic event identifiers" =
       ]
     ]
     [ "Remove"
-    ; [ [ "id"; "41" ]
+    ; [ [ "id"; "0" ]
       ; [ "message"; [ "Verbatim"; "first\n\
+                                    " ] ]
+      ; [ "promotion"; [] ]
+      ; [ "related"; [] ]
+      ; [ "severity"; "error" ]
+      ; [ "targets"; [] ]
+      ]
+    ]
+    |}];
+  on_diagnostic_event (ref []) [ Add second ];
+  [%expect
+    {|
+    [ "Add"
+    ; [ [ "id"; "0" ]
+      ; [ "message"; [ "Verbatim"; "second\n\
                                     " ] ]
       ; [ "promotion"; [] ]
       ; [ "related"; [] ]
@@ -148,7 +177,7 @@ let setup_diagnostics f =
 let poll_exn client decl =
   let+ poll = Client.poll client decl in
   match poll with
-  | Ok p -> p
+  | Ok p -> p, ref []
   | Error e -> raise (Dune_rpc.Version_error.E e)
 ;;
 
@@ -171,11 +200,11 @@ let flush_file_watcher client =
       [ "error", Response.Error.to_dyn e ]
 ;;
 
-let print_diagnostics poll =
+let print_diagnostics (poll, ids) =
   Client.Stream.next poll
   >>| function
   | None -> printfn "client: no more diagnostics"
-  | Some diag -> on_diagnostic_event diag
+  | Some diag -> on_diagnostic_event ids diag
 ;;
 
 let diagnostic_with_build setup target =
@@ -184,9 +213,9 @@ let diagnostic_with_build setup target =
       (* First we test for regular errors *)
       files (("dune-project", "(lang dune 3.0)") :: setup);
       let* () = dune_build client target in
-      let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
+      let* ((stream, _) as poll) = poll_exn client Dune_rpc.Public.Sub.diagnostic in
       let* () = print_diagnostics poll in
-      Client.Stream.cancel poll)
+      Client.Stream.cancel stream)
   in
   run (fun () -> with_dune_watch exec)
 ;;

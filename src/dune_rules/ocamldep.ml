@@ -54,9 +54,8 @@ let ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit =
   in
   let action =
     let open Action_builder.O in
-    let* ocamldep =
-      let+ ocaml = Action_builder.of_memo (Context.ocaml context) in
-      ocaml.ocamldep
+    let* { Ocaml_toolchain.ocamldep; version; _ } =
+      Action_builder.of_memo (Context.ocaml context)
     in
     let source = Option.value_exn (Module.source unit ~ml_kind) in
     let env =
@@ -72,6 +71,9 @@ let ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit =
       ~forbid_action_runner
       ocamldep
       [ A "-modules"
+      ; (if Ocaml.Version.supports_ocamldep_strict version
+         then A "-strict"
+         else Command.Args.empty)
       ; Command.Args.dyn flags
       ; Command.Ml_kind.flag ml_kind
       ; Dep (Module.File.path source)

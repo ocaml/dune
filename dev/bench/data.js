@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793079911109,
+  "lastUpdate": 1793079989048,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -663403,6 +663403,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.6722442392200008,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "02a877fc8f9ea98924255dca4ef99f60b10d1e27",
+          "message": "test(ppx): consume library cookies in OCaml and Melange (#16784)\n\nTest actual PPX string-cookie consumption in ordinary and staged\nOCaml/Melange preprocessing and direct Melange emission. Extracted from\n#16699 and independent of the compilation-mode cookie.\n\n01a1505e-b5cd-7cc2-828d-c113fa04a556\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-26T22:29:34-07:00",
+          "tree_id": "e3f08b49721df650d54055c678fbf4aa9301d63b",
+          "url": "https://github.com/ocaml/dune/commit/02a877fc8f9ea98924255dca4ef99f60b10d1e27"
+        },
+        "date": 1793079608224,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.5300314055800004,
             "unit": "seconds"
           }
         ]

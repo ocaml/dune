@@ -48,12 +48,15 @@ both syscall errors and the portable copier's wrapped diagnostic.
   Error: _build/.sandbox/$DIGEST/default/tree/file: File exists
   -> required by alias overlap in dune:8
 
-Hardlink mode: both dependencies also expose the expected contents.
+CR: Hardlink mode rejects the second attempt to populate an existing file.
 
   $ dune build @directory --sandbox hardlink
   contents
-  $ dune build @overlap --sandbox hardlink
-  contents
+  $ dune build @overlap --sandbox hardlink 2>&1 | censor
+  Error:
+  link(_build/.sandbox/$DIGEST/default/tree/file): File exists
+  -> required by alias overlap in dune:8
+  [1]
 
 Nested directory and file dependencies must also be populated only once.
 A sibling whose name shares the directory's prefix is still a separate input.
@@ -84,9 +87,13 @@ CR: Symlink mode also tries to populate the nested file more than once.
   -> required by alias nested-overlap in dune:18
   [1]
 
-  $ dune build @nested-overlap --sandbox hardlink
-  nested
-  sibling
+CR: Hardlink mode also tries to populate the nested file more than once.
+
+  $ dune build @nested-overlap --sandbox hardlink 2>&1 | censor
+  Error:
+  link(_build/.sandbox/$DIGEST/default/outer/inner/file): File exists
+  -> required by alias nested-overlap in dune:18
+  [1]
 
 CR: Copy mode also tries to populate the nested file more than once.
 

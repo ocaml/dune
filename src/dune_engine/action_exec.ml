@@ -148,7 +148,7 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
     let dst = Path.build dst in
     let copy_file ~src ~dst =
       Path.parent dst |> Option.iter ~f:Path.mkdir_p;
-      Io.copy_file ~src ~dst ()
+      Io.copy_file ~overwrite:true ~src ~dst ()
     in
     let mkdir ~src:_ ~dst = Path.mkdir_p dst in
     let on_unsupported ~src kind =
@@ -173,10 +173,10 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
     Fiber.return ()
   | Symlink (src, dst) when Sys.win32 -> exec (Copy (src, dst)) ~ectx ~eenv
   | Symlink (src, dst) ->
-    Io.portable_symlink ~src ~dst:(Path.build dst);
+    Io.portable_symlink ~overwrite:true ~src ~dst:(Path.build dst);
     Fiber.return ()
   | Hardlink (src, dst) ->
-    Io.portable_hardlink ~src ~dst:(Path.build dst);
+    Io.portable_hardlink ~overwrite:true ~src ~dst:(Path.build dst);
     Fiber.return ()
   | System command ->
     let prog, arg =

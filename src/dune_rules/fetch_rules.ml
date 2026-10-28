@@ -318,7 +318,7 @@ module Copy = struct
         ~on_file:(fun ~dir fname () ->
           let src = Path.relative_fname (Path.relative src_dir dir) fname in
           let dst = Path.relative_fname (Path.relative dst_dir dir) fname in
-          Io.copy_file ~src ~dst ())
+          Io.copy_file ~overwrite:true ~src ~dst ())
         ()
     ;;
   end

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793210601550,
+  "lastUpdate": 1793213252708,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -664853,6 +664853,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.831362185433333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f174b304ae91eb159171fa42ef4598befa01ea8d",
+          "message": "fix(pkg): fingerprint prepared automatic lock inputs (#16838)\n\nHash the prepared solver environment, platform overlays, and lock mode\nso automatic locks invalidate correctly.\n\nFixes the regressions covered by #16837.",
+          "timestamp": "2026-10-28T19:28:08+01:00",
+          "tree_id": "901e033b8419095022281ad8209a6a01f7da56bb",
+          "url": "https://github.com/ocaml/dune/commit/f174b304ae91eb159171fa42ef4598befa01ea8d"
+        },
+        "date": 1793212759634,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.8233416235799997,
             "unit": "seconds"
           }
         ]

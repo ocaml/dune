@@ -5,7 +5,7 @@ pages are produced.
 
 TODO: move generated doc in _doc/_odoc/<parent-id>/...
   $ find . -name '*.odoc' | sort
-  ./_build/default/_doc/_odoc/pkg/my_pkg/page-index.odoc
+  ./_build/default/_doc/_odoc/my_pkg/page-index.odoc
   ./_build/default/bar/.bar.objs/byte/bar.odoc
   ./_build/default/foo/.foo.objs/byte/foo.odoc
   ./_build/default/foo/.foo.objs/byte/foo__A.odoc

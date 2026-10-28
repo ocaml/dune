@@ -22,7 +22,8 @@ module Paths = struct
     | Lib lib ->
       let obj_dir = Lib.Local.obj_dir lib in
       Obj_dir.odoc_dir obj_dir
-    | Pkg pkg -> root ctx ++ sprintf "_odoc/pkg/%s" (Package.Name.to_string pkg)
+    | Pkg pkg ->
+      root ctx ++ "_odoc" ++ Odoc_scope.Parent_id.to_string (Odoc_scope.pkg_parent_id pkg)
   ;;
 
   let html_root ctx = root ctx ++ "_html"
@@ -1246,7 +1247,7 @@ let gen_rules sctx ~dir rest =
       let pkg = Package.name pkg in
       let* _mlds, rules = package_mlds sctx ~pkg in
       Rules.produce rules)
-  | [ "_odoc"; "pkg"; pkg ] ->
+  | [ "_odoc"; pkg ] ->
     with_package pkg ~f:(fun pkg ->
       let pkg = Package.name pkg in
       setup_package_odoc_rules sctx ~pkg)

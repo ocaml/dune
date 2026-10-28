@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793210117691,
+  "lastUpdate": 1793210258023,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -664708,6 +664708,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.312196167966667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "00608282689b5fc9921b5a91002a826f2224f9da",
+          "message": "test(ctypes): reproduce missing generated-header dependency (#16836)\n\nA self-contained ctypes test reproducing #16834: a generated header\nincluded through a preamble, without explicit `deps`. Records the\nmissing-header diagnostic and failed build.\n\nThe fix follows in #16835 and removes only the expected failure output.\n\nTested: `./dune.exe build @check @fmt @runtest`.",
+          "timestamp": "2026-10-28T18:40:04+01:00",
+          "tree_id": "a170d023fa7f28241e7270669af0c9f93e40a224",
+          "url": "https://github.com/ocaml/dune/commit/00608282689b5fc9921b5a91002a826f2224f9da"
+        },
+        "date": 1793209866369,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.831362185433333,
             "unit": "seconds"
           }
         ]

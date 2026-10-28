@@ -185,11 +185,7 @@ let solve_lock_dir
     Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env)
   in
   let solver_env =
-    solver_env
-      ~solver_env_from_context
-      ~solver_env_from_current_system
-      ~unset_solver_vars_from_context:
-        (unset_solver_vars_of_workspace workspace ~lock_dir_path)
+    Workspace.Lock_dir.solver_envs lock_dir ~current_system:solver_env_from_current_system
   in
   let solve_for_platforms =
     match portable_lock_dir with
@@ -225,12 +221,6 @@ let solve_lock_dir
       solver_env
       ~solve_for_platforms
       ~portable_lock_dir
-  in
-  let solver_env =
-    Solver_env.Scoped.create
-      solver_env
-      ~workspace:(Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.workspace_solver_env))
-      ~unset:(unset_solver_vars_of_workspace workspace ~lock_dir_path)
   in
   let* result =
     Dune_pkg.Opam_solver.solve_lock_dir

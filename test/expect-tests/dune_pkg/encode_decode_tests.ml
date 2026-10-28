@@ -160,11 +160,14 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
          ~repos:None
          ~expanded_solver_variable_bindings:
            (let solver_env =
-              Dune_pkg.Solver_env.Scoped.create
-                (Dune_pkg.Solver_env.set
-                   Dune_pkg.Solver_env.empty
-                   Package_variable_name.os
-                   (Variable_value.string "linux"))
+              Dune_pkg.Solver_env.Scoped.resolve
+                ~current_system:None
+                ~shared:
+                  (Some
+                     (Dune_pkg.Solver_env.set
+                        Dune_pkg.Solver_env.empty
+                        Package_variable_name.os
+                        (Variable_value.string "linux")))
                 ~workspace:None
                 ~unset:None
             in

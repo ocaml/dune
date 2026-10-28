@@ -2274,7 +2274,7 @@ let deduplicate_platform_overlays platform_overlays =
 let base_solver_env_and_platforms solver_env ~solve_for_platforms ~portable_lock_dir =
   if portable_lock_dir
   then
-    ( Solver_env.unset_multi solver_env Dune_lang.Package_variable_name.platform_specific
+    ( Solver_env.Scoped.remove_platform_specific solver_env
     , deduplicate_platform_overlays solve_for_platforms )
   else solver_env, [ Solver_env.empty ]
 ;;

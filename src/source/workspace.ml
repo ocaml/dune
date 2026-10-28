@@ -218,6 +218,14 @@ module Lock_dir = struct
     in
     fields decode
   ;;
+
+  let solver_envs t ~current_system =
+    Solver_env.Scoped.resolve
+      ~current_system
+      ~shared:(Option.bind t ~f:(fun t -> t.solver_env))
+      ~workspace:(Option.bind t ~f:(fun t -> t.workspace_solver_env))
+      ~unset:(Option.bind t ~f:(fun t -> t.unset_solver_vars))
+  ;;
 end
 
 (* workspace files use the same version numbers as dune-project files for

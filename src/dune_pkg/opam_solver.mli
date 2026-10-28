@@ -13,10 +13,10 @@ end
     directories unset platform-specific variables from the base and solve the
     requested platforms; non-portable lock directories use one empty overlay. *)
 val base_solver_env_and_platforms
-  :  Solver_env.t
+  :  Solver_env.Scoped.t
   -> solve_for_platforms:Solver_env.t list
   -> portable_lock_dir:bool
-  -> Solver_env.t * Solver_env.t list
+  -> Solver_env.Scoped.t * Solver_env.t list
 
 val solve_lock_dir
   :  Solver_env.Scoped.t

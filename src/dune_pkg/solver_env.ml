@@ -144,11 +144,11 @@ let unset_multi t variable_names =
     unset t variable_name)
 ;;
 
-let combine ~current_system ~context ~unset =
+let combine defaults ~current_system ~context ~unset =
   let t =
     [ current_system; context ]
     |> List.filter_opt
-    |> List.fold_left ~init:with_defaults ~f:extend
+    |> List.fold_left ~init:defaults ~f:extend
   in
   match unset with
   | None -> t
@@ -240,23 +240,20 @@ module Scoped = struct
         ; workspace_overrides : env
         }
 
-  let create shared ~workspace ~unset =
+  let resolve ~current_system ~shared ~workspace ~unset =
+    let resolve defaults = combine defaults ~current_system ~context:shared ~unset in
     match workspace with
-    | None -> Shared shared
+    | None -> Shared (resolve with_defaults)
     | Some workspace ->
-      let with_test_default value =
-        if
-          contains shared Package_variable_name.with_test
-          || Option.exists
-               (fun unset ->
-                  Package_variable_name.Set.mem unset Package_variable_name.with_test)
-               unset
-        then shared
-        else set shared Package_variable_name.with_test value
+      let workspace_defaults =
+        set with_defaults Package_variable_name.with_test Variable_value.true_
+      in
+      let dependency_defaults =
+        set with_defaults Package_variable_name.with_test Variable_value.false_
       in
       Scoped
-        { workspace = extend (with_test_default Variable_value.true_) workspace
-        ; dependencies = with_test_default Variable_value.false_
+        { workspace = extend (resolve workspace_defaults) workspace
+        ; dependencies = resolve dependency_defaults
         ; workspace_overrides = workspace
         }
   ;;
@@ -293,6 +290,16 @@ module Scoped = struct
         [ list sexp (string "workspace" :: environments Workspace)
         ; list sexp (string "dependencies" :: environments Dependencies)
         ]
+  ;;
+
+  let remove_platform_specific = function
+    | Shared env -> Shared (unset_multi env Package_variable_name.platform_specific)
+    | Scoped { workspace; dependencies; workspace_overrides } ->
+      Scoped
+        { workspace = unset_multi workspace Package_variable_name.platform_specific
+        ; dependencies = unset_multi dependencies Package_variable_name.platform_specific
+        ; workspace_overrides
+        }
   ;;
 
   let add_sentinel_values_for_unset_platform_vars = function

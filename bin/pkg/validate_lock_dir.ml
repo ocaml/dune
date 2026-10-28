@@ -45,8 +45,9 @@ let validate_lock_dirs ~lock_dirs () =
         | Error (p, e) -> Fiber.return (Some (Path.source p, e))
         | Ok (lock_dir_path, lock_dir) ->
           let lock_dir_path = Path.source lock_dir_path in
-          let* platform = solver_env_from_system_and_context ~lock_dir_path in
-          let+ () = validate_solver_env lock_dir ~lock_dir_path ~solver_env:platform in
+          let+ solver_env = solver_envs_from_system_and_context ~lock_dir_path in
+          let platform = Dune_pkg.Solver_env.Scoped.get solver_env Dependencies in
+          validate_solver_env lock_dir ~solver_env;
           (match Package_universe.create ~platform local_packages lock_dir with
            | Ok _ -> None
            | Error e -> Some (lock_dir_path, `Lock_dir_out_of_sync e)))

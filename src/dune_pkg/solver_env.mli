@@ -33,12 +33,6 @@ val pp : t -> 'a Pp.t
 val pp_oneline : t -> 'a Pp.t
 val unset_multi : t -> Package_variable_name.Set.t -> t
 
-val combine
-  :  current_system:t option
-  -> context:t option
-  -> unset:Package_variable_name.Set.t option
-  -> t
-
 (** [remove_all_except t names] returns an environment with the same bindings
     as those in [t] whose names also appear in [names]. *)
 val remove_all_except : t -> Package_variable_name.Set.t -> t
@@ -78,10 +72,12 @@ module Scoped : sig
   type env := t
   type t
 
-  (** [None] preserves the legacy shared environment. [Some] enables scoped
-      defaults and applies the workspace assignments. *)
-  val create
-    :  env
+  (** Resolve scope defaults, system values, shared assignments, shared unsets,
+      then workspace assignments. Without workspace assignments, preserve the
+      legacy shared environment. *)
+  val resolve
+    :  current_system:env option
+    -> shared:env option
     -> workspace:env option
     -> unset:Package_variable_name.Set.t option
     -> t
@@ -93,5 +89,6 @@ module Scoped : sig
   val for_platform : t -> Scope.t -> env -> env
 
   val encode : t -> platforms:env list -> Dune_lang.t
+  val remove_platform_specific : t -> t
   val add_sentinel_values_for_unset_platform_vars : t -> t
 end

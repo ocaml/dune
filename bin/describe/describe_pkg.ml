@@ -11,11 +11,12 @@ module Show_lock = struct
     in
     Fiber.parallel_map lock_dir_paths ~f:(fun lock_dir_path ->
       let lock_dir_path = Path.source lock_dir_path in
-      let* platform = Pkg.Pkg_common.solver_env_from_system_and_context ~lock_dir_path in
-      let lock_dir = Lock_dir.read_disk_exn lock_dir_path in
-      let+ () =
-        Pkg.Pkg_common.validate_solver_env lock_dir ~lock_dir_path ~solver_env:platform
+      let+ solver_env =
+        Pkg.Pkg_common.solver_envs_from_system_and_context ~lock_dir_path
       in
+      let platform = Dune_pkg.Solver_env.Scoped.get solver_env Dependencies in
+      let lock_dir = Lock_dir.read_disk_exn lock_dir_path in
+      Pkg.Pkg_common.validate_solver_env lock_dir ~solver_env;
       let packages =
         Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform
         |> Package_name.Map.values
@@ -156,12 +157,11 @@ module List_locked_dependencies = struct
     let+ pp =
       Fiber.parallel_map lock_dirs_by_path ~f:(fun (lock_dir_path, lock_dir) ->
         let lock_dir_path = Path.source lock_dir_path in
-        let* platform =
-          Pkg.Pkg_common.solver_env_from_system_and_context ~lock_dir_path
+        let+ solver_env =
+          Pkg.Pkg_common.solver_envs_from_system_and_context ~lock_dir_path
         in
-        let+ () =
-          Pkg.Pkg_common.validate_solver_env lock_dir ~lock_dir_path ~solver_env:platform
-        in
+        let platform = Dune_pkg.Solver_env.Scoped.get solver_env Dependencies in
+        Pkg.Pkg_common.validate_solver_env lock_dir ~solver_env;
         let package_universe =
           Package_universe.create ~platform local_packages lock_dir |> User_error.ok_exn
         in

@@ -4,17 +4,6 @@ module Solver_env = Dune_pkg.Solver_env
 module Package_variable_name = Dune_lang.Package_variable_name
 module Variable_value = Dune_pkg.Variable_value
 
-let solver_env
-      ~solver_env_from_current_system
-      ~solver_env_from_context
-      ~unset_solver_vars_from_context
-  =
-  Solver_env.combine
-    ~current_system:solver_env_from_current_system
-    ~context:solver_env_from_context
-    ~unset:unset_solver_vars_from_context
-;;
-
 let poll_solver_env_from_current_system () =
   Dune_pkg.Sys_poll.make ~path:(Env_path.path Stdune.Env.initial)
   |> Dune_pkg.Sys_poll.solver_env_from_current_system
@@ -28,45 +17,14 @@ let get_lock_dir_from_context ~lock_dir_path =
   Workspace.find_lock_dir workspace lock_dir_path
 ;;
 
-let get_solver_env_from_context ~lock_dir_path =
+let solver_envs_from_system_and_context ~lock_dir_path =
   let open Fiber.O in
-  let+ lock_dir = get_lock_dir_from_context ~lock_dir_path in
-  Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env)
+  let+ current_system = poll_solver_env_from_current_system () >>| Option.some
+  and+ context = get_lock_dir_from_context ~lock_dir_path in
+  Workspace.Lock_dir.solver_envs context ~current_system
 ;;
 
-let get_unset_solver_vars_from_context ~lock_dir_path =
-  let open Fiber.O in
-  let+ lock_dir = get_lock_dir_from_context ~lock_dir_path in
-  Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.unset_solver_vars)
-;;
-
-let solver_env_from_system_and_context ~lock_dir_path =
-  let open Fiber.O in
-  let+ solver_env_from_current_system =
-    poll_solver_env_from_current_system () >>| Option.some
-  and+ solver_env_from_context = get_solver_env_from_context ~lock_dir_path
-  and+ unset_solver_vars_from_context =
-    get_unset_solver_vars_from_context ~lock_dir_path
-  in
-  solver_env
-    ~solver_env_from_current_system
-    ~solver_env_from_context
-    ~unset_solver_vars_from_context
-;;
-
-let validate_solver_env lock_dir ~lock_dir_path ~solver_env =
-  let open Fiber.O in
-  let+ context = get_lock_dir_from_context ~lock_dir_path in
-  let legacy =
-    Option.bind context ~f:(fun lock_dir -> lock_dir.solver_env)
-    |> Option.value ~default:Solver_env.empty
-  in
-  let solver_env =
-    Solver_env.Scoped.create
-      solver_env
-      ~workspace:(Option.bind context ~f:(fun lock_dir -> lock_dir.workspace_solver_env))
-      ~unset:(Option.bind context ~f:(fun lock_dir -> lock_dir.unset_solver_vars))
-  in
+let validate_solver_env lock_dir ~solver_env =
   let { Lock_dir.expanded_solver_variable_bindings; _ } = lock_dir in
   if
     Solver_env.Scoped.is_scoped solver_env
@@ -76,7 +34,7 @@ let validate_solver_env lock_dir ~lock_dir_path ~solver_env =
   then
     Dune_pkg.Solver_stats.Expanded_variable_bindings.validate_against_solver_env
       expanded_solver_variable_bindings
-      ~legacy
+      ~legacy:Solver_env.empty
       ~solver_env
 ;;
 
@@ -133,12 +91,6 @@ let repositories_of_lock_dir workspace ~lock_dir_path =
       let name = Dune_pkg.Pkg_workspace.Repository.name repo in
       let loc = Loc.none in
       loc, name)
-;;
-
-let unset_solver_vars_of_workspace workspace ~lock_dir_path =
-  let open Option.O in
-  let* lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
-  lock_dir.unset_solver_vars
 ;;
 
 let find_local_packages =

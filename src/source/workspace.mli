@@ -23,6 +23,11 @@ module Lock_dir : sig
 
   val equal : t -> t -> bool
   val to_dyn : t -> Dyn.t
+
+  val solver_envs
+    :  t option
+    -> current_system:Dune_pkg.Solver_env.t option
+    -> Dune_pkg.Solver_env.Scoped.t
 end
 
 module Lock_dir_selection : sig

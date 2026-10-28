@@ -241,22 +241,9 @@ let get_with_path =
           Option.bind workspace_lock_dir ~f:(fun lock_dir -> lock_dir.solver_env)
         in
         let solver_env =
-          Solver_env.combine
+          Workspace.Lock_dir.solver_envs
+            workspace_lock_dir
             ~current_system:(Some current_system)
-            ~context
-            ~unset:
-              (Option.bind workspace_lock_dir ~f:(fun lock_dir ->
-                 lock_dir.unset_solver_vars))
-        in
-        let solver_env =
-          Solver_env.Scoped.create
-            solver_env
-            ~workspace:
-              (Option.bind workspace_lock_dir ~f:(fun lock_dir ->
-                 lock_dir.workspace_solver_env))
-            ~unset:
-              (Option.bind workspace_lock_dir ~f:(fun lock_dir ->
-                 lock_dir.unset_solver_vars))
         in
         Solver_stats.Expanded_variable_bindings.validate_against_solver_env
           lock_dir.expanded_solver_variable_bindings

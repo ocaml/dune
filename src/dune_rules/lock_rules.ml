@@ -272,10 +272,9 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
          | Some { version_preference = Some vp; _ } -> vp
        in
        let solver_env =
-         Solver_env.combine
+         Workspace.Lock_dir.solver_envs
+           lock_dir
            ~current_system:(Some solver_env_from_current_system)
-           ~context:(Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env))
-           ~unset:(Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.unset_solver_vars))
        in
        let portable_lock_dir =
          match Config.get Compile_time.portable_lock_dir with
@@ -287,13 +286,6 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
            solver_env
            ~solve_for_platforms:Solver_env.popular_platform_envs
            ~portable_lock_dir
-       in
-       let solver_env =
-         Solver_env.Scoped.create
-           solver_env
-           ~workspace:
-             (Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.workspace_solver_env))
-           ~unset:(Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.unset_solver_vars))
        in
        lock_action
          ~target

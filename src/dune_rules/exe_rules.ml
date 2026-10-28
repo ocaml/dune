@@ -318,7 +318,7 @@ let executables_rules
          dance is done to avoid triggering duplicate rule exceptions. *)
         let+ () =
           let loc = fst (Nonempty_list.hd exes.names) in
-          Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir
+          Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~dir ~dir_contents
         and+ () = Module_compilation.build_all cctx
         and+ link =
           Exe.link_many

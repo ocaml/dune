@@ -23,7 +23,7 @@ val foreign_flags_env
 
 (** Build the common include flags for C compilation: header hidden deps,
     library include flags, and per-source include_dir_flags.
-    Shared between [build_o_files] and [Compile_commands]. *)
+    Shared between [build_o_files], [Ctypes_rules], and [Compile_commands]. *)
 val build_include_flags
   :  sctx:Super_context.t
   -> dir:Path.Build.t

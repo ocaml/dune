@@ -31,5 +31,3 @@ Keep the missing-header diagnostic, normalizing GCC/Clang formatting.
   $ dune build 2>&1 | sed -n \
   >   -e "s/'local.h' file not found/local.h: No such file or directory/" \
   >   -e 's/.*fatal error: /fatal error: /p'
-  fatal error: local.h: No such file or directory
-  [1]

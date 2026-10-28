@@ -161,102 +161,6 @@ let function_gen_gen
        ])
 ;;
 
-let build_c_program
-      ~foreign_archives_deps
-      ~sctx
-      ~dir
-      ~source_files
-      ~scope
-      ~cflags
-      ~output
-      ~env
-      ~sandbox
-  =
-  let ctx = Super_context.context sctx in
-  let ocaml = Context.ocaml ctx in
-  let exe =
-    let open Action_builder.O in
-    let* ocaml = Action_builder.of_memo ocaml in
-    Ocaml_config.c_compiler ocaml.ocaml_config
-    |> Super_context.resolve_program ~loc:None ~dir sctx
-  in
-  let project = Scope.project scope in
-  let with_user_and_std_flags =
-    let base_flags =
-      let open Action_builder.O in
-      let+ ocaml = Action_builder.of_memo ocaml in
-      let use_standard_flags = Dune_project.use_standard_c_and_cxx_flags project in
-      let cfg = ocaml.ocaml_config in
-      match use_standard_flags with
-      | Some true -> Command.Args.empty
-      | None | Some false ->
-        (* In dune < 2.8 flags from ocamlc_config are always added *)
-        S [ As (Ocaml_config.ocamlc_cflags cfg); As (Ocaml_config.ocamlc_cppflags cfg) ]
-    in
-    let open Action_builder.O in
-    let* expander = Action_builder.of_memo (Super_context.expander sctx ~dir) in
-    let+ foreign_flags =
-      Foreign_rules.foreign_flags
-        sctx
-        ~dir
-        ~expander
-        ~flags:Ordered_set_lang.Unexpanded.standard
-        ~language:C
-    in
-    Command.Args.S [ Dyn base_flags; As foreign_flags ]
-  in
-  let include_args =
-    let open Action_builder.O in
-    let* ocaml = Action_builder.of_memo ocaml in
-    let+ ctypes_include_dirs =
-      let+ lib =
-        let ctypes = Lib_name.of_string "ctypes" in
-        Lib.DB.resolve (Scope.libs scope) (Loc.none, ctypes) |> Resolve.Memo.read
-      in
-      Lib_flags.L.include_paths [ lib ] (Ocaml Native) ocaml.lib_config
-      |> Lib_flags.L.include_only
-    in
-    let include_arg dir = Command.Args.S [ A "-I"; Path dir ] in
-    let ctypes_include_arg dir =
-      let headers = File_selector.of_glob ~dir (Glob.of_string "*.h") in
-      Command.Args.S
-        [ include_arg dir; Hidden_deps (Dep.Set.singleton (Dep.file_selector headers)) ]
-    in
-    Command.Args.S
-      (include_arg ocaml.lib_config.stdlib_dir
-       :: List.map ctypes_include_dirs ~f:ctypes_include_arg)
-  in
-  let extra_deps =
-    let source_file_deps =
-      List.map source_files ~f:(Path.relative (Path.build dir)) |> Dep.Set.of_files
-    in
-    let foreign_archives_deps =
-      List.map foreign_archives_deps ~f:Path.build |> Dep.Set.of_files
-    in
-    Dep.Set.union source_file_deps foreign_archives_deps |> Action_builder.deps
-  in
-  let all_flags =
-    Command.Args.S
-      [ Dyn with_user_and_std_flags
-      ; Dyn (Action_builder.map cflags ~f:(fun l -> Command.Args.As l))
-      ; Dyn include_args
-      ]
-  in
-  let action =
-    let args =
-      [ Command.Args.as_any all_flags
-      ; Deps (List.map ~f:(fun s -> Path.relative (Path.build dir) s) source_files)
-      ; A "-o"
-      ; Target (Path.Build.relative dir output)
-      ]
-    in
-    let open Action_builder.With_targets.O in
-    Action_builder.with_no_targets extra_deps
-    >>> Command.run_dyn_prog ~dir:(Path.build dir) ~env ~sandbox exe args
-  in
-  Super_context.add_rule sctx ~dir action
-;;
-
 let program_of_module_and_dir ~dir program =
   let build_dir = Path.build dir in
   { Exe.Program.name = program
@@ -276,7 +180,7 @@ let exe_link_only ~dir ~shared_cctx ~sandbox ~env program =
     ~env
 ;;
 
-let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
+let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~dir ~dir_contents ~sctx =
   let ctypes = Option.value_exn buildable.ctypes in
   let external_library_name = ctypes.external_library_name in
   let type_description_functor = ctypes.type_description.functor_ in
@@ -291,25 +195,6 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
     |> Super_context.add_rule sctx ~loc:Loc.none ~dir
   in
   let* expander = Super_context.expander sctx ~dir in
-  (* The output of this process is to generate a cflags sexp and a c library
-     flags sexp file. We can probe these flags by using the system pkg-config,
-     if it's an external system library. The user could also tell us what they
-     are, if the library is vendored.
-
-     https://dune.readthedocs.io/en/stable/quick-start.html#defining-a-library-with-c-stubs-using-pkg-config *)
-  let* cflags =
-    match ctypes.build_flags_resolver with
-    | Vendored { c_flags; c_library_flags = _ } ->
-      Foreign_rules.foreign_flags sctx ~dir ~expander ~flags:c_flags ~language:C
-      |> Memo.return
-    | Pkg_config ->
-      Memo.return
-        (Pkg_config.Query.read
-           ~loc
-           ~dir
-           (Cflags (External_lib_name.to_string external_library_name))
-           sctx)
-  in
   let generated_entry_module = ctypes.generated_entry_point in
   let headers =
     gen_headers ~expander ctypes.headers |> Action_builder.memoize "ctypes-gen-headers"
@@ -357,26 +242,60 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
          Command.run ~stdout_to ~dir:(Path.build dir) ~env ~sandbox exe [])
     in
     let* () =
+      let* requires = Compilation_context.requires_compile cctx in
+      let ocaml = Compilation_context.ocaml cctx in
+      let src =
+        Foreign.Source.make
+          (Ctypes ctypes)
+          ~path:(Path.Build.relative dir c_generated_types_cout_c)
+      in
+      let include_flags =
+        Foreign_rules.build_include_flags
+          ~sctx
+          ~dir
+          ~expander
+          ~dir_contents
+          ~requires
+          ~src
+      in
       let foreign_archives_deps =
-        let { Lib_config.ext_lib; ext_dll; _ } =
-          (Compilation_context.ocaml cctx).lib_config
-        in
+        let { Lib_config.ext_lib; ext_dll; _ } = ocaml.lib_config in
         List.concat_map buildable.foreign_archives ~f:(fun (_loc, archive) ->
           let mode = Mode.Select.All in
           [ Foreign.Archive.lib_file ~mode ~archive ~dir ~ext_lib
           ; Foreign.Archive.dll_file ~mode ~archive ~dir ~ext_dll
           ])
+        |> List.map ~f:Path.build
+        |> Dep.Set.of_files
       in
-      build_c_program
-        ~foreign_archives_deps
-        ~sctx
+      let c_compiler =
+        Super_context.resolve_program
+          ~loc:None
+          ~dir
+          sctx
+          (Ocaml_config.c_compiler ocaml.ocaml_config)
+      in
+      Super_context.add_rule
+        sctx
         ~dir
-        ~scope
-        ~source_files:[ c_generated_types_cout_c ]
-        ~output:c_generated_types_cout_exe
-        ~cflags
-        ~env
-        ~sandbox
+        (Command.run_dyn_prog
+           ~dir:(Path.build dir)
+           ~env
+           ~sandbox
+           c_compiler
+           [ Command.Args.as_any
+               (Foreign_rules.c_compile_args
+                  ~sctx
+                  ~dir
+                  ~expander
+                  ~loc
+                  ~src
+                  ~include_flags)
+           ; Hidden_deps foreign_archives_deps
+           ; Dep (Path.build (Foreign.Source.path src))
+           ; A "-o"
+           ; Target (Path.Build.relative dir c_generated_types_cout_exe)
+           ])
     in
     Super_context.add_rule
       sctx

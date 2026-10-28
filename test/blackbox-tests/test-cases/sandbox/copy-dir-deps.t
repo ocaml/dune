@@ -1,11 +1,16 @@
 A copy action on a directory dependency should produce regular files in every
 sandbox mode. This case has no overlapping dependencies.
 
+  $ export DUNE_CACHE=disabled
   $ make_dune_project 3.25
   $ cat > dune <<'EOF'
   > (rule
   >  (target (dir tree))
-  >  (action (system "mkdir tree && echo contents > tree/file")))
+  >  (action
+  >   (progn
+  >    (run mkdir -p tree/nested/empty tree/empty)
+  >    (system "echo contents > tree/file")
+  >    (system "echo nested > tree/nested/file"))))
   > (rule
   >  (target (dir copied))
   >  (deps tree (sandbox always))
@@ -26,6 +31,12 @@ regular output files.
   contents
   $ dune_cmd stat kind _build/default/copied/file
   regular file
+  $ cat _build/default/copied/nested/file
+  nested
+  $ dune_cmd stat kind _build/default/copied/nested/empty
+  directory
+  $ dune_cmd stat kind _build/default/copied/empty
+  directory
 
 Copy mode produces a regular file with the expected contents.
 
@@ -34,6 +45,12 @@ Copy mode produces a regular file with the expected contents.
   contents
   $ dune_cmd stat kind _build/default/copied/file
   regular file
+  $ cat _build/default/copied/nested/file
+  nested
+  $ dune_cmd stat kind _build/default/copied/nested/empty
+  directory
+  $ dune_cmd stat kind _build/default/copied/empty
+  directory
 
 Hardlink mode also produces a regular file with the expected contents.
 
@@ -42,3 +59,9 @@ Hardlink mode also produces a regular file with the expected contents.
   contents
   $ dune_cmd stat kind _build/default/copied/file
   regular file
+  $ cat _build/default/copied/nested/file
+  nested
+  $ dune_cmd stat kind _build/default/copied/nested/empty
+  directory
+  $ dune_cmd stat kind _build/default/copied/empty
+  directory

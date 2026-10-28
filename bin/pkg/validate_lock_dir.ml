@@ -20,13 +20,8 @@ let enumerate_lock_dirs_by_path ~lock_dirs () =
   let+ per_contexts =
     Workspace.workspace () >>| Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs
   in
-  List.filter_map per_contexts ~f:(fun lock_dir_path ->
-    if Fpath.exists (Path.Source.to_string lock_dir_path)
-    then (
-      match Lock_dir.read_disk_exn (Path.source lock_dir_path) with
-      | lock_dir -> Some (Ok (lock_dir_path, lock_dir))
-      | exception User_error.E e -> Some (Error (lock_dir_path, `Parse_error e)))
-    else None)
+  List.filter per_contexts ~f:(fun lock_dir_path ->
+    Fpath.exists (Path.Source.to_string lock_dir_path))
 ;;
 
 let validate_lock_dirs ~lock_dirs () =
@@ -41,16 +36,15 @@ let validate_lock_dirs ~lock_dirs () =
     Console.print [ Pp.text "No lockdirs to validate." ]
   else
     let+ universes =
-      Fiber.parallel_map lock_dirs_by_path ~f:(function
-        | Error (p, e) -> Fiber.return (Some (Path.source p, e))
-        | Ok (lock_dir_path, lock_dir) ->
-          let lock_dir_path = Path.source lock_dir_path in
-          let+ solver_env = solver_envs_from_system_and_context ~lock_dir_path in
-          let platform = Dune_pkg.Solver_env.Scoped.get solver_env Dependencies in
-          validate_solver_env lock_dir ~solver_env;
+      Fiber.parallel_map lock_dirs_by_path ~f:(fun lock_dir_path ->
+        let lock_dir_path = Path.source lock_dir_path in
+        let+ loaded = load_lock_dir ~lock_dir_path in
+        match loaded with
+        | Error error -> Some (lock_dir_path, `Parse_error error)
+        | Ok (lock_dir, platform) ->
           (match Package_universe.create ~platform local_packages lock_dir with
            | Ok _ -> None
-           | Error e -> Some (lock_dir_path, `Lock_dir_out_of_sync e)))
+           | Error error -> Some (lock_dir_path, `Lock_dir_out_of_sync error)))
       >>| List.filter_opt
     in
     match universes with

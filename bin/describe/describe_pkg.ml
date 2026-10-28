@@ -11,12 +11,8 @@ module Show_lock = struct
     in
     Fiber.parallel_map lock_dir_paths ~f:(fun lock_dir_path ->
       let lock_dir_path = Path.source lock_dir_path in
-      let+ solver_env =
-        Pkg.Pkg_common.solver_envs_from_system_and_context ~lock_dir_path
-      in
-      let platform = Dune_pkg.Solver_env.Scoped.get solver_env Dependencies in
-      let lock_dir = Lock_dir.read_disk_exn lock_dir_path in
-      Pkg.Pkg_common.validate_solver_env lock_dir ~solver_env;
+      let+ loaded = Pkg.Pkg_common.load_lock_dir ~lock_dir_path in
+      let lock_dir, platform = User_error.ok_exn loaded in
       let packages =
         Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform
         |> Package_name.Map.values
@@ -129,20 +125,8 @@ module List_locked_dependencies = struct
     let lock_dirs =
       Pkg.Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs workspace
     in
-    List.filter_map lock_dirs ~f:(fun lock_dir_path ->
-      if Fpath.exists (Path.Source.to_string lock_dir_path)
-      then (
-        match Lock_dir.read_disk_exn (Path.source lock_dir_path) with
-        | lock_dir -> Some (lock_dir_path, lock_dir)
-        | exception User_error.E e ->
-          User_warning.emit
-            [ Pp.textf
-                "Failed to parse lockdir %s:"
-                (Path.Source.to_string_maybe_quoted lock_dir_path)
-            ; User_message.pp e
-            ];
-          None)
-      else None)
+    List.filter lock_dirs ~f:(fun lock_dir_path ->
+      Fpath.exists (Path.Source.to_string lock_dir_path))
   ;;
 
   let list_locked_dependencies ~transitive ~lock_dirs () =
@@ -155,28 +139,36 @@ module List_locked_dependencies = struct
       |> Memo.run
     in
     let+ pp =
-      Fiber.parallel_map lock_dirs_by_path ~f:(fun (lock_dir_path, lock_dir) ->
+      Fiber.parallel_map lock_dirs_by_path ~f:(fun lock_dir_path ->
         let lock_dir_path = Path.source lock_dir_path in
-        let+ solver_env =
-          Pkg.Pkg_common.solver_envs_from_system_and_context ~lock_dir_path
-        in
-        let platform = Dune_pkg.Solver_env.Scoped.get solver_env Dependencies in
-        Pkg.Pkg_common.validate_solver_env lock_dir ~solver_env;
-        let package_universe =
-          Package_universe.create ~platform local_packages lock_dir |> User_error.ok_exn
-        in
-        Pp.vbox
-          (Pp.concat
-             ~sep:Pp.cut
-             [ Pp.hbox
-                 (Pp.textf
-                    "Dependencies of local packages locked in %s"
-                    (Path.to_string_maybe_quoted lock_dir_path))
-             ; Pp.enumerate
-                 (Package_name.Map.keys local_packages)
-                 ~f:(package_deps_in_lock_dir_pp package_universe ~transitive)
-               |> Pp.box
-             ]))
+        let+ loaded = Pkg.Pkg_common.load_lock_dir ~lock_dir_path in
+        match loaded with
+        | Error error ->
+          User_warning.emit
+            [ Pp.textf
+                "Failed to parse lockdir %s:"
+                (Path.to_string_maybe_quoted lock_dir_path)
+            ; User_message.pp error
+            ];
+          None
+        | Ok (lock_dir, platform) ->
+          let package_universe =
+            Package_universe.create ~platform local_packages lock_dir |> User_error.ok_exn
+          in
+          Some
+            (Pp.vbox
+               (Pp.concat
+                  ~sep:Pp.cut
+                  [ Pp.hbox
+                      (Pp.textf
+                         "Dependencies of local packages locked in %s"
+                         (Path.to_string_maybe_quoted lock_dir_path))
+                  ; Pp.enumerate
+                      (Package_name.Map.keys local_packages)
+                      ~f:(package_deps_in_lock_dir_pp package_universe ~transitive)
+                    |> Pp.box
+                  ])))
+      >>| List.filter_opt
       >>| Pp.concat ~sep:Pp.cut
       >>| Pp.vbox
     in

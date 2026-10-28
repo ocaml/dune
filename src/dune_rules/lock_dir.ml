@@ -245,10 +245,12 @@ let get_with_path =
             workspace_lock_dir
             ~current_system:(Some current_system)
         in
-        Solver_variable_bindings.validate_against_solver_env
+        Solver_variable_bindings.validate
           lock_dir.expanded_solver_variable_bindings
-          ~legacy:(Option.value context ~default:Solver_env.empty)
-          ~solver_env;
+          solver_env;
+        Solver_variable_bindings.validate_legacy
+          lock_dir.expanded_solver_variable_bindings
+          (Option.value context ~default:Solver_env.empty);
         Ok (path, lock_dir))
     |> Memo.Lazy.force)
   |> Staged.unstage

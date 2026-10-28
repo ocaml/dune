@@ -17,24 +17,19 @@ let get_lock_dir_from_context ~lock_dir_path =
   Workspace.find_lock_dir workspace lock_dir_path
 ;;
 
-let solver_envs_from_system_and_context ~lock_dir_path =
+let load_lock_dir ~lock_dir_path =
   let open Fiber.O in
   let+ current_system = poll_solver_env_from_current_system () >>| Option.some
   and+ context = get_lock_dir_from_context ~lock_dir_path in
-  Workspace.Lock_dir.solver_envs context ~current_system
-;;
-
-let validate_solver_env lock_dir ~solver_env =
-  let { Lock_dir.expanded_solver_variable_bindings; _ } = lock_dir in
-  if
-    Solver_env.Scoped.is_scoped solver_env
-    || Lock_dir.Solver_variable_bindings.version expanded_solver_variable_bindings
-       >= (0, 2)
-  then
-    Lock_dir.Solver_variable_bindings.validate_against_solver_env
+  let solver_env = Workspace.Lock_dir.solver_envs context ~current_system in
+  match Lock_dir.read_disk_exn lock_dir_path with
+  | exception User_error.E error -> Error error
+  | lock_dir ->
+    let { Lock_dir.expanded_solver_variable_bindings; _ } = lock_dir in
+    Lock_dir.Solver_variable_bindings.validate
       expanded_solver_variable_bindings
-      ~legacy:Solver_env.empty
-      ~solver_env
+      solver_env;
+    Ok (lock_dir, Solver_env.Scoped.get solver_env Dependencies)
 ;;
 
 module Version_preference = struct

@@ -14,10 +14,8 @@ let find_outdated_packages ~transitive ~lock_dirs_arg () =
           ~available_repos:(repositories_of_workspace workspace)
           ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
       and+ local_packages = Memo.run find_local_packages
-      and+ solver_env = solver_envs_from_system_and_context ~lock_dir_path in
-      let platform = Dune_pkg.Solver_env.Scoped.get solver_env Dependencies in
-      let lock_dir = Dune_pkg.Lock_dir.read_disk_exn lock_dir_path in
-      validate_solver_env lock_dir ~solver_env;
+      and+ loaded = load_lock_dir ~lock_dir_path in
+      let lock_dir, platform = User_error.ok_exn loaded in
       let packages =
         Dune_pkg.Lock_dir.Packages.pkgs_on_platform_by_name lock_dir.packages ~platform
       in

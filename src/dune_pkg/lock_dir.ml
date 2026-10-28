@@ -1283,7 +1283,7 @@ module Solver_variable_bindings = struct
     |> Bindings.to_solver_env
   ;;
 
-  let validate_against_solver_env t ~legacy ~solver_env =
+  let validate t solver_env =
     let hints = [ User_message.command "dune pkg lock" ] in
     let validate scope (bindings : Bindings.t) =
       let env = Solver_env.Scoped.get solver_env scope in
@@ -1315,7 +1315,7 @@ module Solver_variable_bindings = struct
       List.iter bindings.unset_variables ~f:(fun name -> check name None)
     in
     match t, Solver_env.Scoped.is_scoped solver_env with
-    | Shared bindings, false -> Bindings.validate_against_solver_env bindings legacy
+    | Shared _, false -> ()
     | Scoped { workspace; dependencies }, true ->
       validate Workspace workspace;
       validate Dependencies dependencies
@@ -1326,6 +1326,12 @@ module Solver_variable_bindings = struct
             "The workspace_solver_env configuration has changed since this lock \
              directory was generated. Regenerate the lock directory."
         ]
+  ;;
+
+  let validate_legacy t solver_env =
+    match t with
+    | Shared bindings -> Bindings.validate_against_solver_env bindings solver_env
+    | Scoped _ -> ()
   ;;
 
   let remove_platform_specific = function

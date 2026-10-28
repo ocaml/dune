@@ -119,13 +119,12 @@ module Solver_variable_bindings : sig
   val to_dyn : t -> Dyn.t
   val to_solver_env : t -> scope:Solver_env.Scope.t -> Solver_env.t
 
-  (** Flat metadata retains its legacy validation behavior. Scoped metadata
-      requires matching configuration and validates each scope independently. *)
-  val validate_against_solver_env
-    :  t
-    -> legacy:Solver_env.t
-    -> solver_env:Solver_env.Scoped.t
-    -> unit
+  (** Validate scope compatibility and consulted scoped bindings. *)
+  val validate : t -> Solver_env.Scoped.t -> unit
+
+  (** Preserve the build loader's checks against explicitly configured values
+      in legacy flat metadata. *)
+  val validate_legacy : t -> Solver_env.t -> unit
 
   val remove_platform_specific : t -> t
 end

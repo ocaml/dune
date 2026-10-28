@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793202799956,
+  "lastUpdate": 1793202998997,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -477831,6 +477831,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5223214150933334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7d41635eaac2e23c545790089b75e8e0b10f5efc",
+          "message": "refactor(stdune): rename and move shared tree traversal (#16807)\n\nRename `Tree_copy` to `Tree_traversal` and move it to Stdune. No\nbehavior change.\n\nFollow-up to #16675.",
+          "timestamp": "2026-10-28T16:34:18+01:00",
+          "tree_id": "3ce63ed5a27c8473315307640eae4ddb9e35deb7",
+          "url": "https://github.com/ocaml/dune/commit/7d41635eaac2e23c545790089b75e8e0b10f5efc"
+        },
+        "date": 1793202996620,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 59.43924745799999,
             "unit": "seconds"
           }
         ]

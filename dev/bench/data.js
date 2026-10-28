@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793221305233,
+  "lastUpdate": 1793221614375,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -665288,6 +665288,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 4.081722110353334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7e41f64481a6f38d68321c7fc93486277722a600",
+          "message": "test(action): cover copy destination parent creation (#16841)\n\nCover nested file destinations and recursive nested/empty directories.\n\nRegression coverage for #16827.",
+          "timestamp": "2026-10-28T21:54:42+01:00",
+          "tree_id": "01dedd2c42af116972db3d243ef57b4d83c48fdf",
+          "url": "https://github.com/ocaml/dune/commit/7e41f64481a6f38d68321c7fc93486277722a600"
+        },
+        "date": 1793221287175,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.1967485931733326,
             "unit": "seconds"
           }
         ]

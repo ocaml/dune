@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793203007631,
+  "lastUpdate": 1793203119501,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -477889,6 +477889,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5303135386666668,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "699718c8929a170f259a3cb1422d8f11f4b42f61",
+          "message": "feat(artifacts): narrow binary lookups to declared dependencies (#15381)\n\n## Description\n\nBinary lookups made from a directory owned by a package (via the\npackage's\n`(dir ...)` field) are narrowed to the packages that package explicitly\ndepends on,\n(depopts ..) included. This covers `%{bin:...}`, `%{bin-available:...}`,\nthe `PATH`\ngiven to actions, and the binaries staged by `(deps %{bin:...})`.\n\nDirectories with no owning package are unaffected: nothing is narrowed\nand\nevery package is searched, as before. Binaries found on the ambient\n`PATH`,\nand those bound by `(env (binaries ...))` are also unaffected.\n\n## Related Issue and Motivation\n\nTo know which binaries a lock directory package provides, dune has to\nbuild\nit since the metadata currently available does not provide that\ninformation.\nSo resolving a single `%{bin:X}` meant building every package in the\nlock\ndirectory to find out which one provides `X`. Narrowing the search to\nthe\nowning package's dependencies restricts the build to only those packages\n(and their build dependency packages).\n\nShrinking the built set is also a prerequisite for the in-and-out work\n(#8652), where forcing every package's install cookie causes a  cycle.\n\n## Known limitations\n\n- Dependency filters such as `{with-test}` are not interpreted, so a\n  dependency is visible whatever its filter says.",
+          "timestamp": "2026-10-28T16:35:57+01:00",
+          "tree_id": "19674861c403fcb58bc0a68907340d7b9b8d250d",
+          "url": "https://github.com/ocaml/dune/commit/699718c8929a170f259a3cb1422d8f11f4b42f61"
+        },
+        "date": 1793203116768,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 61.401917312933335,
             "unit": "seconds"
           }
         ]

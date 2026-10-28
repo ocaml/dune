@@ -15,6 +15,10 @@
 #include <dirent.h>
 typedef struct dirent directory_entry;
 
+#if defined(__HAIKU__) || defined(__sun)
+#define DUNE_NO_D_TYPE
+#endif
+
 static int is_dot_or_dot_dot(const char *name)
 {
   return name[0] == '.'
@@ -24,8 +28,8 @@ static int is_dot_or_dot_dot(const char *name)
 value val_file_type(int typ) {
   switch(typ)
     {
-#ifndef __HAIKU__     
-   case DT_REG:
+#ifndef DUNE_NO_D_TYPE
+    case DT_REG:
       return Val_int(0);
     case DT_DIR:
       return Val_int(1);
@@ -73,7 +77,7 @@ CAMLprim value caml__dune_filesystem_stubs__readdir(value vd)
   v_filename = caml_copy_string(e->d_name);
   v_tuple = caml_alloc_small(2, 0);
   Field(v_tuple, 0) = v_filename;
-#ifndef __HAIKU__
+#ifndef DUNE_NO_D_TYPE
   Field(v_tuple, 1) = val_file_type(e->d_type);
 #else
   Field(v_tuple, 1) = Val_int(7);

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793120093194,
+  "lastUpdate": 1793191091359,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -664244,6 +664244,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.6780929609533337,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9f321e563bf979bc8dfae47893c78cd70c1af0b4",
+          "message": "fix(sandbox): prevent overwriting hardlinks (#16814)",
+          "timestamp": "2026-10-28T13:20:56+01:00",
+          "tree_id": "b486dfc99693e827b26318335665051403e91ef0",
+          "url": "https://github.com/ocaml/dune/commit/9f321e563bf979bc8dfae47893c78cd70c1af0b4"
+        },
+        "date": 1793190709272,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.568211250533333,
             "unit": "seconds"
           }
         ]

@@ -31,7 +31,7 @@ let apply_filter env ~with_test ~(formula : OpamTypes.filtered_formula)
        ~post:false
        ~dev:false
        ~default:false
-       ~test:with_test
+       ~test:false
        ~doc:false
 ;;
 

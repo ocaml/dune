@@ -35,7 +35,7 @@ module Spec = struct
     }
 
   let name = "lock"
-  let version = 3
+  let version = 4
   let runs_process = false
   let can_run_in_action_runner = false
   let bimap t f g = { t with lock_dir = f t.lock_dir; target = g t.target }

@@ -146,11 +146,10 @@ no solution will be found.
         availability-string.0.0.1: Availability condition not satisfied
   [1]
 
-The middle version will be picked as this is the only one available if
-with-test is set. This exercises that we can handle flags in the available
-filter.
+The newest version is available because dependencies default to with-test=false.
+This exercises flags in the available filter.
   $ solve with-test-check
   Solution for dune.lock:
-  - with-test-check.0.0.2
+  - with-test-check.0.0.3
   Solution for dune.macos.lock:
-  - with-test-check.0.0.2
+  - with-test-check.0.0.3

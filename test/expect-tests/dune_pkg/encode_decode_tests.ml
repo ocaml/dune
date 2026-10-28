@@ -122,7 +122,9 @@ let%expect_test "encode/decode round trip test for lockdir with no deps" =
     ; ocaml = None
     ; repos = { complete = true; used = None }
     ; expanded_solver_variable_bindings =
-        Shared { variable_values = []; unset_variables = [] }
+        { workspace = { variable_values = []; unset_variables = [] }
+        ; dependencies = { variable_values = []; unset_variables = [] }
+        }
     ; solved_for_platforms = ("<none>:1", [])
     }
     |}]
@@ -234,10 +236,12 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
     ; ocaml = Some ("simple_lock_dir/lock.dune:3", "ocaml")
     ; repos = { complete = true; used = None }
     ; expanded_solver_variable_bindings =
-        Shared
-          { variable_values = [ ("os", "linux") ]
-          ; unset_variables = [ "os-family" ]
-          }
+        { workspace =
+            { variable_values = [ ("os", "linux") ]
+            ; unset_variables = [ "os-family" ]
+            }
+        ; dependencies = { variable_values = []; unset_variables = [] }
+        }
     ; solved_for_platforms = ("<none>:1", [])
     }
     |}]
@@ -453,7 +457,9 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
         ; used = Some [ opam_repo_serializable "https://github.com/ocaml/dune" ]
         }
     ; expanded_solver_variable_bindings =
-        Shared { variable_values = []; unset_variables = [] }
+        { workspace = { variable_values = []; unset_variables = [] }
+        ; dependencies = { variable_values = []; unset_variables = [] }
+        }
     ; solved_for_platforms = ("<none>:1", [])
     }
     |}]
@@ -573,7 +579,9 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
               ]
         }
     ; expanded_solver_variable_bindings =
-        Shared { variable_values = []; unset_variables = [] }
+        { workspace = { variable_values = []; unset_variables = [] }
+        ; dependencies = { variable_values = []; unset_variables = [] }
+        }
     ; solved_for_platforms = ("<none>:1", [])
     }
     |}]

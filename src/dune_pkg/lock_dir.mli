@@ -109,9 +109,6 @@ module Solver_variable_bindings : sig
   type t
 
   val empty : t
-  val empty_scoped : t
-  val version : t -> Syntax.Version.t
-  val is_empty : t -> bool
   val of_stats : Solver_stats.t -> Solver_env.Scoped.t -> t
   val decode : t Decoder.t
   val encode : t -> Dune_lang.t list
@@ -119,12 +116,8 @@ module Solver_variable_bindings : sig
   val to_dyn : t -> Dyn.t
   val to_solver_env : t -> scope:Solver_env.Scope.t -> Solver_env.t
 
-  (** Validate scope compatibility and consulted scoped bindings. *)
+  (** Validate consulted bindings against each resolved environment. *)
   val validate : t -> Solver_env.Scoped.t -> unit
-
-  (** Preserve the build loader's checks against explicitly configured values
-      in legacy flat metadata. *)
-  val validate_legacy : t -> Solver_env.t -> unit
 
   val remove_platform_specific : t -> t
 end

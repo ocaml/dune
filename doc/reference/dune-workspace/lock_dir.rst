@@ -66,12 +66,11 @@ changed if desired.
       are applied before workspace assignments. Platform variables such as
       ``os``, ``arch``, and ``sys-ocaml-version`` cannot be overridden here.
 
-      Using this field requires regenerating existing lock directories with
-      ``dune pkg lock``. The new lock format records consulted variables
-      separately for workspace packages and dependencies. Without this field,
-      the existing shared configuration and flat lock format are preserved.
-      ``dune pkg print-solver-env`` shows both scoped environments when this
-      field is present.
+      Lock directories record consulted variables separately for workspace
+      packages and dependencies. Existing lock directories with flat solver
+      bindings must be regenerated with ``dune pkg lock``.
+      ``dune pkg print-solver-env`` shows both environments, including their
+      defaults, whether or not this field is present.
 
    .. describe:: (unset_solver_vars <name list>)
 

@@ -70,12 +70,8 @@ regenerate the lockdir, leaving the project in an inconsistent state.
 Print an error when attempting to build when the lockdir and workspace disagree
 about the value of a variable.
   $ build_pkg bar
-  Error: The dependency solution relies on the assignment of the solver
-  variable "os" to "macos" but the solver environment in the workspace would
-  assign it the value "linux".
-  Hint: This can happen if the "solver_env" for the lockdir in the
-  dune-workspace file has changed since generating the lockdir. Regenerate the
-  lockdir by running:
+  Error: The solver environment for dependency packages has changed: variable
+  "os" was macos and is now linux. Regenerate the lock directory.
   Hint: 'dune pkg lock'
   [1]
 
@@ -88,21 +84,20 @@ used during solving is later given a value in the workspace file:
   > EOF
 
   $ build_pkg bar
-  Error: The dependency solution relies on the variable "custom" not being
-  assigned a value but the solver environment in the workspace would assign it
-  the value "foo".
-  Hint: This can happen if the "solver_env" for the lockdir in the
-  dune-workspace file has changed since generating the lockdir. Regenerate the
-  lockdir by running:
+  Error: The solver environment for dependency packages has changed: variable
+  "custom" was unset and is now foo. Regenerate the lock directory.
   Hint: 'dune pkg lock'
   [1]
 
-If we don't set a variable in the workspace but that variable appears in
-lockdir metadata it's not an error because it might have got there by polling
-the current system. Note that to prevent the "os" variable from being taken
-from the current system it must be added to the unset variables in the
-workspace.
+Consulted variables are checked against their resolved values, whether those
+values are configured, polled, or explicitly unset.
 
   $ generate_workspace > dune-workspace <<EOF
   > (unset_solver_vars os)
   > EOF
+
+  $ build_pkg bar
+  Error: The solver environment for dependency packages has changed: variable
+  "os" was macos and is now unset. Regenerate the lock directory.
+  Hint: 'dune pkg lock'
+  [1]

@@ -1064,10 +1064,6 @@ module Solver_variable_bindings = struct
 
     let empty = { variable_values = []; unset_variables = [] }
 
-    let is_empty { variable_values; unset_variables } =
-      List.is_empty variable_values && List.is_empty unset_variables
-    ;;
-
     let of_variable_set variables solver_env =
       Package_variable_name.Set.to_list variables
       |> List.fold_left ~init:empty ~f:(fun acc variable ->
@@ -1141,44 +1137,6 @@ module Solver_variable_bindings = struct
         ~f:(fun acc (variable, value) -> Solver_env.set acc variable value)
     ;;
 
-    let validate_against_solver_env t solver_env =
-      let hints =
-        [ Pp.text
-            "This can happen if the \"solver_env\" for the lockdir in the dune-workspace \
-             file has changed since generating the lockdir. Regenerate the lockdir by \
-             running:"
-        ; User_message.command "dune pkg lock"
-        ]
-      in
-      List.iter t.variable_values ~f:(fun (variable_name, variable_value) ->
-        Option.iter
-          (Solver_env.get solver_env variable_name)
-          ~f:(fun variable_value_in_env ->
-            if not (Variable_value.equal variable_value_in_env variable_value)
-            then
-              User_error.raise
-                [ Pp.textf
-                    "The dependency solution relies on the assignment of the solver \
-                     variable %S to %S but the solver environment in the workspace would \
-                     assign it the value %S."
-                    (Package_variable_name.to_string variable_name)
-                    (Variable_value.to_string variable_value)
-                    (Variable_value.to_string variable_value_in_env)
-                ]
-                ~hints));
-      List.iter t.unset_variables ~f:(fun variable_name ->
-        Option.iter (Solver_env.get solver_env variable_name) ~f:(fun variable_value ->
-          User_error.raise
-            [ Pp.textf
-                "The dependency solution relies on the variable %S not being assigned a \
-                 value but the solver environment in the workspace would assign it the \
-                 value %S."
-                (Package_variable_name.to_string variable_name)
-                (Variable_value.to_string variable_value)
-            ]
-            ~hints))
-    ;;
-
     let remove_platform_specific { variable_values; unset_variables } =
       let is_platform_specific variable_name =
         Package_variable_name.Set.mem
@@ -1193,93 +1151,68 @@ module Solver_variable_bindings = struct
     ;;
   end
 
-  type stats = Solver_stats.t
-
   type t =
-    | Shared of Bindings.t
-    | Scoped of
-        { workspace : Bindings.t
-        ; dependencies : Bindings.t
-        }
+    { workspace : Bindings.t
+    ; dependencies : Bindings.t
+    }
 
-  let empty = Shared Bindings.empty
-  let empty_scoped = Scoped { workspace = Bindings.empty; dependencies = Bindings.empty }
+  let empty = { workspace = Bindings.empty; dependencies = Bindings.empty }
 
-  let version = function
-    | Shared _ -> 0, 1
-    | Scoped _ -> 0, 2
-  ;;
-
-  let is_empty = function
-    | Shared bindings -> Bindings.is_empty bindings
-    | Scoped { workspace; dependencies } ->
-      Bindings.is_empty workspace && Bindings.is_empty dependencies
-  ;;
-
-  let of_stats ({ workspace; dependencies } : stats) solver_env =
-    let bindings scope variables =
-      Bindings.of_variable_set variables (Solver_env.Scoped.get solver_env scope)
-    in
-    if Solver_env.Scoped.is_scoped solver_env
-    then
-      Scoped
-        { workspace = bindings Workspace workspace
-        ; dependencies = bindings Dependencies dependencies
-        }
-    else
-      Shared
-        (bindings Dependencies (Package_variable_name.Set.union workspace dependencies))
+  let of_stats ({ Solver_stats.workspace; dependencies } : Solver_stats.t) solver_env =
+    { workspace =
+        Bindings.of_variable_set workspace (Solver_env.Scoped.get solver_env Workspace)
+    ; dependencies =
+        Bindings.of_variable_set
+          dependencies
+          (Solver_env.Scoped.get solver_env Dependencies)
+    }
   ;;
 
   let decode =
     let open Decoder in
-    let* version = Syntax.get_exn Dune_lang.Pkg.syntax in
-    if version < (0, 2)
-    then Bindings.decode >>| fun bindings -> Shared bindings
-    else
+    let* loc = loc in
+    let* first = peek in
+    match first with
+    | Some (List (_, Atom (_, A ("workspace" | "dependencies")) :: _)) ->
       fields
         (let+ workspace = field "workspace" Bindings.decode
          and+ dependencies = field "dependencies" Bindings.decode in
-         Scoped { workspace; dependencies })
+         { workspace; dependencies })
+    | _ ->
+      User_error.raise
+        ~loc
+        [ Pp.text
+            "This lock directory uses obsolete flat solver-variable bindings. Regenerate \
+             it with separate workspace and dependency bindings."
+        ]
+        ~hints:[ User_message.command "dune pkg lock" ]
   ;;
 
-  let encode = function
-    | Shared bindings -> Bindings.encode bindings
-    | Scoped { workspace; dependencies } ->
-      let open Encoder in
-      [ list sexp (string "workspace" :: Bindings.encode workspace)
-      ; list sexp (string "dependencies" :: Bindings.encode dependencies)
-      ]
+  let encode { workspace; dependencies } =
+    let open Encoder in
+    [ list sexp (string "workspace" :: Bindings.encode workspace)
+    ; list sexp (string "dependencies" :: Bindings.encode dependencies)
+    ]
   ;;
 
-  let equal a b =
-    match a, b with
-    | Shared a, Shared b -> Bindings.equal a b
-    | Scoped a, Scoped b ->
-      Bindings.equal a.workspace b.workspace
-      && Bindings.equal a.dependencies b.dependencies
-    | Shared _, Scoped _ | Scoped _, Shared _ -> false
+  let equal { workspace; dependencies } t =
+    Bindings.equal workspace t.workspace && Bindings.equal dependencies t.dependencies
   ;;
 
   let repr =
-    Repr.variant
+    Repr.record
       "expanded-solver-variable-bindings"
-      [ Repr.case "Shared" Bindings.repr ~proj:(function
-          | Shared bindings -> Some bindings
-          | Scoped _ -> None)
-      ; Repr.case "Scoped" (Repr.pair Bindings.repr Bindings.repr) ~proj:(function
-          | Scoped { workspace; dependencies } -> Some (workspace, dependencies)
-          | Shared _ -> None)
+      [ Repr.field "workspace" Bindings.repr ~get:(fun t -> t.workspace)
+      ; Repr.field "dependencies" Bindings.repr ~get:(fun t -> t.dependencies)
       ]
   ;;
 
   let to_dyn = Repr.to_dyn repr
 
   let to_solver_env t ~scope =
-    (match t, scope with
-     | Shared bindings, _ -> bindings
-     | Scoped { workspace; _ }, Solver_env.Scope.Workspace -> workspace
-     | Scoped { dependencies; _ }, Dependencies -> dependencies)
+    (match scope with
+     | Solver_env.Scope.Workspace -> t.workspace
+     | Dependencies -> t.dependencies)
     |> Bindings.to_solver_env
   ;;
 
@@ -1314,33 +1247,14 @@ module Solver_variable_bindings = struct
       List.iter bindings.variable_values ~f:(fun (name, value) -> check name (Some value));
       List.iter bindings.unset_variables ~f:(fun name -> check name None)
     in
-    match t, Solver_env.Scoped.is_scoped solver_env with
-    | Shared _, false -> ()
-    | Scoped { workspace; dependencies }, true ->
-      validate Workspace workspace;
-      validate Dependencies dependencies
-    | Shared _, true | Scoped _, false ->
-      User_error.raise
-        ~hints
-        [ Pp.text
-            "The workspace_solver_env configuration has changed since this lock \
-             directory was generated. Regenerate the lock directory."
-        ]
+    validate Workspace t.workspace;
+    validate Dependencies t.dependencies
   ;;
 
-  let validate_legacy t solver_env =
-    match t with
-    | Shared bindings -> Bindings.validate_against_solver_env bindings solver_env
-    | Scoped _ -> ()
-  ;;
-
-  let remove_platform_specific = function
-    | Shared bindings -> Shared (Bindings.remove_platform_specific bindings)
-    | Scoped { workspace; dependencies } ->
-      Scoped
-        { workspace = Bindings.remove_platform_specific workspace
-        ; dependencies = Bindings.remove_platform_specific dependencies
-        }
+  let remove_platform_specific { workspace; dependencies } =
+    { workspace = Bindings.remove_platform_specific workspace
+    ; dependencies = Bindings.remove_platform_specific dependencies
+    }
   ;;
 end
 
@@ -1471,7 +1385,7 @@ let create_latest_version
            ] ))
      @ [ "packages", Packages.to_dyn packages ]
      |> Code_error.raise "Invalid package table");
-  let version = Solver_variable_bindings.version expanded_solver_variable_bindings in
+  let version = Syntax.greatest_supported_version_exn Dune_lang.Pkg.syntax in
   let dependency_hash =
     Local_package.For_solver.non_local_dependencies local_packages
     |> Local_package.Dependency_hash.of_dependency_formula
@@ -1546,14 +1460,11 @@ let encode_metadata
      | None -> []
      | Some ocaml -> [ list sexp [ string "ocaml"; Package_name.encode (snd ocaml) ] ])
   @ [ list sexp (string "repositories" :: Repositories.encode repos) ]
-  @ (if Solver_variable_bindings.is_empty expanded_solver_variable_bindings
-     then []
-     else
-       [ list
-           sexp
-           (string "expanded_solver_variable_bindings"
-            :: Solver_variable_bindings.encode expanded_solver_variable_bindings)
-       ])
+  @ [ list
+        sexp
+        (string "expanded_solver_variable_bindings"
+         :: Solver_variable_bindings.encode expanded_solver_variable_bindings)
+    ]
   @
   if portable_lock_dir
   then (
@@ -1566,7 +1477,8 @@ let encode_metadata
   else []
 ;;
 
-let decode_metadata =
+(* Regeneration checks the envelope without interpreting obsolete bindings. *)
+let decode_metadata_envelope =
   let open Decoder in
   fields
     (let+ ocaml = field_o "ocaml" (located Package_name.decode)
@@ -1574,13 +1486,7 @@ let decode_metadata =
        field_o "dependency_hash" (located Local_package.Dependency_hash.decode)
      and+ repos = field "repositories" ~default:Repositories.default Repositories.decode
      and+ expanded_solver_variable_bindings =
-       let* version = Syntax.get_exn Dune_lang.Pkg.syntax in
-       let default =
-         if version < (0, 2)
-         then Solver_variable_bindings.empty
-         else Solver_variable_bindings.empty_scoped
-       in
-       field "expanded_solver_variable_bindings" ~default Solver_variable_bindings.decode
+       field_o "expanded_solver_variable_bindings" (located (repeat raw))
      and+ solved_for_platforms =
        field_o "solved_for_platforms" (located (repeat (enter Solver_env.decode)))
      in
@@ -1649,7 +1555,7 @@ module Write_disk = struct
       let metadata_path = Path.relative_fname path metadata_filename in
       (match Path.stat metadata_path with
        | Ok { st_kind = S_REG; _ } ->
-         (match Metadata.load metadata_path ~f:(Fun.const decode_metadata) with
+         (match Metadata.load metadata_path ~f:(Fun.const decode_metadata_envelope) with
           | Ok _unused -> Ok `Is_existing_lock_dir
           | Error exn -> Error (`Failed_to_parse_metadata (metadata_path, exn)))
        | _ -> Error `No_metadata_file)
@@ -1869,7 +1775,16 @@ struct
                  , expanded_solver_variable_bindings
                  , solved_for_platforms )
               =
-              decode_metadata
+              decode_metadata_envelope
+            and+ context = get_all in
+            let expanded_solver_variable_bindings =
+              match expanded_solver_variable_bindings with
+              | None -> Solver_variable_bindings.empty
+              | Some (loc, values) ->
+                parse
+                  (enter Solver_variable_bindings.decode)
+                  context
+                  (Dune_sexp.Ast.List (loc, values))
             in
             ( syntax
             , version

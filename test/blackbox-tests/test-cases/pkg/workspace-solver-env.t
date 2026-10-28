@@ -55,7 +55,7 @@ The dev dependency is on a second workspace package, reached from app.
   > EOF
   > }
 
-The old shared setting enables pp's dev dependencies as well.
+Shared settings enable pp's dev dependencies as well.
 
   $ write_workspace 3.26 '(with-dev-setup true)' ''
   $ dune pkg lock
@@ -66,23 +66,34 @@ The old shared setting enables pp's dev dependencies as well.
   $ head -n1 dune.lock/lock.dune
   (lang package 0.1)
 
-Scoped configuration cannot silently reuse flat lock metadata.
+Old flat solver metadata is rejected with a re-locking hint.
 
-  $ write_workspace 3.26 '' '(workspace_solver_env (with-dev-setup true))'
+  $ cat >dune.lock/lock.dune <<'EOF'
+  > (lang package 0.1)
+  > (repositories (complete false) (used))
+  > (expanded_solver_variable_bindings
+  >  (variable_values (with-dev-setup true)))
+  > EOF
   $ dune pkg validate-lockdir
-  Error: The workspace_solver_env configuration has changed since this lock
-  directory was generated. Regenerate the lock directory.
+  Failed to parse lockdir dune.lock:
+  File "dune.lock/lock.dune", line 4, characters 1-40:
+  Error: This lock directory uses obsolete flat solver-variable bindings.
+  Regenerate it with separate workspace and dependency bindings.
   Hint: 'dune pkg lock'
+  
+  Error: Some lockdirs do not contain solutions for local packages:
+  - dune.lock
   [1]
 
 Re-locking includes the workspace dev tool but excludes OCamlFormat.
 
+  $ write_workspace 3.26 '' '(workspace_solver_env (with-dev-setup true))'
   $ dune pkg lock
   Solution for dune.lock:
   - dev-tool.0.0.1
   - pp.dev
   $ head -n1 dune.lock/lock.dune
-  (lang package 0.2)
+  (lang package 0.1)
   $ test ! -f dune.lock/ocamlformat.pkg
   $ grep -o '(run echo [^)]*)' dune.lock/pp.pkg
   (run echo ordinary)
@@ -300,7 +311,7 @@ variables were consulted.
   Solution for dune.lock:
   (no dependencies to lock)
   $ head -n1 dune.lock/lock.dune
-  (lang package 0.2)
+  (lang package 0.1)
   $ dune pkg validate-lockdir
 
 The defaults are shared assignments plus the workspace test override.
@@ -315,11 +326,7 @@ The defaults are shared assignments plus the workspace test override.
   - with-doc = false
   - with-test = true
 
-Removing scoped configuration also requires re-locking.
+Removing an empty override does not change the resolved environments.
 
   $ write_workspace 3.26 '' ''
   $ dune pkg validate-lockdir
-  Error: The workspace_solver_env configuration has changed since this lock
-  directory was generated. Regenerate the lock directory.
-  Hint: 'dune pkg lock'
-  [1]

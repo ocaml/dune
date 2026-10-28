@@ -11,9 +11,7 @@ let print_solver_env_for_lock_dir workspace ~solver_env_from_current_system lock
     let pp scope =
       Dune_pkg.Solver_env.pp (Dune_pkg.Solver_env.Scoped.get solver_env scope)
     in
-    if Dune_pkg.Solver_env.Scoped.is_scoped solver_env
-    then [ Pp.text "Dependencies:"; pp Dependencies; Pp.text "Workspace:"; pp Workspace ]
-    else [ pp Dependencies ]
+    [ Pp.text "Dependencies:"; pp Dependencies; Pp.text "Workspace:"; pp Workspace ]
   in
   Console.print
     (Pp.textf

@@ -120,8 +120,6 @@ module Defaults = struct
       Package_variable_name.with_test
       Variable_value.true_
   ;;
-
-  let legacy = Package_variable_name.Map.remove shared Package_variable_name.with_test
 end
 
 let pp t =
@@ -244,43 +242,31 @@ module Scoped = struct
   type env = t
 
   type t =
-    | Shared of env
-    | Scoped of
-        { workspace : env
-        ; dependencies : env
-        ; workspace_overrides : env
-        }
+    { workspace : env
+    ; dependencies : env
+    ; workspace_overrides : env
+    }
 
   let resolve ~current_system ~shared ~workspace ~unset =
     let resolve defaults = combine defaults ~current_system ~context:shared ~unset in
-    match workspace with
-    | None -> Shared (resolve Defaults.legacy)
-    | Some workspace ->
-      Scoped
-        { workspace =
-            extend (resolve (extend Defaults.shared Defaults.workspace)) workspace
-        ; dependencies = resolve Defaults.shared
-        ; workspace_overrides = workspace
-        }
+    let workspace_overrides = Option.value workspace ~default:empty in
+    { workspace =
+        extend (resolve (extend Defaults.shared Defaults.workspace)) workspace_overrides
+    ; dependencies = resolve Defaults.shared
+    ; workspace_overrides
+    }
   ;;
 
-  let is_scoped = function
-    | Shared _ -> false
-    | Scoped _ -> true
-  ;;
-
-  let get t scope =
-    match t, scope with
-    | Shared env, _ -> env
-    | Scoped { workspace; _ }, Scope.Workspace -> workspace
-    | Scoped { dependencies; _ }, Scope.Dependencies -> dependencies
+  let get t = function
+    | Scope.Workspace -> t.workspace
+    | Dependencies -> t.dependencies
   ;;
 
   let for_platform t scope platform =
     let env = extend (get t scope) platform in
-    match t, scope with
-    | Scoped { workspace_overrides; _ }, Scope.Workspace -> extend env workspace_overrides
-    | Shared _, _ | Scoped _, Dependencies -> env
+    match scope with
+    | Scope.Workspace -> extend env t.workspace_overrides
+    | Dependencies -> env
   ;;
 
   let encode t ~platforms =
@@ -288,33 +274,24 @@ module Scoped = struct
       List.map platforms ~f:(fun platform -> encode (for_platform t scope platform))
     in
     let open Encoder in
-    match t with
-    | Shared _ -> list sexp (string "shared" :: environments Dependencies)
-    | Scoped _ ->
-      list
-        sexp
-        [ list sexp (string "workspace" :: environments Workspace)
-        ; list sexp (string "dependencies" :: environments Dependencies)
-        ]
+    list
+      sexp
+      [ list sexp (string "workspace" :: environments Workspace)
+      ; list sexp (string "dependencies" :: environments Dependencies)
+      ]
   ;;
 
-  let remove_platform_specific = function
-    | Shared env -> Shared (unset_multi env Package_variable_name.platform_specific)
-    | Scoped { workspace; dependencies; workspace_overrides } ->
-      Scoped
-        { workspace = unset_multi workspace Package_variable_name.platform_specific
-        ; dependencies = unset_multi dependencies Package_variable_name.platform_specific
-        ; workspace_overrides
-        }
+  let remove_platform_specific t =
+    { t with
+      workspace = unset_multi t.workspace Package_variable_name.platform_specific
+    ; dependencies = unset_multi t.dependencies Package_variable_name.platform_specific
+    }
   ;;
 
-  let add_sentinel_values_for_unset_platform_vars = function
-    | Shared env -> Shared (add_sentinel_values_for_unset_platform_vars env)
-    | Scoped { workspace; dependencies; workspace_overrides } ->
-      Scoped
-        { workspace = add_sentinel_values_for_unset_platform_vars workspace
-        ; dependencies = add_sentinel_values_for_unset_platform_vars dependencies
-        ; workspace_overrides
-        }
+  let add_sentinel_values_for_unset_platform_vars t =
+    { t with
+      workspace = add_sentinel_values_for_unset_platform_vars t.workspace
+    ; dependencies = add_sentinel_values_for_unset_platform_vars t.dependencies
+    }
   ;;
 end

@@ -67,8 +67,7 @@ module Scoped : sig
   type t
 
   (** Resolve scope defaults, system values, shared assignments, shared unsets,
-      then workspace assignments. Without workspace assignments, preserve the
-      legacy shared environment. *)
+      then workspace assignments. *)
   val resolve
     :  current_system:env option
     -> shared:env option
@@ -76,7 +75,6 @@ module Scoped : sig
     -> unset:Package_variable_name.Set.t option
     -> t
 
-  val is_scoped : t -> bool
   val get : t -> Scope.t -> env
 
   (** Apply shared platform bindings before explicit workspace assignments. *)

@@ -59,6 +59,7 @@ Setting the "with-test" variable to false.
 
   $ dune pkg print-solver-env 2>&1 | grep with-test
   - with-test = false
+  - with-test = false
 
 Now on the contrary, setting the "with-test" variable to false will not include
 test dependencies in the solution.
@@ -103,15 +104,24 @@ Now change workspace to with-test to default value again:
   >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
 
-The env variable is not longer set to false:
+The shared default is false and the workspace override is true:
 
   $ dune pkg print-solver-env 2>&1 | grep with-test
-  [1]
+  - with-test = false
+  - with-test = true
 
-However, validate-lockdir and @pkg-install don't catch the change:
+Both validate-lockdir and @pkg-install catch the change:
 
   $ dune pkg validate-lockdir
+  Error: The solver environment for workspace packages has changed: variable
+  "with-test" was false and is now true. Regenerate the lock directory.
+  Hint: 'dune pkg lock'
+  [1]
   $ dune build @pkg-install
+  Error: The solver environment for workspace packages has changed: variable
+  "with-test" was false and is now true. Regenerate the lock directory.
+  Hint: 'dune pkg lock'
+  [1]
 
 But when you re-lock it, you see a different solution
   $ dune pkg lock

@@ -15,12 +15,6 @@
 open Import
 open Fiber.O
 
-let with_test solver_env =
-  match Solver_env.get solver_env Package_variable_name.with_test with
-  | Some v -> Variable_value.equal v Variable_value.true_
-  | None -> true
-;;
-
 module Priority = struct
   (* A priority defines a package's position in the list of candidates
      fed to the solver. Any change to package selection should be reflected in
@@ -249,15 +243,10 @@ module Context = struct
       |> Solver_env.Scope.of_package ~local_packages:(Lazy.force t.local_packages)
     in
     let solver_env = Solver_env.Scoped.for_platform t.solver_env scope platform in
-    let with_test =
-      match scope with
-      | Workspace -> with_test solver_env
-      | Dependencies -> false
-    in
     Solver_env.to_env solver_env
     |> Solver_stats.Updater.wrap_env t.stats_updater ~scope
     |> Lock_pkg.add_self_to_filter_env package
-    |> Resolve_opam_formula.apply_filter ~with_test ~formula:filtered_formula
+    |> Resolve_opam_formula.apply_filter ~with_test:true ~formula:filtered_formula
   ;;
 
   let filtered_local_formulas t ~platform local_package =
@@ -2131,7 +2120,7 @@ let reject_unreachable_packages =
             Lock_pkg.local_package_dependencies_with_depopts
               pkg
               ~env:(Solver_env.to_env workspace_solver_env)
-              ~with_test:(with_test workspace_solver_env)
+              ~with_test:true
               ~packages:pkgs_by_version
               ~dune_version
           with

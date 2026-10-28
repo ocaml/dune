@@ -22,6 +22,8 @@ Start with a project with a single package with no dependencies:
    (complete false)
    (used))
   
+  (expanded_solver_variable_bindings (workspace) (dependencies))
+  
   (solved_for_platforms
    ((arch x86_64)
     (os linux))
@@ -67,6 +69,8 @@ Add a non-local dependency to the package:
   (repositories
    (complete false)
    (used))
+  
+  (expanded_solver_variable_bindings (workspace) (dependencies))
   
   (solved_for_platforms
    ((arch x86_64)

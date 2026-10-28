@@ -237,9 +237,6 @@ let get_with_path =
       | Ok lock_dir ->
         let+ workspace_lock_dir = get_workspace_lock_dir ctx
         and+ current_system = Sys_vars.solver_env in
-        let context =
-          Option.bind workspace_lock_dir ~f:(fun lock_dir -> lock_dir.solver_env)
-        in
         let solver_env =
           Workspace.Lock_dir.solver_envs
             workspace_lock_dir
@@ -248,9 +245,6 @@ let get_with_path =
         Solver_variable_bindings.validate
           lock_dir.expanded_solver_variable_bindings
           solver_env;
-        Solver_variable_bindings.validate_legacy
-          lock_dir.expanded_solver_variable_bindings
-          (Option.value context ~default:Solver_env.empty);
         Ok (path, lock_dir))
     |> Memo.Lazy.force)
   |> Staged.unstage

@@ -223,3 +223,49 @@ The source input remains untouched until the deletions are promoted.
 
   $ cat todelete/nested/input
   original
+
+Patch-back may read a dynamically requested directory target, but must reject
+changes to its contents. This includes deletions: newly populated directories
+must be fully recorded in the snapshot.
+
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target (dir tree))
+  >  (action
+  >   (progn
+  >    (run mkdir -p tree)
+  >    (system "echo generated > tree/file"))))
+  > (rule
+  >  (alias dynamic-read)
+  >  (deps (sandbox patch_back_source_tree))
+  >  (action
+  >   (progn
+  >    (dynamic-run ./foo.exe build tree)
+  >    (run cat tree/file))))
+  > (rule
+  >  (alias dynamic-edit)
+  >  (deps (sandbox patch_back_source_tree))
+  >  (action
+  >   (progn
+  >    (dynamic-run ./foo.exe build tree)
+  >    (run rm tree/file))))
+  > EOF
+
+  $ dune build @dynamic-read --build-dir _build-dynamic-patch-back
+  generated
+  $ dune build @dynamic-edit --build-dir _build-dynamic-patch-back
+  File "dune", lines 14-20, characters 0-149:
+  14 | (rule
+  15 |  (alias dynamic-edit)
+  16 |  (deps (sandbox patch_back_source_tree))
+  17 |  (action
+  18 |   (progn
+  19 |    (dynamic-run ./foo.exe build tree)
+  20 |    (run rm tree/file))))
+  Error: Cannot patch back changes to tree/file because it is part of a
+  directory target.
+  [1]
+  $ dune promotion list --build-dir _build-dynamic-patch-back
+  $ test ! -e _build-dynamic-patch-back/.to-promote
+  $ cat _build-dynamic-patch-back/default/tree/file
+  generated

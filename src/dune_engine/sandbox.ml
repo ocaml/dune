@@ -134,7 +134,7 @@ let link_function ~(mode : Sandbox_mode.some) =
     in
     Path.mkdir_p ~perms dst
   in
-  let link_recursively ~src ~dst =
+  Staged.stage (fun src dst ->
     Tree_copy.copy
       ~src
       ~dst
@@ -142,14 +142,7 @@ let link_function ~(mode : Sandbox_mode.some) =
       ~mkdir:mkdir_with_perms
       ~on_unsupported:raise_other_kind
       ~on_symlink:(`Call resolve_symlink_kind)
-      ()
-  in
-  Staged.stage
-    (match mode with
-     | Patch_back_source_tree ->
-       (* CR-someday: this doesn't work with directory targets *)
-       fun src dst -> link_file ~src ~dst
-     | Copy | Symlink | Hardlink -> fun src dst -> link_recursively ~src ~dst)
+      ())
 ;;
 
 let create_dir t dir =
@@ -216,6 +209,21 @@ let unlinked_deps t deps =
   Path.Set.fold deps ~init:Path.Set.empty ~f:loop
 ;;
 
+let snapshot_dir ~root snapshot =
+  Fpath.traverse
+    ~dir:(Path.to_string root)
+    ~init:snapshot
+    ~on_dir:(fun ~dir fname acc ->
+      let path = Path.relative_fname (Path.relative root dir) fname in
+      Path.Map.set acc path `Dir)
+    ~on_file:(fun ~dir fname acc ->
+      let path = Path.relative_fname (Path.relative root dir) fname in
+      Path.Map.set acc path (`File (Stat.stat (Path.to_string path))))
+    ~on_other:`Ignore
+    ~on_symlink:`Ignore
+    ()
+;;
+
 let add_deps t facts ~expand_aliases =
   match t with
   | No_sandbox _ -> Fiber.return ()
@@ -236,7 +244,10 @@ let add_deps t facts ~expand_aliases =
                  | None -> snapshot
                  | Some p ->
                    let dst = Path.build (map_real_path t p) in
-                   Path.Map.set snapshot dst (`File (Stat.stat (Path.to_string dst)))));
+                   let ({ Stat.kind; _ } as stat) = Stat.stat (Path.to_string dst) in
+                   (match kind with
+                    | S_DIR -> snapshot_dir ~root:dst (Path.Map.set snapshot dst `Dir)
+                    | _ -> Path.Map.set snapshot dst (`File stat))));
           t.deps <- Path.Set.union t.deps deps)
       in
       ())
@@ -245,21 +256,7 @@ let add_deps t facts ~expand_aliases =
 let snapshot t =
   let root = Path.build t.dir in
   let start = Time.now () in
-  let snapshot =
-    Fpath.traverse
-      ~dir:(Path.to_string root)
-      ~init:Path.Map.empty
-      ~on_dir:(fun ~dir fname acc ->
-        let path = Path.relative_fname (Path.relative root dir) fname in
-        Path.Map.add_exn acc path `Dir)
-      ~on_file:(fun ~dir fname acc ->
-        let p = Path.relative_fname (Path.relative root dir) fname in
-        let stats = Stat.stat (Path.to_string p) in
-        Path.Map.add_exn acc p (`File stats))
-      ~on_other:`Ignore
-      ~on_symlink:`Ignore
-      ()
-  in
+  let snapshot = snapshot_dir ~root Path.Map.empty in
   let stop = Time.now () in
   Dune_trace.emit ~buffered:true Sandbox (fun () ->
     Dune_trace.Event.sandbox `Snapshot ~start ~stop ~queued:None t.loc ~dir:t.dir);
@@ -392,21 +389,32 @@ let register_snapshot_promotion t (targets : Targets.Validated.t) ~old_snapshot 
   let in_source_tree p =
     Path.extract_build_context_dir_maybe_sandboxed p |> Option.value_exn |> snd
   in
+  let changes = ref [] in
+  let add_change p = changes := p :: !changes in
   let diffs = ref [] in
-  let add_copy_file p = diffs := p :: !diffs in
+  let add_copy_file p =
+    add_change p;
+    diffs := p :: !diffs
+  in
   let deletes = ref [] in
-  let add_delete what file = deletes := (what, in_source_tree file) :: !deletes in
-  let target_root_in_sandbox = map_real_path t targets.root in
+  let add_delete what file =
+    add_change file;
+    deletes := (what, in_source_tree file) :: !deletes
+  in
+  let target_root = Path.build (map_real_path t targets.root) in
+  let is_target path =
+    match Path.drop_prefix path ~prefix:target_root with
+    | None -> false
+    | Some path ->
+      (match Path.Local.split_first_component path with
+       | None -> false
+       | Some (name, rest) ->
+         Filename.Set.mem targets.dirs name
+         || (Path.Local.is_root rest && Filename.Set.mem targets.files name))
+  in
   let () =
     Path.Map.iter2 old_snapshot new_snapshot ~f:(fun p before after ->
-      if
-        not
-          (let dir = Path.as_in_build_dir_exn (Path.parent_exn p) in
-           Path.Build.equal dir target_root_in_sandbox
-           &&
-           let basename = Path.basename p in
-           Filename.Set.mem targets.files basename
-           || Filename.Set.mem targets.dirs basename)
+      if not (is_target p)
       then (
         match before, after with
         | None, None -> assert false
@@ -417,16 +425,41 @@ let register_snapshot_promotion t (targets : Targets.Validated.t) ~old_snapshot 
         | None, Some `Dir ->
           (* We don't create empty dirs and rely on the traversal of this dir to
            create the underlying files. Mayb e we should try harder *)
-          ()
+          add_change p
         | Some (`File _), Some `Dir ->
           (* We are going to traverse the target directory here, but we should
            really treat this as a deletion *)
-          ()
+          add_change p
         | Some `Dir, Some (`File _) -> add_copy_file p
         | Some (`File before), Some (`File after) ->
           (match Stat.compare before after with
            | Eq -> ()
            | Lt | Gt -> add_copy_file p)))
+  in
+  let open Fiber.O in
+  let* () =
+    Fiber.sequential_iter !changes ~f:(fun path ->
+      let source = Path.drop_optional_sandbox_root path in
+      let+ under_directory_target =
+        Memo.run (Load_rules.is_under_directory_target source)
+      in
+      if under_directory_target
+      then (
+        let unchanged_file =
+          match Path.Map.find new_snapshot path, Path.Untracked.stat source with
+          | Some (`File _), Ok { Unix.st_kind = S_REG; _ } ->
+            Ordering.is_eq (Io.compare_files source path)
+          | _ -> false
+        in
+        if not unchanged_file
+        then
+          User_error.raise
+            ~loc:t.loc
+            [ Pp.textf
+                "Cannot patch back changes to %s because it is part of a directory \
+                 target."
+                (Path.Source.to_string_maybe_quoted (in_source_tree path))
+            ]))
   in
   Fiber.fork_and_join_unit
     (fun () ->

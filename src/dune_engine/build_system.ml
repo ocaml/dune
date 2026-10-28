@@ -457,7 +457,6 @@ and execute_action_for_rule
   let execute_action sandbox =
     let action_trace = Action_trace.create rule_digest in
     let sandbox_root = Sandbox.root sandbox in
-    let is_sandboxed = Option.is_some sandbox_root in
     let process_sandbox =
       match sandbox_root with
       | None -> None
@@ -469,7 +468,11 @@ and execute_action_for_rule
         then Some (Process.Sandbox.for_action (Lazy.force process_sandbox_base) ~root)
         else None
     in
-    let action = if is_sandboxed then Action.sandbox action sandbox else action in
+    let action =
+      match sandbox_root with
+      | None -> action
+      | Some root -> Action.sandbox action (Path.as_in_build_dir_exn root)
+    in
     let action =
       (* We must add the creation of the stamp file after sandboxing it, as
          otherwise the stamp file would end up inside the sandbox. This is

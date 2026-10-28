@@ -108,8 +108,8 @@ val is_dynamic : t -> bool
 (** Checks if executing the action may spawn a process. *)
 val runs_process : t -> bool
 
-(** Re-root all the paths in the action to their sandbox version *)
-val sandbox : t -> Sandbox.t -> t
+(** [sandbox t dir] re-roots all build paths in [t] under [dir]. *)
+val sandbox : t -> Path.Build.t -> t
 
 type is_useful =
   | Clearly_not

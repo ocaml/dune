@@ -345,11 +345,6 @@ still reported.
   > EOF
 
   $ dune build out
-  File "out/file", line 1, characters 0-0:
-  --- out/file
-  +++ _build/default/out/file
-  @@ -0,0 +1 @@
-  +target
   File "sub/out", line 1, characters 0-0:
   --- sub/out
   +++ _build/default/sub/out

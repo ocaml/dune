@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793213590019,
+  "lastUpdate": 1793213649394,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -664940,6 +664940,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8233416235799997,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d0af0e0e010db6d2d3a809aa63276af8f56ea93d",
+          "message": "test(sandbox): cover patch-back changes to directory targets (#16829)\n\nRecord current patch-back behavior for directory-target inputs,\nincluding dynamic dependencies.",
+          "timestamp": "2026-10-28T19:36:30+01:00",
+          "tree_id": "a17693662f5d13c46ca598fb0635c90fcc2f9a7a",
+          "url": "https://github.com/ocaml/dune/commit/d0af0e0e010db6d2d3a809aa63276af8f56ea93d"
+        },
+        "date": 1793213256860,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.8992990934800003,
             "unit": "seconds"
           }
         ]

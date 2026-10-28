@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793203128436,
+  "lastUpdate": 1793207519380,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -664592,6 +664592,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.67522174174,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7362c91cb62d99acd75e6d809b0d2dfd9980cd45",
+          "message": "doc: document test and Cram stanza fields (#16825)\n\nDocument missing fields, defaults and version requirements for\n`test`/`tests` and `cram`, with targeted semantic corrections.\n\nRefs #2257.",
+          "timestamp": "2026-10-28T17:53:10+01:00",
+          "tree_id": "0b9b97cd7f2edffef9b9109f93087f26a7624710",
+          "url": "https://github.com/ocaml/dune/commit/7362c91cb62d99acd75e6d809b0d2dfd9980cd45"
+        },
+        "date": 1793207130729,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 4.0122733679466664,
             "unit": "seconds"
           }
         ]

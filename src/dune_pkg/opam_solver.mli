@@ -19,7 +19,7 @@ val base_solver_env_and_platforms
   -> Solver_env.t * Solver_env.t list
 
 val solve_lock_dir
-  :  Solver_env.t
+  :  Solver_env.Scoped.t
   -> platform_overlays:Solver_env.t list
        (** [platform_overlays] must be non-empty and contain pairwise-distinct
            entries. *)

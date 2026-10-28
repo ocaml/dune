@@ -235,13 +235,33 @@ let get_with_path =
       >>= function
       | Error e -> Memo.return (Error e)
       | Ok lock_dir ->
-        let+ workspace_lock_dir = get_workspace_lock_dir ctx in
-        (match workspace_lock_dir with
-         | None -> ()
-         | Some workspace_lock_dir ->
-           Solver_stats.Expanded_variable_bindings.validate_against_solver_env
-             lock_dir.expanded_solver_variable_bindings
-             (workspace_lock_dir.solver_env |> Option.value ~default:Solver_env.empty));
+        let+ workspace_lock_dir = get_workspace_lock_dir ctx
+        and+ current_system = Sys_vars.solver_env in
+        let context =
+          Option.bind workspace_lock_dir ~f:(fun lock_dir -> lock_dir.solver_env)
+        in
+        let solver_env =
+          Solver_env.combine
+            ~current_system:(Some current_system)
+            ~context
+            ~unset:
+              (Option.bind workspace_lock_dir ~f:(fun lock_dir ->
+                 lock_dir.unset_solver_vars))
+        in
+        let solver_env =
+          Solver_env.Scoped.create
+            solver_env
+            ~workspace:
+              (Option.bind workspace_lock_dir ~f:(fun lock_dir ->
+                 lock_dir.workspace_solver_env))
+            ~unset:
+              (Option.bind workspace_lock_dir ~f:(fun lock_dir ->
+                 lock_dir.unset_solver_vars))
+        in
+        Solver_stats.Expanded_variable_bindings.validate_against_solver_env
+          lock_dir.expanded_solver_variable_bindings
+          ~legacy:(Option.value context ~default:Solver_env.empty)
+          ~solver_env;
         Ok (path, lock_dir))
     |> Memo.Lazy.force)
   |> Staged.unstage

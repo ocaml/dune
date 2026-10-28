@@ -37,7 +37,43 @@ changed if desired.
 
       It consists of a sequence of ``(<name> <value>)`` pairs.
 
-   .. describe:: (unset_variables <name list>)
+   .. describe:: (workspace_solver_env ...)
+
+      .. versionadded:: 3.26
+
+      Overrides the shared ``solver_env`` assignments for packages declared in
+      the workspace being locked. Dependencies from repositories or pins keep
+      the shared environment, even if their sources are local or contain a
+      native Dune project.
+
+      Entries use the same ``(<name> <value>)`` syntax as ``solver_env``. For
+      example, to include workspace development dependencies without enabling
+      development dependencies of repository or pinned packages:
+
+      .. code:: dune
+
+         (lock_dir
+          (workspace_solver_env
+           (with-dev-setup true)))
+
+      Workspace packages default to ``with-test=true``; dependencies default to
+      ``with-test=false``. Both scopes default to ``with-dev-setup=false`` and
+      ``with-doc=false``. Shared assignments apply to both scopes, then workspace
+      assignments take precedence. Enabling dependency tests remains
+      unsupported.
+
+      This field only assigns variables. Shared ``unset_solver_vars`` settings
+      are applied before workspace assignments. Platform variables such as
+      ``os``, ``arch``, and ``sys-ocaml-version`` cannot be overridden here.
+
+      Using this field requires regenerating existing lock directories with
+      ``dune pkg lock``. The new lock format records consulted variables
+      separately for workspace packages and dependencies. Without this field,
+      the existing shared configuration and flat lock format are preserved.
+      ``dune pkg print-solver-env`` shows both scoped environments when this
+      field is present.
+
+   .. describe:: (unset_solver_vars <name list>)
 
       A list of variables that are used in solving that are deliberately unset
       even if the solver could provide bindings for them.

@@ -54,6 +54,32 @@ let solver_env_from_system_and_context ~lock_dir_path =
     ~unset_solver_vars_from_context
 ;;
 
+let validate_solver_env lock_dir ~lock_dir_path ~solver_env =
+  let open Fiber.O in
+  let+ context = get_lock_dir_from_context ~lock_dir_path in
+  let legacy =
+    Option.bind context ~f:(fun lock_dir -> lock_dir.solver_env)
+    |> Option.value ~default:Solver_env.empty
+  in
+  let solver_env =
+    Solver_env.Scoped.create
+      solver_env
+      ~workspace:(Option.bind context ~f:(fun lock_dir -> lock_dir.workspace_solver_env))
+      ~unset:(Option.bind context ~f:(fun lock_dir -> lock_dir.unset_solver_vars))
+  in
+  let { Lock_dir.expanded_solver_variable_bindings; _ } = lock_dir in
+  if
+    Solver_env.Scoped.is_scoped solver_env
+    || Dune_pkg.Solver_stats.Expanded_variable_bindings.version
+         expanded_solver_variable_bindings
+       >= (0, 2)
+  then
+    Dune_pkg.Solver_stats.Expanded_variable_bindings.validate_against_solver_env
+      expanded_solver_variable_bindings
+      ~legacy
+      ~solver_env
+;;
+
 module Version_preference = struct
   include Dune_pkg.Version_preference
 

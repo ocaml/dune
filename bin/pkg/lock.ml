@@ -196,8 +196,11 @@ let solve_lock_dir
     | true ->
       (match solver_env_from_context with
        | Some solver_env_from_context ->
+         let platform_defaults =
+           Solver_env.remove_all_except_platform_specific solver_env_from_context
+         in
          List.map solve_for_platforms ~f:(fun platform_env ->
-           Solver_env.extend solver_env_from_context platform_env)
+           Solver_env.extend platform_defaults platform_env)
        | None -> solve_for_platforms)
     | false -> []
   in
@@ -222,6 +225,12 @@ let solve_lock_dir
       solver_env
       ~solve_for_platforms
       ~portable_lock_dir
+  in
+  let solver_env =
+    Solver_env.Scoped.create
+      solver_env
+      ~workspace:(Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.workspace_solver_env))
+      ~unset:(unset_solver_vars_of_workspace workspace ~lock_dir_path)
   in
   let* result =
     Dune_pkg.Opam_solver.solve_lock_dir

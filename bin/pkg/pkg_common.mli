@@ -18,6 +18,12 @@ val solver_env_from_system_and_context
   :  lock_dir_path:Path.t
   -> Dune_pkg.Solver_env.t Fiber.t
 
+val validate_solver_env
+  :  Dune_pkg.Lock_dir.t
+  -> lock_dir_path:Path.t
+  -> solver_env:Dune_pkg.Solver_env.t
+  -> unit Fiber.t
+
 module Version_preference : sig
   type t := Dune_pkg.Version_preference.t
 

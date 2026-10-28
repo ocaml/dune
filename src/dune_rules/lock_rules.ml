@@ -25,7 +25,7 @@ module Spec = struct
     ; lock_dir : 'path
     ; packages : Local_package.t Package.Name.Map.t
     ; repos : Opam_repo.t list
-    ; solver_env : Solver_env.t
+    ; solver_env : Solver_env.Scoped.t
     ; platform_overlays : Solver_env.t list
     ; portable_lock_dir : bool
     ; constraints : Package_dependency.t list
@@ -35,7 +35,7 @@ module Spec = struct
     }
 
   let name = "lock"
-  let version = 2
+  let version = 3
   let runs_process = false
   let can_run_in_action_runner = false
   let bimap t f g = { t with lock_dir = f t.lock_dir; target = g t.target }
@@ -69,7 +69,9 @@ module Spec = struct
         , List
             (List.map repos ~f:(fun repo ->
                Sexp.Atom (Opam_repo.content_digest repo |> Dune_digest.to_string))) )
-      ; "solver_env", Dune_lang.to_sexp (Solver_env.encode solver_env)
+      ; ( "solver_env"
+        , Dune_lang.to_sexp
+            (Solver_env.Scoped.encode solver_env ~platforms:platform_overlays) )
       ; ( "platform_overlays"
         , Dune_lang.to_sexp (Dune_lang.Encoder.list Solver_env.encode platform_overlays) )
       ; "portable_lock_dir", Atom (Bool.to_string portable_lock_dir)
@@ -285,6 +287,13 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
            solver_env
            ~solve_for_platforms:Solver_env.popular_platform_envs
            ~portable_lock_dir
+       in
+       let solver_env =
+         Solver_env.Scoped.create
+           solver_env
+           ~workspace:
+             (Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.workspace_solver_env))
+           ~unset:(Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.unset_solver_vars))
        in
        lock_action
          ~target

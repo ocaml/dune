@@ -12,6 +12,7 @@ module Lock_dir : sig
     ; path : Path.Source.t
     ; version_preference : Dune_pkg.Version_preference.t option
     ; solver_env : Dune_pkg.Solver_env.t option
+    ; workspace_solver_env : Dune_pkg.Solver_env.t option
     ; unset_solver_vars : Dune_lang.Package_variable_name.Set.t option
     ; repositories : (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
     ; constraints : Dune_lang.Package_dependency.t list

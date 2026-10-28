@@ -47,9 +47,20 @@ let version_by_package_name ~platform local_packages (lock_dir : Lock_dir.t) =
 ;;
 
 let lock_dir_filter_env t =
-  Solver_stats.Expanded_variable_bindings.to_solver_env
-    t.lock_dir.expanded_solver_variable_bindings
-  |> Solver_env.to_env
+  let solver_env =
+    Solver_stats.Expanded_variable_bindings.to_solver_env
+      t.lock_dir.expanded_solver_variable_bindings
+      ~scope:Workspace
+  in
+  let solver_env =
+    if Lock_dir.uses_versioned_paths t.lock_dir
+    then
+      Solver_env.extend
+        solver_env
+        (Solver_env.remove_all_except_platform_specific t.platform)
+    else solver_env
+  in
+  Solver_env.to_env solver_env
 ;;
 
 let unsatisfied_dependencies_error

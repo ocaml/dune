@@ -15,6 +15,7 @@ val is_subset : t -> of_:t -> bool
 
 val encode : t Encoder.t
 val decode : t Decoder.t
+val decode_workspace : t Decoder.t
 val set : t -> Package_variable_name.t -> Variable_value.t -> t
 val get : t -> Package_variable_name.t -> Variable_value.t option
 
@@ -60,3 +61,37 @@ val add_sentinel_values_for_unset_platform_vars : t -> t
 
 module Map : Map.S with type key = t
 module Set : Set.S with type elt = t and type 'a map = 'a Map.t
+
+module Scope : sig
+  type t =
+    | Workspace
+    | Dependencies
+
+  val of_package
+    :  local_packages:'a Dune_lang.Package_name.Map.t
+    -> Dune_lang.Package_name.t
+    -> t
+end
+
+(** Resolved environments for the two fixed package scopes. *)
+module Scoped : sig
+  type env := t
+  type t
+
+  (** [None] preserves the legacy shared environment. [Some] enables scoped
+      defaults and applies the workspace assignments. *)
+  val create
+    :  env
+    -> workspace:env option
+    -> unset:Package_variable_name.Set.t option
+    -> t
+
+  val is_scoped : t -> bool
+  val get : t -> Scope.t -> env
+
+  (** Apply shared platform bindings before explicit workspace assignments. *)
+  val for_platform : t -> Scope.t -> env -> env
+
+  val encode : t -> platforms:env list -> Dune_lang.t
+  val add_sentinel_values_for_unset_platform_vars : t -> t
+end

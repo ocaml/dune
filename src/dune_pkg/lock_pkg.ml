@@ -570,7 +570,7 @@ let opam_package_to_lock_file_pkg_single
     | env_update -> Action.Withenv (env_update, action)
   in
   let get_solver_var variable_name =
-    Solver_stats.Updater.expand_variable stats_updater variable_name;
+    Solver_stats.Updater.expand_variable stats_updater ~scope:Dependencies variable_name;
     Solver_env.get solver_env variable_name
   in
   let packages_in_solution = version_by_package_name in

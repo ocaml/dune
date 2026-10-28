@@ -122,7 +122,7 @@ let%expect_test "encode/decode round trip test for lockdir with no deps" =
     ; ocaml = None
     ; repos = { complete = true; used = None }
     ; expanded_solver_variable_bindings =
-        { variable_values = []; unset_variables = [] }
+        Shared { variable_values = []; unset_variables = [] }
     ; solved_for_platforms = ("<none>:1", [])
     }
     |}]
@@ -159,10 +159,22 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
          ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
          ~repos:None
          ~expanded_solver_variable_bindings:
-           { Expanded_variable_bindings.variable_values =
-               [ Package_variable_name.os, Variable_value.string "linux" ]
-           ; unset_variables = [ Package_variable_name.os_family ]
-           }
+           (let solver_env =
+              Dune_pkg.Solver_env.Scoped.create
+                (Dune_pkg.Solver_env.set
+                   Dune_pkg.Solver_env.empty
+                   Package_variable_name.os
+                   (Variable_value.string "linux"))
+                ~workspace:None
+                ~unset:None
+            in
+            Expanded_variable_bindings.of_stats
+              { Dune_pkg.Solver_stats.workspace =
+                  Package_variable_name.Set.of_list
+                    [ Package_variable_name.os; Package_variable_name.os_family ]
+              ; dependencies = Package_variable_name.Set.empty
+              }
+              solver_env)
          ~solved_for_platforms:[]
          ~portable_lock_dir:false
          (Package_name.Map.of_list_exn
@@ -219,9 +231,10 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
     ; ocaml = Some ("simple_lock_dir/lock.dune:3", "ocaml")
     ; repos = { complete = true; used = None }
     ; expanded_solver_variable_bindings =
-        { variable_values = [ ("os", "linux") ]
-        ; unset_variables = [ "os-family" ]
-        }
+        Shared
+          { variable_values = [ ("os", "linux") ]
+          ; unset_variables = [ "os-family" ]
+          }
     ; solved_for_platforms = ("<none>:1", [])
     }
     |}]
@@ -437,7 +450,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
         ; used = Some [ opam_repo_serializable "https://github.com/ocaml/dune" ]
         }
     ; expanded_solver_variable_bindings =
-        { variable_values = []; unset_variables = [] }
+        Shared { variable_values = []; unset_variables = [] }
     ; solved_for_platforms = ("<none>:1", [])
     }
     |}]
@@ -557,7 +570,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
               ]
         }
     ; expanded_solver_variable_bindings =
-        { variable_values = []; unset_variables = [] }
+        Shared { variable_values = []; unset_variables = [] }
     ; solved_for_platforms = ("<none>:1", [])
     }
     |}]

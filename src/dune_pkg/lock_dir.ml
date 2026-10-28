@@ -1182,7 +1182,9 @@ let create_latest_version
            ] ))
      @ [ "packages", Packages.to_dyn packages ]
      |> Code_error.raise "Invalid package table");
-  let version = Syntax.greatest_supported_version_exn Dune_lang.Pkg.syntax in
+  let version =
+    Solver_stats.Expanded_variable_bindings.version expanded_solver_variable_bindings
+  in
   let dependency_hash =
     Local_package.For_solver.non_local_dependencies local_packages
     |> Local_package.Dependency_hash.of_dependency_formula
@@ -1287,9 +1289,15 @@ let decode_metadata =
        field_o "dependency_hash" (located Local_package.Dependency_hash.decode)
      and+ repos = field "repositories" ~default:Repositories.default Repositories.decode
      and+ expanded_solver_variable_bindings =
+       let* version = Syntax.get_exn Dune_lang.Pkg.syntax in
+       let default =
+         if version < (0, 2)
+         then Solver_stats.Expanded_variable_bindings.empty
+         else Solver_stats.Expanded_variable_bindings.empty_scoped
+       in
        field
          "expanded_solver_variable_bindings"
-         ~default:Solver_stats.Expanded_variable_bindings.empty
+         ~default
          Solver_stats.Expanded_variable_bindings.decode
      and+ solved_for_platforms =
        field_o "solved_for_platforms" (located (repeat (enter Solver_env.decode)))

@@ -97,7 +97,7 @@ module Context = struct
     ; pinned_packages : Resolved_package.t Package_name.Map.t
     ; local_packages : local_package Package_name.Map.t Lazy.t
     ; local_constraints : (Package_name.t, local_package list) Table.t Lazy.t
-    ; solver_env : Solver_env.t
+    ; solver_env : Solver_env.Scoped.t
       (* Base solver env. Full platform-specific envs are computed by extending
          this with the platform's own env. *)
     ; dune_version : OpamPackage.Version.t
@@ -159,7 +159,7 @@ module Context = struct
     ; local_packages
     ; pinned_packages
     ; solver_env =
-        Solver_env.add_sentinel_values_for_unset_platform_vars solver_env
+        Solver_env.Scoped.add_sentinel_values_for_unset_platform_vars solver_env
         (* The platform envs don't need sentinel values - they only contain
          platform-specific vars that will override the sentinels in solver_env
          when extended. *)
@@ -187,12 +187,12 @@ module Context = struct
     | Invalid_argument _ -> false
   ;;
 
-  let is_opam_available_in_env t ~solver_env opam =
+  let is_opam_available_in_env t ~scope ~solver_env opam =
     let package = OpamFile.OPAM.package opam in
     OpamFile.OPAM.available opam
     |> OpamFilter.partial_eval
          (Solver_env.to_env solver_env
-          |> Solver_stats.Updater.wrap_env t.stats_updater
+          |> Solver_stats.Updater.wrap_env t.stats_updater ~scope
           |> Lock_pkg.add_self_to_filter_env package)
     |> eval_to_bool
   ;;
@@ -204,8 +204,13 @@ module Context = struct
         Table.create (module Solver_env) 1)
     in
     Table.find_or_add available_by_platform platform ~f:(fun platform ->
-      let solver_env = Solver_env.extend t.solver_env platform in
-      is_opam_available_in_env t ~solver_env opam)
+      let scope =
+        Solver_env.Scope.of_package
+          ~local_packages:(Lazy.force t.local_packages)
+          (Package_name.of_opam_package_name (OpamPackage.name package))
+      in
+      let solver_env = Solver_env.Scoped.for_platform t.solver_env scope platform in
+      is_opam_available_in_env t ~scope ~solver_env opam)
   ;;
 
   let pinned_candidate resolved_package =
@@ -238,15 +243,19 @@ module Context = struct
       |> List.fold_left ~init:filtered_formula ~f:(fun additional acc ->
         OpamFormula.And (acc, additional))
     in
-    let package_is_local =
+    let scope =
       OpamPackage.name package
       |> Package_name.of_opam_package_name
-      |> Package_name.Map.mem (Lazy.force t.local_packages)
+      |> Solver_env.Scope.of_package ~local_packages:(Lazy.force t.local_packages)
     in
-    let solver_env = Solver_env.extend t.solver_env platform in
-    let with_test = package_is_local && with_test solver_env in
+    let solver_env = Solver_env.Scoped.for_platform t.solver_env scope platform in
+    let with_test =
+      match scope with
+      | Workspace -> with_test solver_env
+      | Dependencies -> false
+    in
     Solver_env.to_env solver_env
-    |> Solver_stats.Updater.wrap_env t.stats_updater
+    |> Solver_stats.Updater.wrap_env t.stats_updater ~scope
     |> Lock_pkg.add_self_to_filter_env package
     |> Resolve_opam_formula.apply_filter ~with_test ~formula:filtered_formula
   ;;
@@ -2100,7 +2109,7 @@ let reject_unreachable_packages =
       | Some pkg, None -> Some (lock_dir pkg)
       | None, Some pkg -> Some (local pkg))
   in
-  fun solver_env ~dune_version ~local_packages ~pkgs_by_name ->
+  fun solver_env ~workspace_solver_env ~dune_version ~local_packages ~pkgs_by_name ->
     let roots = Package_name.Map.keys local_packages in
     let pkgs_by_version =
       merge_packages
@@ -2121,8 +2130,8 @@ let reject_unreachable_packages =
           match
             Lock_pkg.local_package_dependencies_with_depopts
               pkg
-              ~env:(Solver_env.to_env solver_env)
-              ~with_test:(with_test solver_env)
+              ~env:(Solver_env.to_env workspace_solver_env)
+              ~with_test:(with_test workspace_solver_env)
               ~packages:pkgs_by_version
               ~dune_version
           with
@@ -2284,6 +2293,8 @@ let solve_lock_dir
   match platform_overlays with
   | [] -> Code_error.raise "solve_lock_dir called with empty platform_overlays" []
   | _ ->
+    let scoped_solver_env = solver_env in
+    let solver_env = Solver_env.Scoped.get scoped_solver_env Dependencies in
     (match Package_name.Map.add pinned_packages Dune_dep.name Resolved_package.dune with
      | Error p ->
        let loc = Resolved_package.loc p in
@@ -2330,7 +2341,7 @@ let solve_lock_dir
          in
          Context.create
            ~pinned_packages
-           ~solver_env
+           ~solver_env:scoped_solver_env
            ~platforms
            ~repos
            ~version_preference
@@ -2426,7 +2437,7 @@ let solve_lock_dir
               List.fold_left
                 platform_envs
                 ~init:Package_name.Map.empty
-                ~f:(fun merged_packages (_, solver_env) ->
+                ~f:(fun merged_packages (platform, solver_env) ->
                   let packages =
                     Solver_env.Map.find branches_by_platform solver_env
                     |> Option.value_exn
@@ -2434,6 +2445,11 @@ let solve_lock_dir
                   let reachable =
                     reject_unreachable_packages
                       solver_env
+                      ~workspace_solver_env:
+                        (Solver_env.Scoped.for_platform
+                           scoped_solver_env
+                           Workspace
+                           platform)
                       ~dune_version:
                         (Package_version.of_opam_package_version context.dune_version)
                       ~local_packages
@@ -2526,9 +2542,7 @@ let solve_lock_dir
             in
             let expanded_solver_variable_bindings =
               let stats = Solver_stats.Updater.snapshot stats_updater in
-              Solver_stats.Expanded_variable_bindings.of_variable_set
-                stats.expanded_variables
-                solver_env
+              Solver_stats.Expanded_variable_bindings.of_stats stats scoped_solver_env
             in
             Lock_dir.create_latest_version
               pkgs_by_name

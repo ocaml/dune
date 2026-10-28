@@ -13,12 +13,30 @@ let print_solver_env_for_lock_dir workspace ~solver_env_from_current_system lock
       ~unset_solver_vars_from_context:
         (Pkg_common.unset_solver_vars_of_workspace workspace ~lock_dir_path)
   in
+  let environments =
+    match
+      Option.bind (Workspace.find_lock_dir workspace lock_dir_path) ~f:(fun lock_dir ->
+        lock_dir.workspace_solver_env)
+    with
+    | None -> [ Dune_pkg.Solver_env.pp solver_env ]
+    | Some workspace_solver_env ->
+      let scoped =
+        Dune_pkg.Solver_env.Scoped.create
+          solver_env
+          ~workspace:(Some workspace_solver_env)
+          ~unset:(Pkg_common.unset_solver_vars_of_workspace workspace ~lock_dir_path)
+      in
+      [ Pp.text "Dependencies:"
+      ; Dune_pkg.Solver_env.pp (Dune_pkg.Solver_env.Scoped.get scoped Dependencies)
+      ; Pp.text "Workspace:"
+      ; Dune_pkg.Solver_env.pp (Dune_pkg.Solver_env.Scoped.get scoped Workspace)
+      ]
+  in
   Console.print
-    [ Pp.textf
-        "Solver environment for lock directory %s:"
-        (Path.to_string_maybe_quoted lock_dir_path)
-    ; Dune_pkg.Solver_env.pp solver_env
-    ]
+    (Pp.textf
+       "Solver environment for lock directory %s:"
+       (Path.to_string_maybe_quoted lock_dir_path)
+     :: environments)
 ;;
 
 let print_solver_env ~lock_dirs_arg =

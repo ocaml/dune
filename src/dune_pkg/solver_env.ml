@@ -58,15 +58,13 @@ let encode t =
   |> list (pair Package_variable_name.encode Variable_value.encode)
 ;;
 
-let decode =
+let decode_bindings =
   let open Decoder in
   let+ loc, bindings =
     located (repeat (pair Package_variable_name.decode Variable_value.decode))
   in
   match Package_variable_name.Map.of_list bindings with
-  | Ok t ->
-    validate t ~loc:(Some loc);
-    t
+  | Ok t -> t
   | Error (duplicate_key, a, b) ->
     User_error.raise
       ~loc
@@ -78,12 +76,29 @@ let decode =
       ]
 ;;
 
-let set t variable_name variable_value =
-  let t = Package_variable_name.Map.set t variable_name variable_value in
-  validate t ~loc:None;
+let decode =
+  let open Decoder in
+  let+ loc, t = located decode_bindings in
+  validate t ~loc:(Some loc);
   t
 ;;
 
+let decode_workspace =
+  let open Decoder in
+  let+ loc, t = located decode_bindings in
+  Package_variable_name.Map.iteri t ~f:(fun name _ ->
+    if Package_variable_name.Set.mem Package_variable_name.platform_specific name
+    then
+      User_error.raise
+        ~loc
+        [ Pp.textf
+            "Platform variable %S cannot be overridden in workspace_solver_env."
+            (Package_variable_name.to_string name)
+        ]);
+  t
+;;
+
+let set = Package_variable_name.Map.set
 let get = Package_variable_name.Map.find
 let extend a b = Package_variable_name.Map.superpose b a
 let contains = Package_variable_name.Map.mem
@@ -203,3 +218,90 @@ let add_sentinel_values_for_unset_platform_vars solver_env =
       then acc
       else set acc name (Variable_value.sentinel_value_of_variable_name name))
 ;;
+
+module Scope = struct
+  type t =
+    | Workspace
+    | Dependencies
+
+  let of_package ~local_packages name =
+    if Dune_lang.Package_name.Map.mem local_packages name then Workspace else Dependencies
+  ;;
+end
+
+module Scoped = struct
+  type env = t
+
+  type t =
+    | Shared of env
+    | Scoped of
+        { workspace : env
+        ; dependencies : env
+        ; workspace_overrides : env
+        }
+
+  let create shared ~workspace ~unset =
+    match workspace with
+    | None -> Shared shared
+    | Some workspace ->
+      let with_test_default value =
+        if
+          contains shared Package_variable_name.with_test
+          || Option.exists
+               (fun unset ->
+                  Package_variable_name.Set.mem unset Package_variable_name.with_test)
+               unset
+        then shared
+        else set shared Package_variable_name.with_test value
+      in
+      Scoped
+        { workspace = extend (with_test_default Variable_value.true_) workspace
+        ; dependencies = with_test_default Variable_value.false_
+        ; workspace_overrides = workspace
+        }
+  ;;
+
+  let is_scoped = function
+    | Shared _ -> false
+    | Scoped _ -> true
+  ;;
+
+  let get t scope =
+    match t, scope with
+    | Shared env, _ -> env
+    | Scoped { workspace; _ }, Scope.Workspace -> workspace
+    | Scoped { dependencies; _ }, Scope.Dependencies -> dependencies
+  ;;
+
+  let for_platform t scope platform =
+    let env = extend (get t scope) platform in
+    match t, scope with
+    | Scoped { workspace_overrides; _ }, Scope.Workspace -> extend env workspace_overrides
+    | Shared _, _ | Scoped _, Dependencies -> env
+  ;;
+
+  let encode t ~platforms =
+    let environments scope =
+      List.map platforms ~f:(fun platform -> encode (for_platform t scope platform))
+    in
+    let open Encoder in
+    match t with
+    | Shared _ -> list sexp (string "shared" :: environments Dependencies)
+    | Scoped _ ->
+      list
+        sexp
+        [ list sexp (string "workspace" :: environments Workspace)
+        ; list sexp (string "dependencies" :: environments Dependencies)
+        ]
+  ;;
+
+  let add_sentinel_values_for_unset_platform_vars = function
+    | Shared env -> Shared (add_sentinel_values_for_unset_platform_vars env)
+    | Scoped { workspace; dependencies; workspace_overrides } ->
+      Scoped
+        { workspace = add_sentinel_values_for_unset_platform_vars workspace
+        ; dependencies = add_sentinel_values_for_unset_platform_vars dependencies
+        ; workspace_overrides
+        }
+  ;;
+end

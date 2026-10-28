@@ -4,6 +4,19 @@ module Relop = Dune_lang.Relop
 let apply_filter env ~with_test ~(formula : OpamTypes.filtered_formula)
   : OpamTypes.formula
   =
+  let env variable =
+    match OpamVariable.Full.scope variable with
+    | Global
+      when (not with_test)
+           && Package_variable_name.equal
+                (Package_variable_name.of_opam (OpamVariable.Full.variable variable))
+                Package_variable_name.with_test ->
+      (match env variable with
+       | Some (OpamTypes.B true) -> Some (OpamTypes.B false)
+       | Some (S "true") -> Some (S "false")
+       | value -> value)
+    | Global | Self | Package _ -> env variable
+  in
   OpamFilter.gen_filter_formula
     (OpamFormula.partial_eval (fun (form : _ OpamTypes.filter_or_constraint) ->
        match form with

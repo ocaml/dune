@@ -23,6 +23,7 @@ module Lock_dir = struct
     ; path : Path.Source.t
     ; version_preference : Dune_pkg.Version_preference.t option
     ; solver_env : Solver_env.t option
+    ; workspace_solver_env : Solver_env.t option
     ; unset_solver_vars : Package_variable_name.Set.t option
     ; repositories : (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
     ; constraints : Dune_lang.Package_dependency.t list
@@ -44,6 +45,8 @@ module Lock_dir = struct
           "solver_env"
           (Repr.option (Repr.abstract Solver_env.to_dyn))
           ~get:(fun t -> t.solver_env)
+      ; Repr.field "workspace_solver_env" (Repr.option Solver_env.repr) ~get:(fun t ->
+          t.workspace_solver_env)
       ; Repr.field
           "unset_solver_vars"
           (Repr.option (Repr.abstract Package_variable_name.Set.to_dyn))
@@ -75,6 +78,7 @@ module Lock_dir = struct
         ; path
         ; version_preference
         ; solver_env
+        ; workspace_solver_env
         ; unset_solver_vars
         ; repositories
         ; constraints
@@ -88,6 +92,7 @@ module Lock_dir = struct
       , path
       , version_preference
       , solver_env
+      , workspace_solver_env
       , unset_solver_vars
       , repositories
       , constraints
@@ -101,6 +106,7 @@ module Lock_dir = struct
         ; path
         ; version_preference
         ; solver_env
+        ; workspace_solver_env
         ; unset_solver_vars
         ; repositories
         ; constraints
@@ -117,6 +123,7 @@ module Lock_dir = struct
          version_preference
          t.version_preference
     && Option.equal Solver_env.equal solver_env t.solver_env
+    && Option.equal Solver_env.equal workspace_solver_env t.workspace_solver_env
     && Option.equal Package_variable_name.Set.equal unset_solver_vars t.unset_solver_vars
     && List.equal
          (Tuple.T2.equal Loc.equal Dune_pkg.Pkg_workspace.Repository.Name.equal)
@@ -144,6 +151,11 @@ module Lock_dir = struct
         let+ path = field ~default:"dune.lock" "path" string in
         Path.Source.relative dir path
       and+ solver_env = field_o "solver_env" Solver_env.decode
+      and+ workspace_solver_env =
+        field_o
+          "workspace_solver_env"
+          (let* () = Dune_lang.Syntax.since Dune_lang.Stanza.syntax (3, 26) in
+           Solver_env.decode_workspace)
       and+ unset_solver_vars =
         field_o "unset_solver_vars" (repeat (located Package_variable_name.decode))
       and+ version_preference =
@@ -194,6 +206,7 @@ module Lock_dir = struct
       { loc
       ; path
       ; solver_env
+      ; workspace_solver_env
       ; unset_solver_vars
       ; version_preference
       ; repositories = repositories_of_ordered_set repositories

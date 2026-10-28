@@ -224,9 +224,10 @@ use the entries without constructing these groups.
 Rocq rules sharing a layout use the same file selectors for directories whose
 files all belong to `Lib` or `Libexec`. These unconditional selectors share
 dependency hashes and materialize their files in sandboxes without requiring
-alias expansion. In directories shared with other sections, library files remain
-explicit dependencies: literal-name selectors would scan a name list for every
-file in the directory. Other-section entries remain excluded.
+alias expansion. In directories shared with other sections, selectors match the
+exact library filenames using sorted-array sets with logarithmic membership
+checks. These directories also share dependency hashes while other-section
+entries remain excluded.
 
 Directory install entries also remain explicit dependencies because file
 selectors do not match directories. Grouping preserves the existing dependency

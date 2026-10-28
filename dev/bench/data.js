@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793213988316,
+  "lastUpdate": 1793215919720,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -665027,6 +665027,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8992990934800003,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cbafdc7def2cb8a8d0938068d2d04b70c50d2f85",
+          "message": "test(pkg): reproduce metadata outside package directories (#16822)\n\nThis is a commit extracted from an in & out experiment by @Alizter. The\ncram test captures the fact that the `META` and `dune-package` files for\npackages with a `(dir ...)` field are generated at the project root.",
+          "timestamp": "2026-10-28T20:16:56+01:00",
+          "tree_id": "5d0c74c613b65f09f0e52cf034dcdc5535e792c0",
+          "url": "https://github.com/ocaml/dune/commit/cbafdc7def2cb8a8d0938068d2d04b70c50d2f85"
+        },
+        "date": 1793215592427,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.235264145166667,
             "unit": "seconds"
           }
         ]

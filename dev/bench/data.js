@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793195446584,
+  "lastUpdate": 1793195747741,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -477773,6 +477773,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5320284145533334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b6e8c2b7311c83358b852ca715d053659b8f0cc6",
+          "message": "fix(sandbox): deduplicate overlapping directory dependencies (#16806)\n\nPopulate overlapping directory/file dependencies only once, preserving\nall dependency facts. This follows the shared traversal in #16675 and\nfixes copy-mode package dependency failures.\n\nUses the regression test merged in #16808.\n\nFixes #16547.",
+          "timestamp": "2026-10-28T14:32:38+01:00",
+          "tree_id": "80c8a24ce2986d855772126f1a6a20f15bb1c128",
+          "url": "https://github.com/ocaml/dune/commit/b6e8c2b7311c83358b852ca715d053659b8f0cc6"
+        },
+        "date": 1793195746577,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 59.06591014618667,
             "unit": "seconds"
           }
         ]

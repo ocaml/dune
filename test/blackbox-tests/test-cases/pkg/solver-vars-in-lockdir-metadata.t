@@ -208,11 +208,9 @@ Changing only the system environment must update the solution.
   $ grep depends _build/_private/default/.lock/dune.lock/polled-env.pkg
   (depends no-deps-a)
 
-BUG: the cached solve still uses the first system environment.
-
   $ DUNE_CONFIG__SYS_OCAML_VERSION=second dune build @pkg-install
   $ grep depends _build/_private/default/.lock/dune.lock/polled-env.pkg
-  (depends no-deps-a)
+  (depends no-deps-b)
 
 Explicitly assigning an inherited default does not change the effective inputs
 and should reuse the cached solve.
@@ -223,11 +221,9 @@ and should reuse the cached solve.
   false
 
 Changing the lock mode must regenerate the lock directory with versioned paths.
-BUG: the old non-portable layout is reused.
 
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune build @pkg-install
   $ test -f _build/_private/default/.lock/dune.lock/polled-env.0.0.1.pkg
-  [1]
 
 Host variables ignored by portable solving do not invalidate that solution.
 

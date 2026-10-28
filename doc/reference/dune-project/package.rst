@@ -32,6 +32,28 @@ is used when generating OPAM files (see :doc:`generate_opam_files`).
       See :doc:`/advanced/package-version` for details on how Dune determines
       package versions.
 
+   .. describe:: (dir <path>)
+
+      .. versionadded:: 3.21
+
+      Assign this package its own directory, relative to the project root.
+      Stanzas belonging to the package must be in that directory or its
+      descendants.
+
+      The directory is exclusive to the package: no other package can be
+      defined in it or placed inside it, and stanzas in it cannot belong to
+      another package.
+
+      This lets Dune build a package in isolation. When other packages are
+      excluded, with ``--only-packages`` or ``-p``, their directories and hence
+      all their rules and targets are left out of the build entirely.
+
+      Stanzas in the directory whose ``(package)`` field is optional, such as
+      ``(rule)``, ``(test)`` and ``(cram)``, belong to the package even when
+      the field is omitted. Stanzas that need a package, such as ``(install)``,
+      still require an explicit ``(package)`` field when the project defines
+      more than one package.
+
    .. describe:: (depends <dep-specification>)
 
       Package dependencies, as :token:`~pkg-dep:dep_specification`.

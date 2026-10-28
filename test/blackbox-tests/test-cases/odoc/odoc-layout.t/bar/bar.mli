@@ -1,0 +1,1 @@
+val y : Foo.B.t

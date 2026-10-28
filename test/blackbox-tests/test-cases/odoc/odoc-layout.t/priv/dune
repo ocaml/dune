@@ -1,0 +1,3 @@
+(library
+ (name priv)
+ (package my_pkg))

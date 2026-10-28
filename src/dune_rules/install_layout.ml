@@ -232,31 +232,32 @@ let gen_rules context_name ~dir rest =
 ;;
 
 module For_rocq_only = struct
-  (* Rocq puts the layout's [lib] dir on [OCAMLPATH], where findlib walks
+  (* Rocqdep puts the layout's [lib] dir on [OCAMLPATH], where findlib walks
      eagerly. For a race-free, deterministic walk, every entry findlib could
-     see must be a declared dep. In the opam layout, both {!Section.Lib} and
-     {!Section.Libexec} are under [lib/<package>]; Dune uses Libexec for native
-     OCaml plugins so that their executable bit is preserved. Bulk {!env}
-     doesn't work: it also pulls in {!Section.Lib_root} entries, which include
-     Rocq theory [.vo] files under
+     see must be a declared dep of dependency discovery. In the opam layout,
+     both {!Section.Lib} and {!Section.Libexec} are under [lib/<package>];
+     Dune uses Libexec for native OCaml plugins so that their executable bit
+     is preserved. Bulk {!env} doesn't work: it also pulls in
+     {!Section.Lib_root} entries, which include Rocq theory [.vo] files under
      [lib/coq/user-contrib/...]; in the same-package theory-plus-plugin case,
      that creates a build cycle (the theory rule depending on its own output
      via the layout symlink). Filtering to {!Section.Lib} and
      {!Section.Libexec} excludes root-section content (theory output) while
      keeping METAs, .cmi, .cmxs etc. — all upstream of theory compilation. *)
   let lib_root context_name packages =
-    let open Action_builder.O in
-    let+ () =
-      if Package.Name.Set.is_empty packages
-      then Action_builder.return ()
-      else
-        let* _, deps = Action_builder.of_memo (entries context_name packages) in
-        Action_builder.deps (Lazy.force deps)
-    in
     let layout_root = root context_name packages in
     let { Install.Roots.lib_root; _ } =
       Install.Roots.opam_from_prefix layout_root ~relative:Path.Build.relative
     in
     lib_root
+  ;;
+
+  let deps context_name packages =
+    if Package.Name.Set.is_empty packages
+    then Action_builder.return ()
+    else
+      let open Action_builder.O in
+      let* _, deps = Action_builder.of_memo (entries context_name packages) in
+      Action_builder.deps (Lazy.force deps)
   ;;
 end

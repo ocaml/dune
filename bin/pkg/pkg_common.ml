@@ -28,11 +28,10 @@ let validate_solver_env lock_dir ~solver_env =
   let { Lock_dir.expanded_solver_variable_bindings; _ } = lock_dir in
   if
     Solver_env.Scoped.is_scoped solver_env
-    || Dune_pkg.Solver_stats.Expanded_variable_bindings.version
-         expanded_solver_variable_bindings
+    || Lock_dir.Solver_variable_bindings.version expanded_solver_variable_bindings
        >= (0, 2)
   then
-    Dune_pkg.Solver_stats.Expanded_variable_bindings.validate_against_solver_env
+    Lock_dir.Solver_variable_bindings.validate_against_solver_env
       expanded_solver_variable_bindings
       ~legacy:Solver_env.empty
       ~solver_env

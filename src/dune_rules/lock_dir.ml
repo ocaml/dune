@@ -245,7 +245,7 @@ let get_with_path =
             workspace_lock_dir
             ~current_system:(Some current_system)
         in
-        Solver_stats.Expanded_variable_bindings.validate_against_solver_env
+        Solver_variable_bindings.validate_against_solver_env
           lock_dir.expanded_solver_variable_bindings
           ~legacy:(Option.value context ~default:Solver_env.empty)
           ~solver_env;

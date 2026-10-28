@@ -105,6 +105,31 @@ module Packages : sig
   val pkgs_by_platform : t -> Pkg.t list Solver_env.Map.t
 end
 
+module Solver_variable_bindings : sig
+  type t
+
+  val empty : t
+  val empty_scoped : t
+  val version : t -> Syntax.Version.t
+  val is_empty : t -> bool
+  val of_stats : Solver_stats.t -> Solver_env.Scoped.t -> t
+  val decode : t Decoder.t
+  val encode : t -> Dune_lang.t list
+  val equal : t -> t -> bool
+  val to_dyn : t -> Dyn.t
+  val to_solver_env : t -> scope:Solver_env.Scope.t -> Solver_env.t
+
+  (** Flat metadata retains its legacy validation behavior. Scoped metadata
+      requires matching configuration and validates each scope independently. *)
+  val validate_against_solver_env
+    :  t
+    -> legacy:Solver_env.t
+    -> solver_env:Solver_env.Scoped.t
+    -> unit
+
+  val remove_platform_specific : t -> t
+end
+
 type t = private
   { version : Syntax.Version.t
   ; dependency_hash : (Loc.t * Local_package.Dependency_hash.t) option
@@ -114,7 +139,7 @@ type t = private
       the "depends on" relationship between packages. *)
   ; ocaml : (Loc.t * Package_name.t) option
   ; repos : Repositories.t
-  ; expanded_solver_variable_bindings : Solver_stats.Expanded_variable_bindings.t
+  ; expanded_solver_variable_bindings : Solver_variable_bindings.t
     (** Stores the solver variables that were evaluated while solving
       dependencies. Can be used to determine if a lockdir is compatible
       with a particular system. *)
@@ -140,7 +165,7 @@ val create_latest_version
   -> local_packages:Local_package.For_solver.t list
   -> ocaml:(Loc.t * Package_name.t) option
   -> repos:Opam_repo.t list option
-  -> expanded_solver_variable_bindings:Solver_stats.Expanded_variable_bindings.t
+  -> expanded_solver_variable_bindings:Solver_variable_bindings.t
   -> solved_for_platforms:Solver_env.t list
   -> portable_lock_dir:bool
   -> t

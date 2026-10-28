@@ -2542,7 +2542,7 @@ let solve_lock_dir
             in
             let expanded_solver_variable_bindings =
               let stats = Solver_stats.Updater.snapshot stats_updater in
-              Solver_stats.Expanded_variable_bindings.of_stats stats scoped_solver_env
+              Lock_dir.Solver_variable_bindings.of_stats stats scoped_solver_env
             in
             Lock_dir.create_latest_version
               pkgs_by_name

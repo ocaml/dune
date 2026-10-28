@@ -28,26 +28,22 @@ correctly under both default and copy sandboxing.
   >   (with-stdout-to out (run mybin))))
   > EOF
 
-CR: The executable's parent is created before linking the package directory,
-so the overlapping inputs fail before the action starts.
+With default sandboxing, the overlapping package-directory and executable
+dependencies are both available to the action.
 
-  $ dune build @all 2>&1 | censor
-  Error:
-  symlink(_build/.sandbox/$DIGEST1/_private/default/.pkg/provider.0.0.1-$DIGEST2/target): File exists
-  -> required by _build/default/out
-  -> required by alias all
-  [1]
-  $ test ! -e _build/default/out
+  $ dune build @all
+  $ cat _build/default/out
+  from provider
 
 Copy mode must provide the same inputs.
 Prefer no sandbox for internal rules, then copy for user rules that require
-sandboxing. Remove any existing output to force the action to run again.
+sandboxing. Remove the existing output to force the action to run again.
 
   $ cat > copy-config <<'EOF'
   > (lang dune 3.25)
   > (sandboxing_preference none copy)
   > EOF
-  $ test ! -e _build/default/out || rm _build/default/out
+  $ rm _build/default/out
   $ dune build @all --config-file copy-config
   $ cat _build/default/out
   from provider

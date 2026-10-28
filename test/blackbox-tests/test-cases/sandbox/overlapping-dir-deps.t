@@ -31,13 +31,9 @@ and copy sandboxes, which support directory inputs on 3.25.
   $ dune build @directory --sandbox symlink
   nested
   sibling
-CR: Precreating a descendant's parent blocks the directory symlink.
-
-  $ dune build @overlap --sandbox symlink 2>&1 | censor
-  Error:
-  symlink(_build/.sandbox/$DIGEST/default/outer): File exists
-  -> required by alias overlap in dune:14
-  [1]
+  $ dune build @overlap --sandbox symlink
+  nested
+  sibling
 
   $ dune build @directory --sandbox copy
   nested

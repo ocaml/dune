@@ -203,6 +203,14 @@ let link_function ~(mode : Sandbox_mode.some) =
        fun src dst -> Io.copy_file ~src ~dst ~chmod ())
 ;;
 
+let rec is_covered paths path =
+  Path.Set.mem paths path
+  ||
+  match Path.parent path with
+  | None -> false
+  | Some parent -> is_covered paths parent
+;;
+
 let link_deps t ~deps =
   let link = Staged.unstage (link_function ~mode:t.mode) in
   Path.Set.iter deps ~f:(fun path ->
@@ -216,19 +224,15 @@ let link_deps t ~deps =
           "Action depends on source tree. All actions should depend on the copies in the \
            build directory instead."
           [ "path", Path.to_dyn path ]
-    | Some p -> link path (Path.build (map_real_path t p)))
+    | Some p ->
+      (match Path.parent path with
+       | Some parent when is_covered deps parent -> ()
+       | None | Some _ -> link path (Path.build (map_real_path t p))))
 ;;
 
 let unlinked_deps t deps =
-  let rec already_linked paths path =
-    Path.Set.mem paths path
-    ||
-    match Path.parent path with
-    | None -> false
-    | Some parent -> already_linked paths parent
-  in
   let rec loop path acc =
-    if already_linked t.deps path || already_linked acc path
+    if is_covered t.deps path || is_covered acc path
     then acc
     else (
       match Path.as_in_build_dir path with
@@ -386,6 +390,15 @@ let create_real
     maybe_async (fun () ->
       Path.rm_rf (Path.build sandbox_dir);
       create_dir t rule_dir;
+      let dirs =
+        match mode with
+        | Symlink ->
+          (* Directory inputs are symlinked whole, so their destinations and
+             descendants must not be pre-created. *)
+          Path.Build.Set.filter dirs ~f:(fun dir ->
+            not (is_covered deps (Path.build dir)))
+        | Copy | Hardlink | Patch_back_source_tree -> dirs
+      in
       create_dirs t dirs;
       link_deps t ~deps)
   in

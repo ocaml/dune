@@ -303,6 +303,18 @@ variables were consulted.
   (lang package 0.2)
   $ dune pkg validate-lockdir
 
+The defaults are shared assignments plus the workspace test override.
+
+  $ dune pkg print-solver-env 2>&1 | grep -E '^(Dependencies|Workspace)|with-(test|doc|dev-setup)'
+  Dependencies:
+  - with-dev-setup = false
+  - with-doc = false
+  - with-test = false
+  Workspace:
+  - with-dev-setup = false
+  - with-doc = false
+  - with-test = true
+
 Removing scoped configuration also requires re-locking.
 
   $ write_workspace 3.26 '' ''

@@ -103,15 +103,26 @@ let get = Package_variable_name.Map.find
 let extend a b = Package_variable_name.Map.superpose b a
 let contains = Package_variable_name.Map.mem
 
-let with_defaults =
-  [ ( Package_variable_name.opam_version
-    , OpamVersion.to_string OpamVersion.current |> Variable_value.string )
-  ; Package_variable_name.with_doc, Variable_value.false_
-  ; Package_variable_name.with_dev_setup, Variable_value.false_
-  ; Package_variable_name.post, Variable_value.true_
-  ]
-  |> List.fold_left ~init:empty ~f:(fun acc (name, value) -> set acc name value)
-;;
+module Defaults = struct
+  let shared =
+    [ ( Package_variable_name.opam_version
+      , OpamVersion.to_string OpamVersion.current |> Variable_value.string )
+    ; Package_variable_name.with_test, Variable_value.false_
+    ; Package_variable_name.with_doc, Variable_value.false_
+    ; Package_variable_name.with_dev_setup, Variable_value.false_
+    ; Package_variable_name.post, Variable_value.true_
+    ]
+    |> List.fold_left ~init:empty ~f:(fun acc (name, value) -> set acc name value)
+  ;;
+
+  let workspace =
+    Package_variable_name.Map.singleton
+      Package_variable_name.with_test
+      Variable_value.true_
+  ;;
+
+  let legacy = Package_variable_name.Map.remove shared Package_variable_name.with_test
+end
 
 let pp t =
   if Package_variable_name.Map.is_empty t
@@ -243,17 +254,12 @@ module Scoped = struct
   let resolve ~current_system ~shared ~workspace ~unset =
     let resolve defaults = combine defaults ~current_system ~context:shared ~unset in
     match workspace with
-    | None -> Shared (resolve with_defaults)
+    | None -> Shared (resolve Defaults.legacy)
     | Some workspace ->
-      let workspace_defaults =
-        set with_defaults Package_variable_name.with_test Variable_value.true_
-      in
-      let dependency_defaults =
-        set with_defaults Package_variable_name.with_test Variable_value.false_
-      in
       Scoped
-        { workspace = extend (resolve workspace_defaults) workspace
-        ; dependencies = resolve dependency_defaults
+        { workspace =
+            extend (resolve (extend Defaults.shared Defaults.workspace)) workspace
+        ; dependencies = resolve Defaults.shared
         ; workspace_overrides = workspace
         }
   ;;

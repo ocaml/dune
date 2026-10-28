@@ -292,15 +292,23 @@ let run_odoc sctx ~dir command ~quiet ~flags_for args =
         [ A command; Dyn base_flags; S args ]
 ;;
 
-let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
+let module_deps sctx (m : Module.t) ~obj_dir ~modules ~for_ =
+  (* When a module has no .mli, use the dependencies for the .ml *)
+  let ml_kind : Ml_kind.t = if Module.has m ~ml_kind:Intf then Intf else Impl in
+  let sandbox = Compilation_mode.default_sandbox in
   Action_builder.dyn_paths_unit
     (let open Action_builder.O in
      let+ deps =
-       if Module.has m ~ml_kind:Intf
-       then Dep_graph.deps_of dep_graphs.intf m
-       else
-         (* When a module has no .mli, use the dependencies for the .ml *)
-         Dep_graph.deps_of dep_graphs.impl m
+       Dep_rules.read_deps_of
+         ~sandbox
+         ~sctx
+         ~obj_dir
+         ~modules
+         ~impl:Virtual_rules.no_implements
+         ~dir:(Obj_dir.dir obj_dir)
+         ~for_
+         ~ml_kind
+         m
      in
      List.map deps ~f:(fun m -> Path.build (Obj_dir.Module.odoc obj_dir m)))
 ;;
@@ -310,9 +318,9 @@ let compile_module
       ~obj_dir
       (m : Module.t)
       ~includes:(file_deps, iflags)
-      ~dep_graphs
+      ~modules
       ~pkg_or_lnu
-      ~mode
+      ~for_
   =
   let odoc_file = Obj_dir.Module.odoc obj_dir m in
   let+ () =
@@ -335,7 +343,7 @@ let compile_module
               (Path.build
                  (Obj_dir.Module.cmti_file
                     ~cm_kind:
-                      (match mode with
+                      (match for_ with
                        | Compilation_mode.Ocaml -> Ocaml Cmi
                        | Melange -> Melange Cmi)
                     obj_dir
@@ -344,7 +352,7 @@ let compile_module
       in
       let open Action_builder.With_targets.O in
       Action_builder.with_no_targets file_deps
-      >>> Action_builder.with_no_targets (module_deps m ~obj_dir ~dep_graphs)
+      >>> Action_builder.with_no_targets (module_deps sctx m ~obj_dir ~modules ~for_)
       >>> run_odoc
     in
     add_rule sctx action_with_targets
@@ -419,17 +427,26 @@ let link_odoc_rules sctx (odoc_file : Artifact.t) ~pkg ~requires =
      Action_builder.with_no_targets deps >>> run_odoc)
 ;;
 
-let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
+let setup_library_odoc_rules sctx (local_lib : Lib.Local.t) =
   (* Using the proper package name doesn't actually work since odoc assumes that
      a package contains only 1 library *)
-  let pkg_or_lnu = Odoc_scope.pkg_or_lnu (Lib.Local.to_lib local_lib) in
-  let sctx = Compilation_context.super_context cctx in
+  let lib = Lib.Local.to_lib local_lib in
+  let pkg_or_lnu = Odoc_scope.pkg_or_lnu lib in
   let ctx = Super_context.context sctx in
   let info = Lib.Local.info local_lib in
-  let obj_dir = Compilation_context.obj_dir cctx in
-  let modules = Compilation_context.modules cctx in
+  let obj_dir = Lib.Local.obj_dir local_lib in
+  let for_ =
+    Lib_info.modes info
+    |> Compilation_mode.Set.of_lib_mode_set
+    |> Compilation_mode.Set.for_merlin
+  in
+  let* modules = Dir_contents.modules_of_local_lib sctx local_lib ~for_ in
+  let modules_with_vlib = Modules.With_vlib.modules modules in
   let* includes =
-    let+ requires = Compilation_context.requires_compile cctx in
+    let+ requires =
+      Resolve.Memo.bind (Lib.requires lib ~for_) ~f:(fun direct ->
+        Lib.closure direct ~linking:false ~for_)
+    in
     let package = Lib_info.package info in
     let odoc_include_flags =
       Command.Args.memo (odoc_include_flags ctx package requires)
@@ -437,17 +454,15 @@ let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
     Dep.deps ctx package requires, odoc_include_flags
   in
   modules
-  |> Modules.With_vlib.drop_vlib
   |> Modules.fold ~init:[] ~f:(fun m acc ->
     let compiled =
-      let for_ = Compilation_context.for_ cctx in
       compile_module
         sctx
-        ~includes
-        ~dep_graphs:(Compilation_context.dep_graphs cctx)
         ~obj_dir
+        ~includes
+        ~modules:modules_with_vlib
         ~pkg_or_lnu
-        ~mode:for_
+        ~for_
         m
     in
     compiled :: acc)

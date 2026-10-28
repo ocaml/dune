@@ -624,7 +624,7 @@ let library_rules
            ~dir_contents
            ~vlib_stubs_o_files)
   and+ () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
-  and+ () = Memo.when_ for_merlin (fun () -> Odoc.setup_library_odoc_rules cctx local_lib)
+  and+ () = Memo.when_ for_merlin (fun () -> Odoc.setup_library_odoc_rules sctx local_lib)
   and+ () =
     let source_modules =
       Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc -> m :: acc)

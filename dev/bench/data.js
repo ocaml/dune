@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793207867889,
+  "lastUpdate": 1793210117691,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -664679,6 +664679,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 4.0122733679466664,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c7fb7dfd5a360424df0f6e1622255ded517beaed",
+          "message": "test(pkg): reproduce automatic lock input cache mismatches (#16837)",
+          "timestamp": "2026-10-28T18:40:36+01:00",
+          "tree_id": "b05d776e12f4c407ed087f836864a3ab81870b54",
+          "url": "https://github.com/ocaml/dune/commit/c7fb7dfd5a360424df0f6e1622255ded517beaed"
+        },
+        "date": 1793209784666,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.312196167966667,
             "unit": "seconds"
           }
         ]

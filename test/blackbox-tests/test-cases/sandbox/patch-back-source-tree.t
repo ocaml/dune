@@ -335,6 +335,8 @@ Generated files inside directory targets remain build targets and are omitted
 from promotion output. Unrelated source-tree changes made by the same action are
 still reported.
 
+CR: The directory output's contents are currently offered for promotion too.
+
   $ rm -rf out sub dune
   $ make_dune_project 3.24
   $ cat >dune<<EOF

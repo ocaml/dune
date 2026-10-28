@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793216202970,
+  "lastUpdate": 1793216220081,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -665114,6 +665114,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.235264145166667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e789b6143aff56924497cab6f0ee1a6c12dde446",
+          "message": "test(stdune): cover symlink invariants in isolated sandboxes (#16828)\n\nFocused symlink invariants in per-test temporary sandboxes, with scoped\ncleanup.\n\nFollow-up to #16813.",
+          "timestamp": "2026-10-28T20:23:21+01:00",
+          "tree_id": "f89259f64d8cda5be228f8d6c8be94e7d1818755",
+          "url": "https://github.com/ocaml/dune/commit/e789b6143aff56924497cab6f0ee1a6c12dde446"
+        },
+        "date": 1793215816164,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 4.007678450793334,
             "unit": "seconds"
           }
         ]

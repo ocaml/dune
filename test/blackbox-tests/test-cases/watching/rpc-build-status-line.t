@@ -42,6 +42,38 @@ The run number increments with the next watch build.
   > | awk 'NR == 1'
   [BUILD DURATION] [PARALLELISM] [2]
 
+Forwarded builds display the progress of the build running on the server.
+
+  $ STARTED="$PWD/progress-started"
+  $ RELEASE="$PWD/progress-release"
+  $ cat > dune <<EOF
+  > (rule
+  >  (target progress-target)
+  >  (action
+  >   (progn
+  >    (system "touch '$STARTED'; while test ! -f '$RELEASE'; do sleep 0.1; done")
+  >    (write-file %{target} ok))))
+  > EOF
+
+  $ INSIDE_EMACS=1 DUNE_CONFIG__THREADED_CONSOLE=disabled \
+  >   dune build --display progress progress-target > progress-output 2>&1 &
+  $ PROGRESS_PID=$!
+  $ with_timeout dune_cmd wait-for-file-to-appear "$STARTED"
+  $ i=200
+  $ while [ "$i" != 0 ]; do
+  >   tr '\r' '\n' < progress-output | grep -a "Done:" >/dev/null && break
+  >   i=$((i - 1))
+  >   sleep 0.01
+  > done
+  $ tr '\r' '\n' < progress-output \
+  > | grep -a "Connected to RPC server" \
+  > | sed -E 's/ +$//; s/[0-9]+/N/g' \
+  > | sort -u
+  Connected to RPC server
+  Connected to RPC server | Done: N% (N/N, N left)
+  $ touch "$RELEASE"
+  $ wait "$PROGRESS_PID"
+
   $ stop_dune_quiet
 
 Batch builds display the build duration and parallelism alongside the client

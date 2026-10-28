@@ -182,6 +182,82 @@ let fire_request
     request_exn client request arg)
 ;;
 
+let pp_progress_status : Dune_rpc.Progress.t -> _ Pp.t = function
+  | Failed | Success | Waiting -> Pp.nop
+  | In_progress { complete; remaining; failed } ->
+    let total = complete + remaining in
+    Pp.verbatim
+      (sprintf
+         "Done: %d%% (%d/%d, %d left%s)"
+         (if total = 0 then 0 else complete * 100 / total)
+         complete
+         total
+         remaining
+         (if failed = 0 then "" else sprintf ", %d failed" failed))
+  | Interrupted -> Pp.verbatim "Restarting current build..."
+;;
+
+let request_with_progress_exn client request arg =
+  let open Fiber.O in
+  Client.poll client Dune_rpc.Public.Sub.progress
+  >>= function
+  | Error _ -> request_exn client request arg
+  | Ok poller ->
+    let finished = ref false
+    and progress = ref Dune_rpc.Progress.Waiting in
+    let rec cancel () =
+      finished := true;
+      (* The connection may already be dead and the poll canceled, ignore
+         errors. *)
+      let+ (_ : (unit, _) result) =
+        Fiber.collect_errors (fun () -> Client.Stream.cancel poller)
+      in
+      ()
+    and update () =
+      Client.Stream.next poller
+      >>= function
+      | None -> Fiber.return ()
+      | Some p ->
+        progress := p;
+        Console.Status_line.refresh ();
+        if !finished then Fiber.return () else update ()
+    in
+    let section =
+      Console.Status_line.add_section (Live (fun () -> pp_progress_status !progress))
+    in
+    Fiber.finalize
+      (fun () ->
+         Fiber.fork_and_join
+           (fun () ->
+              Fiber.finalize (fun () -> request_exn client request arg) ~finally:cancel)
+           update
+         >>| fst)
+      ~finally:(fun () ->
+        Console.Status_line.remove_section section;
+        Fiber.return ())
+;;
+
+let fire_request_with_progress
+      ~name
+      ~wait
+      ?(warn_forwarding = true)
+      ?(lock_held_by = Global_lock.Lock_held_by.Unknown)
+      ~(config : Dune_config.t)
+      builder
+      request
+      arg
+  =
+  let status_line_enabled =
+    match config.display with
+    | Tui -> true
+    | Simple { status_line; verbosity = _ } -> status_line
+  in
+  fire ~name ~wait ~warn_forwarding ~lock_held_by builder (fun client ->
+    if status_line_enabled
+    then request_with_progress_exn client request arg
+    else request_exn client request arg)
+;;
+
 let fire_notification
       ~name
       ~wait

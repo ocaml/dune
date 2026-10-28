@@ -49,11 +49,12 @@ let run_fmt_command ~common ~config ~preview builder =
     (* The --preview flag is being ignored by the RPC server, warn the user. *)
     if preview then Rpc.Rpc_common.warn_ignore_arguments lock_held_by;
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
-      Rpc.Rpc_common.fire_request
+      Rpc.Rpc_common.fire_request_with_progress
         ~name:"format"
         ~wait:false
         ~warn_forwarding:false
         ~lock_held_by
+        ~config
         builder
         Dune_rpc.Procedures.Public.format
         ())

@@ -7,6 +7,11 @@
 #include <signal.h>
 #endif
 
+#ifdef __sun
+/* On illumos, TIOCGWINSZ and struct winsize are in <sys/termios.h>. */
+#include <sys/termios.h>
+#endif
+
 #ifdef __HAIKU__
 /* On some platforms, ioctl() is declared in <unistd.h>. */
 #include <unistd.h>

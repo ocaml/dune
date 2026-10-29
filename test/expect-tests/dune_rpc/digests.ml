@@ -173,7 +173,7 @@ let%expect_test "print digests for all declared RPCs" =
         Response: 929074caab98360dc7116b6f27c2b9ad
       Version 3:
         Request: Sexp
-        Response: 8bef0fb30ec62754704c0309079f5a7b
+        Response: e962b792928a9476f6c61adac4496a93
     cancel-poll/running-jobs
       Version 1:
         Payload: Sexp

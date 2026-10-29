@@ -230,7 +230,7 @@ let handler (t : t Fdecl.t) : unit Handler.t =
       ~diff
   in
   let () =
-    let diff ~last:_ ~now:((now : Build_system.State.t), goals) =
+    let diff ~last:_ ~now:((now : Build_system.State.t), running_jobs, goals) =
       match now with
       | Initializing -> Progress.Waiting
       | Restarting_current_build -> Interrupted
@@ -241,22 +241,28 @@ let handler (t : t Fdecl.t) : unit Handler.t =
           { complete = now.number_of_rules_validated
           ; remaining = Build_system.Progress.number_of_rules_in_progress now
           ; failed = now.number_of_rules_failed
+          ; running_jobs
           ; goals
           }
     in
     let get () =
+      let jobs =
+        Fiber.Svar.read Running_jobs.jobs
+        |> Running_jobs.current
+        |> Running_jobs.Id.Map.cardinal
+      in
       let goals =
         match (Fdecl.get t).build with
         | Disabled -> 0
         | Enabled { build_loop; _ } -> Build_loop.goals_count build_loop
       in
-      !Build_system.state, goals
+      !Build_system.state, jobs, goals
     in
     Handler.implement_long_poll
       rpc
       Procedures.Poll.progress
       (Source.Computed { get; poll_every = Time.Span.of_secs 0.2 })
-      ~equal:(Tuple.T2.equal Build_system.State.equal Int.equal)
+      ~equal:(Tuple.T3.equal Build_system.State.equal Int.equal Int.equal)
       ~diff
   in
   let () =

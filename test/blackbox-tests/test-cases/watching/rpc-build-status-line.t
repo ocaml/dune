@@ -70,7 +70,7 @@ Forwarded builds display the progress of the build running on the server.
   > | sed -E 's/ +$//; s/[0-9]+/N/g' \
   > | sort -u
   Connected to RPC server
-  Connected to RPC server | Done: N% (N/N, N left)
+  Connected to RPC server | Done: N% (N/N, N left) (jobs: N)
   $ touch "$RELEASE"
   $ wait "$PROGRESS_PID"
 
@@ -108,9 +108,10 @@ builds report that the progress is shared with other builds.
   >   sleep 0.01
   > done
   $ tr '\r' '\n' < shared-b-output \
-  > | grep -a -o "left) | shared with [0-9]* other builds*" \
+  > | grep -a -o "(jobs: [0-9]*) | shared with [0-9]* other builds*" \
+  > | sed -E 's/jobs: [0-9]+/jobs: N/' \
   > | sort -u
-  left) | shared with 1 other build
+  (jobs: N) | shared with 1 other build
   $ touch "$RELEASE"
   $ wait "$A_PID"
   $ wait "$B_PID"

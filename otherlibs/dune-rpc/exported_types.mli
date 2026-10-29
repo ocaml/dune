@@ -187,6 +187,7 @@ module Progress : sig
         { complete : int
         ; remaining : int
         ; failed : int
+        ; running_jobs : int
         ; goals : int
         }
     | Failed

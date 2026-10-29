@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793292053955,
+  "lastUpdate": 1793292324886,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -478817,6 +478817,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.6339802702866667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7c610d05d7dd60070b4326cf8ff622a7b4a4357a",
+          "message": "test(engine): cover sibling directory rebuild isolation in watch mode (#16816)\n\nAdd watch-mode coverage for separate glob consumers of two directory\ntargets produced by one rule. Change each input in turn and verify both\nsummaries, then perform a null build. Process traces confirm that each\nconsumer runs only initially and when its own directory changes.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-30T00:29:39+08:00",
+          "tree_id": "7e1cce98b58a6dd4842fe6bd006c83947646d027",
+          "url": "https://github.com/ocaml/dune/commit/7c610d05d7dd60070b4326cf8ff622a7b4a4357a"
+        },
+        "date": 1793292321708,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 51.31161856027333,
             "unit": "seconds"
           }
         ]

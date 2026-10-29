@@ -3,6 +3,10 @@
 open Import
 
 module Scope_key : sig
+  (** [find_private_lib context s] is the private library without a package
+      whose unique name is [s], or [None] if [s] is not such a name. *)
+  val find_private_lib : Context_name.t -> string -> Lib.t option Memo.t
+
   (** [of_string context s] finds the library named by [s], which is either a
       public library name or a private library unique name. *)
   val of_string : Context_name.t -> string -> (Lib_name.t * Lib.DB.t) Memo.t

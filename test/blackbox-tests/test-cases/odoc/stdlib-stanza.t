@@ -25,8 +25,8 @@ Demonstrate how odoc interops with the `stdlib` stanza
 
 Bar is compiled
   $ find _build/default -name '*.odoc' | sort -n
-  _build/default/.l.objs/byte/l.odoc
-  _build/default/.l.objs/byte/l__Bar.odoc
+  _build/default/_doc/_odoc/l/l/l.odoc
+  _build/default/_doc/_odoc/l/l/l__Bar.odoc
   _build/default/_doc/_odoc/l/page-index.odoc
 
 Bar is not linked

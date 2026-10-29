@@ -1,10 +1,7 @@
 open Import
 open Memo.O
 
-module Scope_key : sig
-  val of_string : Context_name.t -> string -> (Lib_name.t * Lib.DB.t) Memo.t
-  val to_string : Lib_name.t -> Dune_project.t -> string
-end = struct
+module Scope_key = struct
   let file_key project =
     let name = Dune_project.name project in
     let root = Dune_project.root project in
@@ -37,8 +34,18 @@ end = struct
       String.Map.find_exn map key
   ;;
 
+  let parse_priv_lib_name s = String.rsplit2 s ~on:'@'
+
+  let find_private_lib context s =
+    match parse_priv_lib_name s with
+    | None -> Memo.return None
+    | Some (lib, key) ->
+      let* scope = find_project_by_key key >>= Scope.DB.find_by_project context in
+      Lib.DB.find (Scope.libs scope) (Lib_name.parse_string_exn (Loc.none, lib))
+  ;;
+
   let of_string context s =
-    match String.rsplit2 s ~on:'@' with
+    match parse_priv_lib_name s with
     | None ->
       let+ public_libs = Scope.DB.public_libs context in
       Lib_name.parse_string_exn (Loc.none, s), public_libs

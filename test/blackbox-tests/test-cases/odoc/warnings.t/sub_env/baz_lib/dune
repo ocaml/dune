@@ -1,0 +1,5 @@
+(library
+ (name baz)
+ (modes byte)
+ (public_name baz_lib)
+ (modules_without_implementation baz))

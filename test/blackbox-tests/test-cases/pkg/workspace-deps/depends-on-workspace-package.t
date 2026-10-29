@@ -96,10 +96,4 @@ when resolving the libraries of a mounted package.
   > (build (run echo "building mylock with native"))
   > EOF
   $ build_pkg mylock 2>&1 | censor
-  Error: Dependency cycle between:
-     _build/install/default/.packages/$DIGEST/lib/native/META
-  -> _build/default/.lockfile/pkg/mylock/.opam/mylock/target/cookie
-  -> library "native" in _build/default/.lockfile/pkg/native
-  -> _build/install/default/.packages/$DIGEST/lib/native/META
-  -> required by _build/default/.lockfile/pkg/mylock/.opam/mylock/target
-  [1]
+  building mylock with native

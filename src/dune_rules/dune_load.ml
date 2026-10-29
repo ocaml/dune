@@ -421,7 +421,8 @@ let package_closure_for_context context names =
   let+ managed =
     Memo.List.map candidates ~f:(fun candidate ->
       let+ dependencies = Pkg_sources.Candidate.dependencies candidate in
-      Pkg_sources.Candidate.name candidate, dependencies)
+      ( Pkg_sources.Candidate.name candidate
+      , Package.Name.Set.remove dependencies Dune_pkg.Dune_dep.name ))
     >>| Package.Name.Map.of_list_exn
   in
   let rec loop acc name =

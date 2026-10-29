@@ -9,11 +9,21 @@
  (alias runtest-melange))
 
 (cram
+ (deps
+  (package ppxlib))
+ (applies_to ppx-generated-dependencies.t))
+
+(cram
  (deps %{bin:melc_stdlib_prefix} %{bin:merlin_configurations})
  (enabled_if
   ; CR-soon Alizter: re-enable this test inside Nix
   (not %{env:INSIDE_NIX=false}))
  (applies_to merlin.t))
+
+(cram
+ (deps
+  (package ppxlib))
+ (applies_to ppx-lint-cookies.t))
 
 (cram
  (deps %{bin:refmt})
@@ -24,5 +34,15 @@
 
 (cram
  (deps
+  (package ppxlib))
+ (applies_to ppx-compilation-mode.t ppx-cookies.t))
+
+(cram
+ (deps
   (package odoc))
  (applies_to odoc.t))
+
+(cram
+ (deps
+  (package ppxlib))
+ (applies_to ppx-merlin-cookies.t))

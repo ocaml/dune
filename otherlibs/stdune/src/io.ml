@@ -468,9 +468,9 @@ module String_path = struct
   let copy_file = Copyfile.copyfile
 end
 
-let portable_symlink ~src ~dst =
+let portable_symlink ~overwrite ~src ~dst =
   if Stdlib.Sys.win32
-  then copy_file ~overwrite:true ~src ~dst ()
+  then copy_file ~overwrite ~src ~dst ()
   else (
     let src =
       match Path.parent dst with
@@ -486,18 +486,19 @@ let portable_symlink ~src ~dst =
          | _ -> Path.reach ~from src)
     in
     let dst = Path.to_string dst in
-    match Unix.readlink dst with
-    | target ->
-      if target <> src
-      then (
-        (* @@DRA Win32 remove read-only attribute needed when symlinking
-           enabled *)
-        Unix.unlink dst;
-        Unix.symlink src dst)
-    | exception Unix.Unix_error _ -> Unix.symlink src dst)
+    try Unix.symlink src dst with
+    | Unix.Unix_error (Unix.EEXIST, _, _) as exn when overwrite ->
+      (match Unix.readlink dst with
+       | exception Unix.Unix_error _ -> raise exn
+       | target when target = src -> ()
+       | _ ->
+         (* @@DRA Win32 remove read-only attribute needed when symlinking
+            enabled *)
+         Unix.unlink dst;
+         Unix.symlink src dst))
 ;;
 
-let portable_hardlink ~src ~dst =
+let portable_hardlink ~overwrite ~src ~dst =
   let user_error msg =
     User_error.raise
       [ Pp.textf
@@ -515,7 +516,7 @@ let portable_hardlink ~src ~dst =
     | Error (Unix_error error) -> user_error (Unix_error.Detailed.to_string_hum error)
   in
   try Fpath.link (Path.to_string src) (Path.to_string dst) with
-  | Unix.Unix_error (Unix.EEXIST, _, _) ->
+  | Unix.Unix_error (Unix.EEXIST, _, _) when overwrite ->
     (* CR-someday amokhov: Investigate why we need to occasionally clear the
         destination (we also do this in the symlink case above). Perhaps, the
         list of dependencies may have duplicates? If yes, it may be better to
@@ -531,5 +532,5 @@ let portable_hardlink ~src ~dst =
     (* If we can't make a new hard link because we reached the limit on the
         number of hard links per file, we fall back to copying. We expect
         that this happens very rarely (probably only for empty files). *)
-    copy_file ~overwrite:true ~src ~dst ()
+    copy_file ~overwrite ~src ~dst ()
 ;;

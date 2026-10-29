@@ -7,6 +7,9 @@ val var : Env.Var.t
 (** [cons env ~dir] adds [dir] to the start of the PATH variable in [env] *)
 val cons : ?var:Env.Var.t -> Env.t -> dir:Path.t -> Env.t
 
+(* [cons_multi env ~dirs] adds each path in [dirs] to the start of the PATH
+   variable in [env] *)
+val cons_multi : Env.t -> dirs:Path.t list -> Env.t
 val path : Env.t -> Path.t list
 
 (** [extend_env_concat_path a b] adds all variables from [b] to [a]

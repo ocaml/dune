@@ -1,4 +1,13 @@
 (rule
- (with-stdout-to
-  c_flags.sexp
-  (run %{ocaml} %{dep:gen_c_flags.ml} %{ocaml-config:ccomp_type})))
+ (deps
+  (:stdlib %{ocaml_where}))
+ (action
+  (with-stdout-to
+   c_flags.sexp
+   (run
+    %{ocaml}
+    -noinit
+    -I
+    %{stdlib}
+    %{dep:gen_c_flags.ml}
+    %{ocaml-config:ccomp_type}))))

@@ -170,3 +170,63 @@ stored in the lockdir metadata:
     (os linux)
     (arch arm))
    (unset_variables x))
+
+Automatic lock keys include polled solver values, not just workspace overrides.
+Changing only the system environment must update the solution.
+
+  $ write_solver_workspace() {
+  > cat >dune-workspace <<EOF
+  > (lang dune 3.20)
+  > (pkg enabled)
+  > (lock_dir
+  >  (repositories mock)
+  >  (solver_env $1))
+  > (repository
+  >  (name mock)
+  >  (url "file://$PWD/mock-opam-repository"))
+  > EOF
+  > }
+
+  $ cat >dune-project <<'EOF'
+  > (lang dune 3.20)
+  > EOF
+
+  $ rm -r dune.lock
+  $ mkpkg polled-env <<'EOF'
+  > depends: [
+  >   "no-deps-a" { sys-ocaml-version = "first" }
+  >   "no-deps-b" { sys-ocaml-version = "second" }
+  > ]
+  > EOF
+  $ cat >foo.opam <<'EOF'
+  > opam-version: "2.0"
+  > depends: [ "polled-env" ]
+  > EOF
+  $ write_solver_workspace ''
+
+  $ DUNE_CONFIG__SYS_OCAML_VERSION=first dune build @pkg-install
+  $ grep depends _build/_private/default/.lock/dune.lock/polled-env.pkg
+  (depends no-deps-a)
+
+  $ DUNE_CONFIG__SYS_OCAML_VERSION=second dune build @pkg-install
+  $ grep depends _build/_private/default/.lock/dune.lock/polled-env.pkg
+  (depends no-deps-b)
+
+Explicitly assigning an inherited default does not change the effective inputs
+and should reuse the cached solve.
+
+  $ write_solver_workspace '(with-doc false)'
+  $ DUNE_CONFIG__SYS_OCAML_VERSION=second dune build @pkg-install
+  $ dune trace cat | jq -s 'include "dune"; any(.[] | actionNames; . == "lock")'
+  false
+
+Changing the lock mode must regenerate the lock directory with versioned paths.
+
+  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune build @pkg-install
+  $ test -f _build/_private/default/.lock/dune.lock/polled-env.0.0.1.pkg
+
+Host variables ignored by portable solving do not invalidate that solution.
+
+  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled DUNE_CONFIG__SYS_OCAML_VERSION=third dune build @pkg-install
+  $ dune trace cat | jq -s 'include "dune"; any(.[] | actionNames; . == "lock")'
+  false

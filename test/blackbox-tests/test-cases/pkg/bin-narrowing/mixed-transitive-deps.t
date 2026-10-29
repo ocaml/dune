@@ -1,8 +1,10 @@
-A "mixed" transitive dependency chain [p] -> [q] -> [r] has one edge crossing
-the workspace/lockdir boundary. The two directions behave differently today.
+A "mixed" dependency chain [p] -> [q] -> [r] has one edge crossing the
+workspace/lockdir boundary. Only the packages listed in a package's
+[(depends ...)] are searched for binaries, so a package whose binaries are
+needed must be declared explicitly.
 
-[p] (workspace) -> [q] (workspace) -> [r] (lockdir). The [q] -> [r] edge is
-allowed, so this builds and [r-tool] resolves from [p]'s stanza.
+[p] (workspace) -> [q] (workspace) -> [r] (lockdir). [p] only lists [q], so
+[r-tool] does not resolve from [p]'s stanza.
 
   $ make_lockdir
 
@@ -30,10 +32,11 @@ A lockdir package [r] that installs [r-tool]:
   > EOF
 
   $ dune build p/r-avail
-[r-tool] is resolved since all lockdir packages binaries are available:
+
+[r] is not visible through the workspace package [q], since [p] doesn't list it:
 
   $ cat _build/default/p/r-avail
-  true
+  false
 
 Declaring [r] directly on [p] works too:
 
@@ -47,16 +50,18 @@ Declaring [r] directly on [p] works too:
   $ cat _build/default/p/r-avail
   true
 
-Both blocks above print [true] today, so the transitive-only block looks
-redundant. It earns its place only once narrowing lands.
+The first block prints [false] because [p] doesn't list [r], even though [q]
+does. The second prints [true] because [r] is listed on [p] directly. The
+workspace -> lockdir edge is narrowed like any other: only the packages [p]
+lists are searched.
 
 [p] (workspace) -> [q] (lockdir) -> [r] (workspace). Now the [q] -> [r] edge is
 a lockdir package depending on a workspace package. This is a lock-VALIDATION
 restriction, not a narrowing case: it is rejected before any binary resolution
 runs, so narrowing does not change it -- it flips only when the in-out work
 lifts the restriction (see [../lockdir-workspace-deps/basic.t] for the bare
-rejection), at which point [p] should resolve [r-tool], since [r] is then in
-[p]'s transitive closure.
+rejection). Even then, [p] would only resolve [r-tool] if it listed [r]
+directly.
 
   $ rm -rf p q r dune.lock
   $ dune clean

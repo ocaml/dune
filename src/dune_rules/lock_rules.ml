@@ -14,7 +14,6 @@ include struct
   module Package_dependency = Package_dependency
   module Opam_solver = Opam_solver
   module Pin = Pin
-  module Sys_poll = Sys_poll
   module Pkg_workspace = Pkg_workspace
   module OpamUrl = OpamUrl
   module Dev_tool = Dev_tool
@@ -26,8 +25,9 @@ module Spec = struct
     ; lock_dir : 'path
     ; packages : Local_package.t Package.Name.Map.t
     ; repos : Opam_repo.t list
-    ; solver_env_from_context : Solver_env.t
-    ; unset_solver_vars : Package_variable_name.Set.t
+    ; solver_env : Solver_env.t
+    ; platform_overlays : Solver_env.t list
+    ; portable_lock_dir : bool
     ; constraints : Package_dependency.t list
     ; selected_depopts : Package.Name.t list
     ; pins : Resolved_package.t Package.Name.Map.t
@@ -35,7 +35,7 @@ module Spec = struct
     }
 
   let name = "lock"
-  let version = 1
+  let version = 2
   let runs_process = false
   let can_run_in_action_runner = false
   let bimap t f g = { t with lock_dir = f t.lock_dir; target = g t.target }
@@ -46,8 +46,9 @@ module Spec = struct
         ; lock_dir
         ; packages
         ; repos
-        ; solver_env_from_context
-        ; unset_solver_vars
+        ; solver_env
+        ; platform_overlays
+        ; portable_lock_dir
         ; constraints
         ; selected_depopts
         ; pins
@@ -68,18 +69,10 @@ module Spec = struct
         , List
             (List.map repos ~f:(fun repo ->
                Sexp.Atom (Opam_repo.content_digest repo |> Dune_digest.to_string))) )
-      ; ( "solver_env_from_context"
-        , Atom
-            (Dune_digest.Feed.compute_digest
-               Solver_env.digest_feed
-               solver_env_from_context
-             |> Dune_digest.to_string) )
-      ; ( "unset_solver_vars"
-        , List
-            (Package_variable_name.Set.to_list unset_solver_vars
-             |> List.sort ~compare:Package_variable_name.compare
-             |> List.map ~f:(fun var -> Sexp.Atom (Package_variable_name.to_string var)))
-        )
+      ; "solver_env", Dune_lang.to_sexp (Solver_env.encode solver_env)
+      ; ( "platform_overlays"
+        , Dune_lang.to_sexp (Dune_lang.Encoder.list Solver_env.encode platform_overlays) )
+      ; "portable_lock_dir", Atom (Bool.to_string portable_lock_dir)
       ; ( "constraints"
         , List
             (List.sort constraints ~compare:(fun a b ->
@@ -123,43 +116,23 @@ module Spec = struct
         ; lock_dir = _
         ; packages
         ; repos
-        ; solver_env_from_context
-        ; unset_solver_vars
+        ; solver_env
+        ; platform_overlays
+        ; portable_lock_dir
         ; constraints
         ; selected_depopts
         ; pins
         ; version_preference
         }
         ~ectx:_
-        ~eenv:{ Action.Ext.Exec.env; _ }
+        ~eenv:_
     =
     let open Fiber.O in
     let* () = Fiber.return () in
     let local_packages = Package.Name.Map.map packages ~f:Local_package.for_solver in
-    let portable_lock_dir =
-      match Config.get Compile_time.portable_lock_dir with
-      | `Enabled -> true
-      | `Disabled -> false
-    in
-    let* solver_env =
-      let open Fiber.O in
-      let+ solver_env_from_current_system =
-        Sys_poll.make ~path:(Env_path.path env) |> Sys_poll.solver_env_from_current_system
-      in
-      Solver_env.combine
-        ~current_system:(Some solver_env_from_current_system)
-        ~context:(Some solver_env_from_context)
-        ~unset:(Some unset_solver_vars)
-    in
     let* solver_result =
-      let base_solver_env, platform_overlays =
-        Opam_solver.base_solver_env_and_platforms
-          solver_env
-          ~solve_for_platforms:Solver_env.popular_platform_envs
-          ~portable_lock_dir
-      in
       Opam_solver.solve_lock_dir
-        base_solver_env
+        solver_env
         ~platform_overlays
         version_preference
         repos
@@ -193,8 +166,9 @@ let lock_action
       ~lock_dir
       ~packages
       ~repos
-      ~solver_env_from_context
-      ~unset_solver_vars
+      ~solver_env
+      ~platform_overlays
+      ~portable_lock_dir
       ~constraints
       ~selected_depopts
       ~pins
@@ -205,8 +179,9 @@ let lock_action
     ; lock_dir
     ; packages
     ; repos
-    ; solver_env_from_context
-    ; unset_solver_vars
+    ; solver_env
+    ; platform_overlays
+    ; portable_lock_dir
     ; constraints
     ; selected_depopts
     ; pins
@@ -260,6 +235,8 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
               in
               Opam_repo.resolve_repositories ~available_repos ~repositories
               |> Memo.of_non_reproducible_fiber))
+       and+ solver_env_from_current_system =
+         Action_builder.of_memo Lock_dir.Sys_vars.solver_env
        and+ pins =
          (* CR-soon Alizter: This pin logic (extracting workspace pins,
             combining with project pins) is duplicated in bin/pkg/lock.ml. The
@@ -292,26 +269,31 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
          | Some { version_preference = None; _ } -> Version_preference.default
          | Some { version_preference = Some vp; _ } -> vp
        in
-       let solver_env_from_context =
-         match lock_dir with
-         | None -> Solver_env.with_defaults
-         | Some { solver_env = None; _ } -> Solver_env.with_defaults
-         | Some { solver_env = Some env; _ } ->
-           Solver_env.extend Solver_env.with_defaults env
+       let solver_env =
+         Solver_env.combine
+           ~current_system:(Some solver_env_from_current_system)
+           ~context:(Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env))
+           ~unset:(Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.unset_solver_vars))
        in
-       let unset_solver_vars =
-         match lock_dir with
-         | None -> Package_variable_name.Set.empty
-         | Some { unset_solver_vars = None; _ } -> Package_variable_name.Set.empty
-         | Some { unset_solver_vars = Some vars; _ } -> vars
+       let portable_lock_dir =
+         match Config.get Compile_time.portable_lock_dir with
+         | `Enabled -> true
+         | `Disabled -> false
+       in
+       let solver_env, platform_overlays =
+         Opam_solver.base_solver_env_and_platforms
+           solver_env
+           ~solve_for_platforms:Solver_env.popular_platform_envs
+           ~portable_lock_dir
        in
        lock_action
          ~target
          ~lock_dir:lock_dir_path
          ~packages
          ~repos
-         ~solver_env_from_context
-         ~unset_solver_vars
+         ~solver_env
+         ~platform_overlays
+         ~portable_lock_dir
          ~constraints
          ~selected_depopts
          ~pins

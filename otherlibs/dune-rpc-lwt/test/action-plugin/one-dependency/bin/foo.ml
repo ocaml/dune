@@ -214,6 +214,7 @@ let action dap =
   | [| _; "absolute"; path |] -> ordinary_action dap ~path:(absolute_path path)
   | [| _ |] -> ordinary_action dap ~path:"some_dependency"
   | [| _; "read"; path |] -> ordinary_action dap ~path
+  | [| _; "build"; path |] -> build_deps dap [ Dep.File path ]
   | [| _; "sandbox" |] -> sandbox_action dap
   | [| _; "detached"; state |] -> detached_sandbox_action dap state ~cancel:false
   | [| _; "cancelled"; state |] -> detached_sandbox_action dap state ~cancel:true

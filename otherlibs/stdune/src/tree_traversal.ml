@@ -1,9 +1,7 @@
-open Import
-
-let copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ?(on_symlink = `Resolve) () =
+let traverse ~src ~dst ~on_file ~mkdir ~on_unsupported ?(on_symlink = `Resolve) () =
   let handle_kind ~src ~dst kind =
     match (kind : Unix.file_kind) with
-    | S_REG -> copy_file ~src ~dst
+    | S_REG -> on_file ~src ~dst
     | S_DIR ->
       mkdir ~src ~dst;
       let relative path ~dir fname = Path.relative_fname (Path.relative path dir) fname in
@@ -13,7 +11,7 @@ let copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ?(on_symlink = `Resolve) ()
         ~on_file:(fun ~dir fname () ->
           let src = relative src ~dir fname in
           let dst = relative dst ~dir fname in
-          copy_file ~src ~dst)
+          on_file ~src ~dst)
         ~on_dir:(fun ~dir fname () ->
           let src = relative src ~dir fname in
           let dst = relative dst ~dir fname in

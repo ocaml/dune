@@ -93,3 +93,31 @@ let of_opam_file_basename basename =
 ;;
 
 let digest_feed = Dune_digest.Feed.string
+let hash_name = hash
+
+module Selection = struct
+  type t =
+    | Only of Set.t
+    | All
+
+  let to_dyn =
+    let open Dyn in
+    function
+    | Only names -> variant "only" [ Set.to_dyn names ]
+    | All -> string "all"
+  ;;
+
+  let equal a b =
+    match a, b with
+    | All, All -> true
+    | Only a, Only b -> Set.equal a b
+    | (All | Only _), _ -> false
+  ;;
+
+  (* [Set.t] is a balanced tree, so hash the sorted elements rather than the
+     representation, which two equal sets need not share. *)
+  let hash = function
+    | Only names -> List.hash hash_name (Set.to_list names)
+    | All -> Poly.hash All
+  ;;
+end

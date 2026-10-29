@@ -729,7 +729,7 @@ module Dune_config = struct
                  | exception Unix.Unix_error _ ->
                    Fd.close fdw;
                    Unix.close fdr;
-                   loop commands
+                   loop rest
                  | pid ->
                    Fd.close fdw;
                    let ic = Unix.in_channel_of_descr fdr in

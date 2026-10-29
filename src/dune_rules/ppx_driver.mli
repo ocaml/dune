@@ -23,6 +23,7 @@ val build_ppx_driver
 
 val ppx_driver_and_flags
   :  Context.t
+  -> for_:Compilation_mode.t
   -> lib_name:Lib_name.Local.t option
   -> expander:Expander.t
   -> scope:Scope.t
@@ -36,6 +37,7 @@ val ppx_exe : Context.t -> scope:Scope.t -> Lib_name.t -> Path.Build.t Resolve.M
 (** Get a path to a cached ppx driver with some extra flags for cookies. *)
 val get_ppx_driver
   :  Context.t
+  -> for_:Compilation_mode.t
   -> loc:Loc.t
   -> expander:Expander.t
   -> scope:Scope.t

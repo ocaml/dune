@@ -326,20 +326,20 @@ let resolve_symlinks_in root =
               let src = Path.relative_fname resolved child_name in
               let dst = Path.relative_fname relative child_name in
               match (child_kind : Unix.file_kind) with
-              | S_REG -> Io.portable_hardlink ~src ~dst
+              | S_REG -> Io.portable_hardlink ~overwrite:true ~src ~dst
               (* To avoid recursing here, we create symlinks will get resolved
                  one step down in [traverse]. *)
-              | S_DIR -> Io.portable_symlink ~src ~dst
+              | S_DIR -> Io.portable_symlink ~overwrite:true ~src ~dst
               | S_LNK ->
                 Fpath.follow_symlink (Path.to_string src)
                 |> Result.iter ~f:(fun linked_path ->
                   let src = Path.of_string linked_path in
-                  Io.portable_symlink ~src ~dst)
+                  Io.portable_symlink ~overwrite:true ~src ~dst)
               | _ -> ());
             (), Some Unix.S_DIR)
        | { st_kind = S_REG; _ } ->
          (* We turn file symlinks into hardlinks to be able to cache them. *)
-         Io.portable_hardlink ~src:resolved ~dst:relative;
+         Io.portable_hardlink ~overwrite:true ~src:resolved ~dst:relative;
          (), None
        | { st_kind = _; _ } ->
          (* We do not care about symlinks pointing to anything but directories

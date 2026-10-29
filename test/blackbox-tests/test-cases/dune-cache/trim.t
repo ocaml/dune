@@ -294,6 +294,24 @@ of size zero. Metadata containing only directories survives.
   $ dune cache size --machine-readable
   0
 
+A goal equal to the unused byte total does not necessarily remove every file:
+older zero-byte artifacts precede the last positive-size artifact, while newer
+zero-byte artifacts survive after the goal is met.
+
+  $ reset
+  $ mkdir -p "$cache/files/v4/00"
+  $ touch "$cache/files/v4/00/00000000000000000000000000000000"
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ printf artifact > "$cache/files/v4/00/00000000000000000000000000000001"
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ touch "$cache/files/v4/00/00000000000000000000000000000002"
+  $ dune cache trim --trimmed-size 8B
+  Freed 8B (2 files removed)
+  $ find "$cache/files" -type f | dune_cmd count-lines
+  1
+  $ dune cache trim --trimmed-size 1B
+  Freed 0B (1 files removed)
+
 Check metadata validation, repeated references, and hexadecimal case across
 all supported versions. Extra fields in the metadata header are supported.
 
@@ -414,4 +432,41 @@ Test metadata for directory targets, which are stored with no digest.
       }
     ]
   }
+
+Trim to a nonzero size counts only unused artifacts across versions and evicts
+the oldest first.
+
+  $ reset
+  $ old="$cache/files/v3/00/$key"
+  $ recent="$cache/files/v4/11/11111111111111111111111111111111"
+  $ pinned="$cache/files/v4/22/22222222222222222222222222222222"
+  $ mkdir -p "$(dirname "$old")" "$(dirname "$recent")" "$(dirname "$pinned")"
+  $ printf 1234 > "$old"
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ printf 123456 > "$recent"
+  $ printf 12345678 > "$pinned"
+  $ ln "$pinned" pinned
+  $ dune cache size --machine-readable
+  10
+
+A limit at or above the current overhead leaves artifacts alone, but still
+collects broken metadata.
+
+  $ broken="$cache/meta/v5/00/$key"
+  $ mkdir -p "$(dirname "$broken")"
+  $ printf bad > "$broken"
+  $ dune cache trim --size 12B
+  Freed 3B (1 files removed)
+  $ dune cache trim --size 10B
+  Freed 0B (0 files removed)
+  $ dune cache trim --size 6B
+  Freed 4B (1 files removed)
+  $ dune_cmd exists "$old"
+  false
+  $ dune_cmd exists "$recent"
+  true
+  $ dune cache size --machine-readable
+  6
+  $ dune_cmd stat hardlinks "$pinned"
+  2
 

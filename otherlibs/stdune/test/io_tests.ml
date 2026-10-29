@@ -89,28 +89,255 @@ let%expect_test "write_fd returns errors without closing the descriptor" =
     |}]
 ;;
 
+let with_symlink_sandbox f =
+  Temp.with_temp_dir
+    ~parent_dir:(Path.of_string (Sys.getcwd ()))
+    ~prefix:"symlink"
+    ~suffix:"test"
+    ~f:(fun dir -> f (Result.ok_exn dir))
+;;
+
 let%expect_test "portable symlink through symlinked dst dir" =
-  (let root = temp_dir ~prefix:"symlink" in
-   let src = Path.relative root "src/file" in
-   Path.mkdir_p (Path.parent_exn src);
-   Io.write_file_exn src "contents";
-   let dst =
-     let real = Path.relative root "real/deeper" in
-     let () =
-       let dst_parent = Path.relative real "self-in-path" in
-       Path.mkdir_p dst_parent
-     in
-     let link = Path.relative root "link" in
-     Unix.symlink (Path.to_string real) (Path.to_string link);
-     Path.relative link "self-in-path/dune"
-   in
-   Io.portable_symlink ~src ~dst;
-   match Io.read_file dst with
-   | Ok "contents" -> print_endline "target reachable"
-   | Ok contents -> Printf.printf "unexpected contents: %s\n" contents
-   | Error (Sys_error _ | Unix.Unix_error _) -> print_endline "target broken"
-   | Error exn -> raise exn);
-  [%expect {| target reachable |}]
+  with_symlink_sandbox (fun root ->
+    let src = Path.relative root "src/file" in
+    Path.mkdir_p (Path.parent_exn src);
+    Io.write_file_exn src "contents";
+    let dst =
+      let real = Path.relative root "real/deeper" in
+      let dst_parent = Path.relative real "self-in-path" in
+      Path.mkdir_p dst_parent;
+      let link = Path.relative root "link" in
+      Unix.symlink (Path.to_string real) (Path.to_string link);
+      Path.relative link "self-in-path/dune"
+    in
+    Io.portable_symlink ~overwrite:true ~src ~dst;
+    print_endline (Io.read_file_exn dst));
+  [%expect {| contents |}]
+;;
+
+let%expect_test "symlink destination observes changes to the source" =
+  with_symlink_sandbox (fun dir ->
+    let src = Path.relative dir "source" in
+    let dst = Path.relative dir "destination" in
+    Io.write_file_exn src "original";
+    Io.portable_symlink ~overwrite:false ~src ~dst;
+    print_endline (Io.read_file_exn dst);
+    Io.write_file_exn src "updated";
+    print_endline (Io.read_file_exn dst));
+  [%expect
+    {|
+    original
+    updated
+    |}]
+;;
+
+let%expect_test "symlink overwrite also allows a missing destination" =
+  with_symlink_sandbox (fun dir ->
+    let src = Path.relative dir "source" in
+    let dst = Path.relative dir "destination" in
+    Io.write_file_exn src "contents";
+    Io.portable_symlink ~overwrite:true ~src ~dst;
+    let { Unix.st_kind; _ } = Unix.lstat (Path.to_string dst) in
+    Printf.printf "symbolic link: %b\n" (st_kind = S_LNK);
+    print_endline (Io.read_file_exn dst));
+  [%expect
+    {|
+    symbolic link: true
+    contents
+    |}]
+;;
+
+let%expect_test "exclusive symlink rejects an identical target" =
+  with_symlink_sandbox (fun dir ->
+    let src = Path.relative dir "source" in
+    let dst = Path.relative dir "destination" in
+    Io.write_file_exn src "contents";
+    Io.portable_symlink ~overwrite:false ~src ~dst;
+    let target = Unix.readlink (Path.to_string dst) in
+    (match Io.portable_symlink ~overwrite:false ~src ~dst with
+     | () -> print_endline "unexpected success"
+     | exception Unix.Unix_error (EEXIST, _, _) -> print_endline "EEXIST");
+    Printf.printf
+      "target unchanged: %b\n"
+      (String.equal target (Unix.readlink (Path.to_string dst))));
+  [%expect
+    {|
+    EEXIST
+    target unchanged: true
+    |}]
+;;
+
+let%expect_test "exclusive symlink preserves a different target" =
+  with_symlink_sandbox (fun dir ->
+    let src = Path.relative dir "source" in
+    let other = Path.relative dir "other" in
+    let dst = Path.relative dir "destination" in
+    Io.write_file_exn src "replacement";
+    Io.write_file_exn other "original";
+    Io.portable_symlink ~overwrite:false ~src:other ~dst;
+    (match Io.portable_symlink ~overwrite:false ~src ~dst with
+     | () -> print_endline "unexpected success"
+     | exception Unix.Unix_error (EEXIST, _, _) -> print_endline "EEXIST");
+    Printf.printf "destination: %s\n" (Io.read_file_exn dst);
+    Printf.printf "source: %s\n" (Io.read_file_exn src));
+  [%expect
+    {|
+    EEXIST
+    destination: original
+    source: replacement
+    |}]
+;;
+
+let%expect_test "exclusive symlink rejects a dangling destination" =
+  with_symlink_sandbox (fun dir ->
+    let src = Path.relative dir "source" in
+    let dst = Path.relative dir "destination" in
+    Io.write_file_exn src "contents";
+    Unix.symlink "missing" (Path.to_string dst);
+    (match Io.portable_symlink ~overwrite:false ~src ~dst with
+     | () -> print_endline "unexpected success"
+     | exception Unix.Unix_error (EEXIST, _, _) -> print_endline "EEXIST");
+    print_endline (Unix.readlink (Path.to_string dst)));
+  [%expect
+    {|
+    EEXIST
+    missing
+    |}]
+;;
+
+let%expect_test "overwriting an identical symlink is a no-op" =
+  with_symlink_sandbox (fun dir ->
+    let src = Path.relative dir "source" in
+    let dst = Path.relative dir "destination" in
+    Io.write_file_exn src "contents";
+    Io.portable_symlink ~overwrite:false ~src ~dst;
+    let saved = Path.relative dir "saved" in
+    (* Pin the symlink's inode so unlinking and recreating [dst] cannot look
+       like a no-op by recycling the inode number. *)
+    Unix.link ~follow:false (Path.to_string dst) (Path.to_string saved);
+    let { Unix.st_ino = before; _ } = Unix.lstat (Path.to_string saved) in
+    Io.portable_symlink ~overwrite:true ~src ~dst;
+    let { Unix.st_ino = after; _ } = Unix.lstat (Path.to_string dst) in
+    Printf.printf "same inode: %b\n" (Int.equal before after);
+    print_endline (Io.read_file_exn dst));
+  [%expect
+    {|
+    same inode: true
+    contents
+    |}]
+;;
+
+let%expect_test "overwriting a symlink changes the link, not its referents" =
+  with_symlink_sandbox (fun dir ->
+    let src = Path.relative dir "source" in
+    let other = Path.relative dir "other" in
+    let dst = Path.relative dir "destination" in
+    Io.write_file_exn src "replacement";
+    Io.write_file_exn other "original";
+    Io.portable_symlink ~overwrite:false ~src:other ~dst;
+    let target = Unix.readlink (Path.to_string dst) in
+    Io.portable_symlink ~overwrite:true ~src ~dst;
+    Printf.printf
+      "target changed: %b\n"
+      (not (String.equal target (Unix.readlink (Path.to_string dst))));
+    Printf.printf "destination: %s\n" (Io.read_file_exn dst);
+    Printf.printf "original referent: %s\n" (Io.read_file_exn other);
+    Printf.printf "new referent: %s\n" (Io.read_file_exn src));
+  [%expect
+    {|
+    target changed: true
+    destination: replacement
+    original referent: original
+    new referent: replacement
+    |}]
+;;
+
+let%expect_test "overwriting a dangling symlink does not create its old target" =
+  with_symlink_sandbox (fun dir ->
+    let src = Path.relative dir "source" in
+    let dst = Path.relative dir "destination" in
+    let missing = Path.relative dir "missing" in
+    Io.write_file_exn src "contents";
+    Unix.symlink "missing" (Path.to_string dst);
+    Io.portable_symlink ~overwrite:true ~src ~dst;
+    print_endline (Io.read_file_exn dst);
+    Printf.printf "old target created: %b\n" (Fpath.exists (Path.to_string missing)));
+  [%expect
+    {|
+    contents
+    old target created: false
+    |}]
+;;
+
+let%expect_test "symlink overwrite does not replace a regular file" =
+  with_symlink_sandbox (fun dir ->
+    let src = Path.relative dir "source" in
+    let dst = Path.relative dir "destination" in
+    Io.write_file_exn src "source";
+    Io.write_file_exn dst "destination";
+    (match Io.portable_symlink ~overwrite:true ~src ~dst with
+     | () -> print_endline "unexpected success"
+     | exception Unix.Unix_error (EEXIST, _, _) -> print_endline "EEXIST");
+    print_endline (Io.read_file_exn dst));
+  [%expect
+    {|
+    EEXIST
+    destination
+    |}]
+;;
+
+let%expect_test "symlink overwrite preserves a directory and its contents" =
+  with_symlink_sandbox (fun dir ->
+    let src = Path.relative dir "source" in
+    let dst = Path.relative dir "destination" in
+    let marker = Path.relative dst "keep" in
+    Io.write_file_exn src "source";
+    Path.mkdir_p dst;
+    Io.write_file_exn marker "original";
+    (match Io.portable_symlink ~overwrite:true ~src ~dst with
+     | () -> print_endline "unexpected success"
+     | exception Unix.Unix_error (EEXIST, _, _) -> print_endline "EEXIST");
+    print_endline (Io.read_file_exn marker));
+  [%expect
+    {|
+    EEXIST
+    original
+    |}]
+;;
+
+let%expect_test "symlink creation does not create missing parent directories" =
+  with_symlink_sandbox (fun dir ->
+    let src = Path.relative dir "source" in
+    let parent = Path.relative dir "missing" in
+    let dst = Path.relative parent "destination" in
+    Io.write_file_exn src "source";
+    (match Io.portable_symlink ~overwrite:false ~src ~dst with
+     | () -> print_endline "unexpected success"
+     | exception Unix.Unix_error (ENOENT, _, _) -> print_endline "ENOENT");
+    Printf.printf "parent created: %b\n" (Fpath.exists (Path.to_string parent)));
+  [%expect
+    {|
+    ENOENT
+    parent created: false
+    |}]
+;;
+
+let%expect_test "symlink overwrite propagates a non-directory parent error" =
+  with_symlink_sandbox (fun dir ->
+    let src = Path.relative dir "source" in
+    let parent = Path.relative dir "parent" in
+    let dst = Path.relative parent "destination" in
+    Io.write_file_exn src "source";
+    Io.write_file_exn parent "original";
+    (match Io.portable_symlink ~overwrite:true ~src ~dst with
+     | () -> print_endline "unexpected success"
+     | exception Unix.Unix_error (ENOTDIR, _, _) -> print_endline "ENOTDIR");
+    print_endline (Io.read_file_exn parent));
+  [%expect
+    {|
+    ENOTDIR
+    original
+    |}]
 ;;
 
 let temp_dir () = temp_dir ~prefix:"copyfile"

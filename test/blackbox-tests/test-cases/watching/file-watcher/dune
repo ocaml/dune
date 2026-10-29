@@ -3,7 +3,7 @@
  (deps %{bin:strace}))
 
 (cram
- (applies_to sync-overflow.t)
+ (applies_to sync-overflow.t sync-timeout.t)
  (enabled_if
   (= %{system} linux))
  (deps %{bin:strace} %{bin:od}))

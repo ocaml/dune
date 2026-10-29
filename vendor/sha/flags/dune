@@ -1,5 +1,7 @@
 (rule
- (with-stdout-to
-  c_flags.sexp
-  (run %{ocaml} %{dep:c_flags.ml})))
-
+ (deps
+  (:stdlib %{ocaml_where}))
+ (action
+  (with-stdout-to
+   c_flags.sexp
+   (run %{ocaml} -noinit -I %{stdlib} %{dep:c_flags.ml}))))

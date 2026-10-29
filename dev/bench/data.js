@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793249585684,
+  "lastUpdate": 1793249593055,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -478614,6 +478614,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 63.48052024064,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4e5bbe74936148f6cb268ec407535056a30da469",
+          "message": "feat(ppx): add a compilation-mode cookie (#16699)\n\nPass the OCaml or Melange target to PPX rewriters through a\n`compilation-mode` cookie for `(lang dune 3.26)` and later.\n\nRelated to #16666.\n\n01a1505e-b5cd-7cc2-828d-c113fa04a556\n\n---------\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-28T21:34:14-07:00",
+          "tree_id": "a86025ef92094026ae70ec7b9b2af9bcbc8f88e1",
+          "url": "https://github.com/ocaml/dune/commit/4e5bbe74936148f6cb268ec407535056a30da469"
+        },
+        "date": 1793249592211,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5324897479200001,
             "unit": "seconds"
           }
         ]

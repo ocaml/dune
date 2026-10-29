@@ -63,15 +63,9 @@ to the workspace package.
   > (depends myws dune)
   > (build
   >  (progn
-  >   (with-stdout-to dune-version (run dune --version))
+  >   (run dune --version)
   >   (run echo "building mylock with the running dune")))
   > EOF
-  $ dune build @check
-  Error: Dependency cycle between packages:
-     dune
-  -> mylock
-  -> dune
-  -> required by _build/default/.lockfile/pkg/mylock/.opam/mylock/target
-  -> required by _build/default/out
-  -> required by alias check
-  [1]
+  $ dune build @check >build-output 2>&1
+  $ grep '^building mylock' build-output
+  building mylock with the running dune

@@ -116,9 +116,7 @@ let materialize_dependencies context owner =
            recorded
        in
        let provided name = Package.Name.Map.mem versions name in
-       let system_dune name =
-         Package.Name.equal name Dune_pkg.Dune_dep.name && not (provided name)
-       in
+       let system_dune name = Package.Name.equal name Dune_pkg.Dune_dep.name in
        let dependencies name =
          match Package.Name.Map.find workspace name with
          | Some package ->

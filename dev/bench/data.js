@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793292333426,
+  "lastUpdate": 1793293784402,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -665984,6 +665984,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.2410164555333334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "544dcfcd067942ee4c80273c7919c01752bd270c",
+          "message": "refactor(stdune): handle symlink collisions using EEXIST (#16830)\n\nTry symlink creation first and handle `EEXIST` only when overwriting is\nallowed. Preserve the existing overwrite policy.\n\nFollow-up to merged #16828.",
+          "timestamp": "2026-10-29T17:56:02+01:00",
+          "tree_id": "0f57706bde48873bf2211f23d4e55a2251971a1c",
+          "url": "https://github.com/ocaml/dune/commit/544dcfcd067942ee4c80273c7919c01752bd270c"
+        },
+        "date": 1793293391809,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.9348643793133333,
             "unit": "seconds"
           }
         ]

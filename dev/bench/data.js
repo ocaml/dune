@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793301356072,
+  "lastUpdate": 1793314783704,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -666245,6 +666245,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.7862646411200003,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "da93d31c094515a83ce015402b400026bce19a00",
+          "message": "test(merlin): cover hidden transitive private-module aliases (#16848)\n\nSplit out from #16629 as requested in\nhttps://github.com/ocaml/dune/pull/16629#issuecomment-6426303050.\n\nExtends the existing #16531 reproduction to hidden transitive\ndependencies. The test records the missing hidden CMI path, demonstrates\nthat adding it with `-H` restores alias typing, and checks that direct\nprivate-module and hidden-dependency names remain inaccessible. No\nproduction code changes.\n\nValidation: `dune build @check @fmt @runtest` passed locally with OCaml\n5.5.0 and ppxlib 0.39.0. A real Merlin smoke check confirmed that this\ntests-only branch preserves the reported alias error.\n\nIntended to land before the fix in #16629. Tests only; no changelog\nentry is needed. Please apply the `no changelog` label.",
+          "timestamp": "2026-10-29T23:48:41+01:00",
+          "tree_id": "d73ca16587af0fb5735486da7c3a150ce55a4263",
+          "url": "https://github.com/ocaml/dune/commit/da93d31c094515a83ce015402b400026bce19a00"
+        },
+        "date": 1793314473184,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.2599868625466666,
             "unit": "seconds"
           }
         ]

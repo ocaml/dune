@@ -77,3 +77,6 @@ val supports_cmi_file : t -> bool
 
 (** Whether the compiler supports the [-bytecode-hints] flag *)
 val supports_bytecode_hints : t -> bool
+
+(** Whether ocamldep supports the [-strict] flag *)
+val supports_ocamldep_strict : t -> bool

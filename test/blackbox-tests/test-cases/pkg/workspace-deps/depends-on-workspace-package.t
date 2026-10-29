@@ -69,3 +69,37 @@ to the workspace package.
   $ dune build @check >build-output 2>&1
   $ grep '^building mylock' build-output
   building mylock with the running dune
+
+The same tool dependency must not expose workspace development dependencies
+when resolving the libraries of a mounted package.
+
+  $ mkdir _native
+  $ cat > _native/dune-project <<'EOF'
+  > (lang dune 3.26)
+  > (package (name native))
+  > EOF
+  $ cat > _native/dune <<'EOF'
+  > (library
+  >  (public_name native)
+  >  (libraries compiler-libs.common))
+  > EOF
+  $ echo 'let value = 1' > _native/native.ml
+  $ make_lockpkg native <<EOF
+  > (version 1.0)
+  > (depends dune)
+  > (source (copy $PWD/_native))
+  > (build (run false))
+  > EOF
+  $ make_lockpkg mylock <<'EOF'
+  > (version 0.0.1)
+  > (depends myws native dune)
+  > (build (run echo "building mylock with native"))
+  > EOF
+  $ build_pkg mylock 2>&1 | censor
+  Error: Dependency cycle between:
+     _build/install/default/.packages/$DIGEST/lib/native/META
+  -> _build/default/.lockfile/pkg/mylock/.opam/mylock/target/cookie
+  -> library "native" in _build/default/.lockfile/pkg/native
+  -> _build/install/default/.packages/$DIGEST/lib/native/META
+  -> required by _build/default/.lockfile/pkg/mylock/.opam/mylock/target
+  [1]

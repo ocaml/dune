@@ -49,9 +49,8 @@ Show the build and annotation paths Dune gives Merlin for the dependency.
   B $TESTCASE_ROOT/_build/default/lib/.dep.objs/public_cmi
   CMT $TESTCASE_ROOT/_build/default/lib/.dep.objs/byte
 
-Compilers with hidden includes can type a public alias of a private module.
-BUG (#16531): replaying Merlin's B/BH paths fails because the hidden CMI path
-is missing. Adding -H restores typing without exposing the private module.
+Compilers with hidden includes can type a public alias of a private module
+using only Merlin's B/BH paths, without exposing the private module (#16531).
 
   $ if ocamlc -H . -version > /dev/null 2>&1; then
   >   printf '\nmodule P = Private\n' >> lib/api.ml &&
@@ -65,18 +64,14 @@ is missing. Adding -H restores typing without exposing the private module.
   >      | select(.[0] == "B" or .[0] == "BH")
   >      | [(if .[0] == "B" then "-I" else "-H" end), .[1]]]
   >     | unique[] | .[]' merlin.json > includes &&
-  >   ! ocamlc -color never -args includes -c exe/main.ml > errors 2>&1 &&
-  >   ocamlc -color never -args includes \
-  >     -H "$PWD/_build/default/lib/.dep.objs/byte" -c exe/main.ml &&
+  >   ocamlc -color never -args includes -c exe/main.ml &&
   >   printf 'let answer = Dep__Private.answer\n' > exe/main.ml &&
-  >   ! ocamlc -color never -args includes \
-  >     -H "$PWD/_build/default/lib/.dep.objs/byte" \
-  >     -c exe/main.ml > errors 2>&1
+  >   ! ocamlc -color never -args includes -c exe/main.ml > errors 2>&1
   > fi
 
-A hidden transitive dependency has the same missing hidden CMI path. Adding
-that path restores alias typing without exposing either the dependency or its
-private module.
+The same alias works when the library is a hidden transitive dependency.
+Its byte directory must still supply hidden CMIs and navigation annotations,
+but neither the dependency nor its private module can be named directly.
 
   $ if ocamlc -H . -version > /dev/null 2>&1; then
   >   printf '\n(implicit_transitive_deps false)\n' >> dune-project &&
@@ -101,13 +96,9 @@ private module.
   >      | select(.[0] == "B" or .[0] == "BH")
   >      | [(if .[0] == "B" then "-I" else "-H" end), .[1]]]
   >     | unique[] | .[]' merlin.json > includes &&
-  >   ! ocamlc -color never -args includes -c exe/main.ml > errors 2>&1 &&
-  >   ocamlc -color never -args includes \
-  >     -H "$PWD/_build/default/lib/.dep.objs/byte" -c exe/main.ml &&
+  >   ocamlc -color never -args includes -c exe/main.ml &&
   >   printf 'let answer = Dep.Api.answer\n' > exe/main.ml &&
-  >   ! ocamlc -color never -args includes \
-  >     -H "$PWD/_build/default/lib/.dep.objs/byte" -c exe/main.ml > errors 2>&1 &&
+  >   ! ocamlc -color never -args includes -c exe/main.ml > errors 2>&1 &&
   >   printf 'let answer = Dep__Private.answer\n' > exe/main.ml &&
-  >   ! ocamlc -color never -args includes \
-  >     -H "$PWD/_build/default/lib/.dep.objs/byte" -c exe/main.ml > errors 2>&1
+  >   ! ocamlc -color never -args includes -c exe/main.ml > errors 2>&1
   > fi

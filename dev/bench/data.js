@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793243373381,
+  "lastUpdate": 1793243381508,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -478498,6 +478498,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 67.08139457722,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "99f6fa909b16ff4b71fdb16d33fddc826c63896e",
+          "message": "test(ppx): cover lint cookies for OCaml and Melange (#16785)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-28T19:49:27-07:00",
+          "tree_id": "0a448c509385047a2a0608fa6a72bffc81ede085",
+          "url": "https://github.com/ocaml/dune/commit/99f6fa909b16ff4b71fdb16d33fddc826c63896e"
+        },
+        "date": 1793243380250,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5942370919266667,
             "unit": "seconds"
           }
         ]

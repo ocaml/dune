@@ -4,7 +4,31 @@ module Fs_memo_event = Scheduler_event.Fs_memo_event
 module Event = Scheduler_event.File_watcher_event
 
 module Sync = struct
-  module Id = Id.Make ()
+  module Id : sig
+    type t
+
+    val hash : t -> int
+    val equal : t -> t -> bool
+    val to_dyn : t -> Dyn.t
+    val gen : unit -> t
+    val of_string : string -> t option
+    val to_filename : t -> Filename.t
+    val to_int : t -> int
+  end = struct
+    include Int
+    module Generator = Stdune.Id.Make ()
+
+    let gen () = Generator.to_int (Generator.gen ())
+    let to_int t = t
+
+    let of_string s =
+      match Int.of_string s with
+      | Some t when String.equal (Int.to_string t) s -> Some t
+      | _ -> None
+    ;;
+
+    let to_filename x = Filename.of_string_exn (Int.to_string x)
+  end
 
   type t =
     { id : Id.t
@@ -14,26 +38,29 @@ module Sync = struct
   let special_dir_path = lazy (Path.Build.relative Path.Build.root ".sync")
   let special_dir = lazy (Lazy.force special_dir_path |> Path.Build.to_string)
 
+  let sync_path id =
+    Filename.concat (Lazy.force special_dir) (Filename.to_string (Id.to_filename id))
+  ;;
+
   module Table = struct
     type nonrec t =
-      { table : (string, t) Table.t
+      { table : (Id.t, t) Table.t
       ; mutex : Mutex.t
       }
 
-    let create () = { table = Table.create (module String) 64; mutex = Mutex.create () }
+    let create () = { table = Table.create (module Id) 64; mutex = Mutex.create () }
 
     let create_sync_file_locked t ivar =
       let id = Id.gen () in
       let sync = { id; ivar } in
-      let fn = Id.to_int id |> string_of_int in
-      let path = Filename.concat (Lazy.force special_dir) fn in
-      Table.set t.table fn sync;
+      let path = sync_path id in
+      Table.set t.table id sync;
       match
         Unix.close (Unix.openfile path [ O_WRONLY; O_CREAT; O_TRUNC; O_CLOEXEC ] 0o666)
       with
       | () -> ()
       | exception exn ->
-        Table.remove t.table fn;
+        Table.remove t.table id;
         Exn.reraise exn
     ;;
 
@@ -42,23 +69,25 @@ module Sync = struct
     ;;
 
     let consume_event t path =
-      Mutex.protect t.mutex (fun () ->
-        let basename = Filename.basename path in
-        match Table.find t.table basename with
-        | None -> None
-        | Some sync ->
-          Fpath.unlink_no_err path;
-          Table.remove t.table basename;
-          Some sync)
+      match Id.of_string (Filename.basename path) with
+      | None -> None
+      | Some id ->
+        Mutex.protect t.mutex (fun () ->
+          match Table.find t.table id with
+          | None -> None
+          | Some sync ->
+            Fpath.unlink_no_err path;
+            Table.remove t.table id;
+            Some sync)
     ;;
 
     let retry_all t =
       Mutex.protect t.mutex (fun () ->
         Table.to_list t.table
-        |> List.iter ~f:(fun (fn, { ivar; _ }) ->
+        |> List.iter ~f:(fun (id, { ivar; _ }) ->
           create_sync_file_locked t ivar;
-          Table.remove t.table fn;
-          Fpath.unlink_no_err (Filename.concat (Lazy.force special_dir) fn)))
+          Table.remove t.table id;
+          Fpath.unlink_no_err (sync_path id)))
     ;;
   end
 

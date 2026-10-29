@@ -890,7 +890,7 @@ module Unprocessed = struct
     | _ -> Action_builder.return None
   ;;
 
-  let pp_flags ctx ~expander lib_name preprocess
+  let pp_flags ctx ~for_ ~expander lib_name preprocess
     : Processed.pp_flag option Action_builder.t
     =
     match preprocess with
@@ -908,7 +908,7 @@ module Unprocessed = struct
            let* scope =
              Expander.dir expander |> Scope.DB.find_by_dir |> Action_builder.of_memo
            in
-           Ppx_driver.get_ppx_driver ctx ~loc ~expander ~lib_name ~flags ~scope pps
+           Ppx_driver.get_ppx_driver ctx ~for_ ~loc ~expander ~lib_name ~flags ~scope pps
          in
          let args = encode_command ~bin:(Path.build exe) ~args:("--as-ppx" :: flags) in
          Some { Processed.flag = Processed.Pp_kind.Ppx; args })
@@ -958,7 +958,7 @@ module Unprocessed = struct
   let pp_config t ctx ~expander =
     Per_item_action_builder.map
       t.config.preprocess
-      ~f:(pp_flags ctx ~expander t.config.libname)
+      ~f:(pp_flags ctx ~for_:t.config.for_ ~expander t.config.libname)
   ;;
 
   let add_lib_dirs sctx ~for_ libs =

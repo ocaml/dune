@@ -35,7 +35,7 @@
 (cram
  (deps
   (package ppxlib))
- (applies_to ppx-cookies.t))
+ (applies_to ppx-compilation-mode.t ppx-cookies.t))
 
 (cram
  (deps

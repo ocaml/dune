@@ -182,22 +182,28 @@ let fire_request
     request_exn client request arg)
 ;;
 
+let progress_status ~complete ~remaining ~failed ~running_jobs =
+  let total = complete + remaining in
+  sprintf
+    "Done: %d%% (%d/%d, %d left%s) (jobs: %d)"
+    (if total = 0 then 0 else complete * 100 / total)
+    complete
+    total
+    remaining
+    (if failed = 0 then "" else sprintf ", %d failed" failed)
+    running_jobs
+;;
+
 let pp_progress_status : Dune_rpc.Progress.t -> _ Pp.t = function
   | Failed | Success | Waiting -> Pp.nop
-  | In_progress { complete; remaining; failed; goals } ->
-    let total = complete + remaining in
+  | In_progress { complete; remaining; failed; running_jobs; goals } ->
     Pp.verbatim
-      (sprintf
-         "Done: %d%% (%d/%d, %d left%s)%s"
-         (if total = 0 then 0 else complete * 100 / total)
-         complete
-         total
-         remaining
-         (if failed = 0 then "" else sprintf ", %d failed" failed)
-         (match goals with
-          | 0 | 1 -> ""
-          | 2 -> " | shared with 1 other build"
-          | _ -> sprintf " | shared with %d other builds" (goals - 1)))
+      (progress_status ~complete ~remaining ~failed ~running_jobs
+       ^
+       match goals with
+       | 0 | 1 -> ""
+       | 2 -> " | shared with 1 other build"
+       | _ -> sprintf " | shared with %d other builds" (goals - 1))
   | Interrupted -> Pp.verbatim "Restarting current build..."
 ;;
 

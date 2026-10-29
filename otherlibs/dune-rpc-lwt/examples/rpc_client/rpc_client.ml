@@ -39,7 +39,8 @@ let () =
          | Some Success -> "Success"
          | Some Failed -> "Failed"
          | Some Interrupted -> "Interrupted"
-         | Some (In_progress { complete; remaining; failed; goals = _ }) ->
+         | Some (In_progress { complete; remaining; failed; running_jobs = _; goals = _ })
+           ->
            Printf.sprintf
              "In_progress { complete = %d;  remaining = %d;  failed = %d }"
              complete

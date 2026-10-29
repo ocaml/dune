@@ -41,6 +41,7 @@
   base-threads
   (lwt (and :with-test (<> :os win32)))
   (cinaps :with-test)
+  (core_bench (and :with-test (<> :os win32)))
   (csexp (and :with-test (>= 1.3.0)))
   (js_of_ocaml (and :with-test (>= 6.4) (<> :os win32)))
   (js_of_ocaml-compiler (and :with-test (>= 6.4) (<> :os win32)))
@@ -48,6 +49,7 @@
   (menhir (and :with-test (<> :os win32)))
   (ocamlfind (and :with-test (<> :os win32)))
   (odoc (and :with-test (>= 3.2.0) (<> :os win32)))
+  (ppx_bench (and :with-test (<> :os win32)))
   (ppx_expect (and :with-test (>= v0.17) (<> :os win32)))
   (ppx_optcomp :with-test)
   (spawn :with-test)

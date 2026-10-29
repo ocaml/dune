@@ -187,6 +187,7 @@ module Progress : sig
         { complete : int
         ; remaining : int
         ; failed : int
+        ; goals : int
         }
     | Failed
     | Interrupted

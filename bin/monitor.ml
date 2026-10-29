@@ -95,7 +95,7 @@ end = struct
          (fun () ->
            match (state.progress : Progress.t) with
            | Waiting -> Pp.verbatim "Initializing..."
-           | In_progress { complete; remaining; failed } ->
+           | In_progress { complete; remaining; failed; goals = _ } ->
              done_status ~complete ~remaining ~failed state
            | Interrupted -> Pp.verbatim "Restarting current build..."
            | Success ->

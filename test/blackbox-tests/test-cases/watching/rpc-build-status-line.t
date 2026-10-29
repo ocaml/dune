@@ -74,6 +74,47 @@ Forwarded builds display the progress of the build running on the server.
   $ touch "$RELEASE"
   $ wait "$PROGRESS_PID"
 
+When the server builds the requests of several clients at once, forwarded
+builds report that the progress is shared with other builds.
+
+  $ A_STARTED="$PWD/shared-a-started"
+  $ RELEASE="$PWD/shared-release"
+  $ cat > dune <<EOF
+  > (rule
+  >  (target shared-a)
+  >  (action
+  >   (progn
+  >    (system "touch '$A_STARTED'; while test ! -f '$RELEASE'; do sleep 0.1; done")
+  >    (write-file %{target} ok))))
+  > (rule
+  >  (target shared-b)
+  >  (action
+  >   (progn
+  >    (system "while test ! -f '$RELEASE'; do sleep 0.1; done")
+  >    (write-file %{target} ok))))
+  > EOF
+
+  $ INSIDE_EMACS=1 DUNE_CONFIG__THREADED_CONSOLE=disabled \
+  >   dune build --display progress shared-a > shared-a-output 2>&1 &
+  $ A_PID=$!
+  $ with_timeout dune_cmd wait-for-file-to-appear "$A_STARTED"
+  $ INSIDE_EMACS=1 DUNE_CONFIG__THREADED_CONSOLE=disabled \
+  >   dune build --display progress shared-b > shared-b-output 2>&1 &
+  $ B_PID=$!
+  $ i=200
+  $ while [ "$i" != 0 ]; do
+  >   tr '\r' '\n' < shared-b-output | grep -a "shared with" >/dev/null && break
+  >   i=$((i - 1))
+  >   sleep 0.01
+  > done
+  $ tr '\r' '\n' < shared-b-output \
+  > | grep -a -o "left) | shared with [0-9]* other builds*" \
+  > | sort -u
+  left) | shared with 1 other build
+  $ touch "$RELEASE"
+  $ wait "$A_PID"
+  $ wait "$B_PID"
+
   $ stop_dune_quiet
 
 Batch builds display the build duration and parallelism alongside the client

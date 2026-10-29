@@ -18,6 +18,11 @@ val submit_rpc_request
   -> build:unit Action_builder.t
   -> Build_outcome.t Fiber.t
 
+(** [goals_count t] is the number of goals in the build currently of [t], if any.
+
+    The watch mode sticky goal is counted if it is part of the build. *)
+val goals_count : t -> int
+
 val cancel_rpc_requests_by_session
   :  t
   -> session_id:Rpc.Server.Session.Id.t

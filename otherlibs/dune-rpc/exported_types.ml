@@ -588,6 +588,7 @@ module Progress = struct
         { complete : int
         ; remaining : int
         ; failed : int
+        ; goals : int
         }
     | Failed
     | Interrupted
@@ -601,10 +602,12 @@ module Progress = struct
       let complete = field "complete" (required int) in
       let remaining = field "remaining" (required int) in
       let failed = field "failed" (required int) in
+      let goals = field "goals" (required int) in
       constr
         "in_progress"
-        (record (three complete remaining failed))
-        (fun (complete, remaining, failed) -> In_progress { complete; remaining; failed })
+        (record (four complete remaining failed goals))
+        (fun (complete, remaining, failed, goals) ->
+           In_progress { complete; remaining; failed; goals })
     in
     let interrupted = constr "interrupted" unit (fun () -> Interrupted) in
     let success = constr "success" unit (fun () -> Success) in
@@ -614,8 +617,8 @@ module Progress = struct
     in
     let serialize = function
       | Waiting -> case () waiting
-      | In_progress { complete; remaining; failed } ->
-        case (complete, remaining, failed) in_progress
+      | In_progress { complete; remaining; failed; goals } ->
+        case (complete, remaining, failed, goals) in_progress
       | Failed -> case () failed
       | Interrupted -> case () interrupted
       | Success -> case () success

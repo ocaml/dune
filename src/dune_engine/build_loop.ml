@@ -414,6 +414,12 @@ let cancel_rpc_requests_by_session t ~session_id =
 
 let cancel_all_rpc_requests t = cancel_rpc_requests t ~f:(fun _ _ -> true)
 
+let goals_count t =
+  match t.current_request with
+  | None -> 0
+  | Some request -> Build_system.Request.number_of_goals request
+;;
+
 let submit_rpc_request t ~session_id ~request_id ~build =
   let request = Build_system.Request.Goal.create build in
   let id = Rpc_request_id.create ~session_id ~request_id in

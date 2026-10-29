@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793283185062,
+  "lastUpdate": 1793283512893,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -478701,6 +478701,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.44305888548,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5cc67dd3ce7db99da2559a76261d37a1de891e0d",
+          "message": "test: harden RPC and watcher tests against slow runners (#16812)\n\nAvoid treating slow CI runners as RPC or watcher failures:\n\n- Let the RPC test's thirty-second session deadline own the watch\nserver, instead of killing it after three seconds regardless of client\nprogress.\n- Normalize diagnostic IDs per subscription while preserving distinct\nIDs and matching `Add`/`Remove` events.\n- Give Cram helper commands and the signal-watcher stress scenario\nten-second safety deadlines, without changing their success, shutdown,\nor output assertions.\n\nThe premature server kill was reproduced on Linux with a temporary\ndelayed-client experiment. The committed suite adds no fixed waits; the\ncheap ID tests check identity across batches and independent\nsubscriptions.\n\nTest-only changes, based directly on `main` and independent of #16747.\nmacOS CI still needs to confirm the effect on the reported flakes.",
+          "timestamp": "2026-10-29T21:59:41+08:00",
+          "tree_id": "7101b62095d41f685a01b11a7b9c8bb5e8f5a37e",
+          "url": "https://github.com/ocaml/dune/commit/5cc67dd3ce7db99da2559a76261d37a1de891e0d"
+        },
+        "date": 1793283511569,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 63.75633505012001,
             "unit": "seconds"
           }
         ]

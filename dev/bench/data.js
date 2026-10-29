@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793249379658,
+  "lastUpdate": 1793249386578,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -478556,6 +478556,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 53.046250616186676,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9fe05c1f169faead6e49f22f09034f5a863222ae",
+          "message": "test(melange): reproduce staged PPX emission dependencies (#16844)\n\nReproduce missing staged PPX dependencies during Melange JavaScript\nemission, including generated preprocessing inputs.\n\nSplit from #16843; merge this regression before the fix in #16843.\nExtends #16786.\n\n01a1505e-b5cd-7cc2-828d-c113fa04a556\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-28T21:33:40-07:00",
+          "tree_id": "466f9315c969c22d2660fde4d0d968a29ad69557",
+          "url": "https://github.com/ocaml/dune/commit/9fe05c1f169faead6e49f22f09034f5a863222ae"
+        },
+        "date": 1793249385652,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.47843908272,
             "unit": "seconds"
           }
         ]

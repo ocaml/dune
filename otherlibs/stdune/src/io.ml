@@ -486,18 +486,16 @@ let portable_symlink ~overwrite ~src ~dst =
          | _ -> Path.reach ~from src)
     in
     let dst = Path.to_string dst in
-    if overwrite
-    then (
-      match Unix.readlink dst with
-      | target ->
-        if target <> src
-        then (
-          (* @@DRA Win32 remove read-only attribute needed when symlinking
-           enabled *)
-          Unix.unlink dst;
-          Unix.symlink src dst)
-      | exception Unix.Unix_error _ -> Unix.symlink src dst)
-    else Unix.symlink src dst)
+    try Unix.symlink src dst with
+    | Unix.Unix_error (Unix.EEXIST, _, _) as exn when overwrite ->
+      (match Unix.readlink dst with
+       | exception Unix.Unix_error _ -> raise exn
+       | target when target = src -> ()
+       | _ ->
+         (* @@DRA Win32 remove read-only attribute needed when symlinking
+            enabled *)
+         Unix.unlink dst;
+         Unix.symlink src dst))
 ;;
 
 let portable_hardlink ~overwrite ~src ~dst =

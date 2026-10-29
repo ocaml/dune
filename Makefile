@@ -68,7 +68,7 @@ install-ocamlformat:
 
 .PHONY: dev-deps
 dev-deps:
-	opam install -y . --deps-only --with-dev-setup
+	opam install -y . --deps-only --with-test --with-dev-setup
 
 .PHONY: dev-deps-sans-melange
 dev-deps-sans-melange: dev-deps

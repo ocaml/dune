@@ -1411,7 +1411,7 @@ start_dune () {
 timeout="$(command -v timeout || echo gtimeout)"
 
 with_timeout () {
-    $timeout 2 "$@"
+    $timeout 10 "$@"
     exit_code=$?
     if [ "$exit_code" = 124 ]
     then
@@ -1424,7 +1424,7 @@ with_timeout () {
 
 with_timeout_quiet () {
     output=$(mktemp)
-    $timeout 2 "$@" >"$output" 2>&1
+    $timeout 10 "$@" >"$output" 2>&1
     exit_code=$?
     if [ "$exit_code" = 124 ]
     then

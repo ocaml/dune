@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793301018734,
+  "lastUpdate": 1793301348835,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -478991,6 +478991,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4748790559800001,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2c7fe989c9bf7dd18091fda6e24f04c14879bd89",
+          "message": "ocamldep: pass -strict to ocamldep for OCaml >= 5.7 (#16815)\n\nTraditionally `ocamldep` ignored non-existent files passed in the\ncommand-line. This can sometimes mask errors. In OCaml 5.7, `ocamldep`\nwill accept a `-strict` flag ocaml/ocaml#15167 that will make it exit\nwith a non-zero code if any error occurs (including non-existent failes\npassed in the command-line).\n\nThis PR makes it so that Dune passes this flag if the OCaml veresion is\n>= 5.7.\n\nRelated to #16532",
+          "timestamp": "2026-10-29T19:56:51+01:00",
+          "tree_id": "3f88995162366ca0ca12ce6573ae71eb83334bbc",
+          "url": "https://github.com/ocaml/dune/commit/2c7fe989c9bf7dd18091fda6e24f04c14879bd89"
+        },
+        "date": 1793301347302,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 63.88138707712667,
             "unit": "seconds"
           }
         ]

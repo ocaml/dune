@@ -115,6 +115,13 @@ let enabled_stanzas =
          let open Memo.O in
          let ctx = Super_context.context sctx in
          let* dune_files = Dune_load.dune_files (Context.name ctx) in
+         let dune_files =
+           List.filter dune_files ~f:(fun dune_file ->
+             let project = Dune_file.loaded_dir dune_file |> Loaded_dir.project in
+             match Build_partition.purpose (Loaded_project.partition project) with
+             | Workspace -> true
+             | Mounted -> false)
+         in
          Dune_file.fold_static_stanzas dune_files ~init:[] ~f:(fun dune_file stanza acc ->
            let enabled_if =
              match Stanza.repr stanza with

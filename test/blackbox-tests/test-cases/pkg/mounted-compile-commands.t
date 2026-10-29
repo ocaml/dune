@@ -47,14 +47,50 @@ Building the application succeeds without the dependency's test requirements.
   $ _build/default/main.exe
   dependency builds
 
-But @check generates compile_commands.json by resolving the foreign test
-library from the mounted dependency as well.
+@check generates the workspace database without resolving the mounted tests.
 
   $ dune build @check
-  File "_build/default/.lockfile/pkg/dep/tests/dune", line 4, characters 16-39:
-  Error: Library "missing_test_dependency" not found.
-  -> required by library "test_bindings" in
-     _build/default/.lockfile/pkg/dep/tests
-  -> required by _build/default/compile_commands.json
-  -> required by alias check
+  $ jq '[.[].file]' compile_commands.json
+  [
+    "app_stubs.c"
+  ]
+
+Authored vendored projects are still part of the workspace database.
+
+  $ echo '(vendored_dirs vendor)' >> dune
+  $ mkdir vendor
+  $ echo '(lang dune 3.26)' > vendor/dune-project
+  $ cat > vendor/dune <<'EOF'
+  > (library
+  >  (name vendored)
+  >  (foreign_stubs (language c) (names vendor_stubs)))
+  > EOF
+  $ echo 'let value = 1' > vendor/vendored.ml
+  $ echo 'void vendor_stub(void) {}' > vendor/vendor_stubs.c
+  $ dune build @compile_commands
+  $ jq '[.[].file] | sort' compile_commands.json
+  [
+    "app_stubs.c",
+    "vendor_stubs.c"
+  ]
+
+Missing dependencies in authored foreign libraries must still be reported.
+
+  $ mkdir broken
+  $ cat > broken/dune <<'EOF'
+  > (library
+  >  (name broken)
+  >  (foreign_stubs (language c) (names broken_stubs))
+  >  (libraries missing_workspace_dependency))
+  > EOF
+  $ echo 'let value = 1' > broken/broken.ml
+  $ echo 'void broken_stub(void) {}' > broken/broken_stubs.c
+  $ dune build @compile_commands
+  File "broken/dune", line 4, characters 12-40:
+  4 |  (libraries missing_workspace_dependency))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Library "missing_workspace_dependency" not found.
+  -> required by library "broken" in _build/default/broken
+  -> required by _build/default/.dune/compile_commands.json
+  -> required by alias compile_commands
   [1]

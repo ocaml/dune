@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793281936108,
+  "lastUpdate": 1793281942762,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -478672,6 +478672,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 47.14613793078001,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "831b6ca60d625d023c36ccc0c03bc26a87557d18",
+          "message": "fix(rocq): Add missing plugin paths to generated _RocqProject file (#16557)\n\n<!-- Thank you for contributing to dune!\n\n For general guidelines on contributing to dune, see\nhttps://github.com/ocaml/dune/blob/main/CONTRIBUTING.md#developing-dune\n-->\n\n## Description\n<!-- Briefly describe your changes -->\n\nI had to change the test case slightly because the successful `rocq\ncompile` command generates a `.vo` file that conflicts with the one in\n`_build`.\n\n## Related Issue and Motivation\n<!-- Why is this change required? What problem does it solve? -->\n<!-- If it closes an open issue, link to the issue here. -->\n<!-- Non-trivial contributions are expected to be preceded by an issue,\nas\n     per CONTRIBUTING.md. -->\n\nFixes #16555 \n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [ ] Documentation added for any user-facing changes.",
+          "timestamp": "2026-10-29T14:38:56+01:00",
+          "tree_id": "b2c1c6906b78d0a6dccc8554b5d981eb1fda5319",
+          "url": "https://github.com/ocaml/dune/commit/831b6ca60d625d023c36ccc0c03bc26a87557d18"
+        },
+        "date": 1793281941757,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.44305888548,
             "unit": "seconds"
           }
         ]

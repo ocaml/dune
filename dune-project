@@ -119,7 +119,9 @@ Among other things, dune-configurator allows one to:
  (name dune-site)
  (dir otherlibs/dune-site)
  (synopsis "Embed locations information inside executable and libraries")
- (depends (dune-private-libs (= :version)))
+ (depends
+  (dune-private-libs (= :version))
+  (dune-build-info :with-test))
  (description ""))
 
 (package

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793293784402,
+  "lastUpdate": 1793293948009,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -666013,6 +666013,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.9348643793133333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6066c3645b1c83380c54300ab7558f0987b16d30",
+          "message": "refactor(watch): key the sync table by sync IDs (#16847)\n\nUse Sync.Id.t rather than string filenames as the keys for pending\nwatcher synchronizations. Parse event basenames at the watcher boundary,\naccepting only canonical decimal spellings so filename matching stays\nunchanged.\n\nKeep the parseable ID module local and reuse the existing generator\nwithout extending Stdune.Id. This is a preparatory refactoring for sync\ntimeouts; marker names, trace output, and behavior are unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-30T01:01:13+08:00",
+          "tree_id": "cd13de47344e926f5578389daaa8bf0377cdd450",
+          "url": "https://github.com/ocaml/dune/commit/6066c3645b1c83380c54300ab7558f0987b16d30"
+        },
+        "date": 1793293629906,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.1253985083866667,
             "unit": "seconds"
           }
         ]

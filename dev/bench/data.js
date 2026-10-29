@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793291159508,
+  "lastUpdate": 1793291169406,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -478788,6 +478788,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 65.99027991138,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d64e9c80b6be5ec699c6c75aeb669efd657e7e99",
+          "message": "test(watch): record a lost sync notification without overflow (#16846)\n\nRecord the watcher hang when sync-file notifications are lost without an\ninotify queue overflow.\n\nUse `strace` fault injection to suppress the first two sync-file create\nnotifications and their close notifications. The rule produces its\ntarget, but the client times out waiting for synchronization; the trace\nconfirms there was no overflow and no acknowledged sync marker.\n\nThis is a Linux-only characterization test preserving the current broken\nbehavior, not the retry implementation. The client timeout is bounded at\ntwenty seconds. A follow-up fix can change the expected result to\nsuccessful synchronization.",
+          "timestamp": "2026-10-30T00:06:07+08:00",
+          "tree_id": "a3311729951d0f178eb1cc2afd381392a88d9ad0",
+          "url": "https://github.com/ocaml/dune/commit/d64e9c80b6be5ec699c6c75aeb669efd657e7e99"
+        },
+        "date": 1793291167998,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.6339802702866667,
             "unit": "seconds"
           }
         ]

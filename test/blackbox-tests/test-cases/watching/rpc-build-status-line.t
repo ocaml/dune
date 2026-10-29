@@ -70,12 +70,12 @@ Forwarded builds display the progress of the build running on the server.
   > | sed -E 's/ +$//; s/[0-9]+/N/g' \
   > | sort -u
   Connected to RPC server
-  Connected to RPC server | Done: N% (N/N, N left) (jobs: N)
+  Connected to RPC server | Done: N% (N/N, N left) (jobs: N) | [N.Ns] [N.Nx] [N]
   $ touch "$RELEASE"
   $ wait "$PROGRESS_PID"
 
 When the server builds the requests of several clients at once, forwarded
-builds report that the progress is shared with other builds.
+builds report the number of goals being built.
 
   $ A_STARTED="$PWD/shared-a-started"
   $ RELEASE="$PWD/shared-release"
@@ -103,15 +103,15 @@ builds report that the progress is shared with other builds.
   $ B_PID=$!
   $ i=200
   $ while [ "$i" != 0 ]; do
-  >   tr '\r' '\n' < shared-b-output | grep -a "shared with" >/dev/null && break
+  >   tr '\r' '\n' < shared-b-output | grep -a "2 goals" >/dev/null && break
   >   i=$((i - 1))
   >   sleep 0.01
   > done
   $ tr '\r' '\n' < shared-b-output \
-  > | grep -a -o "(jobs: [0-9]*) | shared with [0-9]* other builds*" \
-  > | sed -E 's/jobs: [0-9]+/jobs: N/' \
+  > | grep -a -o "(jobs: [0-9]*) | \[[0-9.]*s\] \[[0-9.]*x\] \[[0-9]*\] \[2 goals\]" \
+  > | sed -E 's/jobs: [0-9]+/jobs: N/; s/\[[0-9]+\.[0-9]s\]/[BUILD DURATION]/; s/\[[0-9]+\.[0-9]x\]/[PARALLELISM]/; s/\[[0-9]+\] \[/[RUN] [/' \
   > | sort -u
-  (jobs: N) | shared with 1 other build
+  (jobs: N) | [BUILD DURATION] [PARALLELISM] [RUN] [2 goals]
   $ touch "$RELEASE"
   $ wait "$A_PID"
   $ wait "$B_PID"

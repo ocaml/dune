@@ -23,6 +23,7 @@ module Build_config = Build_config
 module Build_loop = Build_loop
 module Build_system = Build_system
 module Run_id = Run_id
+module Build_timing = Build_timing
 module Build_system_error = Build_system_error
 module Load_rules = Load_rules
 module Response_file = Response_file

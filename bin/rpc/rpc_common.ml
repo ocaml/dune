@@ -196,14 +196,32 @@ let progress_status ~complete ~remaining ~failed ~running_jobs =
 
 let pp_progress_status : Dune_rpc.Progress.t -> _ Pp.t = function
   | Failed | Success | Waiting -> Pp.nop
-  | In_progress { complete; remaining; failed; running_jobs; goals } ->
-    Pp.verbatim
-      (progress_status ~complete ~remaining ~failed ~running_jobs
-       ^
-       match goals with
-       | 0 | 1 -> ""
-       | 2 -> " | shared with 1 other build"
-       | _ -> sprintf " | shared with %d other builds" (goals - 1))
+  | In_progress
+      { complete
+      ; remaining
+      ; failed
+      ; running_jobs
+      ; goals
+      ; run
+      ; started_at
+      ; action_duration
+      } ->
+    let timing =
+      match started_at with
+      | None -> []
+      | Some started_at ->
+        [ Dune_engine.Build_loop.build_timing_status
+            (match run with
+             | Some run -> Dune_engine.Run_id.Watch run
+             | None -> Dune_engine.Run_id.Batch)
+            ~goals
+            ~build_duration:(Time.diff (Time.now ()) (Time.of_epoch_secs started_at))
+            ~action_duration:(Time.Span.of_secs action_duration)
+        ]
+    in
+    Pp.concat
+      ~sep:(Pp.verbatim " | ")
+      (Pp.verbatim (progress_status ~complete ~remaining ~failed ~running_jobs) :: timing)
   | Interrupted -> Pp.verbatim "Restarting current build..."
 ;;
 

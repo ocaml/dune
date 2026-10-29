@@ -321,7 +321,16 @@ module Poll = struct
       let to_progress : t -> Progress.t = function
         | Waiting -> Waiting
         | In_progress { complete; remaining } ->
-          In_progress { complete; remaining; failed = 0; running_jobs = 0; goals = 0 }
+          In_progress
+            { complete
+            ; remaining
+            ; failed = 0
+            ; running_jobs = 0
+            ; goals = 0
+            ; run = None
+            ; started_at = None
+            ; action_duration = 0.
+            }
         | Failed -> Failed
         | Interrupted -> Interrupted
         | Success -> Success
@@ -329,8 +338,7 @@ module Poll = struct
 
       let of_progress : Progress.t -> t = function
         | Waiting -> Waiting
-        | In_progress { complete; remaining; failed = _; running_jobs = _; goals = _ } ->
-          In_progress { complete; remaining }
+        | In_progress { complete; remaining; _ } -> In_progress { complete; remaining }
         | Failed -> Failed
         | Interrupted -> Interrupted
         | Success -> Success
@@ -381,7 +389,16 @@ module Poll = struct
       let to_progress : t -> Progress.t = function
         | Waiting -> Waiting
         | In_progress { complete; remaining; failed } ->
-          In_progress { complete; remaining; failed; running_jobs = 0; goals = 0 }
+          In_progress
+            { complete
+            ; remaining
+            ; failed
+            ; running_jobs = 0
+            ; goals = 0
+            ; run = None
+            ; started_at = None
+            ; action_duration = 0.
+            }
         | Failed -> Failed
         | Interrupted -> Interrupted
         | Success -> Success
@@ -389,7 +406,7 @@ module Poll = struct
 
       let of_progress : Progress.t -> t = function
         | Waiting -> Waiting
-        | In_progress { complete; remaining; failed; running_jobs = _; goals = _ } ->
+        | In_progress { complete; remaining; failed; _ } ->
           In_progress { complete; remaining; failed }
         | Failed -> Failed
         | Interrupted -> Interrupted

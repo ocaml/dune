@@ -58,6 +58,7 @@ type t =
   ; mutable next_run_id : int
   ; mutable rpc_requests : Build_system.Request.Goal.t Rpc_request_id.Map.t
   ; mutable current_request : Build_system.Request.t option
+  ; mutable current_build_started_at : Time.t option
   ; mutable state : [ `Awaiting_init | `Init ]
   }
 
@@ -81,10 +82,16 @@ let set_build_duration_section t message =
   t.build_duration_section <- Some (Console.Status_line.add_section message)
 ;;
 
-let build_timing_status (run_id : Run_id.t) timing =
-  match run_id with
-  | Batch -> Pp.text timing
-  | Watch run -> Pp.textf "%s [%d]" timing run
+let build_timing_status (run_id : Run_id.t) ~goals ~build_duration ~action_duration =
+  let timing = Build_timing.format ~build_duration ~action_duration in
+  let timing =
+    match run_id with
+    | Batch -> timing
+    | Watch run -> sprintf "%s [%d]" timing run
+  in
+  match goals with
+  | 0 | 1 -> Pp.text timing
+  | goals -> Pp.textf "%s [%d goals]" timing goals
 ;;
 
 let build_finish t (build_result : Build_outcome.t) =
@@ -268,6 +275,7 @@ let create () =
   ; next_run_id = 1
   ; rpc_requests = Rpc_request_id.Map.empty
   ; current_request = None
+  ; current_build_started_at = None
   ; state = `Awaiting_init
   }
 ;;
@@ -324,12 +332,19 @@ let run_current_build
    | Standing_by | Restarting_build _ -> ());
   t.status <- Building run_id;
   let build_started_at = Time.now () in
+  let goals = Build_system.Request.number_of_goals request in
   clear_status_overlay t;
   set_build_duration_section
     t
     (Live
-       (fun () -> build_timing_status run_id (Build_timing.format_now build_started_at)));
+       (fun () ->
+         build_timing_status
+           run_id
+           ~goals
+           ~build_duration:(Time.diff (Time.now ()) build_started_at)
+           ~action_duration:(Metrics.Build.action_duration ())));
   t.current_request <- Some request;
+  t.current_build_started_at <- Some build_started_at;
   let* outcome =
     Fiber.finalize_now
       (fun () ->
@@ -344,7 +359,9 @@ let run_current_build
            ~build_started_at
            ~build:build_ctx
            request)
-      ~finally:(fun () -> t.current_request <- None)
+      ~finally:(fun () ->
+        t.current_request <- None;
+        t.current_build_started_at <- None)
   in
   let+ () = Scheduler.cleanup_subreaper_child_processes () in
   let build_duration = Time.diff (Time.now ()) build_started_at in
@@ -367,10 +384,7 @@ let run_current_build
    | `Done ->
      set_build_duration_section
        t
-       (Constant
-          (build_timing_status
-             run_id
-             (Build_timing.format ~build_duration ~action_duration))));
+       (Constant (build_timing_status run_id ~goals ~build_duration ~action_duration)));
   outcome, next, build_start_input_change_generation, build_start_wakeup_generation
 ;;
 
@@ -413,6 +427,14 @@ let cancel_rpc_requests_by_session t ~session_id =
 ;;
 
 let cancel_all_rpc_requests t = cancel_rpc_requests t ~f:(fun _ _ -> true)
+
+let current_run_id t =
+  match t.status with
+  | Building run_id | Restarting_build run_id -> Some run_id
+  | Standing_by -> None
+;;
+
+let current_build_started_at t = t.current_build_started_at
 
 let goals_count t =
   match t.current_request with

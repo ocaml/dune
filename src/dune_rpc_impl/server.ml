@@ -230,7 +230,16 @@ let handler (t : t Fdecl.t) : unit Handler.t =
       ~diff
   in
   let () =
-    let diff ~last:_ ~now:((now : Build_system.State.t), running_jobs, goals) =
+    let diff
+          ~last:_
+          ~now:
+            ( (now : Build_system.State.t)
+            , running_jobs
+            , goals
+            , run
+            , started_at
+            , action_duration )
+      =
       match now with
       | Initializing -> Progress.Waiting
       | Restarting_current_build -> Interrupted
@@ -243,6 +252,9 @@ let handler (t : t Fdecl.t) : unit Handler.t =
           ; failed = now.number_of_rules_failed
           ; running_jobs
           ; goals
+          ; run
+          ; started_at
+          ; action_duration
           }
     in
     let get () =
@@ -251,18 +263,35 @@ let handler (t : t Fdecl.t) : unit Handler.t =
         |> Running_jobs.current
         |> Running_jobs.Id.Map.cardinal
       in
-      let goals =
+      let goals, run, started_at =
         match (Fdecl.get t).build with
-        | Disabled -> 0
-        | Enabled { build_loop; _ } -> Build_loop.goals_count build_loop
+        | Disabled -> 0, None, None
+        | Enabled { build_loop; _ } ->
+          ( Build_loop.goals_count build_loop
+          , (match Build_loop.current_run_id build_loop with
+             | Some (Dune_engine.Run_id.Watch run) -> Some run
+             | Some Batch | None -> None)
+          , Option.map (Build_loop.current_build_started_at build_loop) ~f:Time.to_secs )
       in
-      !Build_system.state, jobs, goals
+      let action_duration = Time.Span.to_secs (Metrics.Build.action_duration ()) in
+      !Build_system.state, jobs, goals, run, started_at, action_duration
+    in
+    let equal
+          (state, jobs, goals, run, started_at, action_duration)
+          (state', jobs', goals', run', started_at', action_duration')
+      =
+      Build_system.State.equal state state'
+      && Int.equal jobs jobs'
+      && Int.equal goals goals'
+      && Option.equal Int.equal run run'
+      && Option.equal Float.equal started_at started_at'
+      && Float.equal action_duration action_duration'
     in
     Handler.implement_long_poll
       rpc
       Procedures.Poll.progress
       (Source.Computed { get; poll_every = Time.Span.of_secs 0.2 })
-      ~equal:(Tuple.T3.equal Build_system.State.equal Int.equal Int.equal)
+      ~equal
       ~diff
   in
   let () =

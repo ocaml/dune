@@ -53,11 +53,6 @@ interfaces, with ordinary and staged preprocessing for OCaml and Melange.
   $ make_case ordinary pps
   $ make_case staged staged_pps
 
-Staged JS emission scans the source for implementation dependencies. Provide
-that reference explicitly; the interface dependency still comes only from PPX.
-
-  $ echo 'let () = ignore Z_value.value' >>staged/shared.ml
-
 Build each interface alone first: this must build its generated dependency
 Z_type, without building the implementation dependency Z_value. Then building
 the implementation must discover Z_value. Separate object directories keep
@@ -78,13 +73,80 @@ the OCaml and Melange checks independent.
 
 Both executables and emitted JavaScript can use the generated references.
 
-  $ dune build ordinary/main.exe @ordinary/melange \
-  >   staged/main.exe @staged/melange
+  $ dune build ordinary/main.exe @ordinary/melange staged/main.exe
   $ _build/default/ordinary/main.exe
   generated
   $ node _build/default/ordinary/out/ordinary/main.js
   generated
   $ _build/default/staged/main.exe
   generated
-  $ node _build/default/staged/out/staged/main.js
-  generated
+
+Staged emission must also discover dependencies introduced by the PPX.
+
+  $ dune build @staged/melange && node _build/default/staged/out/staged/main.js
+  File "staged/shared.ml", line 1, characters 12-30:
+  1 | let value = [%generated_value]
+                  ^^^^^^^^^^^^^^^^^^
+  Error: Unbound module Z_value
+  [1]
+
+Direct emission also preserves staged PPX arguments and generated preprocessor
+inputs. The input is declared separately from the flag, so it must be available
+in the sandbox through preprocessor_deps.
+
+  $ cat >>ppx/dependency_ppx.ml <<'EOF'
+  > let module_file = ref ""
+  > let configured_value =
+  >   Extension.declare "configured_value" Expression Ast_pattern.(pstr nil)
+  >     (fun ~loc ~path:_ ->
+  >       if not (Sys.file_exists !module_file) then
+  >         Location.raise_errorf ~loc "Missing PPX input";
+  >       let input = open_in !module_file in
+  >       let selected = input_line input in
+  >       close_in input;
+  >       Ast_builder.Default.pexp_ident ~loc (reference ~loc selected "value"))
+  > let () =
+  >   Driver.add_arg "--module-file" (Arg.Set_string module_file)
+  >     ~doc:"Read the generated dependency's module name";
+  >   Driver.register_transformation "configured_dependencies"
+  >     ~rules:[Context_free.Rule.extension configured_value]
+  > EOF
+  $ mkdir emit
+  $ cat >emit/dune <<'EOF'
+  > (rule
+  >  (target module-name)
+  >  (deps selection)
+  >  (action (copy %{deps} %{target})))
+  > (melange.emit
+  >  (target out)
+  >  (preprocess
+  >   (staged_pps dependency_ppx -- --module-file emit/module-name))
+  >  (preprocessor_deps module-name (sandbox always)))
+  > EOF
+  $ echo Z_first >emit/selection
+  $ echo 'let value = "first"' >emit/z_first.ml
+  $ echo 'let value = "second"' >emit/z_second.ml
+  $ echo 'let () = print_endline [%configured_value]' >emit/main.ml
+
+Request main.js first, before the other JavaScript outputs can build unrelated
+modules. Then build the remaining outputs so Node can load the selected module.
+
+  $ dune build emit/out/emit/main.js && dune build @emit/melange \
+  >   && node _build/default/emit/out/emit/main.js
+  File "emit/main.ml", line 1, characters 23-42:
+  1 | let () = print_endline [%configured_value]
+                             ^^^^^^^^^^^^^^^^^^^
+  Error: The module Z_first is an alias for module Melange__Z_first, which is missing
+  [1]
+
+Changing only the generated preprocessor input changes the discovered module
+reference and the emitted program.
+
+  $ echo Z_second >emit/selection
+  $ dune build emit/out/emit/main.js && dune build @emit/melange \
+  >   && node _build/default/emit/out/emit/main.js
+  File "emit/main.ml", line 1, characters 23-42:
+  1 | let () = print_endline [%configured_value]
+                             ^^^^^^^^^^^^^^^^^^^
+  Error: The module Z_second is an alias for module Melange__Z_second, which is missing
+  [1]

@@ -68,7 +68,7 @@ end = struct
 
   let done_status ~complete ~remaining ~failed state =
     Pp.text
-      (Rpc.Rpc_common.progress_status
+      (Util.progress_status
          ~complete
          ~remaining
          ~failed

@@ -52,14 +52,6 @@ val fire_request_with_progress
   -> 'a
   -> 'b Fiber.t
 
-(** The build progress displayed in the status line. *)
-val progress_status
-  :  complete:int
-  -> remaining:int
-  -> failed:int
-  -> running_jobs:int
-  -> string
-
 (** Send a notification to the RPC server. If [wait], it will poll forever until a server is listening.
     Should be scheduled by a scheduler that does not come with a RPC server on its own.
 

@@ -182,18 +182,6 @@ let fire_request
     request_exn client request arg)
 ;;
 
-let progress_status ~complete ~remaining ~failed ~running_jobs =
-  let total = complete + remaining in
-  sprintf
-    "Done: %d%% (%d/%d, %d left%s) (jobs: %d)"
-    (if total = 0 then 0 else complete * 100 / total)
-    complete
-    total
-    remaining
-    (if failed = 0 then "" else sprintf ", %d failed" failed)
-    running_jobs
-;;
-
 let pp_progress_status : Dune_rpc.Progress.t -> _ Pp.t = function
   | Failed | Success | Waiting -> Pp.nop
   | In_progress
@@ -221,7 +209,8 @@ let pp_progress_status : Dune_rpc.Progress.t -> _ Pp.t = function
     in
     Pp.concat
       ~sep:(Pp.verbatim " | ")
-      (Pp.verbatim (progress_status ~complete ~remaining ~failed ~running_jobs) :: timing)
+      (Pp.verbatim (Util.progress_status ~complete ~remaining ~failed ~running_jobs)
+       :: timing)
   | Interrupted -> Pp.verbatim "Restarting current build..."
 ;;
 

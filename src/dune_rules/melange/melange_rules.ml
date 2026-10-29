@@ -124,6 +124,30 @@ let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
   Pp_spec.pped_modules preprocess version modules
 ;;
 
+let has_staged_pps preprocess =
+  Module_reference.Per_item.exists preprocess ~f:(function
+    | Preprocess.Pps { staged; _ } -> staged
+    | No_preprocessing | Action _ | Future_syntax _ -> false)
+;;
+
+let modules_with_staged_pps ~sctx ~dir ~scope kind modules =
+  let* expander = Super_context.expander sctx ~dir in
+  (* The compilation directory owns these rules. Retain its preprocessing
+     configuration without registering the rules again in the emit directory. *)
+  let+ (modules, _), _ =
+    Rules.collect (fun () ->
+      Buildable_rules.modules_rules
+        sctx
+        kind
+        expander
+        ~dir
+        scope
+        modules
+        ~for_:Compilation_mode.Melange)
+  in
+  modules
+;;
+
 let emit_modules_and_obj_dir ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =
   Dir_contents.ml dir_contents ~for_:Compilation_mode.Melange
   >>= Ml_sources.modules_and_obj_dir
@@ -164,7 +188,38 @@ let impl_only_modules_defined_in_this_lib ~sctx ~scope ~info lib =
     let+ modules =
       let* modules = Dir_contents.modules_of_local_lib sctx lib ~for_ in
       let preprocess = Lib_info.preprocess info ~for_ in
-      modules_in_obj_dir ~sctx ~scope ~preprocess modules >>| Modules.With_vlib.modules
+      let+ modules =
+        if has_staged_pps preprocess
+        then (
+          let dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
+          let* scope = Scope.DB.find_by_dir dir in
+          let* stanzas =
+            Dune_load.stanzas_in_dir dir
+            >>= function
+            | None -> Memo.return []
+            | Some dune_file -> Dune_file.find_stanzas dune_file Library.key
+          in
+          let lib_id = Lib_info.lib_id info |> Lib_id.to_local_exn in
+          let src_dir = Path.Build.drop_build_context_exn dir in
+          let library =
+            List.find stanzas ~f:(fun library ->
+              Lib_id.Local.equal (Library.to_lib_id ~src_dir library) lib_id)
+          in
+          match library with
+          | None ->
+            Code_error.raise
+              "missing local library stanza"
+              [ "lib_id", Lib_id.Local.to_dyn lib_id ]
+          | Some library ->
+            modules_with_staged_pps
+              ~sctx
+              ~dir
+              ~scope
+              (Library (library.buildable, snd library.name))
+              modules)
+        else modules_in_obj_dir ~sctx ~scope ~preprocess modules
+      in
+      Modules.With_vlib.modules modules
     in
     let () =
       let modes = Lib_info.modes info in
@@ -726,7 +781,19 @@ let setup_runtime_assets_rules sctx ~scope ~dir ~mode ~promote_in_source ~output
 let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =
   let* modules, obj_dir = emit_modules_and_obj_dir ~dir_contents ~scope mel in
   let+ modules =
-    modules_in_obj_dir ~sctx ~scope ~preprocess:mel.preprocess.config modules
+    if has_staged_pps mel.preprocess.config
+    then
+      modules_with_staged_pps
+        ~sctx
+        ~dir:(Dir_contents.dir dir_contents)
+        ~scope
+        (Melange
+           { preprocess = mel.preprocess
+           ; lint = mel.lint
+           ; empty_module_interface_if_absent = false
+           })
+        modules
+    else modules_in_obj_dir ~sctx ~scope ~preprocess:mel.preprocess.config modules
   in
   let modules_for_js =
     Modules.fold_user_available modules ~init:[] ~f:(fun x acc ->

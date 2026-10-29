@@ -11,6 +11,12 @@ let equal x y =
   | Melange, Melange -> true
 ;;
 
+let hash = function
+  | Ocaml Byte -> 0
+  | Ocaml Native -> 1
+  | Melange -> 2
+;;
+
 let decode =
   let open Decoder in
   enum [ "byte", Ocaml Byte; "native", Ocaml Native; "melange", Melange ]

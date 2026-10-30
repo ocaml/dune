@@ -1,5 +1,8 @@
 (cram
- (deps %{bin:node} %{bin:js_of_ocaml})
+ (deps
+  %{bin:node}
+  %{bin:js_of_ocaml}
+  (package js_of_ocaml))
  (alias runtest-js))
 
 (cram

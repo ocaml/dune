@@ -126,7 +126,7 @@ let get_dir_triage ~dir =
        let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
        (match Context_name.Map.find contexts context_name with
         | None -> Dir_triage.no_rules
-        | Some ((_ : Build_context.t), context_type) ->
+        | Some context_type ->
           Dir_triage.Build_directory { dir; context_name; context_type; sub_dir }))
 ;;
 

@@ -97,7 +97,7 @@ module type Source_tree = sig
 end
 
 type t =
-  { contexts : (Build_context.t * Context_type.t) Context_name.Map.t Memo.Lazy.t
+  { contexts : Context_type.t Context_name.Map.t Memo.Lazy.t
   ; rule_generator :
       Context_name.t -> dir:Path.Build.t -> string list -> Gen_rules.t Memo.t
   ; sandboxing_preference : Sandbox_mode.t list
@@ -125,14 +125,6 @@ let set
       ~execution_parameters
       ~source_tree
   =
-  let contexts =
-    Memo.lazy_ ~name:"Build_config.set" (fun () ->
-      let open Memo.O in
-      let+ contexts = Memo.Lazy.force contexts in
-      Context_name.Map.of_list_map_exn
-        contexts
-        ~f:(fun ((ctx : Build_context.t), ctx_type) -> ctx.name, (ctx, ctx_type)))
-  in
   Fdecl.set
     t
     { contexts

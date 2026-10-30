@@ -93,10 +93,12 @@ let init ~sandbox_actions ~sandboxing_preference () : unit =
          let open Memo.O in
          let+ contexts = Workspace.workspace () >>| Workspace.build_contexts in
          let open Build_config.Context_type in
-         (Private_context.t, Empty)
-         :: (Install.Context.install_context, Empty)
-         :: (Fetch_rules.context, Empty)
-         :: List.map contexts ~f:(fun ctx -> ctx, With_sources)))
+         Context_name.Map.of_list_exn
+           ((Private_context.t.name, Empty)
+            :: (Install.Context.install_context.name, Empty)
+            :: (Fetch_rules.context.name, Empty)
+            :: List.map contexts ~f:(fun { Build_context.name; build_dir = _ } ->
+              name, With_sources))))
     ~rule_generator:Gen_rules.gen_rules
     ~implicit_default_alias
     ~execution_parameters:(execution_parameters ~sandbox_actions)

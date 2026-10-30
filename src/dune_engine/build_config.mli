@@ -77,7 +77,7 @@ end
 (** Initialise the build system. This must be called before running the build
       system and only once. *)
 val set
-  :  contexts:(Build_context.t * Context_type.t) list Memo.Lazy.t
+  :  contexts:Context_type.t Context_name.Map.t Memo.Lazy.t
   -> promote_source:
        (chmod:(Permissions.Mode.t -> Permissions.Mode.t)
         -> delete_dst_if_it_is_a_directory:bool
@@ -94,7 +94,7 @@ val set
   -> unit
 
 type t = private
-  { contexts : (Build_context.t * Context_type.t) Context_name.Map.t Memo.Lazy.t
+  { contexts : Context_type.t Context_name.Map.t Memo.Lazy.t
   ; rule_generator :
       Context_name.t -> dir:Path.Build.t -> string list -> Gen_rules.t Memo.t
     (** Generate rules for a directory in the corresponding build context.

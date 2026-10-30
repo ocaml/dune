@@ -45,9 +45,6 @@ module Gen_rules : sig
       -> t
 
     val empty : t
-
-    (** Raises a code error if there are multiple rules for the same target. *)
-    val combine_exn : t -> t -> t
   end
 
   type t =

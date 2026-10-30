@@ -456,5 +456,5 @@ let gen_rules ~sctx ~dir rest =
     instantiate_jsoo ~sctx lib s_config
   | _ ->
     Memo.return
-      (Build_config.Gen_rules.redirect_to_parent Build_config.Gen_rules.Rules.empty)
+      (Build_config.Gen_rules.Redirect_to_parent Build_config.Gen_rules.Rules.empty)
 ;;

@@ -228,7 +228,7 @@ let gen_rules context_name ~dir rest =
            Rules.Produce.rule (Rule.make ~info:(Rule.Info.of_loc_opt None) ~targets build))))
   | _ :: _ :: _ ->
     Memo.return
-    @@ Build_config.Gen_rules.redirect_to_parent Build_config.Gen_rules.Rules.empty
+    @@ Build_config.Gen_rules.Redirect_to_parent Build_config.Gen_rules.Rules.empty
 ;;
 
 module For_rocq_only = struct

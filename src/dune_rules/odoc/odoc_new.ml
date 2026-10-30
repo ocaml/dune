@@ -2043,5 +2043,5 @@ let gen_rules sctx ~dir rest =
   | [ "odoc" ] -> has_rules (setup_odoc_rules sctx ~all)
   | [ "index" ] -> has_rules (setup_all_index_rules sctx ~all)
   | [ "html"; "docs" ] -> has_rules (setup_all_html_rules sctx ~all)
-  | _ -> Memo.return (Gen_rules.redirect_to_parent Gen_rules.Rules.empty)
+  | _ -> Memo.return (Gen_rules.Redirect_to_parent Gen_rules.Rules.empty)
 ;;

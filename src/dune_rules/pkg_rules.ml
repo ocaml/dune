@@ -2436,8 +2436,7 @@ let setup_pkg_install_alias =
           in
           Rules.Produce.Alias.add_deps alias deps)
       in
-      Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
-      |> Gen_rules.rules_here
+      Gen_rules.Rules (Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule)
 ;;
 
 let setup_package_rules db ~package_universe ~dir ~pkg_digest : Gen_rules.result Memo.t =
@@ -2489,9 +2488,9 @@ let setup_rules ~components ~dir ctx =
        let* db = DB.of_ctx ctx ~allow_sharing:true in
        setup_package_rules db ~package_universe:(Dependencies ctx) ~dir ~pkg_digest)
   | _, ".pkg" :: _ :: _ ->
-    Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
+    Memo.return (Gen_rules.Redirect_to_parent Gen_rules.Rules.empty)
   | true, ".dev-tool" :: _ :: _ :: _ ->
-    Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
+    Memo.return (Gen_rules.Redirect_to_parent Gen_rules.Rules.empty)
   | is_default, [] ->
     let sub_dirs =
       Filename.pkg_dir_basename
@@ -2501,7 +2500,7 @@ let setup_rules ~components ~dir ctx =
       Gen_rules.Build_only_sub_dirs.singleton ~dir @@ Subdir_set.of_list sub_dirs
     in
     Memo.return @@ Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
-  | _ -> Memo.return @@ Gen_rules.rules_here Gen_rules.Rules.empty
+  | _ -> Memo.return Gen_rules.no_rules
 ;;
 
 let resolve_pkg_dep context (loc, package_name) =

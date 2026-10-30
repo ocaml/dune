@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793376804062,
+  "lastUpdate": 1793376810864,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -479426,6 +479426,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 40.778163733999996,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "14a752d95fdc6b303161ed24a6623dff18817326",
+          "message": "refactor(engine): remove unused build-only subdirectory empty value (#16854)\n\nRemove the unused `Build_config.Gen_rules.Build_only_sub_dirs.empty`\nvalue and its interface declaration. Keep the `singleton` and `union`\noperations that have callers.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-31T00:00:55+08:00",
+          "tree_id": "fbfaefc294fd4628a1baeda1e4b22a8e92b246eb",
+          "url": "https://github.com/ocaml/dune/commit/14a752d95fdc6b303161ed24a6623dff18817326"
+        },
+        "date": 1793376809930,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.3911769523200001,
             "unit": "seconds"
           }
         ]

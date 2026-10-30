@@ -638,7 +638,13 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
               in
               Rules.union rules compile_commands_rules
             in
-            Gen_rules.rules_for ~dir ~directory_targets ~allowed_subdirs rules
+            Gen_rules.Rules.create
+              ~build_dir_only_sub_dirs:
+                (Gen_rules.Build_only_sub_dirs.singleton
+                   ~dir
+                   (Subdir_set.of_set allowed_subdirs))
+              ~directory_targets
+              rules
         in
         match dir_status with
         | Lock_dir _ -> Gen_rules.no_rules
@@ -652,8 +658,7 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
       in
       match Opam_create.gen_rules sctx ~dir ~nearest_src_dir ~src_dir with
       | None -> rules
-      | Some opam_rules ->
-        Gen_rules.map_rules rules ~f:(Gen_rules.Rules.combine_exn opam_rules)
+      | Some opam_rules -> Gen_rules.combine (Gen_rules.Rules opam_rules) rules
     and+ melange_rules = Melange_rules.setup_emit_js_rules sctx ~dir in
     Gen_rules.combine melange_rules rules
 ;;

@@ -540,5 +540,11 @@ let gen_rules sctx ~dir ~nearest_src_dir ~src_dir =
              in
              ())
          in
-         Some (Gen_rules.rules_for ~allowed_subdirs ~dir rules)))
+         Some
+           (Gen_rules.Rules.create
+              ~build_dir_only_sub_dirs:
+                (Gen_rules.Build_only_sub_dirs.singleton
+                   ~dir
+                   (Subdir_set.of_set allowed_subdirs))
+              rules)))
 ;;

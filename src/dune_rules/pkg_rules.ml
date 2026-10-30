@@ -2436,7 +2436,10 @@ let setup_pkg_install_alias =
           in
           Rules.Produce.Alias.add_deps alias deps)
       in
-      Gen_rules.Rules (Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule)
+      Gen_rules.make
+        ~build_dir_only_sub_dirs:
+          (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty)
+        rule
 ;;
 
 let setup_package_rules db ~package_universe ~dir ~pkg_digest : Gen_rules.result Memo.t =

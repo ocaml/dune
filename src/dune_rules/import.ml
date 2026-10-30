@@ -174,21 +174,6 @@ module Build_config = struct
 
     type result = Gen_rules_result.t
 
-    let rules_for ?directory_targets ~dir ~allowed_subdirs rules =
-      Rules.create
-        ?directory_targets
-        ~build_dir_only_sub_dirs:
-          (Build_only_sub_dirs.singleton ~dir (Subdir_set.of_set allowed_subdirs))
-        rules
-    ;;
-
-    let map_rules t ~f =
-      match t with
-      | Unknown_context -> Unknown_context
-      | Rules rules -> Rules (f rules)
-      | Redirect_to_parent rules -> Redirect_to_parent (f rules)
-    ;;
-
     let combine x y =
       match x, y with
       | Unknown_context, _ -> Unknown_context

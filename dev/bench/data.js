@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793364558670,
+  "lastUpdate": 1793364566055,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -479368,6 +479368,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 63.218341011313335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e8ced510b260193e91f21b7859cc7fbe33d426d6",
+          "message": "refactor(engine): keep rule-loader map operations out of build configuration (#16753)\n\nInline subdirectory lookup and directory-key traversal in the rule\nloader, their sole consumer.\n\nRemove the two convenience operations from `Build_only_sub_dirs` while\nretaining its concrete path map and the empty-subdirectory default for\nmissing entries.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-30T20:30:26+08:00",
+          "tree_id": "9867a32730cc668066b45b82145926a8a20ad249",
+          "url": "https://github.com/ocaml/dune/commit/e8ced510b260193e91f21b7859cc7fbe33d426d6"
+        },
+        "date": 1793364565238,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5339768777066668,
             "unit": "seconds"
           }
         ]

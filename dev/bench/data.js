@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793343570073,
+  "lastUpdate": 1793343577403,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -479136,6 +479136,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 63.51247507391333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e8cfcf75a5de67ef2e46c7cbbe3000e9a1602532",
+          "message": "fix(melange): preserve staged PPX emission dependencies (#16843)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-29T23:40:36-07:00",
+          "tree_id": "7fd9b106c584ef78191fe7f81283063c69885620",
+          "url": "https://github.com/ocaml/dune/commit/e8cfcf75a5de67ef2e46c7cbbe3000e9a1602532"
+        },
+        "date": 1793343576520,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5436492325533334,
             "unit": "seconds"
           }
         ]

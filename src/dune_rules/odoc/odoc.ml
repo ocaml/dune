@@ -1272,9 +1272,9 @@ let with_package pkg ~f =
   | None -> Memo.return Gen_rules.no_rules
 ;;
 
-let gen_rules sctx ~dir rest =
+let gen_rules sctx rest =
   match rest with
-  | [] -> Memo.return (Build_config.Gen_rules.make_empty ~dir Subdir_set.all)
+  | [] -> Memo.return (Build_config.Gen_rules.make_empty Subdir_set.all)
   | [ "_html" ] ->
     let ctx = Super_context.context sctx in
     let directory_targets = Path.Build.Map.singleton (Paths.odoc_support ctx) Loc.none in

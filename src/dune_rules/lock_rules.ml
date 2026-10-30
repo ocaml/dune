@@ -424,9 +424,6 @@ let setup_rules ~components ~dir =
       Gen_rules.combine rules dev_tool_rules)
   | [] ->
     let sub_dirs = [ Filename.lock_dir_basename; Filename.dev_tool_locks_dir_basename ] in
-    let build_dir_only_sub_dirs =
-      Gen_rules.Build_only_sub_dirs.singleton ~dir @@ Subdir_set.of_list sub_dirs
-    in
-    Memo.return @@ Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
+    Memo.return (Gen_rules.make_empty (Subdir_set.of_list sub_dirs))
   | _ -> Memo.return empty
 ;;

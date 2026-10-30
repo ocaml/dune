@@ -14,7 +14,6 @@ val generate : Dune_project.t -> Package.t -> template:(Path.t * string) option 
 
 val gen_rules
   :  Super_context.t Memo.t
-  -> dir:Path.Build.t
   -> nearest_src_dir:Source_tree.Dir.t option
   -> src_dir:Path.Source.t
   -> Build_config.Gen_rules.t

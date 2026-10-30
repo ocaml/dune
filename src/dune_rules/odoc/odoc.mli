@@ -45,8 +45,4 @@ val setup_private_library_doc_alias
   -> Library.t
   -> unit Memo.t
 
-val gen_rules
-  :  Super_context.t
-  -> dir:Path.Build.t
-  -> string list
-  -> Build_config.Gen_rules.t Memo.t
+val gen_rules : Super_context.t -> string list -> Build_config.Gen_rules.t Memo.t

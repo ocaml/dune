@@ -15,7 +15,6 @@ module Gen_rules : sig
         indexed by their parent build directory. *)
     type t = Subdir_set.t Path.Build.Map.t
 
-    val empty : t
     val singleton : dir:Path.Build.t -> Subdir_set.t -> t
     val union : t -> t -> t
   end

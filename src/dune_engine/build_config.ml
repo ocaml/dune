@@ -10,7 +10,6 @@ module Gen_rules = struct
   module Build_only_sub_dirs = struct
     type t = Subdir_set.t Path.Build.Map.t
 
-    let empty = Path.Build.Map.empty
     let singleton ~dir sub_dirs = Path.Build.Map.singleton dir sub_dirs
     let union a b = Path.Build.Map.union a b ~f:(fun _ a b -> Some (Subdir_set.union a b))
   end

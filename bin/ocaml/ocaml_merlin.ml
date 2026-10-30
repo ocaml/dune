@@ -116,25 +116,26 @@ end = struct
   let load_merlin_file file =
     (* We search for an appropriate merlin configuration in the current
        directory and its parents *)
-    let rec find_closest path =
-      match
-        get_merlin_files_paths path
-        |> List.find_map ~f:(fun file_path ->
-          (* FIXME we are racing against the build system writing these
-             files here *)
-          match Merlin.Processed.load_file file_path with
-          | Error msg -> Some (Merlin_conf.make_error msg)
-          | Ok config -> Merlin.Processed.get config ~file)
-      with
-      | Some p -> Some p
-      | None ->
+    let rec find_closest path first_error = function
+      | [] ->
         (match Path.Build.parent path with
-         | None -> None
-         | Some dir -> find_closest dir)
+         | Some parent -> find_closest parent first_error (get_merlin_files_paths parent)
+         | None -> Error first_error)
+      | file_path :: files ->
+        (* FIXME we are racing against the build system writing these
+           files here *)
+        (match Merlin.Processed.load_file file_path with
+         | Error msg -> find_closest path (Option.first_some first_error (Some msg)) files
+         | Ok config ->
+           (match Merlin.Processed.get config ~file with
+            | Some config -> Ok config
+            | None -> find_closest path first_error files))
     in
-    match find_closest (Path.Build.parent_exn file) with
-    | Some x -> x
-    | None ->
+    let path = Path.Build.parent_exn file in
+    match find_closest path None (get_merlin_files_paths path) with
+    | Ok config -> config
+    | Error (Some msg) -> Merlin_conf.make_error msg
+    | Error None ->
       Path.Build.drop_build_context_exn file
       |> Path.Source.to_string_maybe_quoted
       |> Printf.sprintf "No config found for file %s. Try calling 'dune build'."

@@ -1,3 +1,5 @@
 (cram
  (applies_to :whole_subtree)
+ (deps
+  (package ppxlib))
  (setup_scripts setup.sh))

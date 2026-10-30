@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793380077541,
+  "lastUpdate": 1793380409790,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -479571,6 +479571,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5699187041333335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7e0b3de43e7fab598d6be9eba34626d890ef695b",
+          "message": "fix(watch): retry sync attempts after five seconds (#16850)\n\nRetry file-watcher synchronization when an attempt receives no\nnotification within five seconds. Each request retains its ID and\nwaiter, while a retry counter gives each attempt a unique marker\nfilename. Late notifications for superseded attempts are ignored.\nOverflow retries reset the deadline too, and successful synchronization\ncancels the outstanding timer.\n\nUse the scheduler’s existing asynchronous timers rather than adding a\npolling thread. The regressions drop two consecutive notifications,\nverify that request identity remains stable across retries, and reject\nlate notifications for old attempts. Traces include both the request ID\nand retry count.\n\nThe timeout regression is excluded from `@runtest` because it exercises\ntwo real five-second timeouts. Run it explicitly with `dune build\n@test/blackbox-tests/test-cases/watching/file-watcher/sync-timeout.t`.\nThe fast overflow regression remains enabled by default.\n\nFollow-up to #16756.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-31T00:54:04+08:00",
+          "tree_id": "b7c673cba991613730e002e739fa1dc59752012f",
+          "url": "https://github.com/ocaml/dune/commit/7e0b3de43e7fab598d6be9eba34626d890ef695b"
+        },
+        "date": 1793380408414,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 64.15475027042,
             "unit": "seconds"
           }
         ]

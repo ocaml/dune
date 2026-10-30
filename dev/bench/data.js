@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793352443961,
+  "lastUpdate": 1793352451458,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -479194,6 +479194,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 59.639716287780004,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "quentin@tarides.com",
+            "name": "mefyl",
+            "username": "mefyl"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5d80441a3045ecf5ad80ddd63e7f955b281c449d",
+          "message": "Show git output *after* the generic error message. (#16628)\n\n## Description\n\nWhen reporting back git-related error messages, put the verbatim git\noutput at the end for better readability, since it carries the actual\ncause of the failure.\n\n## Related Issue and Motivation\n\nSuggested by @Alitzer in #16466. \n\nI also tried prefixing the ouptut with `git| ` for better readability,\nexample output. Clearly open to suggestions on how to improve this.\n\n```\n  $ dune pkg lock 2>&1 | dune_cmd subst \"$AMBIGUOUS_REF\" '$AMBIGUOUS_REF' | dune_cmd subst \"$PWD\" '$PWD'\n  File \"dune-workspace\", line 6, characters 6-201:\n  6 |  (url \"git+file://$PWD/mock-opam-repository#$AMBIGUOUS_REF\"))\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  could not fetch revision \"$AMBIGUOUS_REF\" from file://$PWD/mock-opam-repository\n  \n  git| warning: ignoring --negotiation-restrict=refs/dune-pkg/file____home_mefyl_dev_tarides_dune__build__sandbox_3af426c39ef82b865c423870c731ea2a_default_test_blackbox-tests_test-cases_pkg_mock-opam-repository/* because it does not match any refs\n  git| fatal: remote error: upload-pack: not our ref $AMBIGUOUS_REF\n  git| fatal: git upload-pack: not our ref $AMBIGUOUS_REF\n```\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-10-30T10:11:27+01:00",
+          "tree_id": "8e0d4c5e34ff2a64c3135c37056f0c79be69c7a0",
+          "url": "https://github.com/ocaml/dune/commit/5d80441a3045ecf5ad80ddd63e7f955b281c449d"
+        },
+        "date": 1793352450250,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4852599077866668,
             "unit": "seconds"
           }
         ]

@@ -113,10 +113,11 @@ module Apply = struct
     | Error lock_held_by ->
       Scheduler_setup.no_build_no_rpc ~config (fun () ->
         let open Fiber.O in
-        Rpc.Rpc_common.fire_request
+        Rpc.Rpc_common.fire_request_with_progress
           ~name:"promote_many"
           ~wait:false
           ~lock_held_by
+          ~config
           builder
           Dune_rpc.Procedures.Public.promote_many
           { Dune_rpc.Promote_targets.files = files_to_promote; matching }

@@ -221,7 +221,7 @@ let step ~prog ~args ~common ~no_rebuild ~context ~on_exit () =
    directory lock.
 
    Returns the absolute path to the executable. *)
-let build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog =
+let build_prog_via_rpc_if_necessary ~dir ~config ~no_rebuild builder lock_held_by prog =
   match Filename.analyze_program_name prog with
   | In_path ->
     (* This case is reached if [dune exec] is passed the name of an
@@ -264,10 +264,11 @@ let build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog =
         in
         let targets = Rpc.Rpc_common.prepare_targets [ target ] in
         let open Fiber.O in
-        Rpc.Rpc_common.fire_request
+        Rpc.Rpc_common.fire_request_with_progress
           ~name:"build"
           ~wait:false
           ~lock_held_by
+          ~config
           builder
           Dune_rpc_impl.Decl.build
           targets
@@ -290,7 +291,15 @@ let run_prepared_exec { prog; args; env } ~(root : Workspace_root.t) =
   Util.restore_cwd_and_execve root prog args env
 ;;
 
-let prepare_exec_via_rpc_server ~common ~prog ~args ~no_rebuild builder lock_held_by =
+let prepare_exec_via_rpc_server
+      ~common
+      ~config
+      ~prog
+      ~args
+      ~no_rebuild
+      builder
+      lock_held_by
+  =
   let open Fiber.O in
   let ensure_terminal v =
     match (v : Cmd_arg.t) with
@@ -313,7 +322,7 @@ let prepare_exec_via_rpc_server ~common ~prog ~args ~no_rebuild builder lock_hel
         (Context_name.build_dir context)
         (Common.prefix_target common "")
     in
-    build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog
+    build_prog_via_rpc_if_necessary ~dir ~config ~no_rebuild builder lock_held_by prog
   in
   let env = extend_with_staging_env context Env.initial in
   { prog; args; env }
@@ -397,7 +406,14 @@ let term : unit Term.t =
        let prepared_exec =
          Scheduler_setup.go_without_rpc_server ~common ~config
          @@ fun () ->
-         prepare_exec_via_rpc_server ~common ~prog ~args ~no_rebuild builder lock_held_by
+         prepare_exec_via_rpc_server
+           ~common
+           ~config
+           ~prog
+           ~args
+           ~no_rebuild
+           builder
+           lock_held_by
        in
        run_prepared_exec prepared_exec ~root:(Common.root common))
   | Ok () -> exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild

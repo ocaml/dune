@@ -321,7 +321,16 @@ module Poll = struct
       let to_progress : t -> Progress.t = function
         | Waiting -> Waiting
         | In_progress { complete; remaining } ->
-          In_progress { complete; remaining; failed = 0 }
+          In_progress
+            { complete
+            ; remaining
+            ; failed = 0
+            ; running_jobs = 0
+            ; goals = 0
+            ; run = None
+            ; started_at = None
+            ; action_duration = 0.
+            }
         | Failed -> Failed
         | Interrupted -> Interrupted
         | Success -> Success
@@ -329,8 +338,76 @@ module Poll = struct
 
       let of_progress : Progress.t -> t = function
         | Waiting -> Waiting
-        | In_progress { complete; remaining; failed = _ } ->
-          In_progress { complete; remaining }
+        | In_progress { complete; remaining; _ } -> In_progress { complete; remaining }
+        | Failed -> Failed
+        | Interrupted -> Interrupted
+        | Success -> Success
+      ;;
+    end
+
+    module V2 = struct
+      type t =
+        | Waiting
+        | In_progress of
+            { complete : int
+            ; remaining : int
+            ; failed : int
+            }
+        | Failed
+        | Interrupted
+        | Success
+
+      let sexp =
+        let open Conv in
+        let failed = constr "failed" unit (fun () -> Failed)
+        and in_progress =
+          let complete = field "complete" (required int)
+          and failed = field "failed" (required int)
+          and remaining = field "remaining" (required int) in
+          constr
+            "in_progress"
+            (record (three complete remaining failed))
+            (fun (complete, remaining, failed) ->
+               In_progress { complete; remaining; failed })
+        and interrupted = constr "interrupted" unit (fun () -> Interrupted)
+        and success = constr "success" unit (fun () -> Success)
+        and waiting = constr "waiting" unit (fun () -> Waiting) in
+        let constrs =
+          List.map ~f:econstr [ waiting; failed; interrupted; success ]
+          @ [ econstr in_progress ]
+        and serialize = function
+          | Waiting -> case () waiting
+          | In_progress { complete; remaining; failed } ->
+            case (complete, remaining, failed) in_progress
+          | Failed -> case () failed
+          | Interrupted -> case () interrupted
+          | Success -> case () success
+        in
+        sum constrs serialize
+      ;;
+
+      let to_progress : t -> Progress.t = function
+        | Waiting -> Waiting
+        | In_progress { complete; remaining; failed } ->
+          In_progress
+            { complete
+            ; remaining
+            ; failed
+            ; running_jobs = 0
+            ; goals = 0
+            ; run = None
+            ; started_at = None
+            ; action_duration = 0.
+            }
+        | Failed -> Failed
+        | Interrupted -> Interrupted
+        | Success -> Success
+      ;;
+
+      let of_progress : Progress.t -> t = function
+        | Waiting -> Waiting
+        | In_progress { complete; remaining; failed; _ } ->
+          In_progress { complete; remaining; failed }
         | Failed -> Failed
         | Interrupted -> Interrupted
         | Success -> Success
@@ -351,8 +428,19 @@ module Poll = struct
     ;;
 
     let v2 =
-      Decl.Request.make_current_gen
+      Decl.Request.make_gen
         ~version:2
+        ~req:Id.sexp
+        ~resp:(Conv.option V2.sexp)
+        ~upgrade_req:Fun.id
+        ~downgrade_req:Fun.id
+        ~upgrade_resp:(Option.map ~f:V2.to_progress)
+        ~downgrade_resp:(Option.map ~f:V2.of_progress)
+    ;;
+
+    let v3 =
+      Decl.Request.make_current_gen
+        ~version:3
         ~req:Id.sexp
         ~resp:(Conv.option Progress.sexp)
     ;;
@@ -393,7 +481,7 @@ module Poll = struct
 
   let progress =
     let open Progress in
-    make name [ v1; v2 ]
+    make name [ v1; v2; v3 ]
   ;;
 
   let diagnostic =

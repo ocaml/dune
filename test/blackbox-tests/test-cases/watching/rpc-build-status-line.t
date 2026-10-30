@@ -42,6 +42,83 @@ The run number increments with the next watch build.
   > | awk 'NR == 1'
   [BUILD DURATION] [PARALLELISM] [2]
 
+Forwarded builds display the progress of the build running on the server.
+
+  $ STARTED="$PWD/progress-started"
+  $ RELEASE="$PWD/progress-release"
+  $ cat > dune <<EOF
+  > (rule
+  >  (target progress-target)
+  >  (action
+  >   (progn
+  >    (system "touch '$STARTED'; while test ! -f '$RELEASE'; do sleep 0.1; done")
+  >    (write-file %{target} ok))))
+  > EOF
+
+  $ INSIDE_EMACS=1 DUNE_CONFIG__THREADED_CONSOLE=disabled \
+  >   dune build --display progress progress-target > progress-output 2>&1 &
+  $ PROGRESS_PID=$!
+  $ with_timeout dune_cmd wait-for-file-to-appear "$STARTED"
+  $ i=200
+  $ while [ "$i" != 0 ]; do
+  >   tr '\r' '\n' < progress-output | grep -a "Done:" >/dev/null && break
+  >   i=$((i - 1))
+  >   sleep 0.01
+  > done
+  $ tr '\r' '\n' < progress-output \
+  > | grep -a "Connected to RPC server" \
+  > | sed -E 's/ +$//; s/ \[[0-9.]+x\]//; s/[0-9]+/N/g' \
+  > | sort -u
+  Connected to RPC server
+  Connected to RPC server | Done: N% (N/N, N left) (jobs: N) | [N.Ns] [N]
+  $ touch "$RELEASE"
+  $ wait "$PROGRESS_PID"
+
+When the server builds the requests of several clients at once, forwarded
+builds report the number of goals being built.
+
+  $ A_STARTED="$PWD/shared-a-started"
+  $ RELEASE="$PWD/shared-release"
+  $ cat > dune <<EOF
+  > (rule
+  >  (target shared-a)
+  >  (action
+  >   (progn
+  >    (system "touch '$A_STARTED'; while test ! -f '$RELEASE'; do sleep 0.1; done")
+  >    (write-file %{target} ok))))
+  > (rule
+  >  (target shared-b)
+  >  (action
+  >   (progn
+  >    (system "while test ! -f '$RELEASE'; do sleep 0.1; done")
+  >    (write-file %{target} ok))))
+  > EOF
+
+  $ INSIDE_EMACS=1 DUNE_CONFIG__THREADED_CONSOLE=disabled \
+  >   dune build --display progress shared-a > shared-a-output 2>&1 &
+  $ A_PID=$!
+  $ with_timeout dune_cmd wait-for-file-to-appear "$A_STARTED"
+  $ INSIDE_EMACS=1 DUNE_CONFIG__THREADED_CONSOLE=disabled \
+  >   dune build --display progress shared-b > shared-b-output 2>&1 &
+  $ B_PID=$!
+  $ i=200
+  $ while [ "$i" != 0 ]; do
+  >   tr '\r' '\n' < shared-b-output | grep -a "2 goals" >/dev/null && break
+  >   i=$((i - 1))
+  >   sleep 0.01
+  > done
+  $ [ "$i" != 0 ] || tr '\r' '\n' < shared-b-output
+  $ tr '\r' '\n' < shared-b-output \
+  > | grep -a "goals" \
+  > | sed -E 's/ +$//; s/ \[[0-9.]+x\]//; s/[0-9]+/N/g' \
+  > | sort -u
+  Connected to RPC server | Done: N% (N/N, N left) (jobs: N) | [N.Ns] [N] [N goals]
+  $ tr '\r' '\n' < shared-b-output | grep -a -o "\[[0-9]* goals\]" | sort -u
+  [2 goals]
+  $ touch "$RELEASE"
+  $ wait "$A_PID"
+  $ wait "$B_PID"
+
   $ stop_dune_quiet
 
 Batch builds display the build duration and parallelism alongside the client

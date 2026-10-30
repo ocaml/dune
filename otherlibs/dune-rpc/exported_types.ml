@@ -588,6 +588,11 @@ module Progress = struct
         { complete : int
         ; remaining : int
         ; failed : int
+        ; running_jobs : int
+        ; goals : int
+        ; run : int option
+        ; started_at : float option
+        ; action_duration : float
         }
     | Failed
     | Interrupted
@@ -601,10 +606,41 @@ module Progress = struct
       let complete = field "complete" (required int) in
       let remaining = field "remaining" (required int) in
       let failed = field "failed" (required int) in
+      let running_jobs = field "running_jobs" (required int) in
+      let goals = field "goals" (required int) in
+      let run = field "run" (optional int) in
+      let started_at = field "started_at" (optional float) in
+      let action_duration = field "action_duration" (required float) in
       constr
         "in_progress"
-        (record (three complete remaining failed))
-        (fun (complete, remaining, failed) -> In_progress { complete; remaining; failed })
+        (record
+           (eight
+              complete
+              remaining
+              failed
+              running_jobs
+              goals
+              run
+              started_at
+              action_duration))
+        (fun ( complete
+             , remaining
+             , failed
+             , running_jobs
+             , goals
+             , run
+             , started_at
+             , action_duration ) ->
+           In_progress
+             { complete
+             ; remaining
+             ; failed
+             ; running_jobs
+             ; goals
+             ; run
+             ; started_at
+             ; action_duration
+             })
     in
     let interrupted = constr "interrupted" unit (fun () -> Interrupted) in
     let success = constr "success" unit (fun () -> Success) in
@@ -614,8 +650,26 @@ module Progress = struct
     in
     let serialize = function
       | Waiting -> case () waiting
-      | In_progress { complete; remaining; failed } ->
-        case (complete, remaining, failed) in_progress
+      | In_progress
+          { complete
+          ; remaining
+          ; failed
+          ; running_jobs
+          ; goals
+          ; run
+          ; started_at
+          ; action_duration
+          } ->
+        case
+          ( complete
+          , remaining
+          , failed
+          , running_jobs
+          , goals
+          , run
+          , started_at
+          , action_duration )
+          in_progress
       | Failed -> case () failed
       | Interrupted -> case () interrupted
       | Success -> case () success

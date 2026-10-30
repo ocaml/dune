@@ -65,6 +65,18 @@ let restore_cwd_and_execve (root : Workspace_root.t) prog args env =
   Proc.restore_cwd_and_execve prog args ~env
 ;;
 
+let progress_status ~complete ~remaining ~failed ~running_jobs =
+  let total = complete + remaining in
+  sprintf
+    "Done: %d%% (%d/%d, %d left%s) (jobs: %d)"
+    (if total = 0 then 0 else complete * 100 / total)
+    complete
+    total
+    remaining
+    (if failed = 0 then "" else sprintf ", %d failed" failed)
+    running_jobs
+;;
+
 let setup () =
   let scheduler = Scheduler.t () in
   let previous_status = ref None in
@@ -91,14 +103,11 @@ let setup () =
             | None | Some _ ->
               let status =
                 Pp.verbatim
-                  (sprintf
-                     "Done: %u%% (%u/%u, %u left%s) (jobs: %u)"
-                     (if total = 0 then 0 else done_ * 100 / total)
-                     done_
-                     total
-                     (total - done_)
-                     (if failed = 0 then "" else sprintf ", %u failed" failed)
-                     running)
+                  (progress_status
+                     ~complete:done_
+                     ~remaining:(total - done_)
+                     ~failed
+                     ~running_jobs:running)
               in
               previous_status := Some (done_, total, failed, running, status);
               status)));

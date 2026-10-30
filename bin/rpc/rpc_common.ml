@@ -182,6 +182,105 @@ let fire_request
     request_exn client request arg)
 ;;
 
+let pp_progress_status : Dune_rpc.Progress.t -> _ Pp.t = function
+  | Failed | Success | Waiting -> Pp.nop
+  | In_progress
+      { complete
+      ; remaining
+      ; failed
+      ; running_jobs
+      ; goals
+      ; run
+      ; started_at
+      ; action_duration
+      } ->
+    let timing =
+      match started_at with
+      | None -> []
+      | Some started_at ->
+        [ Dune_engine.Build_loop.build_timing_status
+            (match run with
+             | Some run -> Dune_engine.Run_id.Watch run
+             | None -> Dune_engine.Run_id.Batch)
+            ~goals
+            ~build_duration:
+              (* The build start time loses some precision when transmitted over
+               the wire, so we may end up with a build duration very slightly
+               negative. Clamp it to zero. *)
+              (Time.Span.max
+                 Time.Span.zero
+                 (Time.diff (Time.now ()) (Time.of_epoch_secs started_at)))
+            ~action_duration:(Time.Span.of_secs action_duration)
+        ]
+    in
+    Pp.concat
+      ~sep:(Pp.verbatim " | ")
+      (Pp.verbatim (Util.progress_status ~complete ~remaining ~failed ~running_jobs)
+       :: timing)
+  | Interrupted -> Pp.verbatim "Restarting current build..."
+;;
+
+let request_with_progress_exn client request arg =
+  let open Fiber.O in
+  Client.poll client Dune_rpc.Public.Sub.progress
+  >>= function
+  | Error _ -> request_exn client request arg
+  | Ok poller ->
+    let finished = ref false
+    and progress = ref Dune_rpc.Progress.Waiting in
+    let rec cancel () =
+      finished := true;
+      (* The connection may already be dead and the poll canceled, ignore
+         errors. *)
+      let+ (_ : (unit, _) result) =
+        Fiber.collect_errors (fun () -> Client.Stream.cancel poller)
+      in
+      ()
+    and update () =
+      Client.Stream.next poller
+      >>= function
+      | None -> Fiber.return ()
+      | Some p ->
+        progress := p;
+        Console.Status_line.refresh ();
+        if !finished then Fiber.return () else update ()
+    in
+    let section =
+      Console.Status_line.add_section (Live (fun () -> pp_progress_status !progress))
+    in
+    Fiber.finalize
+      (fun () ->
+         Fiber.fork_and_join
+           (fun () ->
+              Fiber.finalize (fun () -> request_exn client request arg) ~finally:cancel)
+           update
+         >>| fst)
+      ~finally:(fun () ->
+        Console.Status_line.remove_section section;
+        Fiber.return ())
+;;
+
+let fire_request_with_progress
+      ~name
+      ~wait
+      ?(warn_forwarding = true)
+      ?(lock_held_by = Global_lock.Lock_held_by.Unknown)
+      ~(config : Dune_config.t)
+      builder
+      request
+      arg
+  =
+  let status_line_enabled =
+    match config.display with
+    | Tui -> true
+    | Simple { status_line; verbosity = _ } -> status_line
+  in
+  fire ~name ~wait ~warn_forwarding ~lock_held_by builder (fun client ->
+    if status_line_enabled
+    then request_with_progress_exn client request arg
+    else request_exn client request arg)
+;;
+
 let fire_notification
       ~name
       ~wait

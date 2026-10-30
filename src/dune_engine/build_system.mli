@@ -64,6 +64,8 @@ module Request : sig
   (** Prevent this request from completing goals that have not already
       completed. *)
   val cancel_completion : t -> unit
+
+  val number_of_goals : t -> int
 end
 
 val run_build_requests

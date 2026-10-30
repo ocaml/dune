@@ -1312,6 +1312,7 @@ module Request = struct
   let create goals = { goals; completion = Complete_goals }
   let cancel_completion t = t.completion <- Do_not_complete_goals
   let goals t = t.goals
+  let number_of_goals t = List.length t.goals
 end
 
 let run_build_requests ?restart_started_at ~build_started_at ?build (request : Request.t) =

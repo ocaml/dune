@@ -963,6 +963,32 @@ module Action = struct
     ;;
   end
 
+  module Rule_plugin = struct
+    type kind =
+      | Spawn
+      | Connected
+      | Request_start
+      | Request_finish
+      | Stop
+      | Disconnected
+      | Exited
+
+    let event ~name ~pid kind =
+      let event_name =
+        match kind with
+        | Spawn -> "rule-plugin-spawn"
+        | Connected -> "rule-plugin-connected"
+        | Request_start -> "rule-plugin-request-start"
+        | Request_finish -> "rule-plugin-request-finish"
+        | Stop -> "rule-plugin-stop"
+        | Disconnected -> "rule-plugin-disconnected"
+        | Exited -> "rule-plugin-exited"
+      in
+      let args = [ "name", Arg.string name; "pid", Arg.int (Pid.to_int pid) ] in
+      Event.instant ~args ~name:event_name (Time.now ()) Action
+    ;;
+  end
+
   let write_file ~start ~finish ~file ~size =
     let dur = Time.diff finish start in
     let args = [ "file", Arg.path file; "size", Arg.int size ] in

@@ -16,5 +16,6 @@ module Public = Public
 module Server_notifications = Server_notifications
 module Client = Client
 module Glob = Glob
+module Rule_plugin = Rule_plugin
 
 module type Fiber = Fiber_intf.S

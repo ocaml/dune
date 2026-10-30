@@ -269,6 +269,19 @@ module Event : sig
       val runner_event : name:Action_runner_name.t -> kind -> t
     end
 
+    module Rule_plugin : sig
+      type kind =
+        | Spawn
+        | Connected
+        | Request_start
+        | Request_finish
+        | Stop
+        | Disconnected
+        | Exited
+
+      val event : name:string -> pid:Pid.t -> kind -> t
+    end
+
     val write_file : start:Time.t -> finish:Time.t -> file:Path.t -> size:int -> t
     val trace : digest:string -> Csexp.t -> t
   end

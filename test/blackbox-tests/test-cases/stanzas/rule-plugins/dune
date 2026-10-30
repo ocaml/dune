@@ -1,0 +1,12 @@
+(cram
+ (deps
+  (package dune-rpc)
+  (package dune-rpc-lwt)
+  (package dune-rules-plugin)
+  (package dyn)
+  (package fs-io)
+  (package ocamlc-loc)
+  (package ordering)
+  (package stdune)
+  (package top-closure)
+  (package xdg)))

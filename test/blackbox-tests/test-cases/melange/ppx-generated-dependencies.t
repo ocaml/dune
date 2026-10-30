@@ -84,11 +84,7 @@ Both executables and emitted JavaScript can use the generated references.
 Staged emission must also discover dependencies introduced by the PPX.
 
   $ dune build @staged/melange && node _build/default/staged/out/staged/main.js
-  File "staged/shared.ml", line 1, characters 12-30:
-  1 | let value = [%generated_value]
-                  ^^^^^^^^^^^^^^^^^^
-  Error: Unbound module Z_value
-  [1]
+  generated
 
 Direct emission also preserves staged PPX arguments and generated preprocessor
 inputs. The input is declared separately from the flag, so it must be available
@@ -133,11 +129,7 @@ modules. Then build the remaining outputs so Node can load the selected module.
 
   $ dune build emit/out/emit/main.js && dune build @emit/melange \
   >   && node _build/default/emit/out/emit/main.js
-  File "emit/main.ml", line 1, characters 23-42:
-  1 | let () = print_endline [%configured_value]
-                             ^^^^^^^^^^^^^^^^^^^
-  Error: The module Z_first is an alias for module Melange__Z_first, which is missing
-  [1]
+  first
 
 Changing only the generated preprocessor input changes the discovered module
 reference and the emitted program.
@@ -145,8 +137,4 @@ reference and the emitted program.
   $ echo Z_second >emit/selection
   $ dune build emit/out/emit/main.js && dune build @emit/melange \
   >   && node _build/default/emit/out/emit/main.js
-  File "emit/main.ml", line 1, characters 23-42:
-  1 | let () = print_endline [%configured_value]
-                             ^^^^^^^^^^^^^^^^^^^
-  Error: The module Z_second is an alias for module Melange__Z_second, which is missing
-  [1]
+  second

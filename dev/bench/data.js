@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793378962039,
+  "lastUpdate": 1793379302940,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -479513,6 +479513,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.43613985282666673,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d38f8cc135e2cb37d150c78d189bec679dbeab12",
+          "message": "refactor(rules): replace redundant generated-rule helpers (#16857)\n\nRemove the `rules_for` and `map_rules` wrappers from\n`dune_rules/import.ml`. Use the existing rule constructors at the three\n`rules_for` call sites, and express the sole `map_rules` use with\n`combine` instead of a callback.\n\nNo behavior change is intended.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-31T00:32:23+08:00",
+          "tree_id": "702f43647b2cb6fdabb512b8d5475d602492a419",
+          "url": "https://github.com/ocaml/dune/commit/d38f8cc135e2cb37d150c78d189bec679dbeab12"
+        },
+        "date": 1793379301576,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 65.64816265771333,
             "unit": "seconds"
           }
         ]

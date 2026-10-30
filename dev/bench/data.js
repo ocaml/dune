@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793352451458,
+  "lastUpdate": 1793353168093,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -666506,6 +666506,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.2604129455133326,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c2fce9163b46b6afc4aec18dbf73f43e2ef8c395",
+          "message": "Fix the action in the user-defined alias example (#16845)\n\nThe user-defined alias example in doc/reference/aliases.rst uses\n`(action ./run-deployer.exe)`, which dune rejects with:\n\n      Error: Unknown constructor ./run-deployer.exe\n\nThis changes it to `(action (run ./run-deployer.exe))`, which dune\naccepts. Documentation only, so no changelog entry.",
+          "timestamp": "2026-10-30T10:30:19+01:00",
+          "tree_id": "f82cd0df910f50e039258a304f35db28ce9f9442",
+          "url": "https://github.com/ocaml/dune/commit/c2fce9163b46b6afc4aec18dbf73f43e2ef8c395"
+        },
+        "date": 1793352943841,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.7349289653866666,
             "unit": "seconds"
           }
         ]

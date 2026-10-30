@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793363295660,
+  "lastUpdate": 1793363302427,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -479310,6 +479310,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 46.79763110530667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e6cc8ad1747d47dbbac354a19ec51df74e74ee12",
+          "message": "refactor(engine): update promoted-file deletion state directly (#16770)\n\nInline the promoted-file deletion database update into `To_delete.add`\ninstead of routing it through a callback returning an option. Remove\n`modify_db` and `set_db`, while preserving the existing behavior: mark\nthe database dirty only when a previously untracked path is added.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-30T20:14:59+08:00",
+          "tree_id": "18f30dbee7648b9797e007e8fde7d0e75792e524",
+          "url": "https://github.com/ocaml/dune/commit/e6cc8ad1747d47dbbac354a19ec51df74e74ee12"
+        },
+        "date": 1793363301442,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.47233994220666675,
             "unit": "seconds"
           }
         ]

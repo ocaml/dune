@@ -85,6 +85,11 @@ When a ``.v`` file has a corresponding ``.expected`` file, Rocq's standard
 output is captured instead of being output to the terminal, and the output is
 diffed with the ``.expected`` file as part of the ``runtest`` alias. When the
 output differs, it can be promoted as with, e.g., cram tests.
+
+Every output test also creates an alias based on the name of its ``.expected``
+file. For example, the output test ``foo.expected`` creates the alias
+``foo.diff`` and can be run with ``dune build @foo.diff``.
+
 (Appeared in :ref:`Rocq lang 0.12<rocq-lang>`)
 
 For usage of this stanza, see the :ref:`rocq-examples`.

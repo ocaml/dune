@@ -203,7 +203,13 @@ let pp_progress_status : Dune_rpc.Progress.t -> _ Pp.t = function
              | Some run -> Dune_engine.Run_id.Watch run
              | None -> Dune_engine.Run_id.Batch)
             ~goals
-            ~build_duration:(Time.diff (Time.now ()) (Time.of_epoch_secs started_at))
+            ~build_duration:
+              (* The build start time loses some precision when transmitted over
+               the wire, so we may end up with a build duration very slightly
+               negative. Clamp it to zero. *)
+              (Time.Span.max
+                 Time.Span.zero
+                 (Time.diff (Time.now ()) (Time.of_epoch_secs started_at)))
             ~action_duration:(Time.Span.of_secs action_duration)
         ]
     in

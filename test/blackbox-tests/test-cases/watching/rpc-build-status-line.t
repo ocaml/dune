@@ -67,10 +67,10 @@ Forwarded builds display the progress of the build running on the server.
   > done
   $ tr '\r' '\n' < progress-output \
   > | grep -a "Connected to RPC server" \
-  > | sed -E 's/ +$//; s/[0-9]+/N/g' \
+  > | sed -E 's/ +$//; s/ \[[0-9.]+x\]//; s/[0-9]+/N/g' \
   > | sort -u
   Connected to RPC server
-  Connected to RPC server | Done: N% (N/N, N left) (jobs: N) | [N.Ns] [N.Nx] [N]
+  Connected to RPC server | Done: N% (N/N, N left) (jobs: N) | [N.Ns] [N]
   $ touch "$RELEASE"
   $ wait "$PROGRESS_PID"
 
@@ -110,9 +110,9 @@ builds report the number of goals being built.
   $ [ "$i" != 0 ] || tr '\r' '\n' < shared-b-output
   $ tr '\r' '\n' < shared-b-output \
   > | grep -a "goals" \
-  > | sed -E 's/ +$//; s/[0-9]+/N/g' \
+  > | sed -E 's/ +$//; s/ \[[0-9.]+x\]//; s/[0-9]+/N/g' \
   > | sort -u
-  Connected to RPC server | Done: N% (N/N, N left) (jobs: N) | [N.Ns] [N.Nx] [N] [N goals]
+  Connected to RPC server | Done: N% (N/N, N left) (jobs: N) | [N.Ns] [N] [N goals]
   $ tr '\r' '\n' < shared-b-output | grep -a -o "\[[0-9]* goals\]" | sort -u
   [2 goals]
   $ touch "$RELEASE"

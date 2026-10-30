@@ -9,6 +9,10 @@
  (deps %{bin:strace} %{bin:od}))
 
 (cram
+ (applies_to sync-timeout.t)
+ (runtest_alias false))
+
+(cram
  ;; see https://github.com/ocaml/dune/pull/4728
  (enabled_if
   (<> "macosx" %{ocaml-config:system}))

@@ -32,14 +32,26 @@ module Sync = struct
 
   type t =
     { id : Id.t
-    ; ivar : unit Fiber.Ivar.t
+    ; mutable retries : int
+    ; mutable deadline : Time.t
+    ; ivar : (unit, Exn_with_backtrace.t) result Fiber.Ivar.t
     }
+
+  let timeout = Time.Span.of_secs 5.
+
+  let await { ivar; _ } =
+    Fiber.Ivar.read ivar
+    |> Fiber.map ~f:(function
+      | Ok () -> ()
+      | Error exn -> Exn_with_backtrace.reraise exn)
+  ;;
 
   let special_dir_path = lazy (Path.Build.relative Path.Build.root ".sync")
   let special_dir = lazy (Lazy.force special_dir_path |> Path.Build.to_string)
 
-  let sync_path id =
-    Filename.concat (Lazy.force special_dir) (Filename.to_string (Id.to_filename id))
+  let sync_path id ~retries =
+    let fn = sprintf "%s.%d" (Filename.to_string (Id.to_filename id)) retries in
+    Filename.concat (Lazy.force special_dir) fn
   ;;
 
   module Table = struct
@@ -50,52 +62,71 @@ module Sync = struct
 
     let create () = { table = Table.create (module Id) 64; mutex = Mutex.create () }
 
-    let create_sync_file_locked t ivar =
-      let id = Id.gen () in
-      let sync = { id; ivar } in
-      let path = sync_path id in
-      Table.set t.table id sync;
-      match
-        Unix.close (Unix.openfile path [ O_WRONLY; O_CREAT; O_TRUNC; O_CLOEXEC ] 0o666)
-      with
-      | () -> ()
-      | exception exn ->
-        Table.remove t.table id;
-        Exn.reraise exn
+    let write_sync_file id ~retries =
+      let path = sync_path id ~retries in
+      Unix.close (Unix.openfile path [ O_WRONLY; O_CREAT; O_TRUNC; O_CLOEXEC ] 0o666)
     ;;
 
-    let create_sync_file t ivar =
-      Mutex.protect t.mutex (fun () -> create_sync_file_locked t ivar)
+    let create_sync t =
+      Mutex.protect t.mutex (fun () ->
+        let id = Id.gen () in
+        write_sync_file id ~retries:0;
+        let sync =
+          { id
+          ; retries = 0
+          ; deadline = Time.add (Time.now ()) timeout
+          ; ivar = Fiber.Ivar.create ()
+          }
+        in
+        Table.set t.table id sync;
+        sync)
     ;;
 
     let consume_event t path =
-      match Id.of_string (Filename.basename path) with
+      match String.lsplit2 (Filename.basename path) ~on:'.' with
       | None -> None
-      | Some id ->
-        Mutex.protect t.mutex (fun () ->
-          match Table.find t.table id with
-          | None -> None
-          | Some sync ->
-            Fpath.unlink_no_err path;
-            Table.remove t.table id;
-            Some sync)
+      | Some (id, retry_string) ->
+        (match Id.of_string id, Int.of_string retry_string with
+         | Some id, Some retries when String.equal (Int.to_string retries) retry_string ->
+           Mutex.protect t.mutex (fun () ->
+             match Table.find t.table id with
+             | Some sync when Int.equal sync.retries retries ->
+               Fpath.unlink_no_err path;
+               Table.remove t.table id;
+               Some sync
+             | None | Some _ -> None)
+         | _ -> None)
     ;;
 
-    let retry_all t =
+    let retry_locked sync =
+      let old_retries = sync.retries in
+      let retries = old_retries + 1 in
+      write_sync_file sync.id ~retries;
+      sync.retries <- retries;
+      sync.deadline <- Time.add (Time.now ()) timeout;
+      Fpath.unlink_no_err (sync_path sync.id ~retries:old_retries)
+    ;;
+
+    let retry_all t = Mutex.protect t.mutex (fun () -> Table.iter t.table ~f:retry_locked)
+
+    let retry_expired t sync =
       Mutex.protect t.mutex (fun () ->
-        Table.to_list t.table
-        |> List.iter ~f:(fun (id, { ivar; _ }) ->
-          create_sync_file_locked t ivar;
-          Table.remove t.table id;
-          Fpath.unlink_no_err (sync_path id)))
+        match Table.mem t.table sync.id with
+        | false -> Ok `Finished
+        | true ->
+          (match
+             if Time.(now () >= sync.deadline) then retry_locked sync;
+             `Wait_for
+               (Time.Span.max Time.Span.zero (Time.diff sync.deadline (Time.now ())))
+           with
+           | next -> Ok next
+           | exception exn ->
+             let exn = Exn_with_backtrace.capture exn in
+             Table.remove t.table sync.id;
+             Fpath.unlink_no_err (sync_path sync.id ~retries:sync.retries);
+             Error exn))
     ;;
   end
-
-  let flush sync_table =
-    let ivar = Fiber.Ivar.create () in
-    Table.create_sync_file sync_table ivar;
-    Fiber.Ivar.read ivar
-  ;;
 
   let is_special_file ~path_as_reported_by_file_watcher =
     (* We use string matching here and that's fine because we match on the path
@@ -407,14 +438,16 @@ let process_inotify_event (event : Inotify.Event.t) should_exclude : backend_eve
 ;;
 
 let event_to_trace_event = function
-  | Sync { id; _ } -> `Sync (Sync.Id.to_int id)
+  | Sync { id; retries; deadline = _; ivar = _ } ->
+    `Sync { Dune_trace.File_watcher_event.id = Sync.Id.to_int id; retries }
   | Watcher_terminated -> `Watcher_terminated
   | Filesystem_event Queue_overflow -> `Queue_overflow
   | Filesystem_event (Fs_memo_event { path; kind }) -> `File (path, kind)
 ;;
 
 let trace_event_to_dyn = function
-  | `Sync id -> Dyn.variant "Sync" [ Dyn.int id ]
+  | `Sync sync ->
+    Dyn.variant "Sync" [ Repr.to_dyn Dune_trace.File_watcher_event.sync_repr sync ]
   | `Queue_overflow -> Dyn.variant "Queue_overflow" []
   | `Watcher_terminated -> Dyn.variant "Watcher_terminated" []
   | `File (path, kind) ->
@@ -457,7 +490,7 @@ let dispatch_backend_events ~sync_table events backend_events =
     | Sync ({ ivar; _ } as sync) :: backend_events ->
       send_file_events file_events;
       let backend_event = Sync sync in
-      (match Thread_safe_channel.write_fill events (Fiber.Fill (ivar, ())) with
+      (match Thread_safe_channel.write_fill events (Fiber.Fill (ivar, Ok ())) with
        | `Ok -> emit_events [ backend_event ]
        | `Closed -> log_dropped_events [ backend_event ]);
       loop [] backend_events
@@ -972,7 +1005,14 @@ let create ?fsevents_debounce ~watch_exclusions ~event_queue () =
   }
 ;;
 
-let flush t = Sync.flush t.sync_table
+let start_sync t = Sync.Table.create_sync t.sync_table
+
+let retry_sync t sync =
+  match Sync.Table.retry_expired t.sync_table sync with
+  | Ok next -> Fiber.return next
+  | Error exn ->
+    Fiber.Ivar.fill sync.ivar (Error exn) |> Fiber.map ~f:(fun () -> `Finished)
+;;
 
 (* Return the parent directory of [ext] if [ext] denotes a file. *)
 let parent_directory ext =

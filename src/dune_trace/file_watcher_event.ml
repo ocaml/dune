@@ -6,10 +6,15 @@ type kind =
   | File_changed
   | Unknown
 
+type sync =
+  { id : int
+  ; retries : int
+  }
+
 type t =
   [ `File of Path.t * kind
   | `Queue_overflow
-  | `Sync of int
+  | `Sync of sync
   | `Watcher_terminated
   ]
 
@@ -38,13 +43,22 @@ let kind_repr =
     ]
 ;;
 
+let sync_repr =
+  Repr.record
+    "file-watcher-sync"
+    [ Repr.field "id" Repr.int ~get:(fun { id; _ } -> id)
+    ; Repr.field "retries" Repr.int ~get:(fun { retries; _ } -> retries)
+    ]
+;;
+
 let to_event event =
   (* CR-soon rgrinberg: this timestamp is wrong *)
   let now = Time.now () in
   let name, args =
     match event with
     | `Queue_overflow -> "queue_overflow", []
-    | `Sync id -> "sync", [ "id", Event.Arg.int id ]
+    | `Sync { id; retries } ->
+      "sync", [ "id", Event.Arg.int id; "retries", Event.Arg.int retries ]
     | `Watcher_terminated -> "watcher_terminated", []
     | `File (path, kind) -> kind_to_trace_name kind, [ "path", Event.Arg.path path ]
   in

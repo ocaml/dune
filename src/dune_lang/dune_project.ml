@@ -329,14 +329,24 @@ module Extension = struct
     | Selected of instance
     | Not_selected of packed_extension
 
-  let automatic ~explicitly_selected : automatic list =
+  let automatic ~dune_lang_ver ~explicitly_selected : automatic list =
     Table.foldi extensions ~init:[] ~f:(fun name extension acc ->
       match Syntax.Name.Map.find explicitly_selected name with
       | Some instance -> Selected instance :: acc
       | None ->
         (match extension with
          | Deleted_in _ -> acc
-         | Extension e -> Not_selected e :: acc))
+         | Extension e ->
+           if
+             dune_lang_ver >= (3, 26)
+             && Syntax.Name.equal name (Syntax.name Melange.syntax)
+           then (
+             let loc = Loc.of_pos __POS__ in
+             let parse_args args =
+               Decoder.parse (Decoder.enter args) Univ_map.empty (List (loc, []))
+             in
+             Selected { extension = e; version = 1, 0; loc; parse_args } :: acc)
+           else Not_selected e :: acc))
   ;;
 
   let explicit_extensions_map explicit_extensions =
@@ -426,7 +436,11 @@ let make_parsing_context ~(lang : Lang.Instance.t) extensions =
 
 let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions =
   let explicit_extensions = Extension.explicit_extensions_map explicit_extensions in
-  let extensions = Extension.automatic ~explicitly_selected:explicit_extensions in
+  let extensions =
+    Extension.automatic
+      ~dune_lang_ver:lang.version
+      ~explicitly_selected:explicit_extensions
+  in
   let parsing_context = make_parsing_context ~lang extensions in
   let extension_args, extension_stanzas =
     List.fold_left

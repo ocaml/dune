@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793393731819,
+  "lastUpdate": 1793393945311,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -479629,6 +479629,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5959332281133335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "quentin@tarides.com",
+            "name": "mefyl",
+            "username": "mefyl"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "46944f6e68dd12fe666731de6efa9dcc5556fa0f",
+          "message": "feat(rpc): Show the progress when building over RPCs. (#16819)\n\n## Description\n\nWhen building over RPCs, display progress via the existing dune monitor\npolling.\n\nExample status line output:\n\n```\nConnected to RPC server | Done: 94% (89/94, 5 left)\n```\n\n## Related Issue and Motivation\n\nWhen using passive watch mode, building will properly report the end\nresult, but shows no progress. On longer builds taking minutes, this\nleaves `dune build` staring at you silently for what is, IMO, an\nuncomfortable time. I often end up going to the dune watch output\nterminal/buffer to check progress.\n\nThere is a slight misfeature were, in a pathological case, we _could_\ndisplay the very end of the previous build right before it is canceled.\nWe do send the build request first to mitigate that as much as possible,\nbut it is possible that a progress flashes before we display \"restarting\ncurrent build\" and the new progress. I did not find a fix simple enough\nto justify the change, given how non critical this issue seems to be.\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-10-30T21:46:54+01:00",
+          "tree_id": "8d023de98b0a204d7fcaaef8e25897a584c26b21",
+          "url": "https://github.com/ocaml/dune/commit/46944f6e68dd12fe666731de6efa9dcc5556fa0f"
+        },
+        "date": 1793393943400,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 40.288849776013336,
             "unit": "seconds"
           }
         ]

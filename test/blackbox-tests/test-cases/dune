@@ -59,7 +59,11 @@
  (alias runtest-windows))
 
 (cram
- (applies_to empty-meta-version-gh9176.t)
+ (applies_to
+  build-info-no-head-commit-gh4429.t
+  dune-build-info-in-ppx-github3336.t
+  empty-meta-version-gh9176.t
+  version-corruption.t)
  (deps
   (package dune-build-info)))
 

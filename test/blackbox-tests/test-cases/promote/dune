@@ -2,3 +2,8 @@
  (applies_to promote-over-running-binary.t)
  (enabled_if
   (<> %{ocaml-config:system} win)))
+
+(cram
+ (applies_to promote-only-when-needed.t)
+ (deps
+  (package dune-build-info)))

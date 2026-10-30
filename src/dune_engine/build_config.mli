@@ -16,9 +16,7 @@ module Gen_rules : sig
     type t = Subdir_set.t Path.Build.Map.t
 
     val empty : t
-    val iter_dirs_containing_sub_dirs : t -> f:(Path.Build.t -> unit) -> unit
     val singleton : dir:Path.Build.t -> Subdir_set.t -> t
-    val find : t -> Path.Build.t -> Subdir_set.t
     val union : t -> t -> t
   end
 

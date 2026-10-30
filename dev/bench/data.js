@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793378248490,
+  "lastUpdate": 1793378254961,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -479484,6 +479484,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 44.054481638140004,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3918e36c933d8159e607c6ca3f103cbb0af847d7",
+          "message": "refactor(engine): use rule-generation result constructors directly (#16856)\n\nUse `Rules`, `Redirect_to_parent`, and `Unknown_context` directly\ninstead of the equivalent helper functions. Reuse `no_rules` for empty\nresults and remove the redundant helpers from the engine API.\n\nThis is a mechanical cleanup with no behavior change.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-31T00:24:18+08:00",
+          "tree_id": "078720dc6e43f6175a8a44f03d74768be7ee5d2e",
+          "url": "https://github.com/ocaml/dune/commit/3918e36c933d8159e607c6ca3f103cbb0af847d7"
+        },
+        "date": 1793378254027,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.43613985282666673,
             "unit": "seconds"
           }
         ]

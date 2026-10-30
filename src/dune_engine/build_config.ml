@@ -56,14 +56,33 @@ module Gen_rules = struct
     ;;
   end
 
-  module Gen_rules_result = struct
-    type t =
-      | Rules of Rules.t
-      | Unknown_context
-      | Redirect_to_parent of Rules.t
+  type t =
+    | Rules of Rules.t
+    | Unknown_context
+    | Redirect_to_parent of Rules.t
 
-    let no_rules = Rules Rules.empty
-  end
+  let no_rules = Rules Rules.empty
+
+  let make ?build_dir_only_sub_dirs ?directory_targets rules =
+    Rules (Rules.create ?build_dir_only_sub_dirs ?directory_targets rules)
+  ;;
+
+  let make_empty ~dir subdirs =
+    Rules
+      { Rules.empty with
+        build_dir_only_sub_dirs = Build_only_sub_dirs.singleton ~dir subdirs
+      }
+  ;;
+
+  let combine x y =
+    match x, y with
+    | Unknown_context, _ | _, Unknown_context -> Unknown_context
+    | Rules x, Rules y -> Rules (Rules.combine_exn x y)
+    | Rules x, Redirect_to_parent y
+    | Redirect_to_parent x, Rules y
+    | Redirect_to_parent x, Redirect_to_parent y ->
+      Redirect_to_parent (Rules.combine_exn x y)
+  ;;
 end
 
 module type Source_tree = sig
@@ -80,10 +99,7 @@ end
 type t =
   { contexts : (Build_context.t * Context_type.t) Context_name.Map.t Memo.Lazy.t
   ; rule_generator :
-      Context_name.t
-      -> dir:Path.Build.t
-      -> string list
-      -> Gen_rules.Gen_rules_result.t Memo.t
+      Context_name.t -> dir:Path.Build.t -> string list -> Gen_rules.t Memo.t
   ; sandboxing_preference : Sandbox_mode.t list
   ; promote_source :
       chmod:(Permissions.Mode.t -> Permissions.Mode.t)

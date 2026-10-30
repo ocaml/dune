@@ -20,7 +20,7 @@ val gen_rules
   :  Context_name.t
   -> dir:Path.Build.t
   -> string list
-  -> Build_config.Gen_rules.result Memo.t
+  -> Build_config.Gen_rules.t Memo.t
 
 module For_rocq_only : sig
   (** Do not use! Escape hatch reserved for the Rocq rule generator. See the

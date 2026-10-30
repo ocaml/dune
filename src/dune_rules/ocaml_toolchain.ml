@@ -31,7 +31,7 @@ let is_in_registered_build_context path =
     (match Build_context.of_build_path dir with
      | None -> Memo.return false
      | Some { Build_context.name; build_dir = _ } ->
-       let+ contexts = Memo.Lazy.force (Dune_engine.Build_config.get ()).contexts in
+       let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
        Context_name.Map.mem contexts name)
 ;;
 

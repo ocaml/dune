@@ -149,46 +149,6 @@ end
 
 include Dune_engine.No_io
 
-module Build_config = struct
-  module Gen_rules = struct
-    open Build_config.Gen_rules
-    module Build_only_sub_dirs = Build_only_sub_dirs
-    module Rules = Rules
-
-    let make
-          ?(build_dir_only_sub_dirs = Rules.empty.build_dir_only_sub_dirs)
-          ?(directory_targets = Rules.empty.directory_targets)
-          rules
-      =
-      let rules = { Rules.build_dir_only_sub_dirs; directory_targets; rules } in
-      Gen_rules_result.Rules rules
-    ;;
-
-    let make_empty ~dir subdirs =
-      make
-        ~build_dir_only_sub_dirs:(Build_only_sub_dirs.singleton ~dir subdirs)
-        (Memo.return Dune_engine.Rules.empty)
-    ;;
-
-    include Gen_rules_result
-
-    type result = Gen_rules_result.t
-
-    let combine x y =
-      match x, y with
-      | Unknown_context, _ -> Unknown_context
-      | _, Unknown_context -> Unknown_context
-      | Rules x, Rules y -> Rules (Rules.combine_exn x y)
-      | Rules x, Redirect_to_parent y -> Redirect_to_parent (Rules.combine_exn x y)
-      | Redirect_to_parent x, Rules y -> Redirect_to_parent (Rules.combine_exn x y)
-      | Redirect_to_parent x, Redirect_to_parent y ->
-        Redirect_to_parent (Rules.combine_exn x y)
-    ;;
-  end
-
-  let set = Build_config.set
-end
-
 let phys_equal x y = x == y
 let ( == ) = `Use_phys_equal
 

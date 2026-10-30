@@ -2442,7 +2442,7 @@ let setup_pkg_install_alias =
         rule
 ;;
 
-let setup_package_rules db ~package_universe ~dir ~pkg_digest : Gen_rules.result Memo.t =
+let setup_package_rules db ~package_universe ~dir ~pkg_digest : Gen_rules.t Memo.t =
   let* pkg = Resolve.resolve db Loc.none pkg_digest package_universe in
   let paths = Paths.make pkg.pkg_digest package_universe ~relative:Path.Build.relative in
   let+ directory_targets =

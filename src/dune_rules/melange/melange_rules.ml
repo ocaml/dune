@@ -1213,7 +1213,7 @@ let setup_emit_js_rules sctx ~dir =
   | Some melange ->
     gen_emit_rules sctx ~dir melange
     >>= (function
-     | None -> Memo.return (Gen_rules.redirect_to_parent Gen_rules.Rules.empty)
+     | None -> Memo.return (Gen_rules.Redirect_to_parent Gen_rules.Rules.empty)
      | Some melange ->
        let+ directory_targets, melange = melange in
        Gen_rules.make ~directory_targets (Memo.return melange))

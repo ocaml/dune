@@ -1374,5 +1374,5 @@ let gen_rules sctx ~dir rest =
            setup_pkg_rules sctx ~pkg ~for_)
        in
        ())
-  | _ -> Memo.return (Gen_rules.redirect_to_parent Gen_rules.Rules.empty)
+  | _ -> Memo.return (Gen_rules.Redirect_to_parent Gen_rules.Rules.empty)
 ;;

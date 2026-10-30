@@ -641,15 +641,14 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
             Gen_rules.rules_for ~dir ~directory_targets ~allowed_subdirs rules
         in
         match dir_status with
-        | Lock_dir _ -> Gen_rules.rules_here Gen_rules.Rules.empty
+        | Lock_dir _ -> Gen_rules.no_rules
         | Source_only source_dir ->
-          gen_rules_source_only sctx ~dir source_dir |> make_rules |> Gen_rules.rules_here
+          Gen_rules.Rules (make_rules (gen_rules_source_only sctx ~dir source_dir))
         | Generated | Is_component_of_a_group_but_not_the_root _ ->
-          Memo.return Rules.empty |> make_rules |> Gen_rules.redirect_to_parent
+          Gen_rules.Redirect_to_parent (make_rules (Memo.return Rules.empty))
         | Standalone (source_dir, _) | Group_root { source_dir; _ } ->
-          gen_rules_standalone_or_root sctx ~dir ~source_dir
-          |> make_rules
-          |> Gen_rules.rules_here
+          Gen_rules.Rules
+            (make_rules (gen_rules_standalone_or_root sctx ~dir ~source_dir))
       in
       match Opam_create.gen_rules sctx ~dir ~nearest_src_dir ~src_dir with
       | None -> rules
@@ -660,7 +659,7 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
 ;;
 
 (* Once [gen_rules] has decided what to do with the directory, it should end
-   with [has_rules] or [redirect_to_parent] *)
+   with [has_rules] or [Gen_rules.Redirect_to_parent] *)
 let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
   let src_dir = Path.Build.drop_build_context_exn dir in
   match components with
@@ -720,7 +719,7 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
 let with_context ctx ~f =
   Super_context.find ctx
   >>= function
-  | None -> Memo.return Gen_rules.unknown_context
+  | None -> Memo.return Gen_rules.Unknown_context
   | Some ctx -> f ctx
 ;;
 
@@ -740,7 +739,7 @@ let analyze_private_context_path components =
 let private_context ~dir components _ctx =
   analyze_private_context_path components
   >>= function
-  | `Invalid_context -> Memo.return Gen_rules.unknown_context
+  | `Invalid_context -> Memo.return Gen_rules.Unknown_context
   | `Valid (ctx, components) ->
     let+ lock_rules = Lock_rules.setup_rules ~dir ~components
     and+ pkg_rules = Pkg_rules.setup_rules ctx ~dir ~components in

@@ -62,10 +62,7 @@ module Gen_rules = struct
       | Unknown_context
       | Redirect_to_parent of Rules.t
 
-    let redirect_to_parent rules = Redirect_to_parent rules
-    let rules_here rules = Rules rules
-    let unknown_context = Unknown_context
-    let no_rules = rules_here Rules.empty
+    let no_rules = Rules Rules.empty
   end
 end
 

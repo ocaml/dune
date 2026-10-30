@@ -27,7 +27,7 @@
  (deps %{bin:dunepp}))
 
 (cram
- (applies_to reason.t)
+ (applies_to lint.t reason.t)
  (deps
   (package ppxlib)))
 
@@ -35,11 +35,6 @@
  (applies_to preprocessor-directory.t test-modes-byte.t)
  (deps
   (package ppx_inline_test)))
-
-(cram
- (applies_to lint.t)
- (deps
-  (package ppxlib)))
 
 (cram
  (applies_to :whole_subtree)

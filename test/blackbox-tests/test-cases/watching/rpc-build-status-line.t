@@ -107,11 +107,14 @@ builds report the number of goals being built.
   >   i=$((i - 1))
   >   sleep 0.01
   > done
+  $ [ "$i" != 0 ] || tr '\r' '\n' < shared-b-output
   $ tr '\r' '\n' < shared-b-output \
-  > | grep -a -o "(jobs: [0-9]*) | \[[0-9.]*s\] \[[0-9.]*x\] \[[0-9]*\] \[2 goals\]" \
-  > | sed -E 's/jobs: [0-9]+/jobs: N/; s/\[[0-9]+\.[0-9]s\]/[BUILD DURATION]/; s/\[[0-9]+\.[0-9]x\]/[PARALLELISM]/; s/\[[0-9]+\] \[/[RUN] [/' \
+  > | grep -a "goals" \
+  > | sed -E 's/ +$//; s/[0-9]+/N/g' \
   > | sort -u
-  (jobs: N) | [BUILD DURATION] [PARALLELISM] [RUN] [2 goals]
+  Connected to RPC server | Done: N% (N/N, N left) (jobs: N) | [N.Ns] [N.Nx] [N] [N goals]
+  $ tr '\r' '\n' < shared-b-output | grep -a -o "\[[0-9]* goals\]" | sort -u
+  [2 goals]
   $ touch "$RELEASE"
   $ wait "$A_PID"
   $ wait "$B_PID"

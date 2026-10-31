@@ -19,11 +19,13 @@ module Loaded = struct
   type rules_here =
     { by_file_targets : Rule.t Path.Build.Map.t
     ; by_directory_targets : Rule.t Path.Build.Map.t
+    ; source_file_copies : Path.Source.t Path.Build.Map.t
     }
 
   let no_rules_here =
     { by_file_targets = Path.Build.Map.empty
     ; by_directory_targets = Path.Build.Map.empty
+    ; source_file_copies = Path.Build.Map.empty
     }
   ;;
 
@@ -107,7 +109,9 @@ let get_dir_triage ~dir =
      | Regular Root ->
        let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
        let allowed_subdirs =
-         [ Path.Build.basename Dpath.Build.anonymous_actions_dir ]
+         [ Path.Build.basename Dpath.Build.anonymous_actions_dir
+         ; Path.Build.basename Dpath.Build.source_file_copies_dir
+         ]
          @ (Context_name.Map.keys contexts
             |> List.map ~f:(fun name ->
               Filename.of_string_exn (Context_name.to_string name)))
@@ -130,22 +134,34 @@ let get_dir_triage ~dir =
           Dir_triage.Build_directory { dir; context_name; context_type; sub_dir }))
 ;;
 
-let describe_rule (rule : Rule.t) =
-  Pp.text
-  @@
-  match rule.info with
-  | From_dune_file loc ->
-    let start = Loc.start loc in
-    start.pos_fname ^ ":" ^ string_of_int start.pos_lnum
-  | Internal -> "<internal location>"
-  | Source_file_copy _ -> "file present in source tree"
-;;
+module Target_producer = struct
+  type t =
+    | Rule of Rule.t
+    | Source_file_copy of Path.Source.t
+
+  let describe = function
+    | Rule rule ->
+      Pp.text
+      @@
+        (match rule.info with
+        | From_dune_file loc ->
+          let start = Loc.start loc in
+          start.pos_fname ^ ":" ^ string_of_int start.pos_lnum
+        | Internal -> "<internal location>")
+    | Source_file_copy _ -> Pp.text "file present in source tree"
+  ;;
+
+  let is_source_file_copy = function
+    | Source_file_copy _ -> true
+    | Rule _ -> false
+  ;;
+end
 
 let report_rule_src_dir_conflict dir fn (rule : Rule.t) =
   let loc =
     match rule.info with
     | From_dune_file loc -> loc
-    | Internal | Source_file_copy _ ->
+    | Internal ->
       let dir =
         match Path.Build.drop_build_context dir with
         | None -> Path.build dir
@@ -170,20 +186,22 @@ let report_rule_src_dir_conflict dir fn (rule : Rule.t) =
       ]
 ;;
 
-let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
+let report_rule_conflict fn rule' rule =
   let fn = Path.build fn in
   User_error.raise
     [ Pp.textf "Multiple rules generated for %s:" (Path.to_string_maybe_quoted fn)
-    ; Pp.enumerate ~f:describe_rule [ rule'; rule ]
+    ; Pp.enumerate ~f:Target_producer.describe [ rule'; rule ]
     ]
     ~hints:
-      (match rule.info, rule'.info with
-       | Source_file_copy _, _ | _, Source_file_copy _ ->
+      (if
+         Target_producer.is_source_file_copy rule
+         || Target_producer.is_source_file_copy rule'
+       then
          [ Pp.textf
              "rm -f %s"
              (Path.to_string_maybe_quoted (Path.drop_optional_build_context fn))
          ]
-       | _ -> [])
+       else [])
 ;;
 
 let remove_subdir_if_stale ~dir ~subdirs_to_keep fn =
@@ -207,6 +225,7 @@ let remove_old_artifacts
       let path_is_a_target =
         Path.Build.Map.mem rules_here.by_file_targets path
         || Path.Build.Map.mem rules_here.by_directory_targets path
+        || Path.Build.Map.mem rules_here.source_file_copies path
       in
       if not path_is_a_target
       then (
@@ -284,31 +303,14 @@ module rec Load_rules : sig
 end = struct
   open Load_rules
 
-  let copy_source_action ~src_path ~build_path : Action.Full.t Action_builder.t =
-    let action =
-      Action.Full.make
-        (Action.copy (Path.source src_path) build_path)
-        (* Sandboxing this action doesn't make much sense: if we can copy [src_path] to
-           the sandbox, we might as well copy it to the build directory directly. *)
-        ~sandbox:Sandbox_config.no_sandboxing
-    in
-    Action_builder.Expert.record_dep_on_source_file_exn
-      action
-      ~loc:Current_rule_loc.get
-      src_path
-  ;;
-
-  let create_copy_rules ~dir ~ctx_dir ~non_target_source_filenames =
+  let create_source_file_copies ~dir ~ctx_dir ~non_target_source_filenames =
     Filename.Array.Set.to_list_map non_target_source_filenames ~f:(fun filename ->
       let src_path = Path.Source.relative_fname dir filename in
       let build_path = Path.Build.append_source ctx_dir src_path in
-      Rule.make
-        ~info:(Source_file_copy src_path)
-        ~targets:(Targets.File.create build_path)
-        (copy_source_action ~src_path ~build_path))
+      build_path, src_path)
   ;;
 
-  let compile_rules ~dir ~source_dirs rules =
+  let compile_rules ~dir ~source_dirs ~source_file_copies rules =
     let check_for_source_dir_conflict rule target =
       if Filename.Array.Set.mem source_dirs target
       then report_rule_src_dir_conflict dir (Filename.to_string target) rule
@@ -319,7 +321,12 @@ end = struct
         let target = Path.Build.relative_fname rule.targets.root target in
         Path.Build.Map.update rules target ~f:(function
           | None -> Some rule
-          | Some other -> Some (report_rule_conflict target other rule)))
+          | Some other ->
+            Some
+              (report_rule_conflict
+                 target
+                 (Target_producer.Rule other)
+                 (Target_producer.Rule rule))))
     in
     let by_file_targets, by_directory_targets =
       List.fold_left
@@ -329,6 +336,14 @@ end = struct
           assert (Path.Build.( = ) dir rule.Rule.targets.root);
           ( add_targets by_file_targets ~targets:rule.targets.files rule
           , add_targets by_directory_targets ~targets:rule.targets.dirs rule ))
+    in
+    let source_file_copies =
+      source_file_copies
+      |> Path.Build.Map.of_list_reducei ~f:(fun path a b ->
+        report_rule_conflict
+          path
+          (Target_producer.Source_file_copy a)
+          (Target_producer.Source_file_copy b))
     in
     (match
        ( Path.Build.Map.is_empty by_file_targets
@@ -342,8 +357,34 @@ end = struct
          ~f:(fun target rule1 rule2 ->
            match rule1, rule2 with
            | None, _ | _, None -> ()
-           | Some rule1, Some rule2 -> report_rule_conflict target rule1 rule2));
-    { Loaded.by_file_targets; by_directory_targets }
+           | Some rule1, Some rule2 ->
+             report_rule_conflict
+               target
+               (Target_producer.Rule rule1)
+               (Target_producer.Rule rule2)));
+    Path.Build.Map.iter2
+      by_file_targets
+      source_file_copies
+      ~f:(fun target rule source_file_copy ->
+        match rule, source_file_copy with
+        | None, _ | _, None -> ()
+        | Some rule, Some source_file_copy ->
+          report_rule_conflict
+            target
+            (Target_producer.Rule rule)
+            (Target_producer.Source_file_copy source_file_copy));
+    Path.Build.Map.iter2
+      by_directory_targets
+      source_file_copies
+      ~f:(fun target rule source_file_copy ->
+        match rule, source_file_copy with
+        | None, _ | _, None -> ()
+        | Some rule, Some source_file_copy ->
+          report_rule_conflict
+            target
+            (Target_producer.Source_file_copy source_file_copy)
+            (Target_producer.Rule rule));
+    { Loaded.by_file_targets; by_directory_targets; source_file_copies }
   ;;
 
   let lookup_alias alias =
@@ -850,9 +891,9 @@ end = struct
           in
           source_files_and_dirs source_paths_to_ignore sub_dir
       in
-      let copy_rules =
+      let source_file_copies =
         let ctx_dir = Context_name.build_dir context_name in
-        create_copy_rules
+        create_source_file_copies
           ~dir:sub_dir
           ~ctx_dir
           ~non_target_source_filenames:source_filenames
@@ -865,12 +906,12 @@ end = struct
           (* If there are no source files to copy, fallback rules are
              automatically kept *)
           rules
-        else add_non_fallback_rules ~init:copy_rules ~dir ~source_filenames rules
+        else add_non_fallback_rules ~init:[] ~dir ~source_filenames rules
       in
       let* descendants_to_keep =
         descendants_to_keep build_dir build_dir_only_sub_dirs ~source_dirs rules_produced
       in
-      let rules_here = compile_rules ~dir ~source_dirs rules in
+      let rules_here = compile_rules ~dir ~source_dirs ~source_file_copies rules in
       validate_directory_targets
         ~dir
         ~real_directory_targets:(Rules.directory_targets rules_produced)
@@ -931,44 +972,66 @@ end
 
 include Load_rules
 
-let get_rule_internal path =
-  let dir = Path.Build.parent_exn path in
-  load_dir ~dir:(Path.build dir)
-  >>= function
-  | External _ | Source _ -> assert false
-  | Build { rules_here; _ } ->
-    Memo.return
-      (match Path.Build.Map.find rules_here.by_file_targets path with
-       | Some _ as rule -> rule
-       | None -> Path.Build.Map.find rules_here.by_directory_targets path)
-  | Build_under_directory_target { directory_target_ancestor } ->
-    load_dir ~dir:(Path.build (Path.Build.parent_exn directory_target_ancestor))
+let rec get_target path =
+  match
+    Path.Local.descendant
+      (Path.Build.local path)
+      ~of_:(Path.Build.local Dpath.Build.source_file_copies_dir)
+  with
+  | Some src when not (Path.Local.is_root src) ->
+    Memo.return (Some (Target_producer.Source_file_copy (Path.Source.of_local src)))
+  | None | Some _ ->
+    let dir = Path.Build.parent_exn path in
+    load_dir ~dir:(Path.build dir)
     >>= (function
-     | External _ | Source _ | Build_under_directory_target _ -> assert false
+     | External _ | Source _ ->
+       Code_error.raise "Expected a build directory" [ "dir", Path.Build.to_dyn dir ]
      | Build { rules_here; _ } ->
        Memo.return
-         (Path.Build.Map.find rules_here.by_directory_targets directory_target_ancestor))
+         (match Path.Build.Map.find rules_here.by_file_targets path with
+          | Some rule -> Some (Target_producer.Rule rule)
+          | None ->
+            (match Path.Build.Map.find rules_here.source_file_copies path with
+             | Some src -> Some (Target_producer.Source_file_copy src)
+             | None ->
+               Path.Build.Map.find rules_here.by_directory_targets path
+               |> Option.map ~f:(fun rule -> Target_producer.Rule rule)))
+     | Build_under_directory_target { directory_target_ancestor } ->
+       get_target directory_target_ancestor)
 ;;
 
 let get_rule path =
   match Path.as_in_build_dir path with
   | None -> Memo.return None
-  | Some path -> get_rule_internal path
+  | Some path ->
+    let+ target = get_target path in
+    (match target with
+     | Some (Rule rule) -> Some rule
+     | None | Some (Source_file_copy _) -> None)
 ;;
 
 type rule_or_source =
   | Source of Digest.t
   | Rule of Path.Build.t * Rule.t
+  | Source_file_copy of
+      { src : Path.Source.t
+      ; dst : Path.Build.t
+      }
 
 let get_rule_or_source path =
   match Path.destruct_build_dir path with
-  | `Outside path ->
+  | `Outside (In_source_dir source) ->
+    Code_error.raise
+      "Rule dependencies must be build or external paths"
+      [ "path", Path.Source.to_dyn source ]
+  | `Outside (External path) ->
     let+ digest = Fs_memo.file_digest_exn ~loc:Current_rule_loc.get path in
     Source digest
   | `Inside path ->
-    get_rule_internal path
+    get_target path
     >>= (function
-     | Some rule -> Memo.return (Rule (path, rule))
+     | Some (Source_file_copy src) -> Memo.return (Source_file_copy { src; dst = path })
+     | Some (Rule rule) -> Memo.return (Rule (path, rule))
      | None ->
        let* loc = Current_rule_loc.get () in
        no_rule_found ~loc path)
@@ -1002,11 +1065,13 @@ let is_target file =
      | External _ | Source _ -> No
      | Build { rules_here; _ } ->
        let file = Path.as_in_build_dir_exn file in
-       (match Path.Build.Map.find rules_here.by_file_targets file with
-        | Some _ -> Yes File
-        | None ->
-          (match Path.Build.Map.find rules_here.by_directory_targets file with
-           | Some _ -> Yes Directory
-           | None -> No))
+       if
+         Path.Build.Map.mem rules_here.by_file_targets file
+         || Path.Build.Map.mem rules_here.source_file_copies file
+       then Yes File
+       else (
+         match Path.Build.Map.find rules_here.by_directory_targets file with
+         | Some _ -> Yes Directory
+         | None -> No)
      | Build_under_directory_target _ -> Under_directory_target_so_cannot_say)
 ;;

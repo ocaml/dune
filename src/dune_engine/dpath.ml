@@ -3,6 +3,7 @@ open Import
 module Build = struct
   type t = Path.Build.t
 
+  let source_file_copies_dir = Path.Build.relative Path.Build.root ".source-copies"
   let anonymous_actions_dir_basename = Filename.actions_dir_basename
 
   let anonymous_actions_dir =

@@ -362,18 +362,26 @@ let scan_lock_directory =
   in
   fun lock_dir_path ->
     let+ files = scan lock_dir_path in
-    Dep.Set.of_source_files ~files ~empty_directories:Path.Set.empty, files
+    let build_copy = function
+      | Path.External _ as path -> path
+      | In_source_tree src ->
+        Path.build (Path.Build.append_source Dpath.Build.source_file_copies_dir src)
+      | In_build_dir _ as path ->
+        Code_error.raise "Expected a source or external path" [ "path", Path.to_dyn path ]
+    in
+    let files = Path.Set.map files ~f:build_copy in
+    build_copy (Path.outside_build_dir lock_dir_path), Dep.Set.of_files_set files, files
 ;;
 
 let setup_copy_rules ~dir:target ~lock_dir =
-  let+ deps, files = scan_lock_directory lock_dir in
+  let+ lock_dir, deps, files = scan_lock_directory lock_dir in
   let directory_targets, rules =
     match Path.Set.is_empty files with
     | true -> Path.Build.Map.empty, Rules.empty
     | false ->
       let directory_targets = Path.Build.Map.singleton target Loc.none in
       let { Action_builder.With_targets.build; targets } =
-        copy_lock_dir ~target ~lock_dir:(Path.outside_build_dir lock_dir) ~deps ~files
+        copy_lock_dir ~target ~lock_dir ~deps ~files
       in
       let rule = Rule.make ~targets build in
       directory_targets, Rules.of_rules [ rule ]

@@ -32,6 +32,7 @@ type t = Path.t
 module Build : sig
   type t = Path.Build.t
 
+  val source_file_copies_dir : t
   val anonymous_actions_dir : t
   val anonymous_actions_dir_basename : Filename.t
 end

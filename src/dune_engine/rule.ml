@@ -4,7 +4,6 @@ module Info = struct
   type t =
     | From_dune_file of Loc.t
     | Internal
-    | Source_file_copy of Path.Source.t
 
   let of_loc_opt = function
     | None -> Internal
@@ -18,7 +17,6 @@ module Info = struct
       Loc.in_file
         (Path.drop_optional_build_context
            (Path.build (Path.Build.relative dir "_unknown_")))
-    | Source_file_copy p -> Loc.in_file (Path.source p)
   ;;
 
   let repr =
@@ -26,13 +24,10 @@ module Info = struct
       "rule-info"
       [ Repr.case "From_dune_file" (Repr.abstract Loc.to_dyn) ~proj:(function
           | From_dune_file loc -> Some loc
-          | Internal | Source_file_copy _ -> None)
+          | Internal -> None)
       ; Repr.case0 "Internal" ~test:(function
           | Internal -> true
-          | From_dune_file _ | Source_file_copy _ -> false)
-      ; Repr.case "Source_file_copy" Path.Source.repr ~proj:(function
-          | Source_file_copy path -> Some path
-          | From_dune_file _ | Internal -> None)
+          | From_dune_file _ -> false)
       ]
   ;;
 
@@ -104,7 +99,7 @@ let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~targets action =
     | From_dune_file loc ->
       let pp = [ Pp.text message ] @ extra_pp in
       User_error.raise ~loc pp
-    | Internal | Source_file_copy _ ->
+    | Internal ->
       Code_error.raise
         message
         [ "info", Info.to_dyn info; "targets", Targets.to_dyn targets ]

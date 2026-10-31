@@ -173,3 +173,59 @@ rerun its dependent rule after a real content change.
   two
   $ stop_dune_quiet
   $ cd ..
+
+Source-change suppression must account for every build context and for direct
+readers of files that also have build-directory copies.
+
+  $ mkdir change-suppression
+  $ cd change-suppression
+  $ echo '(lang dune 3.0)' > dune-project
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.0)
+  > (context default)
+  > (context (default (name other)))
+  > EOF
+  $ cat > dune <<EOF
+  > (include rules.inc)
+  > (alias (name idle))
+  > (rule
+  >  (target result)
+  >  (deps data rules.inc)
+  >  (action (copy data result)))
+  > EOF
+  $ cat > rules.inc <<EOF
+  > (rule
+  >  (target included)
+  >  (action (with-stdout-to included (echo one))))
+  > EOF
+  $ echo one > data
+  $ start_dune @idle
+  $ build _build/default/result _build/other/result
+  Success
+
+An already updated copy in one context must not hide a stale copy in another.
+
+  $ chmod u+w _build/default/data
+  $ echo two > _build/default/data
+  $ echo two > data
+  $ build _build/other/result
+  Success
+  $ cat _build/other/result
+  two
+
+Even when all build copies match, a direct reader must observe the change.
+
+  $ chmod u+w _build/default/rules.inc _build/other/rules.inc
+  $ cat > .#rules.inc <<EOF
+  > (rule
+  >  (target included)
+  >  (action (with-stdout-to included (echo two))))
+  > EOF
+  $ cp .#rules.inc _build/default/rules.inc
+  $ cp .#rules.inc _build/other/rules.inc
+  $ cp .#rules.inc rules.inc
+  $ build _build/default/included
+  Success
+  $ cat _build/default/included
+  two
+  $ stop_dune_quiet

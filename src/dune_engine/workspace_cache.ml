@@ -155,6 +155,25 @@ module Fs_memo = struct
   ;;
 end
 
+module Source_file_copy = struct
+  type t =
+    { src : Path.Source.t
+    ; src_stats : Fs_memo.Stats.t
+    ; dst_stats : Fs_memo.Stats.t
+    ; dst_digest : Digest.t
+    }
+
+  let repr =
+    Repr.record
+      "source-file-copy"
+      [ Repr.field "src" Path.Source.repr ~get:(fun t -> t.src)
+      ; Repr.field "src_stats" Fs_memo.Stats.repr ~get:(fun t -> t.src_stats)
+      ; Repr.field "dst_stats" Fs_memo.Stats.repr ~get:(fun t -> t.dst_stats)
+      ; Repr.field "dst_digest" digest_repr ~get:(fun t -> t.dst_digest)
+      ]
+  ;;
+end
+
 module Rule_cache = struct
   module Entry = struct
     type t =
@@ -230,6 +249,7 @@ end
 type t =
   { fs_memo : Fs_memo.t
   ; rule_cache : Rule_cache.t
+  ; source_file_copies : Source_file_copy.t Path.Build.Table.t
   }
 
 let file = Path.relative Path.build_dir ".db"
@@ -240,6 +260,10 @@ let repr =
     "workspace-cache"
     [ Repr.field "fs_memo" Fs_memo.repr ~get:(fun t -> t.fs_memo)
     ; Repr.field "rule_cache" Rule_cache.repr ~get:(fun t -> t.rule_cache)
+    ; Repr.field
+        "source_file_copies"
+        (Repr.abstract (Path.Build.Table.to_dyn (Repr.to_dyn Source_file_copy.repr)))
+        ~get:(fun t -> t.source_file_copies)
     ]
 ;;
 
@@ -247,7 +271,7 @@ module P = Persistent.Make (struct
     type nonrec t = t
 
     let name = "WORKSPACE-CACHE"
-    let version = 5
+    let version = 6
     let sharing = true
     let repr = repr
   end)
@@ -255,13 +279,19 @@ module P = Persistent.Make (struct
 let cache =
   lazy
     (match P.load file with
-     | None -> { fs_memo = Fs_memo.create (); rule_cache = Rule_cache.create () }, false
+     | None ->
+       ( { fs_memo = Fs_memo.create ()
+         ; rule_cache = Rule_cache.create ()
+         ; source_file_copies = Path.Build.Table.create 128
+         }
+       , false )
      | Some t -> t, true)
 ;;
 
 let get () = fst (Lazy.force cache)
 let fs_memo () = (get ()).fs_memo
 let rule_cache () = (get ()).rule_cache
+let source_file_copies () = (get ()).source_file_copies
 let loaded_from_disk () = snd (Lazy.force cache)
 let needs_dumping = ref false
 

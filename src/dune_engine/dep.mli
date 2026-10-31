@@ -7,10 +7,15 @@ type t = private
   | File_selector of File_selector.t
   | Universe
 
+(** File dependencies must refer to build or external paths. *)
 val file : Path.t -> t
+
 val env : Env.Var.t -> t
 val universe : t
+
+(** The selector's directory must be a build or external path. *)
 val file_selector : File_selector.t -> t
+
 val alias : Alias.t -> t
 val repr : t Repr.t
 

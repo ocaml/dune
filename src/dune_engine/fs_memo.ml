@@ -58,6 +58,11 @@ module Cached_digest = struct
 
     let repr = Workspace_cache.Fs_memo.Stats.repr
     let mtime = Workspace_cache.Fs_memo.Stats.mtime
+
+    let newest_timestamp stats =
+      Time.max (mtime stats) (Workspace_cache.Fs_memo.Stats.ctime stats)
+    ;;
+
     let to_dyn = Repr.to_dyn repr
 
     let of_stat (stat : Stat.t) : t =
@@ -148,6 +153,18 @@ module Cached_digest = struct
           | _ :: _ ->
             Dune_trace.emit ~buffered:true Digest (fun () ->
               Dune_trace.Event.Digest.dropped_stale_mtimes !dropped ~fs_now:now)));
+      Path.Build.Table.filteri_inplace
+        (Workspace_cache.source_file_copies ())
+        ~f:(fun ~key:_ ~data ->
+          let { Workspace_cache.Source_file_copy.src_stats; dst_stats; _ } = data in
+          let timestamp =
+            Time.max (Stats.newest_timestamp src_stats) (Stats.newest_timestamp dst_stats)
+          in
+          match Time.compare timestamp now with
+          | Lt ->
+            max_timestamp := Time.max !max_timestamp timestamp;
+            true
+          | Eq | Gt -> false);
       cache.max_timestamp <- !max_timestamp
   ;;
 
@@ -354,6 +371,55 @@ module Cached_digest = struct
   ;;
 end
 
+module Source_file_copy_cache = struct
+  let t = lazy (Workspace_cache.source_file_copies ())
+
+  let find ~src ~dst ~src_stats ~dst_stats =
+    match Path.Build.Table.find (Lazy.force t) dst with
+    | Some
+        { Workspace_cache.Source_file_copy.src = cached_src
+        ; src_stats = cached_src_stats
+        ; dst_stats = cached_dst_stats
+        ; dst_digest
+        }
+      when Path.Source.equal src cached_src
+           && Cached_digest.Stats.equal
+                cached_src_stats
+                (Cached_digest.Stats.of_stat src_stats)
+           && Cached_digest.Stats.equal
+                cached_dst_stats
+                (Cached_digest.Stats.of_stat dst_stats) -> Some dst_digest
+    | None | Some _ -> None
+  ;;
+
+  let store ~src ~dst ~src_stats ~dst_stats ~dst_digest =
+    let t = Lazy.force t in
+    let src_stats = Cached_digest.Stats.of_stat src_stats in
+    let dst_stats = Cached_digest.Stats.of_stat dst_stats in
+    let cache = Lazy.force Cached_digest.cache in
+    cache.max_timestamp
+    <- Time.max
+         cache.max_timestamp
+         (Time.max
+            (Cached_digest.Stats.newest_timestamp src_stats)
+            (Cached_digest.Stats.newest_timestamp dst_stats));
+    Cached_digest.needs_dumping := true;
+    Workspace_cache.mark_dirty ();
+    Path.Build.Table.set
+      t
+      dst
+      { Workspace_cache.Source_file_copy.src; src_stats; dst_stats; dst_digest }
+  ;;
+
+  let remove dst =
+    let t = Lazy.force t in
+    if Path.Build.Table.mem t dst
+    then (
+      Workspace_cache.mark_dirty ();
+      Path.Build.Table.remove t dst)
+  ;;
+end
+
 let invalidate_cached_timestamps = Cached_digest.invalidate_cached_timestamps
 
 module Debug = struct
@@ -440,22 +506,29 @@ module Debug = struct
     }
 
   let current_digest path =
-    let path_string = Path.to_string path in
-    match
-      Digest_result.catch_fs_errors (fun () ->
-        match Stat.stat path_string with
-        | stats ->
-          Ok
-            ( Some (Cached_digest.Stats.of_stat stats)
-            , Cached_digest.digest_path_with_stats path stats )
-        | exception Unix.Unix_error (ENOENT, _, _) ->
-          (match Unix.lstat path_string with
+    match Path.as_in_source_tree path with
+    | Some _ ->
+      ( None
+      , Error
+          (Digest_result.Error.Unrecognized
+             (Sys_error "source-tree digests are not checked")) )
+    | None ->
+      let path_string = Path.to_string path in
+      (match
+         Digest_result.catch_fs_errors (fun () ->
+           match Stat.stat path_string with
+           | stats ->
+             Ok
+               ( Some (Cached_digest.Stats.of_stat stats)
+               , Cached_digest.digest_path_with_stats path stats )
            | exception Unix.Unix_error (ENOENT, _, _) ->
-             Error Digest_result.Error.No_such_file
-           | _ -> Error Digest_result.Error.Broken_symlink))
-    with
-    | Ok current -> current
-    | Error error -> None, Error error
+             (match Unix.lstat path_string with
+              | exception Unix.Unix_error (ENOENT, _, _) ->
+                Error Digest_result.Error.No_such_file
+              | _ -> Error Digest_result.Error.Broken_symlink))
+       with
+       | Ok current -> current
+       | Error error -> None, Error error)
   ;;
 
   let finding_repr =
@@ -609,6 +682,8 @@ module Fs_cache = struct
   end
 end
 
+let source_file_copy_targets = Path.Source.Table.create 128
+
 (* Watching and invalidating paths. *)
 module Watcher : sig
   val init : dune_file_watcher:Dune_scheduler.File_watcher.t option -> Memo.Invalidation.t
@@ -622,6 +697,9 @@ module Watcher : sig
      reduce the number of watched paths: typically, the number of directories is
      a lot smaller than the number of files. *)
   val watch : try_to_watch_via_parent:bool -> Path.Outside_build_dir.t -> unit Memo.t
+
+  (* Track changes to a file without sampling its digest. *)
+  val track_file_changes : Path.Outside_build_dir.t -> unit Memo.t
 
   (* Invalidate a path after receiving an event from the file watcher. *)
   val invalidate : Path.Outside_build_dir.t -> Memo.Invalidation.t
@@ -724,18 +802,32 @@ end = struct
          Memo.return ())
   ;;
 
+  let watch_via_parent accessed_path =
+    let path_to_watch =
+      Option.value (Path.Outside_build_dir.parent accessed_path) ~default:accessed_path
+    in
+    watch_or_record_path ~accessed_path ~path_to_watch
+  ;;
+
   let memo_for_watching_via_parent =
     Memo.create
       "fs_memo_for_watching_via_parent"
       ~input:(module Path.Outside_build_dir)
       ~initial_store_size:4096
       (fun accessed_path ->
-         let path_to_watch =
-           Option.value
-             (Path.Outside_build_dir.parent accessed_path)
-             ~default:accessed_path
-         in
-         watch_or_record_path ~accessed_path ~path_to_watch;
+         watch_via_parent accessed_path;
+         Memo.return ())
+  ;;
+
+  let tracked_file_changes = Path.Outside_build_dir.Table.create 128
+
+  let memo_for_file_changes =
+    Memo.create
+      "fs_memo_for_file_changes"
+      ~input:(module Path.Outside_build_dir)
+      (fun accessed_path ->
+         Path.Outside_build_dir.Table.set tracked_file_changes accessed_path ();
+         watch_via_parent accessed_path;
          Memo.return ())
   ;;
 
@@ -748,11 +840,17 @@ end = struct
        | true -> Memo.exec memo_for_watching_via_parent path)
   ;;
 
+  let track_file_changes path = Memo.exec memo_for_file_changes path
+
   let update_all p =
     Cached_digest.Untracked.invalidate_cached_timestamp_file p;
     Cached_digest.Untracked.invalidate_cached_timestamp_dirs p;
     let dir_contents = Fs_cache.(update Untracked.dir_contents) p in
-    let digest = Fs_cache.(update Untracked.file_digest) p in
+    let digest =
+      match p with
+      | Path.Outside_build_dir.In_source_dir _ -> `Skipped
+      | Path.Outside_build_dir.External _ -> Fs_cache.(update Untracked.file_digest) p
+    in
     let stat = Fs_cache.(update Untracked.path_stat) p in
     List.fold_left [ stat; digest; dir_contents ] ~init:`Skipped ~f:(fun x y ->
       match x, y with
@@ -767,15 +865,28 @@ end = struct
      operation, or even better use [Fs_cache] tables in Memo directory, e.g. via
      [Memo.create_with_store]. *)
   let invalidate path =
+    (match path with
+     | Path.Outside_build_dir.In_source_dir src ->
+       Option.iter
+         (Path.Source.Table.find source_file_copy_targets src)
+         ~f:(fun targets -> Path.Build.Set.iter targets ~f:Source_file_copy_cache.remove)
+     | External _ -> ());
+    let reason : Memo.Invalidation.Reason.t =
+      Path_changed (Path.outside_build_dir path)
+    in
+    let file_changes =
+      if Path.Outside_build_dir.Table.mem tracked_file_changes path
+      then Memo.Node.invalidate (Memo.node memo_for_file_changes path) ~reason
+      else Memo.Invalidation.empty
+    in
     match update_all path with
-    | `Skipped | `Unchanged -> Memo.Invalidation.empty
+    | `Skipped | `Unchanged -> file_changes
     | `Changed ->
-      let reason : Memo.Invalidation.Reason.t =
-        Path_changed (Path.outside_build_dir path)
-      in
       Memo.Invalidation.combine
-        (Memo.Node.invalidate (Memo.node memo_for_watching_directly path) ~reason)
-        (Memo.Node.invalidate (Memo.node memo_for_watching_via_parent path) ~reason)
+        file_changes
+        (Memo.Invalidation.combine
+           (Memo.Node.invalidate (Memo.node memo_for_watching_directly path) ~reason)
+           (Memo.Node.invalidate (Memo.node memo_for_watching_via_parent path) ~reason))
   ;;
 
   let init ~dune_file_watcher =
@@ -883,17 +994,105 @@ let dir_exists path =
   | Error (_ : Unix_error.Detailed.t) -> false
 ;;
 
+let direct_file_change_trackers = Path.Outside_build_dir.Table.create 128
+let promoted_files = Path.Source.Table.create 128
+
+let file_contents_equal src dst ~size =
+  Io.with_file_in src ~f:(fun src ->
+    Io.with_file_in dst ~f:(fun dst ->
+      let buffer_size = max 1 (min size (64 * 1024)) in
+      let src_buffer = Bytes.make buffer_size '\000' in
+      let dst_buffer = Bytes.make buffer_size '\000' in
+      let rec loop () =
+        match input src src_buffer 0 buffer_size with
+        | 0 ->
+          (match input_char dst with
+           | _ -> false
+           | exception End_of_file -> true)
+        | len ->
+          (match really_input dst dst_buffer 0 len with
+           | () ->
+             (* The unread tails are equal from the previous comparison. *)
+             Bytes.equal src_buffer dst_buffer && loop ()
+           | exception End_of_file -> false)
+      in
+      loop ()))
+;;
+
+let source_file_copy_is_up_to_date ~src ~dst =
+  let src_path = Path.source src in
+  let dst_path = Path.build dst in
+  match Stat.stat (Path.to_string src_path), Stat.stat (Path.to_string dst_path) with
+  | ( { kind = S_REG; perm = src_perm; size = src_size; _ }
+    , { kind = S_REG; perm = dst_perm; size = dst_size; _ } ) ->
+    let executable perm =
+      Permissions.test_any Permissions.execute (Permissions.Mode.of_int perm)
+    in
+    src_size = dst_size
+    && executable src_perm = executable dst_perm
+    &&
+      (match file_contents_equal src_path dst_path ~size:src_size with
+      | equal -> equal
+      | exception (_ : exn) -> false)
+  | _ -> false
+  | exception (_ : exn) -> false
+;;
+
+let track_file_changes path =
+  Path.Outside_build_dir.Table.set direct_file_change_trackers path ();
+  Watcher.track_file_changes path
+;;
+
+let track_promoted_file_changes dst =
+  let+ () = Watcher.track_file_changes (In_source_dir dst) in
+  let stats = Stat.stat (Path.Source.to_string dst) |> Cached_digest.Stats.of_stat in
+  Path.Source.Table.set promoted_files dst stats
+;;
+
+let track_source_file_copy ~src ~dst =
+  let targets =
+    match Path.Source.Table.find source_file_copy_targets src with
+    | None -> Path.Build.Set.singleton dst
+    | Some targets -> Path.Build.Set.add targets dst
+  in
+  Path.Source.Table.set source_file_copy_targets src targets;
+  Watcher.track_file_changes (In_source_dir src)
+;;
+
+let should_ignore_file_change_event path ~file_changed =
+  match path with
+  | Path.Outside_build_dir.External _ -> false
+  | In_source_dir src ->
+    if Path.Outside_build_dir.Table.mem direct_file_change_trackers path
+    then false
+    else (
+      let copies = Path.Source.Table.find source_file_copy_targets src in
+      let copies_are_up_to_date =
+        match copies with
+        | None -> true
+        | Some targets ->
+          Path.Build.Set.for_all targets ~f:(fun dst ->
+            source_file_copy_is_up_to_date ~src ~dst)
+      in
+      copies_are_up_to_date
+      &&
+      match Path.Source.Table.find promoted_files src with
+      | Some previous_stats ->
+        (match Stat.stat (Path.Source.to_string src) with
+         | stats ->
+           Cached_digest.Stats.equal previous_stats (Cached_digest.Stats.of_stat stats)
+         | exception Unix.Unix_error _ -> false)
+      | None -> file_changed && Option.is_some copies)
+;;
+
 (* CR-someday amokhov: It is unclear if we got the layers of abstraction right
    here. One could argue that caching is a higher-level concept compared to file
    watching, and we should expose this function from the [Cached_digest] module
    instead. For now, we keep it here because it seems nice to group all tracked
    file system access functions in one place, and exposing an uncached version
    of [file_digest] seems error-prone. We may need to rethink this decision. *)
-let file_digest ?(force_update = false) path =
-  if force_update
-  then (
-    Cached_digest.Untracked.invalidate_cached_timestamp_file path;
-    Fs_cache.evict Fs_cache.Untracked.file_digest path);
+let file_digest path =
+  let path = Path.Outside_build_dir.External path in
   let+ () = Watcher.watch ~try_to_watch_via_parent:true path in
   Fs_cache.read Fs_cache.Untracked.file_digest path
 ;;
@@ -903,11 +1102,8 @@ let file_digest_exn ~loc path =
     let+ loc = loc () in
     User_error.raise
       ?loc
-      ([ Pp.textf
-           "File unavailable: %s"
-           (Path.Outside_build_dir.to_string_maybe_quoted path)
-       ]
-       @ details)
+      (Pp.textf "File unavailable: %s" (Path.External.to_string_maybe_quoted path)
+       :: details)
   in
   file_digest path
   >>= function
@@ -915,7 +1111,7 @@ let file_digest_exn ~loc path =
   | Error e ->
     if Digest_result.Error.no_such_file e
     then report_user_error []
-    else report_user_error [ Digest_result.Error.pp e (Path.outside_build_dir path) ]
+    else report_user_error [ Digest_result.Error.pp e (Path.external_ path) ]
 ;;
 
 let dir_contents ?(force_update = false) path =
@@ -931,30 +1127,32 @@ let dir_contents ?(force_update = false) path =
    because the result's type depends on [f]. There are only two call sites of
    [with_lexbuf_from_file], so perhaps we could just replace this more general
    function with two simpler ones that can be cached independently. *)
-let tracking_file_digest path =
-  let+ () = Watcher.watch ~try_to_watch_via_parent:true path in
-  (* This is a bit of a hack. By reading [file_digest], we cause the [path] to
-     be recorded in the [Fs_cache.Untracked.file_digest], so the build will be
-     restarted if the digest changes. *)
-  let (_ : Digest_result.t) = Fs_cache.read Fs_cache.Untracked.file_digest path in
-  ()
+let track_file_for_read path =
+  match path with
+  | Path.Outside_build_dir.In_source_dir _ -> track_file_changes path
+  | Path.Outside_build_dir.External path ->
+    let+ (_ : Digest_result.t) = file_digest path in
+    ()
 ;;
 
 let with_lexbuf_from_file path ~f =
-  let+ () = tracking_file_digest path in
+  let+ () = track_file_for_read path in
   Io.Untracked.with_lexbuf_from_file (Path.outside_build_dir path) ~f
 ;;
 
 let file_contents path =
-  let+ () = tracking_file_digest path in
+  let+ () = track_file_for_read path in
   Io.read_file_exn (Path.outside_build_dir path)
 ;;
 
-(* When a file or directory is created or deleted, we need to also invalidate
-   the parent directory, so that the [dir_contents] queries are re-executed. *)
-let invalidate_path_and_its_parent path =
+let invalidate_path_and_its_parent_after_file_change path =
+  let file_invalidation =
+    if should_ignore_file_change_event path ~file_changed:false
+    then Memo.Invalidation.empty
+    else Watcher.invalidate path
+  in
   Memo.Invalidation.combine
-    (Watcher.invalidate path)
+    file_invalidation
     (match Path.Outside_build_dir.parent path with
      | None -> Memo.Invalidation.empty
      | Some path -> Watcher.invalidate path)
@@ -984,13 +1182,16 @@ let handle_fs_event ({ kind; path } : Dune_scheduler.Event.Fs_memo_event.t)
     Memo.Invalidation.empty
   | `Outside path ->
     (match kind with
-     | File_changed -> Watcher.invalidate path
-     | Created | Deleted | Unknown -> invalidate_path_and_its_parent path)
+     | File_changed ->
+       if should_ignore_file_change_event path ~file_changed:true
+       then Memo.Invalidation.empty
+       else Watcher.invalidate path
+     | Created | Deleted | Unknown ->
+       invalidate_path_and_its_parent_after_file_change path)
 ;;
 
 let init = Watcher.init
 
 module Untracked = struct
-  let file_digest = Fs_cache.read Fs_cache.Untracked.file_digest
   let path_stat = Fs_cache.read Fs_cache.Untracked.path_stat
 end

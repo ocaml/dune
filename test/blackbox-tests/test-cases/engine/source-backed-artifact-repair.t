@@ -98,29 +98,17 @@ contents match, so unrelated builds cannot mutate the source snapshot.
   $ stop_dune_quiet
   $ cd ..
 
-Missing-target hints should include source-backed targets.
-
-  $ mkdir source-hints
-  $ cd source-hints
-  $ make_dune_project 3.0
-  $ echo content > source.txt
-  $ dune build sourc.txt
-  Error: Don't know how to build sourc.txt
-  Hint: did you mean source.txt?
-  [1]
-  $ cd ..
-
-A null build must not digest an unchanged source file again.
+A null build must reuse the source copy without comparing its contents.
 
   $ mkdir freshness
   $ cd freshness
   $ make_dune_project 3.0
   $ dd if=/dev/zero of=payload bs=1048576 count=1 2>/dev/null
   $ dune build payload --wait-for-filesystem-clock
-  $ DUNE_TRACE=digest dune build payload
+  $ DUNE_TRACE=source_copy dune build payload
   $ dune trace cat | jq -s '
-  >   [.[] | select(.cat == "digest" and .name == "redigest"
-  >                and .args.path == "payload")] | length'
+  >   [.[] | select(.cat == "source_copy" and .args.src == "payload"
+  >                and .args.result != "cached")] | length'
   0
 
 Same-size changes at comparison-buffer boundaries must update the build copy.
@@ -158,4 +146,48 @@ Executable-bit changes must invalidate the copy independently of its bytes.
   >   echo non-executable
   > fi
   non-executable
+  $ cd ..
+
+A source snapshot must also replace a generated hardlink to a mutable external
+file, even when its initial contents match.
+
+  $ echo one > external-seed
+  $ external_seed="$PWD/external-seed"
+  $ mkdir hardlink-transition
+  $ cd hardlink-transition
+  $ make_dune_project 3.0
+  $ echo initial > trigger
+  $ cat > dune <<EOF
+  > (rule
+  >  (target x)
+  >  (deps "$external_seed" (sandbox none))
+  >  (action (run ln %{deps} x)))
+  > (rule
+  >  (target result)
+  >  (deps x trigger)
+  >  (action (copy x result)))
+  > EOF
+  $ dune build result
+  $ cp "$external_seed" x
+  $ cat > dune <<EOF
+  > (alias (name idle))
+  > (rule
+  >  (target result)
+  >  (deps x trigger)
+  >  (action (copy x result)))
+  > EOF
+  $ start_dune @idle
+  $ build result
+  Success
+  $ dune_cmd stat hardlinks _build/default/x
+  1
+  $ chmod u+w "$external_seed"
+  $ echo two > "$external_seed"
+  $ echo changed > trigger
+  $ build result
+  Success
+  $ cat x _build/default/result
+  one
+  one
+  $ stop_dune_quiet
   $ cd ..

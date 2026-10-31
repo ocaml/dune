@@ -656,9 +656,8 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
           Gen_rules.Rules
             (make_rules (gen_rules_standalone_or_root sctx ~dir ~source_dir))
       in
-      match Opam_create.gen_rules sctx ~dir ~nearest_src_dir ~src_dir with
-      | None -> rules
-      | Some opam_rules -> Gen_rules.combine (Gen_rules.Rules opam_rules) rules
+      let opam_rules = Opam_create.gen_rules sctx ~dir ~nearest_src_dir ~src_dir in
+      Gen_rules.combine opam_rules rules
     and+ melange_rules = Melange_rules.setup_emit_js_rules sctx ~dir in
     Gen_rules.combine melange_rules rules
 ;;

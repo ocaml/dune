@@ -80,9 +80,12 @@ let execute_pp_action ~sctx file pp_file dump_file =
   in
   let ok =
     let open Fiber.O in
-    let build_deps deps = Build_system.build_deps deps |> Memo.run in
+    let build_deps deps =
+      let+ (_ : Dep.Facts.t) = Build_system.build_deps deps |> Memo.run in
+      ()
+    in
     let* result = Dune_engine.Action_exec.exec input ~build_deps in
-    Dune_engine.Action_exec.Exec_result.ok_exn result >>| ignore
+    Dune_engine.Action_exec.Exec_result.ok_exn result
   in
   Memo.of_non_reproducible_fiber ok
 ;;

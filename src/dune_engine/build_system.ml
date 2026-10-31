@@ -318,7 +318,7 @@ let report_evaluated_rule_exn () =
 module Exec_result = struct
   type t =
     { produced_targets : unit Targets.Produced.t
-    ; action_exec_result : Action_exec.Exec_result.ok
+    ; dynamic_deps_stages : (Dep.Set.t * Digest.t) list
     }
 end
 
@@ -495,6 +495,7 @@ and execute_action_for_rule
     let root = Path.build (Sandbox.map_path sandbox root) in
     let execute () =
       with_locks locks ~f:(fun () ->
+        let dynamic_deps_stages = ref [] in
         let* action_exec_result =
           let input =
             let env = Action_trace.add_to_env action_trace env in
@@ -517,12 +518,17 @@ and execute_action_for_rule
                 ~expand_aliases:
                   (Execution_parameters.expand_aliases_in_sandbox execution_parameters)
             in
-            facts
+            let digest =
+              let d = Digest.Manual.create () in
+              Dep.Facts.digest facts d ~env;
+              Digest.Manual.get d
+            in
+            dynamic_deps_stages := (deps, digest) :: !dynamic_deps_stages
           in
           Action_exec.exec input ~build_deps
         in
-        let* action_exec_result, () =
-          Fiber.fork_and_join
+        let* () =
+          Fiber.fork_and_join_unit
             (fun () -> Action_exec.Exec_result.ok_exn action_exec_result)
             (fun () -> Action_trace.collect action_trace)
         in
@@ -537,7 +543,10 @@ and execute_action_for_rule
           Sandbox.move_targets_to_build_dir sandbox ~skip_files ~targets
         in
         match Targets.Produced.of_validated targets with
-        | Ok produced_targets -> { Exec_result.produced_targets; action_exec_result }
+        | Ok produced_targets ->
+          { Exec_result.produced_targets
+          ; dynamic_deps_stages = List.rev !dynamic_deps_stages
+          }
         | Error error -> User_error.raise ~loc (Targets.Produced.Error.message error))
     in
     match process_sandbox with
@@ -731,16 +740,7 @@ and execute_rule_action
                 ~rule_digest
                 ~produced_targets:exec_result.produced_targets
             in
-            let dynamic_deps_stages =
-              List.map
-                exec_result.action_exec_result.dynamic_deps_stages
-                ~f:(fun (deps, fact_map) ->
-                  ( deps
-                  , let d = Digest.Manual.create () in
-                    Dep.Facts.digest fact_map d ~env:props.env;
-                    Digest.Manual.get d ))
-            in
-            Fiber.return (produced_targets, dynamic_deps_stages)
+            Fiber.return (produced_targets, exec_result.dynamic_deps_stages)
         in
         (* We do not include target names into [targets_digest] because they
            are already included into the rule digest. *)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793407952084,
+  "lastUpdate": 1793415302147,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -667289,6 +667289,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.7596035387,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "83a4719dabeba517bf24db7e689fab9e5fc4dee1",
+          "message": "refactor(engine): keep generated-rule payload combination private (#16860)\n\nHide `Build_config.Gen_rules.Rules.combine_exn`; production callers\nalready use `Gen_rules.combine`.\n\nExercise the deferred-computation regression through that public API and\nremove the test that merely mirrors subdirectory record merging.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-31T10:46:00+08:00",
+          "tree_id": "d4237e3ff026b806f308ddfc4a7d108945ad8f4b",
+          "url": "https://github.com/ocaml/dune/commit/83a4719dabeba517bf24db7e689fab9e5fc4dee1"
+        },
+        "date": 1793415074870,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.83411655386,
             "unit": "seconds"
           }
         ]

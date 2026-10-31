@@ -1,0 +1,6 @@
+(executable
+ (name b))
+
+(executable
+ (name c)
+ (libraries lib))

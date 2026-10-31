@@ -35,10 +35,6 @@ let proper_name = function
 ;;
 
 module Dict = struct
-  type language =
-    | C
-    | Cxx
-
   type 'a t =
     { c : 'a
     ; cxx : 'a
@@ -47,11 +43,6 @@ module Dict = struct
   let equal f { c; cxx } t = f c t.c && f cxx t.cxx
   let make_both a = { c = a; cxx = a }
   let make ~c ~cxx = { c; cxx }
-
-  let get { c; cxx } = function
-    | C -> c
-    | Cxx -> cxx
-  ;;
 end
 
 let header_extension = Filename.Extension.h

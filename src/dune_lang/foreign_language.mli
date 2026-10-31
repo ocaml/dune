@@ -13,10 +13,6 @@ val to_dyn : t -> Dyn.t
 val proper_name : t -> string
 
 module Dict : sig
-  type language =
-    | C
-    | Cxx
-
   type 'a t =
     { c : 'a
     ; cxx : 'a
@@ -25,7 +21,6 @@ module Dict : sig
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
   val make_both : 'a -> 'a t
   val make : c:'a -> cxx:'a -> 'a t
-  val get : 'a t -> language -> 'a
 end
 
 val source_extensions : (t * (int * int)) String.Map.t

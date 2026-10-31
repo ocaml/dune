@@ -55,14 +55,11 @@ let foreign_flags_env =
         let+ ocaml = Context.ocaml context in
         default_context_flags (Context.build_context context) ocaml.ocaml_config ~project)
       ~f:(fun ~parent expander (env : Dune_env.config) ->
-        let+ parent = parent in
-        let foreign_flags lang =
-          Foreign_language.Dict.get env.foreign_flags lang
-          |> Expander.expand_and_eval_set
-               expander
-               ~standard:(Foreign_language.Dict.get parent lang)
-        in
-        Foreign_language.Dict.make ~c:(foreign_flags C) ~cxx:(foreign_flags Cxx))
+        let+ { Foreign_language.Dict.c = parent_c; cxx = parent_cxx } = parent in
+        let { Foreign_language.Dict.c; cxx } = env.foreign_flags in
+        let c = Expander.expand_and_eval_set expander c ~standard:parent_c
+        and cxx = Expander.expand_and_eval_set expander cxx ~standard:parent_cxx in
+        Foreign_language.Dict.make ~c ~cxx)
   in
   fun ~dir ->
     let* () = Memo.return () in
@@ -72,10 +69,10 @@ let foreign_flags_env =
 let () = Fdecl.set Expander.foreign_flags foreign_flags_env
 
 let default_foreign_flags ~dir ~(language : Foreign_language.t) =
-  (let+ dict = foreign_flags_env ~dir in
+  (let+ { Foreign_language.Dict.c; cxx } = foreign_flags_env ~dir in
    match language with
-   | C -> Foreign_language.Dict.get dict C
-   | Cxx -> Foreign_language.Dict.get dict Cxx
+   | C -> c
+   | Cxx -> cxx
    | Asm -> Action_builder.return [])
   |> Action_builder.of_memo_join
 ;;

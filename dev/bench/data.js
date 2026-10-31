@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793418386341,
+  "lastUpdate": 1793418630612,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -479803,6 +479803,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.38810405786666663,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "db90ffad2c73c47a80222966e800015f77b0f6f5",
+          "message": "test(engine): reproduce internal errors for invalid build contexts (#16862)\n\nAdd cram reproducers showing that invalid install and private context\npaths expose internal `Code_error` diagnostics to users. The install\ndirectory-inspection command also exits successfully despite reporting\nan internal error.\n\nThe tests record the current behavior; fixes are left for a follow-up.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-31T11:31:19+08:00",
+          "tree_id": "c1a0918b155fcbaa5b7c27c3d7023a947143f1b0",
+          "url": "https://github.com/ocaml/dune/commit/db90ffad2c73c47a80222966e800015f77b0f6f5"
+        },
+        "date": 1793418628443,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 63.90716752116666,
             "unit": "seconds"
           }
         ]

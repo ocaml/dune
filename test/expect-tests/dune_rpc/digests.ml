@@ -112,6 +112,9 @@ let%expect_test "print digests for all declared RPCs" =
       Version 1:
         Request: Unit
         Response: Unit
+      Version 2:
+        Request: String
+        Response: Unit
     flush-file-watcher
       Version 1:
         Request: Unit

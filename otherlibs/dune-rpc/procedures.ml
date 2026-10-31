@@ -48,10 +48,21 @@ module Public = struct
   end
 
   module Format = struct
-    let v1 = Decl.Request.make_current_gen ~req:Conv.unit ~resp:Conv.unit ~version:1
+    let v1 =
+      Decl.Request.make_gen
+        ~req:Conv.unit
+        ~resp:Conv.unit
+        ~version:1
+        ~upgrade_req:(fun () -> Path.dune_root)
+        ~downgrade_req:(fun _ -> ())
+        ~upgrade_resp:Fun.id
+        ~downgrade_resp:Fun.id
+    ;;
+
+    let v2 = Decl.Request.make_current_gen ~req:Path.sexp ~resp:Conv.unit ~version:2
 
     let decl =
-      Decl.Request.make ~method_:(Method.Name.of_string "format") ~generations:[ v1 ]
+      Decl.Request.make ~method_:(Method.Name.of_string "format") ~generations:[ v1; v2 ]
     ;;
   end
 

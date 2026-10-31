@@ -1240,10 +1240,7 @@ module File_kind = struct
     ; assembler : [ `C_comp | `Msvc_asm ]
     }
 
-  type c =
-    { arch : Arch.t option
-    ; flags : string list
-    }
+  type c = { arch : Arch.t option }
 
   type ml =
     { kind : [ `Ml | `Mli | `Mll | `Mly ]
@@ -1301,26 +1298,8 @@ module File_kind = struct
       in
       Some (Asm { syntax; arch; os; assembler })
     | ".c" ->
-      let arch, flags =
-        let fn = Filename.remove_extension fn in
-        let check suffix = String.ends_with fn ~suffix in
-        let x86 gnu _msvc =
-          (* CR-someday rgrinberg: select msvc flags on windows *)
-          Some `amd64, gnu
-        in
-        if check "_sse2"
-        then x86 [ "-msse2" ] [ "/arch:SSE2" ]
-        else if check "_sse41"
-        then x86 [ "-msse4.1" ] [ "/arch:AVX" ]
-        else if check "_avx2"
-        then x86 [ "-mavx2" ] [ "/arch:AVX2" ]
-        else if check "_avx512"
-        then x86 [ "-mavx512f"; "-mavx512vl"; "-mavx512bw" ] [ "/arch:AVX512" ]
-        else if String.ends_with fn ~suffix:"_neon"
-        then Some `arm64, []
-        else None, []
-      in
-      Some (C { arch; flags })
+      let arch = if String.ends_with fn ~suffix:"_neon.c" then Some `arm64 else None in
+      Some (C { arch })
     | ".h" -> Some Header
     | ".defaults.ml" ->
       let fn' = fname ^ ".ml" in
@@ -1664,12 +1643,10 @@ module Library = struct
     && is_target_arch ~architecture arch
   ;;
 
-  let keep_c { File_kind.arch; flags = _ } ~architecture =
-    is_target_arch ~architecture arch
-  ;;
+  let keep_c { File_kind.arch } ~architecture = is_target_arch ~architecture arch
 
-  let make_c (c : File_kind.c) ~fn ~os_type ~word_size ~ccomp_type =
-    let extra_flags =
+  let make_c ~fn ~os_type ~word_size ~ccomp_type =
+    let flags =
       match fn, ccomp_type, os_type, word_size with
       | (fn, _, `Cygwin, _ | fn, _, _, `Thirty_two)
         when String.starts_with ~prefix:"blake3_" fn ->
@@ -1686,7 +1663,7 @@ module Library = struct
       | "ev.c", _, _, _ -> [ "-w" ]
       | _, _, _, _ -> []
     in
-    { Source.flags = extra_flags @ c.flags; name = fn }
+    { Source.flags; name = fn }
   ;;
 
   let gen_build_info_module (ml : File_kind.ml) =
@@ -1854,7 +1831,7 @@ module Library = struct
         match src.kind with
         | C c ->
           if keep_c c ~architecture
-          then `Left (make_c c ~fn ~os_type ~word_size ~ccomp_type)
+          then `Left (make_c ~fn ~os_type ~word_size ~ccomp_type)
           else `Skip
         | Ml _ -> `Middle fn
         | Header -> `Skip

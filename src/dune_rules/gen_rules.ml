@@ -665,7 +665,7 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
 
 (* Once [gen_rules] has decided what to do with the directory, it should end
    with [has_rules] or [Gen_rules.Redirect_to_parent] *)
-let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
+let gen_rules ctx sctx ~dir components : Gen_rules.t Memo.t =
   let src_dir = Path.Build.drop_build_context_exn dir in
   match components with
   | ".js" :: rest ->

@@ -189,7 +189,7 @@ let lock_action
     }
 ;;
 
-let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
+let setup_lock_rules ~dir ~lock_dir : Gen_rules.t =
   let target = Path.Build.append_local dir lock_dir in
   let lock_dir_param = lock_dir in
   let rules =

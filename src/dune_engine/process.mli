@@ -119,6 +119,21 @@ val run
   -> string list
   -> 'a Fiber.t
 
+(** Run a dynamic action with a job slot that can be lent to dependency builds. *)
+val run_with_job_slot
+  :  job_slot:Scheduler.Job_slot.t
+  -> dir:Path.t
+  -> display:Display.t
+  -> stdout_to:Io.output Io.t
+  -> stderr_to:Io.output Io.t
+  -> stdin_from:Io.input Io.t
+  -> env:Env.t
+  -> metadata:Process_metadata.t
+  -> (unit, 'a) Failure_mode.t
+  -> Path.t
+  -> string list
+  -> 'a Fiber.t
+
 val run_with_array_args
   :  ?dir:Path.t
   -> display:Display.t

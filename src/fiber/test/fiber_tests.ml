@@ -951,3 +951,82 @@ let%expect_test "Mutex serializes fibers and releases after errors" =
     caught Exit
     reacquired |}]
 ;;
+
+let%expect_test "throttle slots cancel queued acquisitions and can be reused" =
+  let throttle = Fiber.Throttle.create 3 in
+  let held = Fiber.Throttle.Slot.create throttle ~size:10 in
+  let queued = Fiber.Throttle.Slot.create throttle ~size:2 in
+  Scheduler.run
+    (let* acquired = Fiber.Throttle.Slot.acquire held in
+     printfn "held: %b" acquired;
+     let* () =
+       Fiber.fork_and_join_unit
+         (fun () ->
+            let+ acquired = Fiber.Throttle.Slot.acquire queued in
+            printfn "queued: %b" acquired)
+         (fun () ->
+            let* () = Scheduler.yield () in
+            Fiber.Throttle.Slot.release queued)
+     in
+     printfn "running: %d" (Fiber.Throttle.running throttle);
+     let* () = Fiber.Throttle.Slot.release held in
+     let* acquired = Fiber.Throttle.Slot.acquire queued in
+     printfn "reused: %b" acquired;
+     printfn "running: %d" (Fiber.Throttle.running throttle);
+     let* () = Fiber.Throttle.Slot.release queued in
+     let+ () = Fiber.Throttle.Slot.release queued in
+     printfn "running: %d" (Fiber.Throttle.running throttle));
+  [%expect
+    {|
+    held: true
+    queued: false
+    running: 3
+    reused: true
+    running: 2
+    running: 0 |}]
+;;
+
+let%expect_test "weighted throttle slots share capacity with ordinary jobs" =
+  let throttle = Fiber.Throttle.create 3 in
+  let held = Fiber.Throttle.Slot.create throttle ~size:2 in
+  let queued = Fiber.Throttle.Slot.create throttle ~size:2 in
+  Scheduler.run
+    (let* (_ : bool) = Fiber.Throttle.Slot.acquire held in
+     let* () =
+       Fiber.fork_and_join_unit
+         (fun () ->
+            Fiber.Throttle.run throttle ~size:2 ~f:(fun () ->
+              printfn "ordinary: %d" (Fiber.Throttle.running throttle);
+              Scheduler.yield ()))
+         (fun () ->
+            let* acquired = Fiber.Throttle.Slot.acquire queued in
+            printfn "queued: %b, running: %d" acquired (Fiber.Throttle.running throttle);
+            Fiber.Throttle.Slot.release queued)
+     in
+     let+ () = Fiber.Throttle.Slot.release held in
+     printfn "released: %d" (Fiber.Throttle.running throttle));
+  [%expect
+    {|
+    ordinary: 4
+    queued: true, running: 4
+    released: 0 |}]
+;;
+
+let%expect_test "throttle releases slots after errors" =
+  let throttle = Fiber.Throttle.create 1 in
+  let result =
+    Scheduler.run
+      (Fiber.collect_errors (fun () ->
+         Fiber.Throttle.run throttle ~size:1 ~f:(fun () -> raise Exit)))
+  in
+  (match result with
+   | Error [ { exn = Exit; _ } ] -> print_endline "caught Exit"
+   | Ok () | Error _ -> print_endline "unexpected result");
+  printfn "running: %d" (Fiber.Throttle.running throttle);
+  Common.test unit (Fiber.Throttle.run throttle ~size:1 ~f:(fun () -> Fiber.return ()));
+  [%expect
+    {|
+    caught Exit
+    running: 0
+    () |}]
+;;

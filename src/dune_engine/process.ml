@@ -1334,6 +1334,7 @@ let exec_locally
 ;;
 
 let run_internal
+      ~job_slot
       ?dir
       ~(display : Display.t)
       ?(stdout_to = Io.stdout)
@@ -1357,7 +1358,12 @@ let run_internal
   let cancellation =
     Option.map build ~f:(fun { Build.cancellation; _ } -> cancellation)
   in
-  Scheduler.with_job_slot ?cancellation ~job_slots:metadata.job_slots (fun () ->
+  let with_job_slot =
+    match job_slot with
+    | None -> Scheduler.with_job_slot ?cancellation ~job_slots:metadata.job_slots
+    | Some slot -> Scheduler.Job_slot.run slot ~cancellation
+  in
+  with_job_slot (fun () ->
     let queued = Time.diff (Time.now ()) start in
     let dir =
       match dir with
@@ -1611,6 +1617,7 @@ let run
   =
   let+ run, _ =
     run_internal
+      ~job_slot:None
       ?dir
       ~display
       ?stdout_to
@@ -1620,6 +1627,36 @@ let run
       ?metadata
       ?build
       ?sandbox
+      fail_mode
+      prog
+      (Array.Immutable.of_list args)
+  in
+  Failure_mode.map_result fail_mode run ~f:ignore
+;;
+
+let run_with_job_slot
+      ~job_slot
+      ~dir
+      ~display
+      ~stdout_to
+      ~stderr_to
+      ~stdin_from
+      ~env
+      ~metadata
+      fail_mode
+      prog
+      args
+  =
+  let+ run, _ =
+    run_internal
+      ~job_slot:(Some job_slot)
+      ~dir
+      ~display
+      ~stdout_to
+      ~stderr_to
+      ~stdin_from
+      ~env
+      ~metadata
       fail_mode
       prog
       (Array.Immutable.of_list args)
@@ -1643,6 +1680,7 @@ let run_with_array_args
   =
   let+ run, _ =
     run_internal
+      ~job_slot:None
       ?dir
       ~display
       ?stdout_to
@@ -1674,6 +1712,7 @@ let run_with_times
   =
   let+ code, times =
     run_internal
+      ~job_slot:None
       ?dir
       ~display
       ?stdout_to
@@ -1706,6 +1745,7 @@ let run_capture_gen
   let fn = Temp.create File ~prefix:"dune" ~suffix:"output" in
   let+ run, _ =
     run_internal
+      ~job_slot:None
       ?dir
       ~display
       ~stdout_to:(Io.file fn Io.Out)
@@ -1794,6 +1834,7 @@ let run_inherit_std_in_out =
   in
   fun ?dir ?env prog args ->
     run_internal
+      ~job_slot:None
       ?dir
       ?env
       ~display:Display.Quiet

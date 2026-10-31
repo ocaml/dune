@@ -42,6 +42,95 @@ let%expect_test "raise inside Scheduler.Run.go" =
     --> exception observed |}]
 ;;
 
+let%expect_test "the last DAP request waits to reacquire its slot" =
+  let open Fiber.O in
+  go (fun () ->
+    let slot = Scheduler.Job_slot.create ~job_slots:1 in
+    Scheduler.Job_slot.run slot ~cancellation:None (fun () ->
+      let* () = Scheduler.Job_slot.begin_request slot in
+      let occupied = Fiber.Ivar.create () in
+      let finishing = Fiber.Ivar.create () in
+      let finished = ref false in
+      let+ () =
+        Fiber.fork_and_join_unit
+          (fun () ->
+             Scheduler.with_job_slot ~job_slots:1 (fun () ->
+               let* () = Fiber.Ivar.fill occupied () in
+               let+ () = Fiber.Ivar.read finishing in
+               printfn "request finished while slot occupied: %b" !finished))
+          (fun () ->
+             let* () = Fiber.Ivar.read occupied in
+             let* () = Fiber.Ivar.fill finishing () in
+             let+ () = Scheduler.Job_slot.end_request slot in
+             finished := true)
+      in
+      printfn "request finished after release: %b" !finished));
+  [%expect
+    {|
+    request finished while slot occupied: false
+    request finished after release: true |}]
+;;
+
+let%expect_test "a new DAP request interrupts queued slot reacquisition" =
+  let open Fiber.O in
+  go (fun () ->
+    let slot = Scheduler.Job_slot.create ~job_slots:1 in
+    let* () =
+      Scheduler.Job_slot.run slot ~cancellation:None (fun () ->
+        let* () = Scheduler.Job_slot.begin_request slot in
+        let* () =
+          Scheduler.with_job_slot ~job_slots:1 (fun () ->
+            let+ () =
+              Fiber.fork_and_join_unit
+                (fun () -> Scheduler.Job_slot.end_request slot)
+                (fun () -> Scheduler.Job_slot.begin_request slot)
+            in
+            print_endline "reacquisition interrupted")
+        in
+        let+ () = Scheduler.Job_slot.end_request slot in
+        print_endline "reacquired")
+    in
+    Scheduler.with_job_slot ~job_slots:1 (fun () ->
+      print_endline "released";
+      Fiber.return ()));
+  [%expect
+    {|
+    reacquisition interrupted
+    reacquired
+    released |}]
+;;
+
+let%expect_test "ending a DAP action cancels queued slot reacquisition" =
+  let open Fiber.O in
+  go (fun () ->
+    let slot = Scheduler.Job_slot.create ~job_slots:1 in
+    let started = Fiber.Ivar.create () in
+    let finish = Fiber.Ivar.create () in
+    let* () =
+      Fiber.fork_and_join_unit
+        (fun () ->
+           Scheduler.Job_slot.run slot ~cancellation:None (fun () ->
+             let* () = Scheduler.Job_slot.begin_request slot in
+             let* () = Fiber.Ivar.fill started () in
+             Fiber.Ivar.read finish))
+        (fun () ->
+           let* () = Fiber.Ivar.read started in
+           Scheduler.with_job_slot ~job_slots:1 (fun () ->
+             Fiber.fork_and_join_unit
+               (fun () ->
+                  let+ () = Scheduler.Job_slot.end_request slot in
+                  print_endline "request finished")
+               (fun () -> Fiber.Ivar.fill finish ())))
+    in
+    Scheduler.with_job_slot ~job_slots:1 (fun () ->
+      print_endline "released";
+      Fiber.return ()));
+  [%expect
+    {|
+    request finished
+    released |}]
+;;
+
 let canonical_signal_number signal =
   let signal = Signal.to_int signal in
   let previous_mask = Unix.sigprocmask SIG_UNBLOCK [ signal ] in

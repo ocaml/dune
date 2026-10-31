@@ -1,4 +1,4 @@
-Test that compile_commands.json matches actual C compiler invocations from trace.
+Test that compile_commands.json preserves actual C compiler flags from trace.
 
   $ make_dune_project 3.23
 
@@ -37,14 +37,16 @@ Build compile_commands.json:
 
   $ dune build compile_commands.json
 
-Extract from compile_commands.json (first entry):
+Extract the recorded flags, normalizing the original source path used for
+editor support:
 
-  $ jq '.[0].arguments[1:]' compile_commands.json > cc_args.json
+  $ jq '.[0].arguments[1:] | .[-1] = "stub.c"' \
+  >   compile_commands.json > cc_args.json
 
 Verify we got args:
 
   $ test -s cc_args.json
 
-Compare the arguments (they should match):
+The remaining arguments should match:
 
   $ diff <(jq -S '.' trace_args.json) <(jq -S '.' cc_args.json)

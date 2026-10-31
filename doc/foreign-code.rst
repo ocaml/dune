@@ -444,10 +444,18 @@ produce a database. An explicit rule for ``compile_commands.json`` takes
 precedence over automatic generation. If all foreign stanzas are disabled,
 Dune preserves an existing database or generates an empty one if none exists.
 
-Each entry records the full compiler invocation that Dune would use for that
-source file, including the C compiler, base flags from ``ocamlc -config``,
+Each entry identifies the original source file by its absolute path, or the
+build-tree path for generated and copied-only sources. The ``directory`` field
+is the absolute build directory in which relative compiler flags are resolved.
+The command uses the same source path as the ``file`` field.
+
+The command includes the C compiler, base flags from ``ocamlc -config``,
 user-specified ``(flags ...)``, ``-I`` paths for the OCaml standard library,
 library dependencies (via ``install_c_headers``), and ``(include_dirs ...)``.
+
+Editors parse original files, so implicit searches for generated sibling
+headers can differ from the build. Such headers must exist before the editor
+parses the file; explicit ``(include_dirs ...)`` paths can make them available.
 
 Since the file is a build artifact promoted to the source tree, you should add
 ``compile_commands.json`` to your ``.gitignore``.

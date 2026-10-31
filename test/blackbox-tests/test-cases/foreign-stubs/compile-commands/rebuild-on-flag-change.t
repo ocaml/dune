@@ -73,7 +73,7 @@ Adding foreign stubs to that stanza includes its entries:
   >  (foreign_stubs (language c) (names bar_stub)))
   > EOF
   $ dune build compile_commands.json
-  $ jq '[.[].file]' compile_commands.json
+  $ jq '[.[].file | ltrimstr(env.PWD + "/")]' compile_commands.json
   [
     "bar_stub.c",
     "stub.c"

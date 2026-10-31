@@ -26,5 +26,5 @@ Build compile_commands.json:
 
 Check that the executable's stub appears:
 
-  $ jq '.[0].file' compile_commands.json
+  $ jq '.[0].file | ltrimstr(env.PWD + "/")' compile_commands.json
   "stub.c"

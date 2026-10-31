@@ -48,7 +48,8 @@ stanzas during database discovery is not sufficient to fix this case.
   > (foreign_library (archive_name stubs) (language c))
   > EOF
   $ dune build foo/stub.c
-  $ dune build compile_commands.json && jq '[.[].file]' compile_commands.json
+  $ dune build compile_commands.json && \
+  >   jq '[.[].file | split("/")[-1]]' compile_commands.json
   [
     "stub.c"
   ]
@@ -60,7 +61,7 @@ The database can also be built through @check with only_sources.
   > (foreign_library (archive_name stubs) (language c))
   > EOF
   $ dune build @check
-  $ jq '[.[].file]' compile_commands.json
+  $ jq '[.[].file | split("/")[-1]]' compile_commands.json
   [
     "stub.c"
   ]
@@ -78,7 +79,7 @@ source discovery to the source tree would incorrectly omit generated.c.
   > EOF
   $ test ! -f _build/default/generated.c
   $ dune build compile_commands.json
-  $ jq '[.[].file] | sort' compile_commands.json
+  $ jq '[.[].file | split("/")[-1]] | sort' compile_commands.json
   [
     "generated.c",
     "stub.c"
@@ -92,7 +93,7 @@ Adding a source must invalidate the deferred discovery as well.
 
   $ echo 'int another(void) { return 2; }' > another.c
   $ dune build compile_commands.json && \
-  >   jq '[.[].file] | sort' compile_commands.json
+  >   jq '[.[].file | split("/")[-1]] | sort' compile_commands.json
   [
     "another.c",
     "generated.c",
@@ -109,7 +110,8 @@ rule registration can create a cycle when it queries root build files.
   >  (language c)
   >  (enabled_if %{file-available:../stub.c}))
   > EOF
-  $ dune build compile_commands.json && jq '[.[].file]' compile_commands.json
+  $ dune build compile_commands.json && \
+  >   jq '[.[].file | split("/")[-1]]' compile_commands.json
   [
     "stub.c"
   ]
@@ -216,7 +218,7 @@ there is already a database in the source tree.
   > (foreign_library (archive_name stubs) (language c) (names stub))
   > EOF
   $ dune build compile_commands.json
-  $ jq '[.[].file]' compile_commands.json
+  $ jq '[.[].file | split("/")[-1]]' compile_commands.json
   [
     "stub.c"
   ]
@@ -232,7 +234,7 @@ condition is not a literal false.
   >  (enabled_if (= %{context_name} unused)))
   > EOF
   $ dune build @check
-  $ jq '[.[].file]' compile_commands.json
+  $ jq '[.[].file | split("/")[-1]]' compile_commands.json
   [
     "stub.c"
   ]

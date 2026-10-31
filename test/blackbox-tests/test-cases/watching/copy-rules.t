@@ -173,3 +173,109 @@ rerun its dependent rule after a real content change.
   two
   $ stop_dune_quiet
   $ cd ..
+
+A source copy can become a regular file target and then a source copy again,
+without changing or removing the source. Repeat the transition through a
+regular directory target, which must invalidate old copies in its subtree.
+Promotion is disabled so neither rule changes the source file.
+
+  $ mkdir target-transitions
+  $ cd target-transitions
+  $ make_directory_targets_project 3.0
+  $ mkdir tree
+  $ printf 'source\n' > tree/value
+  $ cat > .#source-rules <<EOF
+  > (alias (name idle))
+  > (rule
+  >  (target result)
+  >  (deps tree/value)
+  >  (action (copy tree/value result)))
+  > EOF
+  $ cp .#source-rules dune
+  $ start_dune --disable-promotion @idle
+  $ build result
+  Success
+  $ if test -x _build/default/tree/value; then echo executable;
+  > else echo plain; fi
+  plain
+
+The regular rule keeps the bytes identical but changes the executable bit.
+
+  $ cat >> dune <<EOF
+  > (subdir tree
+  >  (rule
+  >   (target value)
+  >   (mode promote)
+  >   (action
+  >    (progn
+  >     (write-file value "source\n")
+  >     (run chmod +x value)))))
+  > EOF
+  $ build result
+  Success
+  $ if test -x _build/default/tree/value; then echo executable;
+  > else echo plain; fi
+  executable
+  $ cmp tree/value _build/default/result
+
+Switching back must restore the source's non-executable mode.
+
+  $ cp .#source-rules dune
+  $ build result
+  Success
+  $ if test -x _build/default/tree/value; then echo executable;
+  > else echo plain; fi
+  plain
+  $ cmp tree/value _build/default/result
+
+A directory rule can take over the parent of the same source copy.
+
+  $ cat >> dune <<EOF
+  > (rule
+  >  (targets (dir tree))
+  >  (mode promote)
+  >  (action
+  >   (bash "mkdir tree; echo source > tree/value; chmod +x tree/value")))
+  > EOF
+  $ build result
+  Success
+  $ if test -x _build/default/tree/value; then echo executable;
+  > else echo plain; fi
+  executable
+  $ cmp tree/value _build/default/result
+  $ cp .#source-rules dune
+  $ build result
+  Success
+  $ if test -x _build/default/tree/value; then echo executable;
+  > else echo plain; fi
+  plain
+  $ cmp tree/value _build/default/result
+
+Later source changes must still invalidate the restored copy.
+
+  $ printf 'edited\n' > tree/value
+  $ build result
+  Success
+  $ cat _build/default/result
+  edited
+  $ stop_dune_quiet
+
+Transitions must also work between separate Dune invocations.
+
+  $ cat >> dune <<EOF
+  > (subdir tree
+  >  (rule
+  >   (target value)
+  >   (mode promote)
+  >   (action
+  >    (progn
+  >     (write-file value "edited\n")
+  >     (run chmod +x value)))))
+  > EOF
+  $ dune build result --disable-promotion
+  $ test -x _build/default/tree/value
+  $ cmp tree/value _build/default/result
+  $ cp .#source-rules dune
+  $ dune build result
+  $ test ! -x _build/default/tree/value
+  $ cmp tree/value _build/default/result

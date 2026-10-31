@@ -130,7 +130,6 @@
     ]
   }
 
-FIXME : module Foo is not unbound
-This test is disabled because it depends on root detection and is not reproducible.
-$ ocamlmerlin single errors -filename foo.ml < foo.ml | jq ".value.message"
-"Unbound module Foo"
+module Foo is not unbound, the correct result is [], "no errors"
+  $ ocamlmerlin single errors -filename foo.ml < foo.ml | jq ".value"
+  []

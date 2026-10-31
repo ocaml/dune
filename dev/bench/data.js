@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793460667496,
+  "lastUpdate": 1793464204448,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -667724,6 +667724,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.7244098307600004,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "67bc7966801728f9675af89726f237dc2d2a9eee",
+          "message": "refactor(rules): return generated-rule results directly from opam generation (#16866)\n\nReturn `Gen_rules.no_rules` for directories without opam rules and a\ngenerated-rule result directly otherwise. The caller can then combine\nresults without an option match or payload wrapper.\n\nEmpty results use the existing constant-time combination fast path. No\nbehavior change is intended.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-01T00:16:29+08:00",
+          "tree_id": "e382ea04f78d94ff4a0b0aacfd199bedd66108fc",
+          "url": "https://github.com/ocaml/dune/commit/67bc7966801728f9675af89726f237dc2d2a9eee"
+        },
+        "date": 1793463812472,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.9437099080333335,
             "unit": "seconds"
           }
         ]

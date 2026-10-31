@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793393952051,
+  "lastUpdate": 1793407724528,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -667202,6 +667202,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.6996379852200003,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "89fc7a1daa572e475b62cfb44bdd23fd172f61ea",
+          "message": "refactor(engine): expose the rules-facing build configuration API (#16858)\n\nMove the rule-generation constructors and combination logic into\n`Build_config.Gen_rules`, removing the wrapper from\n`dune_rules/import.ml`. Use `Gen_rules.t` as the single result type\nthroughout the engine and rules.\n\nNo behavior change is intended.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-31T08:39:33+08:00",
+          "tree_id": "6cab7737539e839e7b7f8466db251986f885399c",
+          "url": "https://github.com/ocaml/dune/commit/89fc7a1daa572e475b62cfb44bdd23fd172f61ea"
+        },
+        "date": 1793407497326,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.7596035387,
             "unit": "seconds"
           }
         ]

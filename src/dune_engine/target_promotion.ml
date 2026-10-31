@@ -70,11 +70,7 @@ let promote_target_if_not_up_to_date
     | _ ->
       Dune_trace.emit Promote (fun () -> Dune_trace.Event.Promote.promote src dst);
       if promote_until_clean then To_delete.add dst;
-      (* The file in the build directory might be read-only if it comes from the
-         shared cache. However, we want the file in the source tree to be
-         writable by the user, so we explicitly set the user writable bit. *)
-      let chmod = Permissions.add Permissions.write in
-      let+ () = promote_source ~chmod ~delete_dst_if_it_is_a_directory:true ~src ~dst in
+      let+ () = promote_source ~src ~dst in
       true
   in
   let+ dst_digest_result =

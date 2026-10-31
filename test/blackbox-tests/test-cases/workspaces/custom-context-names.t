@@ -67,3 +67,29 @@ present in the current directory.
   does not exist
   [1]
 
+Invalid contexts below the install and private roots are rejected by rule
+loading. Directory inspection also exercises install rule generation.
+
+  $ make_dune_project 3.13
+  $ cat > dune-workspace <<'EOF'
+  > (lang dune 3.13)
+  > (context default)
+  > EOF
+
+  $ dune describe targets --context install _build/install/missing 2> error.log
+  $ awk '/^Description:/{printing=1;next} /^Raised/{printing=0} printing' error.log
+    ("[gen_rules] did not specify rules for the context",
+     { context_name = "install" })
+
+  $ dune build _build/_private/missing/target 2> error.log
+  [1]
+  $ awk '/^Description:/{printing=1;next} /^Raised/{printing=0} printing' error.log
+    ("[gen_rules] did not specify rules for the context",
+     { context_name = "_private" })
+
+  $ dune build _build/_private/log/target 2> error.log
+  [1]
+  $ awk '/^Description:/{printing=1;next} /^Raised/{printing=0} printing' error.log
+    ("[gen_rules] did not specify rules for the context",
+     { context_name = "_private" })
+

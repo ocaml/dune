@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793460660922,
+  "lastUpdate": 1793460667496,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -480006,6 +480006,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 42.20666141652,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9bcb6ad0f96bffd1ac371da9019dd893cbbedbf6",
+          "message": "test(engine): cover source-copy target transitions (#16864)\n\nCharacterize source-backed paths becoming regular file or directory\ntargets and then becoming source copies again, without changing or\nremoving the source. Keep the bytes identical and change the executable\nbit so stale target state is observable.\n\nCover both round trips within one watch session, later source edits, and\ntransitions across separate Dune invocations. Disable promotion during\ntarget takeovers so source edits cannot mask stale state.\n\nThese expectations pass with the existing copy-rule implementation. This\nis a test-only baseline for #16747, with no refactor or stat-cache\nchanges.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-31T23:18:10+08:00",
+          "tree_id": "fdc922de30021f91ba1cfb800c46071331f1d97d",
+          "url": "https://github.com/ocaml/dune/commit/9bcb6ad0f96bffd1ac371da9019dd893cbbedbf6"
+        },
+        "date": 1793460666719,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5193077642666667,
             "unit": "seconds"
           }
         ]

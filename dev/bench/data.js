@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793418300553,
+  "lastUpdate": 1793418386341,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -667405,6 +667405,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.829631528466667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cdebc2bf880f34fb3908827e4d7b1279ec40f917",
+          "message": "test(cache): cover artifact stat failures during trimming (#16855)\n\nAdd one ordinary cache artifact and a validly named dangling symlink.\nVerify that cache size and trimming ignore the failed `stat`, count and\nremove the ordinary artifact correctly, and leave the dangling entry\nuntouched.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-31T11:32:48+08:00",
+          "tree_id": "09d63b3ebb272a020ea61083a8e7a22ad31abf49",
+          "url": "https://github.com/ocaml/dune/commit/cdebc2bf880f34fb3908827e4d7b1279ec40f917"
+        },
+        "date": 1793417994669,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.9649794754600003,
             "unit": "seconds"
           }
         ]

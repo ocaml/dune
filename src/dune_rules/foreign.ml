@@ -141,12 +141,13 @@ module Stubs = struct
   let () = Dune_project.Extension.register_simple syntax (Dune_lang.Decoder.return [])
 
   let decode_lang =
-    let encode_lang = function
-      | Foreign_language.C -> "c"
-      | Cxx -> "cxx"
-    in
+    let open Dune_lang.Decoder in
     let open Foreign_language in
-    Dune_lang.Decoder.enum [ encode_lang C, C; encode_lang Cxx, Cxx ]
+    sum
+      [ "c", return C
+      ; "cxx", return Cxx
+      ; "asm", Dune_lang.Syntax.since Stanza.syntax (3, 26) >>> return Asm
+      ]
   ;;
 
   let decode_stubs ~for_library =

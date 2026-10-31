@@ -22,7 +22,9 @@ Dune treats ``*.c`` files as C sources, and ``*.cpp``, ``*.cc``, and
 Here is a complete list of supported subfields:
 
 - ``language`` specifies the source language, where ``c`` means C and
-  ``cxx`` means C++. In the future, more languages may be supported.
+  ``cxx`` means C++. Since Dune 3.26, ``asm`` selects assembly sources with
+  extensions ``.s``, ``.S``, or ``.asm``. These are compiled using the C compiler
+  driver, or ``ml64`` for MSVC x86-64.
 - ``names`` specifies the *names* of source files. When specifying a source
   file, omit the extension and any relative parts of the path;
   Dune will scan all library directories to find all matching files and
@@ -39,6 +41,8 @@ Here is a complete list of supported subfields:
   OCaml config fields ``ocamlc_cflags`` and ``ocamlc_cppflags`` to the compiler
   command line. This behavior can be disabled since Dune 2.8 via the
   ``dune-project`` option :doc:`dune-project/use_standard_c_and_cxx_flags`.
+  For assembly, ``:standard`` is empty and no C/C++ compiler flags are added.
+  Specify assembler options explicitly in this field.
 - ``include_dirs`` are tracked as dependencies and passed to the compiler
   via the ``-I`` flag. You can use :doc:`../concepts/variables` in this field
   and refer to a library source directory using the ``(lib library-name)``

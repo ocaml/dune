@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793465222338,
+  "lastUpdate": 1793465450082,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -480093,6 +480093,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5791132365866668,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1449d5345281f33ba1fbd217ff1cb108268ba2b4",
+          "message": "fix(rpc): scope formatting to the client's directory (#16765)\n\nWhen `dune fmt` forwards to a running Dune instance, it currently\nformats the entire workspace rather than the caller's subtree.\n\nSend the caller's workspace-relative directory in a version-2 format\nrequest and build the recursive formatting alias beneath that directory.\nPreserve version-1 compatibility and its root-wide behavior for older\npeers.\n\nUpdate the existing relative-path regression to check that root and\nsibling files remain untouched, and record the new request generation in\nthe protocol digest expectations.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-01T00:37:45+08:00",
+          "tree_id": "a5dbd9f8d4c5a5ff09a5b99b41ce73366fc50e9e",
+          "url": "https://github.com/ocaml/dune/commit/1449d5345281f33ba1fbd217ff1cb108268ba2b4"
+        },
+        "date": 1793465448295,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 43.62672710039334,
             "unit": "seconds"
           }
         ]

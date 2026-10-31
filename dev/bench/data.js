@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793458848044,
+  "lastUpdate": 1793458855390,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -479948,6 +479948,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 51.93749252363333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "84c3647bda694c14e2b91b6355c15b25dd7bb14e",
+          "message": "perf(cache): skip sorting for oversized trim goals (#16863)\n\nSkip ctime sorting when the trimming goal strictly exceeds the total\nunused artifact size. Every candidate will be visited, so sorting cannot\nchange which files are selected.\n\nPartial and exact-total goals still sort oldest-first, preserving the\nexisting behavior for zero-byte files. This adds a linear size-summing\npass for positive goals in exchange for avoiding the sort in the\noversized-goal case.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-10-31T22:42:28+08:00",
+          "tree_id": "172022873f99eb11a022102fa1aee799a464053a",
+          "url": "https://github.com/ocaml/dune/commit/84c3647bda694c14e2b91b6355c15b25dd7bb14e"
+        },
+        "date": 1793458854181,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4860933331133334,
             "unit": "seconds"
           }
         ]

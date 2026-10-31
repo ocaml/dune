@@ -503,12 +503,12 @@ module Gen_rules = Build_config.Gen_rules
 
 let gen_rules sctx ~dir ~nearest_src_dir ~src_dir =
   match nearest_src_dir with
-  | None -> None
+  | None -> Gen_rules.no_rules
   | Some nearest_src_dir ->
     let project = Source_tree.Dir.project nearest_src_dir in
     let project_root = Dune_project.root project in
     (match Path.Source.is_descendant src_dir ~of_:project_root with
-     | false -> None
+     | false -> Gen_rules.no_rules
      | true ->
        let project_root = Dune_project.root project in
        let project_rules = Path.Source.equal project_root src_dir in
@@ -521,7 +521,7 @@ let gen_rules sctx ~dir ~nearest_src_dir ~src_dir =
          | `Relative_to_project -> false
        in
        if (not inside_generated_opam_directory) && not project_rules
-       then None
+       then Gen_rules.no_rules
        else (
          let allowed_subdirs =
            match opam_file_location with
@@ -540,11 +540,10 @@ let gen_rules sctx ~dir ~nearest_src_dir ~src_dir =
              in
              ())
          in
-         Some
-           (Gen_rules.Rules.create
-              ~build_dir_only_sub_dirs:
-                (Gen_rules.Build_only_sub_dirs.singleton
-                   ~dir
-                   (Subdir_set.of_set allowed_subdirs))
-              rules)))
+         Gen_rules.make
+           ~build_dir_only_sub_dirs:
+             (Gen_rules.Build_only_sub_dirs.singleton
+                ~dir
+                (Subdir_set.of_set allowed_subdirs))
+           rules))
 ;;

@@ -130,16 +130,19 @@ let trim ~goal =
       then files
       else List.sort files ~compare:(fun x y -> Float.compare x.ctime y.ctime))
   in
-  let delete (trimmed_so_far : Trimming_result.t) { Unused_file.path; size; _ } =
+  let rec delete (trimmed_so_far : Trimming_result.t) files =
     if trimmed_so_far.trimmed_bytes >= goal
     then trimmed_so_far
     else (
-      Fpath.unlink_no_err (Path.to_string path);
-      (* CR-someday amokhov: We should really be using block_size * #blocks
-         because that's how much we save actually. *)
-      Trimming_result.add trimmed_so_far ~bytes:size)
+      match files with
+      | [] -> trimmed_so_far
+      | { Unused_file.path; size; _ } :: rest ->
+        Fpath.unlink_no_err (Path.to_string path);
+        (* CR-someday amokhov: We should really be using block_size * #blocks
+           because that's how much we save actually. *)
+        delete (Trimming_result.add trimmed_so_far ~bytes:size) rest)
   in
-  let trimmed_so_far = List.fold_left ~init:Trimming_result.empty ~f:delete files in
+  let trimmed_so_far = delete Trimming_result.empty files in
   trim_broken_metadata_entries ~trimmed_so_far
 ;;
 

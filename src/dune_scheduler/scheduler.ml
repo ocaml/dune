@@ -82,6 +82,35 @@ let preserve_child_process pid =
     t.preserved_child_processes <- Pid.Set.add t.preserved_child_processes pid)
 ;;
 
+let register_sandbox dir =
+  let t = t () in
+  t.sandboxes <- Path.Set.add t.sandboxes dir
+;;
+
+let unregister_sandbox dir =
+  let t = t () in
+  t.sandboxes <- Path.Set.remove t.sandboxes dir
+;;
+
+let warn_sandbox_cleanup_failed dir reason =
+  User_warning.emit
+    [ Pp.textf "Unable to delete sandbox %s." (Path.to_string_maybe_quoted dir)
+    ; User_error.reason reason
+    ; Pp.text "Continuing without failing the current operation."
+    ]
+;;
+
+let remove_sandboxes t =
+  Path.Set.iter t.sandboxes ~f:(fun dir ->
+    try Path.rm_rf ~chmod:true dir with
+    | Sys_error e -> warn_sandbox_cleanup_failed dir (Pp.verbatim e)
+    | Unix.Unix_error (error, syscall, arg) ->
+      warn_sandbox_cleanup_failed
+        dir
+        (Unix_error.Detailed.pp (Unix_error.Detailed.create error ~syscall ~arg)));
+  t.sandboxes <- Path.Set.empty
+;;
+
 let trace_child_process_cleanup pids stage =
   Dune_trace.emit Process (fun () ->
     let pids = Pid.Set.to_list pids in
@@ -444,6 +473,7 @@ let prepare (config : Config.t) ~events ~file_watcher =
          with
          | None -> Pid.Set.empty
          | Some p -> Pid.Set.singleton p)
+    ; sandboxes = Path.Set.empty
     }
   in
   current := Some t;
@@ -502,6 +532,7 @@ module Run_once = struct
     Option.iter t.file_watcher ~f:File_watcher.shutdown;
     Console.Status_line.clear ();
     let cleanup_result = kill_and_wait_for_all_processes t in
+    remove_sandboxes t;
     Async_io.shutdown t.async_io;
     match cleanup_result with
     | Got_shutdown -> Error Already_reported

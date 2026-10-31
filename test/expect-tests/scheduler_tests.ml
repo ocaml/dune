@@ -130,3 +130,25 @@ let%expect_test "threaded console handles terminal signals in the console thread
     console thread blocked: false
     |}]
 ;;
+
+let%expect_test "sandboxes still registered at shutdown are deleted" =
+  let sandbox name = name, Path.build (Path.Build.relative Path.Build.root name) in
+  let leaked = sandbox "leaked-sandbox" in
+  let destroyed = sandbox "destroyed-sandbox" in
+  go (fun () ->
+    List.iter [ leaked; destroyed ] ~f:(fun (_, dir) ->
+      Scheduler.register_sandbox dir;
+      Path.mkdir_p dir;
+      Io.write_file_exn (Path.relative dir "marker") "");
+    Scheduler.unregister_sandbox (snd destroyed);
+    Scheduler.shutdown `Ok;
+    Fiber.never);
+  List.iter [ leaked; destroyed ] ~f:(fun (name, dir) ->
+    printfn "%s exists: %b" name (Fpath.exists (Path.to_string dir)));
+  Path.rm_rf (snd destroyed);
+  [%expect
+    {|
+    leaked-sandbox exists: false
+    destroyed-sandbox exists: true
+    |}]
+;;

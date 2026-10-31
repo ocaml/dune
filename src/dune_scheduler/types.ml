@@ -68,6 +68,7 @@ module Scheduler = struct
     ; signal_watcher : Thread.t
     ; async_io : Async_io.t
     ; mutable preserved_child_processes : Pid.Set.t
+    ; mutable sandboxes : Path.Set.t
     }
 
   let current : t option ref = ref None

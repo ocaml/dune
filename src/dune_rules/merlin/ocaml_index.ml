@@ -172,6 +172,8 @@ let context_indexes =
              match obj with
              | None -> acc
              | Some obj_dir -> Path.build (index_path_in_obj_dir obj_dir ~for_) :: acc)
+           >>| (fun indexes ->
+           indexes, Digest.string (Marshal.to_string indexes ~sharing:false))
            |> Action_builder.of_memo)
     in
     Action_builder.exec_memo memo
@@ -191,5 +193,6 @@ let project_rule sctx project =
     Rules.Produce.Alias.add_deps
       ocaml_index_alias
       (let open Action_builder.O in
-       context_indexes ctx ~for_:Ocaml >>= Action_builder.paths_existing))
+       let* indexes, _ = context_indexes ctx ~for_:Ocaml in
+       Action_builder.paths_existing indexes))
 ;;

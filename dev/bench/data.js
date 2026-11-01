@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793504698140,
+  "lastUpdate": 1793505026827,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -480151,6 +480151,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4370512978066667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ff54eb06db9c108cf09b646af211432f1cd7158b",
+          "message": "perf(cache): stop traversing candidates once the trim goal is met (#16870)\n\nReplace the deletion fold with a tail-recursive loop that returns as\nsoon as the byte goal is reached. Previously, the remaining candidate\nlist was still traversed even though the deletion callback did nothing.\n\nInventory collection and sorting are unchanged, as are eviction order,\nbyte/file accounting, and the subsequent metadata collection.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-01T11:31:22+08:00",
+          "tree_id": "90dc06432ff66d37cdbe9036d671aa9978cebf96",
+          "url": "https://github.com/ocaml/dune/commit/ff54eb06db9c108cf09b646af211432f1cd7158b"
+        },
+        "date": 1793505025531,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 63.67516541919334,
             "unit": "seconds"
           }
         ]

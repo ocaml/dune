@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793544342419,
+  "lastUpdate": 1793546888646,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -669290,6 +669290,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.1535875367866666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c1fcea87ba9ab2d4af741860159500810dad1257",
+          "message": "refactor(engine): keep the active request in the loop state (#16873)\n\nStore the active request alongside its run ID in the building/restarting\nloop state, removing the independently maintained `current_request`\nfield. Completion cancellation, goal counts, and run-ID reporting read\nfrom that state.\n\nBuild-start timing and its cleanup finalizer are preserved. Process\ncancellation is unchanged; this extracts only the request-state refactor\nfrom #16768.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-01T23:16:55+08:00",
+          "tree_id": "41722b23b1a5c86d1d947d70d00ea3d3519829ea",
+          "url": "https://github.com/ocaml/dune/commit/c1fcea87ba9ab2d4af741860159500810dad1257"
+        },
+        "date": 1793546573061,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.172931001246667,
             "unit": "seconds"
           }
         ]

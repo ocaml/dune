@@ -38,38 +38,30 @@ Enabling them in the workspace:
   > EOF
 
   $ dune build @all
-  File "dune-workspace", line 5, characters 4-10:
-  5 |    (timing true)
-          ^^^^^^
-  Error: Unknown field "timing"
-  [1]
   $ list_outputs
+  _build/default/bar.v.timing
+  _build/default/bar.vo.prof.json
+  _build/default/foo.v.timing
+  _build/default/foo.vo.prof.json
 
   $ grep -c '^Chars ' _build/default/bar.v.timing
-  grep: _build/default/bar.v.timing: No such file or directory
-  [2]
+  2
 
 The outputs are targets, so they are not removed by the next build and can be
 requested directly:
 
   $ dune build @all
-  File "dune-workspace", line 5, characters 4-10:
-  5 |    (timing true)
-          ^^^^^^
-  Error: Unknown field "timing"
-  [1]
   $ list_outputs
+  _build/default/bar.v.timing
+  _build/default/bar.vo.prof.json
+  _build/default/foo.v.timing
+  _build/default/foo.vo.prof.json
 
   $ rm -rf _build
   $ dune build ./foo.v.timing
-  File "dune-workspace", line 5, characters 4-10:
-  5 |    (timing true)
-          ^^^^^^
-  Error: Unknown field "timing"
-  [1]
   $ list_outputs
-  find: '_build/default': No such file or directory
-  [1]
+  _build/default/foo.v.timing
+  _build/default/foo.vo.prof.json
 
 A nearer env stanza overrides the workspace one:
 
@@ -83,14 +75,9 @@ A nearer env stanza overrides the workspace one:
   > EOF
 
   $ dune build @all
-  File "dune-workspace", line 5, characters 4-10:
-  5 |    (timing true)
-          ^^^^^^
-  Error: Unknown field "timing"
-  [1]
   $ list_outputs
-  find: '_build/default': No such file or directory
-  [1]
+  _build/default/bar.v.timing
+  _build/default/foo.v.timing
 
 The fields require dune 3.26:
 
@@ -103,8 +90,9 @@ The fields require dune 3.26:
   > EOF
 
   $ dune build @all
-  File "dune-workspace", line 5, characters 4-10:
+  File "dune-workspace", line 5, characters 3-16:
   5 |    (timing true))))
-          ^^^^^^
-  Error: Unknown field "timing"
+         ^^^^^^^^^^^^^
+  Error: 'timing' is only available since version 3.26 of the dune language.
+  Please update your dune-project file to have (lang dune 3.26).
   [1]

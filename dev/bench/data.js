@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793544073930,
+  "lastUpdate": 1793544335434,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -481021,6 +481021,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5841060299999999,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4d23aa8ced65a4852bb4bab50bab4b6ca0ae0213",
+          "message": "perf(cache): load metadata at its enumerated path (#16871)\n\nThe trimmer already has each metadata file's path from enumeration. Load\nthat path directly instead of reconstructing it from the filename digest\nand metadata version.\n\nThis uses the same metadata decoder and error handling while avoiding\nredundant digest encoding, lazy values, and path construction. No new\nparser or cache is introduced.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-01T22:30:16+08:00",
+          "tree_id": "cc22667473dd1538de9b3b2b38bbd9833273fbd6",
+          "url": "https://github.com/ocaml/dune/commit/4d23aa8ced65a4852bb4bab50bab4b6ca0ae0213"
+        },
+        "date": 1793544333498,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 49.96146034459334,
             "unit": "seconds"
           }
         ]

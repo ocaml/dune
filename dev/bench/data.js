@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793566388138,
+  "lastUpdate": 1793566618252,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -481311,6 +481311,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5488429904333333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "shon.feder@gmail.com",
+            "name": "Shon",
+            "username": "shonfeder"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2b2eb3e1e2810ae4c133bb567bc2c7f8c8636f4a",
+          "message": "doc(changes): document that actions must declare the packages they use (#16859)\n\nSince #14373, actions no longer see\n`_build/install/<context>/{bin,lib,lib/stublibs}` on `PATH`,\n`OCAMLPATH`, or `CAML_LD_LIBRARY_PATH` unless they declare the packages\nthey use with `(deps (package <pkg>))`. This effects a breaking change,\nwhich was originally noted in the changelog, but was dropped when the\nentry was rewritten in c5ad5cc9d5. As a result, the 3.25 changelog\ndoesn't currently tell users why tests that require the package under\ntest start failing, or what to do about it.\n\nThis restores the note as its own bullet, next to the one on library\nclosures, and announces it as a breaking change.\n\n## Related Issue and Motivation\n\nContext explaining both how this change causes breakage, and why the\nbehavior is intended, can be found at #16617. There are also a number of\nrelated upstream fixes and test bounds in opam-repository (e.g.,\nhttps://github.com/ocaml/opam-repository/pull/31051).\n\nI'll cherry pick this onto the RC for\nhttps://github.com/ocaml/dune/issues/15593 once merged.",
+          "timestamp": "2026-11-01T15:43:53-05:00",
+          "tree_id": "804e77b0ca2133883f22094dad8b567aabeac940",
+          "url": "https://github.com/ocaml/dune/commit/2b2eb3e1e2810ae4c133bb567bc2c7f8c8636f4a"
+        },
+        "date": 1793566616256,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 41.747598757166664,
             "unit": "seconds"
           }
         ]

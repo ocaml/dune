@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793515791052,
+  "lastUpdate": 1793515924262,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -480557,6 +480557,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5442678127666668,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2493ff8988b3a8c24007535e8611382fd7923989",
+          "message": "test: cover simultaneous local and installed stub collisions\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-31T23:11:05-07:00",
+          "tree_id": "f3b7c820b4295f4b84de3d1132080c7cbbe9e266",
+          "url": "https://github.com/ocaml/dune/commit/2493ff8988b3a8c24007535e8611382fd7923989"
+        },
+        "date": 1793515920840,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 63.519568261126665,
             "unit": "seconds"
           }
         ]

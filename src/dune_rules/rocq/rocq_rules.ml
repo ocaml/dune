@@ -829,6 +829,28 @@ let setup_rocqc_rule
     let targets = Option.to_list output_file @ obj_files in
     Command.Args.Hidden_targets targets
   in
+  let* timing_args =
+    let+ timing =
+      Env_stanza_db.value ~default:false ~dir ~f:(fun (config : Dune_env.config) ->
+        Memo.return (Rocq_env.timing config.rocq))
+    and+ profiling =
+      Env_stanza_db.value ~default:false ~dir ~f:(fun (config : Dune_env.config) ->
+        Memo.return (Rocq_env.profiling config.rocq))
+    in
+    Command.Args.S
+      [ (if timing
+         then
+           S [ A "-time-file"; Target (Rocq_module.timing_file rocq_module ~obj_dir:dir) ]
+         else Command.Args.empty)
+      ; (if profiling
+         then
+           S
+             [ A "-profile"
+             ; Target (Rocq_module.profile_file rocq_module ~obj_dir:dir ~mode)
+             ]
+         else Command.Args.empty)
+      ]
+  in
   let* args =
     generic_rocq_args
       ~sctx
@@ -860,7 +882,7 @@ let setup_rocqc_rule
               ?stdout_to:output_file
               ~sandbox:Sandbox_config.no_sandboxing
               rocq
-              (cflag :: targets :: args))
+              (cflag :: targets :: timing_args :: args))
 ;;
 
 let rocq_modules_of_theory ~sctx lib =

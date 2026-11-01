@@ -929,3 +929,20 @@ with the following values for ``<rocq_fields>``:
 - ``(rocqdoc_footer <file>)``: The default HTML footer passed to ``rocq doc``
   via the ``--with-footer`` flag. Values set here become the ``:standard``
   value in the ``(rocq.theory (rocqdoc_footer <file>))`` field.
+- ``(timing <bool>)``: When ``true``, compiling ``foo.v`` also outputs
+  per-command timing information to ``foo.v.timing``, using the
+  ``-time-file`` option of ``rocq compile``. The default is ``false``.
+
+  .. versionadded:: 3.26
+- ``(profiling <bool>)``: When ``true``, compiling ``foo.v`` also outputs
+  profiling information to ``foo.vo.prof.json`` (``foo.vos.prof.json`` in
+  ``vos`` mode), using the ``-profile`` option of ``rocq compile``. The
+  default is ``false``.
+
+  .. versionadded:: 3.26
+
+These files are targets of the rule compiling ``foo.v``: they can be built
+directly, and they are kept in the build directory. Enabling these fields in a
+``dune-workspace`` file, for instance one passed with ``DUNE_WORKSPACE``,
+enables them for all the theories of the workspace, including when building
+packages with ``dune build -p``.

@@ -87,6 +87,21 @@ let glob_file x ~obj_dir =
   Path.Build.relative vo_dir (x.name ^ ".glob")
 ;;
 
+let timing_file x ~obj_dir =
+  let vo_dir = build_vo_dir ~obj_dir x in
+  Path.Build.relative vo_dir (x.name ^ ".v.timing")
+;;
+
+let profile_file x ~obj_dir ~(mode : Rocq_mode.t) =
+  let vo_dir = build_vo_dir ~obj_dir x in
+  let ext =
+    match mode with
+    | VosOnly -> ".vos"
+    | VoOnly | Native -> ".vo"
+  in
+  Path.Build.relative vo_dir (x.name ^ ext ^ ".prof.json")
+;;
+
 let output_file x ~obj_dir =
   let vo_dir = build_vo_dir ~obj_dir x in
   Path.Build.relative vo_dir (x.name ^ ".output")

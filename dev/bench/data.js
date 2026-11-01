@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793552017913,
+  "lastUpdate": 1793552025693,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -481224,6 +481224,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 64.4941626322,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8f8030f3d73dd920d297627399fbb681768e71e5",
+          "message": "refactor(engine): cancel the loop-owned process context (#16768)\n\nStore the process context in the active build state instead of its run\nID. Cancel that context directly rather than consulting\n`Process.Build.current`, and derive trace and RPC run IDs from the\nstored context.\n\nReturn to `Standing_by` when handing a restart back to the poll loop so\nthe state releases the active build references. Build-start timing and\nits cleanup finalizer are unchanged.\n\nThe request-state refactor was merged separately in #16873; this PR now\ncontains only the process-context change.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-02T00:34:19+08:00",
+          "tree_id": "1ace468cc067ddaacf7df9086c6e254c6218899b",
+          "url": "https://github.com/ocaml/dune/commit/8f8030f3d73dd920d297627399fbb681768e71e5"
+        },
+        "date": 1793552024648,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5565189240866667,
             "unit": "seconds"
           }
         ]

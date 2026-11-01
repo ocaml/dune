@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793516136690,
+  "lastUpdate": 1793516140984,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -480731,6 +480731,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 64.21107011339998,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "48c87c0f9965dc744c6e611fd220d7f7dadf0d69",
+          "message": "test: cover transitive installed stubs with META metadata\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-31T23:22:42-07:00",
+          "tree_id": "e873791133d1d9ea5648764752574424c5148c88",
+          "url": "https://github.com/ocaml/dune/commit/48c87c0f9965dc744c6e611fd220d7f7dadf0d69"
+        },
+        "date": 1793516133863,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.58857352872,
             "unit": "seconds"
           }
         ]

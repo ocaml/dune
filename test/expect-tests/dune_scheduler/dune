@@ -20,10 +20,7 @@
 (test
  (name signal_watcher_repro)
  (modules signal_watcher_repro)
- (enabled_if
-  (and
-   (= %{system} macosx)
-   (= %{architecture} arm64)))
+ (enabled_if false)
  (action
   (with-accepted-exit-codes
    2

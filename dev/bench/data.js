@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793515781414,
+  "lastUpdate": 1793515791052,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -668594,6 +668594,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 4.091609403586666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "921fd338d9b76eccc6f27b945c374310e41a4c9d",
+          "message": "test: distinguish shared and conflicting stub DLL names\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-31T23:24:02-07:00",
+          "tree_id": "816db76c7f3df947437c7a6a2ade21f35a8e2084",
+          "url": "https://github.com/ocaml/dune/commit/921fd338d9b76eccc6f27b945c374310e41a4c9d"
+        },
+        "date": 1793515394944,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7909200686133335,
             "unit": "seconds"
           }
         ]

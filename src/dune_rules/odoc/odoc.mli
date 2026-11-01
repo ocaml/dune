@@ -25,6 +25,8 @@ val check_mlds_no_dupes
   -> path_to_string:('path -> string)
   -> ('path * string) String.Map.t
 
+val open_flags : Module_name.t list -> _ Command.Args.t
+
 val run_odoc
   :  Super_context.t
   -> dir:Path.t

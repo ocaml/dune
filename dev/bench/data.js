@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793560438331,
+  "lastUpdate": 1793560446037,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -481282,6 +481282,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 66.28228655726001,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "da191e76e2ecf0e0f0858c4845d817a48fd77204",
+          "message": "test(engine): cover parallel restoration of success prefixes\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-01T10:54:34-08:00",
+          "tree_id": "01d8a2a47bf03fe9564599fc4f70fbc7d9db602d",
+          "url": "https://github.com/ocaml/dune/commit/da191e76e2ecf0e0f0858c4845d817a48fd77204"
+        },
+        "date": 1793560445024,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5488429904333333,
             "unit": "seconds"
           }
         ]

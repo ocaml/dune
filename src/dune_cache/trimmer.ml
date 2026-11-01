@@ -30,9 +30,9 @@ let trim_broken_metadata_entries ~trimmed_so_far =
       Layout.Versioned.list_metadata_entries version
       |> Seq.fold_left
            ~init:trimmed_so_far
-           ~f:(fun trimmed_so_far (path, rule_or_action_digest) ->
+           ~f:(fun trimmed_so_far (path, _rule_or_action_digest) ->
              let should_be_removed =
-               match Local.Metadata.Versioned.restore version ~rule_or_action_digest with
+               match Local.Artifacts.Metadata_file.load path with
                | Not_found_in_cache ->
                  (* A concurrent process must have removed this metadata file. No
                  need to try removing such "phantom" metadata files again. *)

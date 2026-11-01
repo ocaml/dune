@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793549683818,
+  "lastUpdate": 1793549691580,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -481166,6 +481166,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 63.44977233168667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "59bdd9a9ca6d5020cdbb34159863ab59acdb75cb",
+          "message": "test(scheduler): disable flaky signal watcher reproducer (#16874)\n\nDisable `signal_watcher_repro` unconditionally because it keeps flaking\nin CI. Preserve the reproducer source for future investigation.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-01T23:55:28+08:00",
+          "tree_id": "0fc735bb4e73908c3bf0e8fd290eac12e35afa3a",
+          "url": "https://github.com/ocaml/dune/commit/59bdd9a9ca6d5020cdbb34159863ab59acdb75cb"
+        },
+        "date": 1793549690375,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5462367046600001,
             "unit": "seconds"
           }
         ]

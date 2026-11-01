@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793515392979,
+  "lastUpdate": 1793515407278,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -668420,6 +668420,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.788253146786667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8b777b16ffa686450006cfd0e0378c55fe1a4ab9",
+          "message": "test: cover local C stubs shadowing installed libraries\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-31T23:08:43-07:00",
+          "tree_id": "2cf8d1a9f9113fd359f40b0d55a8b880df6cf6b1",
+          "url": "https://github.com/ocaml/dune/commit/8b777b16ffa686450006cfd0e0378c55fe1a4ab9"
+        },
+        "date": 1793515011746,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.86118425914,
             "unit": "seconds"
           }
         ]

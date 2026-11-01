@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793515301462,
+  "lastUpdate": 1793515308808,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -480412,6 +480412,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 64.10924331521333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "85ed506f43d7133b2200215b0b4ec9e8e1634d96",
+          "message": "test(merlin): reproduce branching copies across compilation modes\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-31T23:05:03-07:00",
+          "tree_id": "20f5551e0172f0cbb3c4a71a57f5cf7138896c0c",
+          "url": "https://github.com/ocaml/dune/commit/85ed506f43d7133b2200215b0b4ec9e8e1634d96"
+        },
+        "date": 1793515307767,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5478848969066666,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793533626228,
+  "lastUpdate": 1793533634301,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -480992,6 +480992,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 64.42108519802667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d8d8c4372c8ba8b0e723e610569224f4be6811f3",
+          "message": "refactor(boot): remove unused SIMD C flags (#16869)",
+          "timestamp": "2026-11-01T12:27:43+01:00",
+          "tree_id": "9f48ae976a12d07e58613f59a7d09a716d9c06a1",
+          "url": "https://github.com/ocaml/dune/commit/d8d8c4372c8ba8b0e723e610569224f4be6811f3"
+        },
+        "date": 1793533633015,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5841060299999999,
             "unit": "seconds"
           }
         ]

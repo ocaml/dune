@@ -11,7 +11,7 @@ The debug event can be triggered with Sigusr1
   >   jq_program="$1"
   >   expected="$2"
   >   dune="$(command -v dune)"
-  >   with_timeout bash -lc '
+  >   with_timeout bash -c '
   >     jq_program="$1"
   >     expected="$2"
   >     dune="$3"

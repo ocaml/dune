@@ -11,7 +11,7 @@ Concurrent RPC build requests finish independently when their targets are done.
   >   jq_program="$1"
   >   expected="$2"
   >   dune="$(command -v dune)"
-  >   with_timeout bash -lc '
+  >   with_timeout bash -c '
   >     jq_program="$1"
   >     expected="$2"
   >     dune="$3"

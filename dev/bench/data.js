@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793516145678,
+  "lastUpdate": 1793516366920,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -480789,6 +480789,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5587518208800001,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "05323bcd35e0de0b7eef21fe8093e33cb749f8b5",
+          "message": "test: expose silent bytecode stub selection at runtime\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-31T23:43:09-07:00",
+          "tree_id": "8a39a35617f042098f2b2970a4b4bbb07d963c65",
+          "url": "https://github.com/ocaml/dune/commit/05323bcd35e0de0b7eef21fe8093e33cb749f8b5"
+        },
+        "date": 1793516364519,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 44.24171262388666,
             "unit": "seconds"
           }
         ]

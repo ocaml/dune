@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793505033838,
+  "lastUpdate": 1793505673616,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -667985,6 +667985,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.7975036920866665,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "122970cde360d3ffe0919d28283bb45e9f73b000",
+          "message": "refactor(engine): record dynamic dependency digests during execution (#16868)\n\nKeep dynamic-dependency bookkeeping in the build system instead of\npassing facts through Action_exec and returning them to the caller for\nhashing.\n\nCompute and record each stage digest after its dependencies have been\nbuilt and added to the sandbox. Action_exec now returns only success or\nnative errors, while preserving stage completion order and the existing\nerror and trace-collection boundary.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-01T11:52:04+08:00",
+          "tree_id": "da8b545df6857319252abc69f32f0cc8b2d40235",
+          "url": "https://github.com/ocaml/dune/commit/122970cde360d3ffe0919d28283bb45e9f73b000"
+        },
+        "date": 1793505446810,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.95522738444,
             "unit": "seconds"
           }
         ]

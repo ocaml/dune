@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793505902423,
+  "lastUpdate": 1793508887041,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -668072,6 +668072,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.95522738444,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5dc1f8e44a27487f7917e5c72c7a883f3aa80b88",
+          "message": "test(console): cover threaded state and cleanup transitions (#16872)\n\nExtend threaded-console coverage for ordered messages, status updates,\nreset/history operations, final rendering, and cleanup after render,\nevent, or finalization exceptions. Exercise event failures both with and\nwithout the console mutex held.\n\nUse pipe/condition handshakes and flushed output from the real progress\nbackend to synchronize execution, avoiding elapsed-time assertions or\nclock injection.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-01T12:41:20+08:00",
+          "tree_id": "14c99a49020333be0bf99a4e82ffbb7df183af20",
+          "url": "https://github.com/ocaml/dune/commit/5dc1f8e44a27487f7917e5c72c7a883f3aa80b88"
+        },
+        "date": 1793508497198,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.789729792433333,
             "unit": "seconds"
           }
         ]

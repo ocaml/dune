@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793513052597,
+  "lastUpdate": 1793513060368,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -480354,6 +480354,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 65.17181241324666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e0b1c034968f290da5e6af5670dd7db9d3eda585",
+          "message": "fix(merlin): continue lookup past incompatible configurations (#16852)\n\nContinue Merlin configuration lookup past incompatible files, preserving\nthe error when no valid configuration matches. Updates the regression\nexpectations from #16788.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-10-31T22:45:10-07:00",
+          "tree_id": "d7849d98d2744bd0b3303c007c70f9d8f8b261df",
+          "url": "https://github.com/ocaml/dune/commit/e0b1c034968f290da5e6af5670dd7db9d3eda585"
+        },
+        "date": 1793513059378,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5629407498133334,
             "unit": "seconds"
           }
         ]

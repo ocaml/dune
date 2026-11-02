@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793634896846,
+  "lastUpdate": 1793634905340,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -481456,6 +481456,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 65.127164962,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "92712eddbe5c0f6d29e59cc29fe5552657ab87fc",
+          "message": "Rocq output test alias improvements / fixes (#15349)\n\nThis does two things:\n- Attach the Rocq output tests to the `runtest` alias of the correct\ndirectory in presence of ` (include_subdirs qualified)`. They used to\nall be attached to the directory containing the `rocq.theory` stanza.\n- Also add an alias `foo.diff` for each output test with a file\n`foo.expected`, so that tests can be run individually.",
+          "timestamp": "2026-11-02T16:35:30+01:00",
+          "tree_id": "8dd692a19b7a79cb2f469e7d25fbf113661bad93",
+          "url": "https://github.com/ocaml/dune/commit/92712eddbe5c0f6d29e59cc29fe5552657ab87fc"
+        },
+        "date": 1793634904021,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5579986036533334,
             "unit": "seconds"
           }
         ]

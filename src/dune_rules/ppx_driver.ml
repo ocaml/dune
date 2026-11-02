@@ -209,18 +209,15 @@ let build_ppx_driver =
               (let open Resolve.O in
                let+ driver, _ = driver_and_libs in
                sprintf "let () = %s ()\n" driver.info.main)))
-    and* linkages, link_args =
+    and* linkages =
       let ctx = Super_context.context sctx in
       let+ ocaml = Context.ocaml ctx in
-      (* Drivers never leave _build, so they don't need PIE. A PIE driver
-         relocates its static data on every start, and concurrent starts of the
-         same driver contend on the copy-on-write faults this causes. *)
-      let link_args =
-        match Ocaml_config.system ocaml.ocaml_config with
-        | "linux" -> Command.Args.As [ "-ccopt"; "-no-pie" ]
-        | _ -> Command.Args.As []
+      [ Exe.Linkage.native_or_custom ocaml ]
+    and* link_args =
+      let+ { config = { Dune_config_file.Dune_config.ppx_driver_link_flags; _ }; _ } =
+        Workspace.workspace ()
       in
-      [ Exe.Linkage.native_or_custom ocaml ], Action_builder.return link_args
+      Action_builder.return (Command.Args.As ppx_driver_link_flags)
     and+ cctx =
       let obj_dir = Obj_dir.for_pp ~dir in
       let requires_compile = Resolve.map driver_and_libs ~f:snd in

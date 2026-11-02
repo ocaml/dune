@@ -316,6 +316,7 @@ module Dune_config = struct
       ; action_stderr_on_success : Action_output_on_success.t field
       ; project_defaults : Project_defaults.t field
       ; pkg_enabled : Pkg_enabled.t field
+      ; ppx_driver_link_flags : string list field
       ; experimental : (string * (Loc.t * string)) list field
       }
   end
@@ -341,6 +342,7 @@ module Dune_config = struct
           ; action_stderr_on_success
           ; project_defaults
           ; pkg_enabled
+          ; ppx_driver_link_flags
           ; experimental
           }
       =
@@ -369,6 +371,7 @@ module Dune_config = struct
            t.experimental
            experimental
       && field Pkg_enabled.equal t.pkg_enabled pkg_enabled
+      && field (List.equal String.equal) t.ppx_driver_link_flags ppx_driver_link_flags
     ;;
   end
 
@@ -397,6 +400,7 @@ module Dune_config = struct
           field a.action_stderr_on_success b.action_stderr_on_success
       ; project_defaults = field a.project_defaults b.project_defaults
       ; pkg_enabled = field a.pkg_enabled b.pkg_enabled
+      ; ppx_driver_link_flags = field a.ppx_driver_link_flags b.ppx_driver_link_flags
       ; experimental = field a.experimental b.experimental
       }
     ;;
@@ -422,6 +426,7 @@ module Dune_config = struct
           ; action_stderr_on_success
           ; project_defaults
           ; pkg_enabled
+          ; ppx_driver_link_flags
           ; experimental
           }
       =
@@ -443,6 +448,7 @@ module Dune_config = struct
           , field Action_output_on_success.to_dyn action_stderr_on_success )
         ; "project_defaults", field Project_defaults.to_dyn project_defaults
         ; "pkg_enabled", field Pkg_enabled.to_dyn pkg_enabled
+        ; "ppx_driver_link_flags", field (Dyn.list Dyn.string) ppx_driver_link_flags
         ; ( "experimental"
           , field Dyn.(list (pair string (fun (_, v) -> string v))) experimental )
         ]
@@ -468,6 +474,7 @@ module Dune_config = struct
       ; action_stderr_on_success = None
       ; project_defaults = None
       ; pkg_enabled = None
+      ; ppx_driver_link_flags = None
       ; experimental = None
       }
     ;;
@@ -537,6 +544,7 @@ module Dune_config = struct
         ; license = Some [ "LICENSE" ]
         }
     ; pkg_enabled = Unset
+    ; ppx_driver_link_flags = []
     ; experimental = []
     }
   ;;
@@ -604,6 +612,8 @@ module Dune_config = struct
       field_o "action_stderr_on_success" (3, 0) decode_action_stdout_on_success
     and+ project_defaults = field_o "project_defaults" (3, 17) Project_defaults.decode
     and+ pkg_enabled = field_o "pkg" (3, 20) Pkg_enabled.decode
+    and+ ppx_driver_link_flags =
+      field_o "ppx_driver_link_flags" (3, 26) (enter (repeat string))
     and+ experimental =
       field_o "experimental" (3, 8) (repeat (pair string (located string)))
     in
@@ -626,6 +636,7 @@ module Dune_config = struct
     ; action_stderr_on_success
     ; project_defaults
     ; pkg_enabled
+    ; ppx_driver_link_flags
     ; experimental
     }
   ;;

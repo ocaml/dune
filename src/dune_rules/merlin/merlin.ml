@@ -914,7 +914,7 @@ module Unprocessed = struct
          Some { Processed.flag = Processed.Pp_kind.Ppx; args })
   ;;
 
-  let src_dirs =
+  let local_src_dirs =
     let module Key = struct
       module Super_context = Super_context.As_memo_key
 
@@ -946,10 +946,7 @@ module Unprocessed = struct
            >>| Modules.source_dirs
            >>| Path.Set.map ~f:Path.drop_optional_build_context)
     in
-    fun sctx lib ~for_ ->
-      match Lib.Local.of_lib lib with
-      | None -> Lib.info lib |> Lib_info.src_dir |> Path.Set.singleton |> Memo.return
-      | Some lib -> Memo.exec local (sctx, lib, for_)
+    fun sctx lib ~for_ -> Memo.exec local (sctx, lib, for_)
   ;;
 
   module Per_item_action_builder =
@@ -962,30 +959,44 @@ module Unprocessed = struct
   ;;
 
   let add_lib_dirs sctx ~for_ libs =
-    Memo.map_reduce
-      libs
-      ~empty:(Path.Set.empty, Path.Set.empty, Path.Set.empty)
-      ~combine:(fun (src_dirs1, obj_dirs1, cmt_dirs1) (src_dirs2, obj_dirs2, cmt_dirs2) ->
-        ( Path.Set.union src_dirs1 src_dirs2
-        , Path.Set.union obj_dirs1 obj_dirs2
-        , Path.Set.union cmt_dirs1 cmt_dirs2 ))
-      ~f:(fun lib ->
-        let+ src_dirs = src_dirs sctx lib ~for_ in
-        let obj_dir = Lib.info lib |> Lib_info.obj_dir in
-        let public_obj_dir = obj_dir_of_lib `Public for_ obj_dir in
-        let cmi_kind : Lib_mode.Cm_kind.t =
-          match for_ with
-          | Ocaml -> Ocaml Cmi
-          | Melange -> Melange Cmi
-        in
-        let cmt_dir = Obj_dir.cm_dir obj_dir cmi_kind Public in
-        let cmt_dirs =
-          if Path.equal public_obj_dir cmt_dir
-          then Path.Set.empty
-          else Path.Set.singleton cmt_dir
-        in
-        src_dirs, Path.Set.singleton public_obj_dir, cmt_dirs)
-    |> Action_builder.of_memo
+    let cmi_kind : Lib_mode.Cm_kind.t =
+      match for_ with
+      | Compilation_mode.Ocaml -> Ocaml Cmi
+      | Melange -> Melange Cmi
+    in
+    let local_libs, installed_src_dirs, obj_dirs, cmt_dirs =
+      List.fold_left
+        libs
+        ~init:([], [], [], [])
+        ~f:(fun (local_libs, src_dirs, obj_dirs, cmt_dirs) lib ->
+          let info = Lib.info lib in
+          let obj_dir = Lib_info.obj_dir info in
+          let public_obj_dir = obj_dir_of_lib `Public for_ obj_dir in
+          let obj_dirs = public_obj_dir :: obj_dirs in
+          let cmt_dir = Obj_dir.cm_dir obj_dir cmi_kind Public in
+          let cmt_dirs =
+            if Path.equal public_obj_dir cmt_dir then cmt_dirs else cmt_dir :: cmt_dirs
+          in
+          match Lib.Local.of_lib lib with
+          | None ->
+            let src_dirs = Lib_info.src_dir info :: src_dirs in
+            local_libs, src_dirs, obj_dirs, cmt_dirs
+          | Some lib -> lib :: local_libs, src_dirs, obj_dirs, cmt_dirs)
+    in
+    let installed_src_dirs = Path.Set.of_list installed_src_dirs in
+    let obj_dirs = Path.Set.of_list obj_dirs in
+    let cmt_dirs = Path.Set.of_list cmt_dirs in
+    let dirs =
+      let+ src_dirs =
+        Memo.map_reduce
+          (List.rev local_libs)
+          ~empty:Path.Set.empty
+          ~combine:Path.Set.union
+          ~f:(fun lib -> local_src_dirs sctx lib ~for_)
+      in
+      Path.Set.union src_dirs installed_src_dirs, obj_dirs, cmt_dirs
+    in
+    Action_builder.of_memo dirs
   ;;
 
   let process

@@ -287,7 +287,7 @@ It should be possible to get its merlin configuration as well:
     (-open Dune__exe))
    (UNIT_NAME dune__exe__Generatedx)
    (SUFFIX ".mlx .mlx")
-   (READER (mlx)))
+   (READER (mlx))
    (USE_PPX_CACHE))
 
 An unconventional source keeps its configuration after adding an interface.

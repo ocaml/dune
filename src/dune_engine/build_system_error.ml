@@ -20,12 +20,12 @@ module Event = struct
 end
 
 let of_exn (exn : Exn_with_backtrace.t) =
-  let exn =
+  let error =
     match exn.exn with
-    | Memo.Error.E e -> { exn with exn = Memo.Error.get e }
-    | _ -> exn
+    | Memo.Error.E e -> Memo.Error.get e
+    | error -> error
   in
-  match exn.exn with
+  match error with
   | Dune_util.Report_error.Already_reported -> []
   | User_error.E main ->
     let dir = Option.map ~f:Path.of_string main.dir in

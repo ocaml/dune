@@ -21,6 +21,8 @@ Building over RPC when there is a module cycle reports the cycle error.
      transitive deps of dune__exe__A.impl in _build/default
   -> transitive deps of dune__exe__B.impl in _build/default
   -> transitive deps of dune__exe__A.impl in _build/default
+  -> required by transitive deps of dune__exe__Main.impl in _build/default
+  -> required by _build/default/main.exe
   Error: Build failed with 1 error.
   [1]
 

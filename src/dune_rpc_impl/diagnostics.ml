@@ -26,8 +26,7 @@ let diagnostic_of_error : Build_system_error.t -> Dune_rpc.Diagnostic.t =
   in
   let message, related, severity =
     match Build_system_error.description m with
-    | `Exn e ->
-      User_message.make [ Pp.text (Printexc.to_string e.exn) ], [], Some Diagnostic.Error
+    | `Exn e -> Dune_util.Report_error.user_message e, [], Some Diagnostic.Error
     | `Diagnostic { Compound_user_error.main = message; related; severity } ->
       message, related, Some severity
   in

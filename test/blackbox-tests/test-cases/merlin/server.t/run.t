@@ -187,7 +187,7 @@ Dune should also provide configuration when the file is in the build folder
      -g))
    (FLG
     (-open Mylib3))
-   (UNIT_NAME mylib3__Lib3))
+   (UNIT_NAME mylib3__Lib3)
    (USE_PPX_CACHE))
 
 An incompatible configuration in a child directory does not prevent finding a

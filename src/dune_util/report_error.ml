@@ -145,8 +145,7 @@ let format_memo_stack pps =
        |> Pp.vbox)
 ;;
 
-let gen_report
-      exn
+let make_message
       { responsible; msg; has_embedded_location; needs_stack_trace }
       memo_stack
       backtrace
@@ -190,39 +189,44 @@ let gen_report
          with
          | None -> []
          | Some pp -> [ pp ])
-      ; (match responsible with
-         | User -> []
-         | Developer -> i_must_not_crash ())
       ]
   in
-  let () =
-    try
-      Dune_trace.emit Diagnostics (fun () ->
-        Dune_trace.Event.error
-          loc
-          (match responsible with
-           | User -> `User
-           | Developer -> `Fatal)
-          exn
-          backtrace
-          (List.map memo_stack ~f:Memo.Stack_frame.to_dyn))
-    with
-    | _ ->
-      (* We don't want a failure to write to the trace raise another event *)
-      ()
-  in
-  Console.print_user_message { msg with loc; paragraphs }
+  { msg with loc; paragraphs }
+;;
+
+let unwrap_memo_error exn =
+  match exn with
+  | Memo.Error.E err -> Memo.Error.get err, Memo.Error.stack err
+  | _ -> exn, []
 ;;
 
 let gen_report exn backtrace =
-  let exn, memo_stack =
-    match exn with
-    | Memo.Error.E err -> Memo.Error.get err, Memo.Error.stack err
-    | _ -> exn, []
-  in
+  let exn, memo_stack = unwrap_memo_error exn in
   match exn with
   | Already_reported -> ()
-  | _ -> gen_report exn (get_error_from_exn exn) memo_stack backtrace
+  | _ ->
+    let ({ responsible; _ } as error) = get_error_from_exn exn in
+    let msg = make_message error memo_stack backtrace in
+    let () =
+      try
+        Dune_trace.emit Diagnostics (fun () ->
+          Dune_trace.Event.error
+            msg.loc
+            (match responsible with
+             | User -> `User
+             | Developer -> `Fatal)
+            exn
+            backtrace
+            (List.map memo_stack ~f:Memo.Stack_frame.to_dyn))
+      with
+      | _ ->
+        (* We don't want a failure to write to the trace raise another event *)
+        ()
+    in
+    Console.print_user_message
+      (match responsible with
+       | User -> msg
+       | Developer -> { msg with paragraphs = msg.paragraphs @ i_must_not_crash () })
 ;;
 
 let report { Exn_with_backtrace.exn; backtrace } = gen_report exn (Some backtrace)
@@ -231,4 +235,9 @@ let report_exception exn = gen_report exn None
 let debug_backtraces b =
   report_backtraces b;
   Memo.Debug.track_locations_of_lazy_values := b
+;;
+
+let user_message { Exn_with_backtrace.exn; backtrace = _ } =
+  let exn, memo_stack = unwrap_memo_error exn in
+  make_message (get_error_from_exn exn) memo_stack None
 ;;

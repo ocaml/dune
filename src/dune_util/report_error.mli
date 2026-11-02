@@ -12,6 +12,11 @@ open Stdune
 val report : Exn_with_backtrace.t -> unit
 
 val report_exception : exn -> unit
+
+(** [user_message exn] is the message {!report} would print for [exn] without
+    the backtrace. *)
+val user_message : Exn_with_backtrace.t -> User_message.t
+
 val report_backtraces : bool -> unit
 
 (** Raised for errors that have already been reported to the user and shouldn't

@@ -7,6 +7,12 @@
   (= %{system} linux)))
 
 (cram
+ (applies_to write-error.t)
+ (deps ../../utils/fail_trace_write.so)
+ (enabled_if
+  (= %{system} linux)))
+
+(cram
  (applies_to file-watcher-events.t)
  (enabled_if
   (<> %{system} macosx)))

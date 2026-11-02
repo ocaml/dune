@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793635907928,
+  "lastUpdate": 1793639433804,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -669986,6 +669986,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 4.050288098413333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "25f1376dda90e6fc0c62af0d08913d4750f30d8c",
+          "message": "test(compile-commands): reproduce source identity failures (#16883)\n\nRecord incorrect `compile_commands.json` source paths for nested and\ngenerated sources. Refs #16225.",
+          "timestamp": "2026-11-02T18:01:31+01:00",
+          "tree_id": "feba24fddcddf6d544a887ca4081d6b8d6348603",
+          "url": "https://github.com/ocaml/dune/commit/25f1376dda90e6fc0c62af0d08913d4750f30d8c"
+        },
+        "date": 1793639211619,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.6115081808866667,
             "unit": "seconds"
           }
         ]

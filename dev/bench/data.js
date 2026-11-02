@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793640072458,
+  "lastUpdate": 1793640080875,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -481630,6 +481630,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 70.80874402598,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0d324c48d550cfd863fed0740896ea513325cbf9",
+          "message": "test(trace): reproduce hangs after trace write failures (#16882)\n\nReproduce the hang caused by a failed trace write. Tests only, recording\ncurrent behavior.\n\nRefs #16409 and #16542.",
+          "timestamp": "2026-11-02T18:01:03+01:00",
+          "tree_id": "3ea836be5b45d7c9b547fda6ff2560d1053e08e3",
+          "url": "https://github.com/ocaml/dune/commit/0d324c48d550cfd863fed0740896ea513325cbf9"
+        },
+        "date": 1793640079569,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5957597878533333,
             "unit": "seconds"
           }
         ]

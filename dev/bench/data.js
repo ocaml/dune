@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793634905340,
+  "lastUpdate": 1793635562752,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -669899,6 +669899,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.9750307831066665,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aa72aae2580d13a34a92104746eb67a83450e241",
+          "message": "perf(merlin): batch library-directory construction (#16876)\n\nBatch Merlin library-directory collection while retaining parallel\nmemoized reads for local source directories.\n\nFrom anmonteiro/dune#259.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-02T07:52:02-08:00",
+          "tree_id": "2d5ebb7be85a140cfdc8578cd2be19d684fd7ae1",
+          "url": "https://github.com/ocaml/dune/commit/aa72aae2580d13a34a92104746eb67a83450e241"
+        },
+        "date": 1793635169001,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 4.050288098413333,
             "unit": "seconds"
           }
         ]

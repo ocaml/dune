@@ -172,8 +172,7 @@ let context_indexes =
              match obj with
              | None -> acc
              | Some obj_dir -> Path.build (index_path_in_obj_dir obj_dir ~for_) :: acc)
-           >>| (fun indexes ->
-           indexes, Digest.string (Marshal.to_string indexes ~sharing:false))
+           >>| (fun indexes -> indexes, Digest.repr (Repr.list Path.repr) indexes)
            |> Action_builder.of_memo)
     in
     Action_builder.exec_memo memo

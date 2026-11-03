@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793640080875,
+  "lastUpdate": 1793688605959,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -670160,6 +670160,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.924763307146667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5374412bb8382016a76200b0a9378414d42d3c63",
+          "message": "perf(merlin): defer configuration writes and share INDEX digests (#16886)\n\nShare context and compilation-mode INDEX digests, and serialize full\nMerlin configurations only when their write action runs.\n\nFrom anmonteiro/dune#258.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\n---------\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-02T22:40:41-08:00",
+          "tree_id": "cf494a77b33d0547323d405e93c3a291053d098e",
+          "url": "https://github.com/ocaml/dune/commit/5374412bb8382016a76200b0a9378414d42d3c63"
+        },
+        "date": 1793688371625,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.756141058666666,
             "unit": "seconds"
           }
         ]

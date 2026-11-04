@@ -163,3 +163,40 @@ enabled.
   ["USE_PPX_CACHE"]
   With_flag_env: _build/default/with_flag_env.ml
   ["USE_PPX_CACHE"]
+
+Merlin never caches the output of `-pp` preprocessors, so the dependencies of a
+preprocessing action are irrelevant to its PPX cache and should not be
+advertised as `PPX_DEPS`.
+
+  $ cat >> dune <<EOF
+  > 
+  > (library
+  >  (name with_pp_action)
+  >  (modules with_pp_action)
+  >  (preprocess (action (run ./pp.sh %{dep:header.ml} %{input-file}))))
+  > EOF
+
+  $ cat > pp.sh <<EOF
+  > #!/bin/sh
+  > cat "\$@"
+  > EOF
+  $ chmod +x pp.sh
+  $ echo "let header = 0" > header.ml
+  $ echo "let x = 1" > with_pp_action.ml
+
+  $ dune build .merlin-conf/lib-with_pp_action
+  $ dune ocaml merlin dump-config --format=json $PWD | jq -r '
+  >   include "dune";
+  >   merlinEntry("With_pp_action")
+  >   | merlinJsonEntryWithConfigNames(["PPX_DEPS", "USE_PPX_CACHE"])
+  > '
+  With_pp_action: _build/default/with_pp_action
+  ["PPX_DEPS","$TESTCASE_ROOT/_build/default/header.ml"]
+  ["PPX_DEPS","$TESTCASE_ROOT/_build/default/pp.sh"]
+  ["USE_PPX_CACHE"]
+  With_pp_action: _build/default/with_pp_action.ml
+  ["PPX_DEPS","$TESTCASE_ROOT/_build/default/header.ml"]
+  ["PPX_DEPS","$TESTCASE_ROOT/_build/default/pp.sh"]
+  ["USE_PPX_CACHE"]
+
+This is currently not the case: `header.ml` and `pp.sh` are advertised.

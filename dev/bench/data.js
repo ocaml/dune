@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793773716002,
+  "lastUpdate": 1793773967719,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -481717,6 +481717,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.45692589474000006,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0a48d33c83eadf0f841b1f8e06bb81ff6cc40956",
+          "message": "fix(merlin): retain all copy destinations (#16887)\n\nPreserve all copy-line destinations across compilation modes, including\nsandboxed copies and source reassignment.\n\nUpstreams anmonteiro/dune#218; follow-up to #16522.\n\nCodex session: `019ea5b2-acde-7141-bcbd-e3c833c8eefe`.\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-03T22:16:59-08:00",
+          "tree_id": "2b60521a1f1e9e75b57a25af3ae6a9436aee099a",
+          "url": "https://github.com/ocaml/dune/commit/0a48d33c83eadf0f841b1f8e06bb81ff6cc40956"
+        },
+        "date": 1793773965741,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 51.861218513139995,
             "unit": "seconds"
           }
         ]

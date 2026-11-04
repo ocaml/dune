@@ -142,7 +142,6 @@ Is it expected that the suffix for implementation and interface is the same ?
     (-open Dune__exe))
    (UNIT_NAME dune__exe__Pped)
    (SUFFIX ".mlx .mlx")
-   (PPX_DEPS $TESTCASE_ROOT/_build/default/pp.sh)
    (USE_PPX_CACHE))
 
   $ ./merlin_conf.sh pped.mli | diff pped.out -
@@ -170,7 +169,6 @@ As expected, the reader is not communicated for the standard mli
     (-open Dune__exe))
    (UNIT_NAME dune__exe__Mel)
    (SUFFIX ".mlx .mlx")
-   (PPX_DEPS $TESTCASE_ROOT/_build/default/pp.sh)
    (USE_PPX_CACHE))
 
 The reader is set for the mlx file
@@ -208,7 +206,6 @@ found, then it'll make a guess that the file was preprocessed into a file with
     (-open Dune__exe))
    (UNIT_NAME dune__exe__Cppomod)
    (SUFFIX ".mlx .mlx")
-   (PPX_DEPS $TESTCASE_ROOT/_build/default/pp.sh)
    (USE_PPX_CACHE))
 
   $ ./merlin_conf.sh cppomod.ml | diff cppomod.out -
@@ -241,7 +238,6 @@ We could expect dune to get the wrongext module configuration
     (-open Dune__exe))
    (UNIT_NAME dune__exe__Wrongext)
    (SUFFIX ".mlx .mlx")
-   (PPX_DEPS $TESTCASE_ROOT/_build/default/pp.sh)
    (USE_PPX_CACHE))
 
 We also have generated.ml and generatedx.mlx promoted:
@@ -270,7 +266,6 @@ It should be possible to get its merlin configuration as well:
     (-open Dune__exe))
    (UNIT_NAME dune__exe__Generated)
    (SUFFIX ".mlx .mlx")
-   (PPX_DEPS $TESTCASE_ROOT/_build/default/pp.sh)
    (USE_PPX_CACHE))
   $ ./merlin_conf.sh generatedx.mlx
   ((INDEX $TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index)
@@ -293,7 +288,6 @@ It should be possible to get its merlin configuration as well:
    (UNIT_NAME dune__exe__Generatedx)
    (SUFFIX ".mlx .mlx")
    (READER (mlx))
-   (PPX_DEPS $TESTCASE_ROOT/_build/default/pp.sh)
    (USE_PPX_CACHE))
 
 An unconventional source keeps its configuration after adding an interface.

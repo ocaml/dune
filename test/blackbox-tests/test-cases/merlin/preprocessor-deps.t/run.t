@@ -67,7 +67,7 @@ The library that declares none gets no `PPX_DEPS` directive.
   Without_deps: _build/default/without_deps.ml
 
 Files referenced with `%{dep:...}` in the PPX arguments are also dependencies of
-the preprocessor, and should be advertised as well.
+the preprocessor, and are advertised as well.
 
   $ cat >> dune <<EOF
   > (library
@@ -81,8 +81,6 @@ the preprocessor, and should be advertised as well.
   > let z = 3
   > EOF
 
-This is currently not the case: `input.txt` is missing from `PPX_DEPS`:
-
   $ dune build .merlin-conf/lib-with_flag_deps
   $ dune ocaml merlin dump-config --format=json $PWD | jq -r '
   >   include "dune";
@@ -90,5 +88,7 @@ This is currently not the case: `input.txt` is missing from `PPX_DEPS`:
   >   | merlinJsonEntryWithConfigNames(["PPX_DEPS"])
   > '
   With_flag_deps: _build/default/with_flag_deps
+  ["PPX_DEPS","$TESTCASE_ROOT/_build/default/input.txt"]
   With_flag_deps: _build/default/with_flag_deps.ml
+  ["PPX_DEPS","$TESTCASE_ROOT/_build/default/input.txt"]
 

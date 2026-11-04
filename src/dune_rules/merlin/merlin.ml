@@ -1138,6 +1138,20 @@ module Unprocessed = struct
     =
     let open Action_builder.O in
     let context = Super_context.context sctx in
+    let* pp_config, pp_facts =
+      let env, _sandbox =
+        Dep_conf_eval.unnamed
+          Sandbox_config.no_special_requirements
+          ~expander
+          preprocessor_deps
+      in
+      let prepared_pp = Action_builder.ignore env >>> pp_config t context ~expander in
+      Action_builder.dyn_memo_deps
+        (let open Memo.O in
+         let+ pp_config, facts = Action_builder.evaluate_and_collect_facts prepared_pp in
+         Dep.Map.map facts ~f:ignore, (pp_config, facts))
+    in
+    let pp_deps = Dep.Facts.paths pp_facts ~expand_aliases:false in
     let+ config, indexes_digest =
       let* stdlib_dir =
         Action_builder.of_memo
@@ -1182,7 +1196,7 @@ module Unprocessed = struct
                in
                List.concat [ requires_compile; libs ])
       in
-      let* flags = flags
+      let+ flags = flags
       and+ indexes, indexes_digest = Ocaml_index.context_indexes context ~for_
       and+ deps_src_dirs, deps_obj_dirs, deps_cmt_dirs =
         add_lib_dirs sctx ~for_ requires_compile
@@ -1197,13 +1211,6 @@ module Unprocessed = struct
       let obj_dirs = Path.Set.union deps_obj_dirs objs_dirs in
       let cmt_dirs = Path.Set.union deps_cmt_dirs hidden_cmt_dirs in
       let source_root = Path.Source.root |> Path.source in
-      let+ pp_deps =
-        let runtime_deps, _sandbox =
-          Dep_conf_eval.unnamed_get_paths ~expander preprocessor_deps
-        in
-        (* TODO: Why is it so different from [lib_file_deps.eval] call site? *)
-        runtime_deps
-      in
       ( { Processed.stdlib_dir
         ; source_root
         ; src_dirs
@@ -1218,7 +1225,6 @@ module Unprocessed = struct
         ; pp_deps
         }
       , indexes_digest )
-    and+ pp_config = pp_config t context ~expander
     and+ source_dirs =
       Action_builder.of_memo
         (let open Memo.O in

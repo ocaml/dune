@@ -26,6 +26,7 @@ let of_exn (exn : Exn_with_backtrace.t) =
     | _ -> exn
   in
   match exn.exn with
+  | Dune_util.Report_error.Already_reported -> []
   | User_error.E main ->
     let dir = Option.map ~f:Path.of_string main.dir in
     let promotion = main.promotion in

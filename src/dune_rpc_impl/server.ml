@@ -307,10 +307,13 @@ let handler (t : t Fdecl.t) : unit Handler.t =
       | Failure ->
         let diagnostics =
           current_errors ()
-          |> List.filter_map ~f:(fun error ->
+          |> List.map ~f:(fun error ->
             match Build_system_error.description error with
-            | `Exn _ -> None
-            | `Diagnostic compound_user_error -> Some compound_user_error)
+            | `Exn exn ->
+              Dune_rpc.Compound_user_error.make
+                ~main:(Dune_util.Report_error.user_message exn)
+                ~related:[]
+            | `Diagnostic compound_user_error -> compound_user_error)
         in
         Dune_rpc.Build_outcome_with_diagnostics.Failure diagnostics
     in

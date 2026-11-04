@@ -332,9 +332,6 @@ let wrap_build_outcome_exn ~print_on_success build_outcome =
             errors, warnings + 1)
     in
     (match counts with
-     | 0, 0 ->
-       Code_error.raise
-         "Build via RPC failed, but the RPC server did not send an error message."
-         []
+     | 0, 0 -> raise Dune_util.Report_error.Already_reported
      | _ -> print_err_warn counts)
 ;;

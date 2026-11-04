@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793777979540,
+  "lastUpdate": 1793780368438,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -670595,6 +670595,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.79524116382,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "quentin@tarides.com",
+            "name": "mefyl",
+            "username": "mefyl"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7b6625906f4dd0c942a50ae77509ffbc910b9018",
+          "message": "Properly forward exceptions over the RPC wire. (#16878)\n\n## Description\n\nReport generic exceptions to the RPC client instead of letting it crash\nwith the mantra.\n\n## Related Issue and Motivation\n\nCurrently any memo error, for instance a module cycle, crashes the\nclient instead of displaying the proper error message, making the cause\ncryptic.\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-11-04T09:05:41+01:00",
+          "tree_id": "dc6a87739e56abeb8d3d0262d22573cd296268c4",
+          "url": "https://github.com/ocaml/dune/commit/7b6625906f4dd0c942a50ae77509ffbc910b9018"
+        },
+        "date": 1793779971340,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.889637605653333,
             "unit": "seconds"
           }
         ]

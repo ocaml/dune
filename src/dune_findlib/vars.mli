@@ -2,6 +2,10 @@ open Import
 
 type t
 
+(** Return the effective value of a variable, or [None] when the variable does
+    not exist or none of its rules match the predicates. *)
+val find_matching : t -> string -> Variant.Set.t -> string option
+
 val get_words : t -> string -> Variant.Set.t -> string list
 val get : t -> string -> Variant.Set.t -> string option
 val to_dyn : t -> Dyn.t

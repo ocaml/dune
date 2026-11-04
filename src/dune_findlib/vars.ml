@@ -4,6 +4,10 @@ type t = Rules.t String.Map.t
 
 let to_dyn = String.Map.to_dyn Rules.to_dyn
 
+let find_matching (t : t) var preds =
+  Option.bind (String.Map.find t var) ~f:(Rules.interpret ~preds)
+;;
+
 let get (t : t) var preds =
   Option.map (String.Map.find t var) ~f:(fun r ->
     Option.value ~default:"" (Rules.interpret r ~preds))

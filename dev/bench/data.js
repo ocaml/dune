@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793788845923,
+  "lastUpdate": 1793795634999,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -670769,6 +670769,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.4398605243666664,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "52fb4da170433175951871918aaad993a0845635",
+          "message": "doc: Add documentation for the package dir field (#16818)\n\nThe dir field was added to the package stanza in #12614. This commit\nadds documentation for the field.\n\n## Checklist\n\n- ~~[ ] Tests added, if applicable~~.\n- ~~[ ] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.~~\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-11-04T12:20:13Z",
+          "tree_id": "aeae6cd606e4564d3849522a4d25aaa6e24e4dc6",
+          "url": "https://github.com/ocaml/dune/commit/52fb4da170433175951871918aaad993a0845635"
+        },
+        "date": 1793795238276,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.966753235086667,
             "unit": "seconds"
           }
         ]

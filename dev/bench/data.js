@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793780707997,
+  "lastUpdate": 1793788600582,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -670682,6 +670682,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.889637605653333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "quentin@tarides.com",
+            "name": "mefyl",
+            "username": "mefyl"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5c7b02376036dd6f7fc5f0196844f4249503d747",
+          "message": "Report memo error messages to RPC clients. (#16879)\n\n## Description\n\nReport the actual memo error messages and stack trace to RPC clients.\n\n## Related Issue and Motivation\n\nHave the RPC client errors show up exactly as the normal direct build.\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-11-04T11:25:27+01:00",
+          "tree_id": "d14d1ae634cc12d26bff0cdb6dcd30123d3ba897",
+          "url": "https://github.com/ocaml/dune/commit/5c7b02376036dd6f7fc5f0196844f4249503d747"
+        },
+        "date": 1793788311355,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.4398605243666664,
             "unit": "seconds"
           }
         ]

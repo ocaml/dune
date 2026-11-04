@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793795975004,
+  "lastUpdate": 1793806011185,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -670856,6 +670856,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.966753235086667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3ef7c6a63d08dc0c8af2dbd92fb6adae99d2d400",
+          "message": "feat(foreign): compile assembly sources (#16849)\n\nThis PR adds as new foreign language for assembly sources. When using\nforeign stubs/archives stanzas with the `(language asm)` field, dune\nwill recognise sources ending in `.s`/`.S`/`.asm` as assembly sources\nand pass them to an assembler.\n\nOn most platforms the C compiler is chosen as the assembler, with MSVC\nthe assembler is a different binary that has to be chosen.\n\nThe motivating example for this support is our blake3 library which has\ncustom rules for assembly. It won't yet benefit until we can mix foreign\nsources in the same stanza. This will be added in a followup PR.\n\n- Fixes https://github.com/ocaml/dune/issues/3342",
+          "timestamp": "2026-11-04T15:13:14Z",
+          "tree_id": "d03cf9ad3a7282c042720edcb57d35606a625c5d",
+          "url": "https://github.com/ocaml/dune/commit/3ef7c6a63d08dc0c8af2dbd92fb6adae99d2d400"
+        },
+        "date": 1793805614156,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.901032608113333,
             "unit": "seconds"
           }
         ]

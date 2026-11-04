@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793777644095,
+  "lastUpdate": 1793777971819,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -481891,6 +481891,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5470291156400001,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e7cf3a99fbdacae1c7c022fffac1a09f86e0534a",
+          "message": "ci: pin ocaml_intrinsics_kernel before basement dependency (#16890)\n\nPin `ocaml_intrinsics_kernel` before its unreleased `basement`\ndependency to fix the [opam CI\nbuilds](https://github.com/ocaml/dune/actions/runs/41784496915/job/126427108999),\npreserving the MSVC fix.\n\n01a1a54a-24ad-7530-8176-840dad6d858e\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-03T23:20:37-08:00",
+          "tree_id": "5f82fa01c4e262997c0ec59a0103331482d8dca8",
+          "url": "https://github.com/ocaml/dune/commit/e7cf3a99fbdacae1c7c022fffac1a09f86e0534a"
+        },
+        "date": 1793777970244,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 63.4476272382,
             "unit": "seconds"
           }
         ]

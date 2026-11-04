@@ -1543,12 +1543,57 @@ let lock_dir_binaries =
        binaries)
 ;;
 
+let which_ocaml_tool context program =
+  let tool =
+    match Bin.strip_exe (Filename.to_string program) with
+    | "ocaml" -> `Ocaml
+    | "ocamlc" -> `Ocamlc
+    | "ocamlopt" -> `Ocamlopt
+    | "ocamldep" -> `Ocamldep
+    | "ocamllex" -> `Ocamllex
+    | "ocamlyacc" -> `Ocamlyacc
+    | "ocamlmklib" -> `Ocamlmklib
+    | "ocamlobjinfo" -> `Ocamlobjinfo
+    | _ -> `Other
+  in
+  match tool with
+  | `Other -> Memo.return None
+  | ( `Ocaml
+    | `Ocamlc
+    | `Ocamlopt
+    | `Ocamldep
+    | `Ocamllex
+    | `Ocamlyacc
+    | `Ocamlmklib
+    | `Ocamlobjinfo ) as tool ->
+    let* toolchain = ocaml_toolchain context in
+    (match toolchain with
+     | None -> Memo.return None
+     | Some toolchain ->
+       let+ ocaml, _ = Action_builder.evaluate_and_collect_facts toolchain in
+       (match tool with
+        | `Ocaml -> ocaml.ocaml
+        | `Ocamlc -> Ok ocaml.ocamlc
+        | `Ocamlopt -> ocaml.ocamlopt
+        | `Ocamldep -> ocaml.ocamldep
+        | `Ocamllex -> ocaml.ocamllex
+        | `Ocamlyacc -> ocaml.ocamlyacc
+        | `Ocamlmklib -> ocaml.ocamlmklib
+        | `Ocamlobjinfo -> ocaml.ocamlobjinfo)
+       |> Result.to_option)
+;;
+
 let which ~packages context program =
-  if Package.Name.Set.is_empty packages
-  then Memo.return None
-  else
-    let+ binaries = Memo.exec lock_dir_binaries (context, packages) in
-    Filename.Map.find binaries program
+  let* binary =
+    if Package.Name.Set.is_empty packages
+    then Memo.return None
+    else
+      let+ binaries = Memo.exec lock_dir_binaries (context, packages) in
+      Filename.Map.find binaries program
+  in
+  match binary with
+  | Some _ -> Memo.return binary
+  | None -> which_ocaml_tool context program
 ;;
 
 let ocamlpath universe =

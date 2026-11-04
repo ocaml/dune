@@ -177,18 +177,35 @@ Keep only the tools needed to build the fake compiler on PATH.
   > main: EOF { () }
   > EOF
 
-The narrowed lookup currently loses all three tools:
+The selected compiler's standard tools are visible, but arbitrary tools from
+its transitive dependencies are not:
 
-  $ dune build lexer.ml parser.ml toplevel-output private-available \
-  >   >diagnostic 2>&1
-  [1]
-  $ grep '^Error:' diagnostic
-  Error: Program ocamllex not found in the tree or in PATH
-  Error: Program ocamlyacc not found in the tree or in PATH
-  Error: Program ocaml not found in the tree or in PATH
-  $ cat _build/default/private-available
+  $ dune build lexer.ml parser.ml toplevel-output private-available
+  $ cat _build/default/lexer.ml _build/default/parser.ml \
+  >   _build/default/toplevel-output _build/default/private-available
+  let source = "managed lexer"
+  let source = "managed parser"
+  managed toplevel
   false
   $ test ! -e _build/default/.lockfile/pkg/unrelated/.opam/unrelated/target
+
+An ambient copy must not replace the selected compiler's tools. The compiler
+also remains available without an explicit package dependency on it.
+
+  $ for tool in ocaml ocamllex ocamlyacc; do
+  >   printf '#!/bin/sh\nexit 42\n' >"_path/$tool"
+  >   chmod +x "_path/$tool"
+  > done
+  $ cat >dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name main) (allow_empty) (dir .))
+  > EOF
+  $ dune build lexer.ml parser.ml toplevel-output private-available
+  $ cat >dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name main) (allow_empty))
+  > EOF
+  $ dune build lexer.ml parser.ml toplevel-output private-available
 
 Mounted projects use the same selected compiler, even when they only depend on
 the metadata package rather than the package installing its tools.
@@ -208,14 +225,12 @@ the metadata package rather than the package installing its tools.
   > EOF
   $ native_dir=_build/default/.lockfile/pkg/native
   $ dune build "$native_dir/lexer.ml" "$native_dir/parser.ml" \
-  >   "$native_dir/toplevel-output" "$native_dir/private-available" \
-  >   >diagnostic 2>&1
-  [1]
-  $ grep '^Error:' diagnostic
-  Error: Program ocamllex not found in the tree or in PATH
-  Error: Program ocamlyacc not found in the tree or in PATH
-  Error: Program ocaml not found in the tree or in PATH
-  $ cat "$native_dir/private-available"
+  >   "$native_dir/toplevel-output" "$native_dir/private-available"
+  $ cat "$native_dir/lexer.ml" "$native_dir/parser.ml" \
+  >   "$native_dir/toplevel-output" "$native_dir/private-available"
+  let source = "managed lexer"
+  let source = "managed parser"
+  managed toplevel
   false
   $ test ! -e _build/default/.lockfile/pkg/native/.opam/native/target
   $ test ! -e _build/default/.lockfile/pkg/unrelated/.opam/unrelated/target

@@ -92,3 +92,82 @@ the preprocessor, and are advertised as well.
   With_flag_deps: _build/default/with_flag_deps.ml
   ["PPX_DEPS","$TESTCASE_ROOT/_build/default/input.txt"]
 
+Some dependencies cannot be expressed as a list of files. In that case, Merlin's
+PPX cache cannot be invalidated correctly, so it should be disabled:
+`USE_PPX_CACHE` should not be emitted.
+
+  $ cat >> dune <<EOF
+  > (rule
+  >  (alias some_alias)
+  >  (action (progn)))
+  > 
+  > (library
+  >  (name with_alias_dep)
+  >  (modules with_alias_dep)
+  >  (preprocess (pps my_ppx))
+  >  (preprocessor_deps (alias some_alias)))
+  > 
+  > (library
+  >  (name with_universe_dep)
+  >  (modules with_universe_dep)
+  >  (preprocess (pps my_ppx))
+  >  (preprocessor_deps (universe)))
+  > 
+  > (library
+  >  (name with_env_dep)
+  >  (modules with_env_dep)
+  >  (preprocess (pps my_ppx))
+  >  (preprocessor_deps (env_var SOME_VAR)))
+  > EOF
+
+  $ for m in with_alias_dep with_universe_dep with_env_dep; do
+  >   echo "let x = 1" > $m.ml
+  > done
+
+  $ dune build .merlin-conf/lib-with_alias_dep \
+  >   .merlin-conf/lib-with_universe_dep .merlin-conf/lib-with_env_dep
+  $ dune ocaml merlin dump-config --format=json $PWD | jq -r '
+  >   include "dune";
+  >   .[] | select(.module_name
+  >     | IN("With_alias_dep", "With_universe_dep", "With_env_dep"))
+  >   | merlinJsonEntryWithConfigNames(["PPX_DEPS", "USE_PPX_CACHE"])
+  > '
+  With_alias_dep: _build/default/with_alias_dep
+  ["USE_PPX_CACHE"]
+  With_alias_dep: _build/default/with_alias_dep.ml
+  ["USE_PPX_CACHE"]
+  With_env_dep: _build/default/with_env_dep
+  ["USE_PPX_CACHE"]
+  With_env_dep: _build/default/with_env_dep.ml
+  ["USE_PPX_CACHE"]
+  With_universe_dep: _build/default/with_universe_dep
+  ["USE_PPX_CACHE"]
+  With_universe_dep: _build/default/with_universe_dep.ml
+  ["USE_PPX_CACHE"]
+
+This is currently not the case: the cache is enabled for all of them.
+
+The value of an environment variable used in the PPX arguments is part of the
+PPX command line, which Merlin includes in its cache key, so the cache can stay
+enabled.
+
+  $ cat >> dune <<EOF
+  > 
+  > (library
+  >  (name with_flag_env)
+  >  (modules with_flag_env)
+  >  (preprocess (pps my_ppx -- --value %{env:SOME_VAR=default})))
+  > EOF
+
+  $ echo "let x = 1" > with_flag_env.ml
+
+  $ dune build .merlin-conf/lib-with_flag_env
+  $ dune ocaml merlin dump-config --format=json $PWD | jq -r '
+  >   include "dune";
+  >   merlinEntry("With_flag_env")
+  >   | merlinJsonEntryWithConfigNames(["PPX_DEPS", "USE_PPX_CACHE"])
+  > '
+  With_flag_env: _build/default/with_flag_env
+  ["USE_PPX_CACHE"]
+  With_flag_env: _build/default/with_flag_env.ml
+  ["USE_PPX_CACHE"]

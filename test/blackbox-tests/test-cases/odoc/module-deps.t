@@ -1,7 +1,7 @@
 The odoc file of a module depends on the odoc files of the modules its
-interface refers to. These dependencies are computed without the compilation
-context of the library, so check that they are still found when the library is
-preprocessed, and when it implements a virtual library.
+interface refers to. These dependencies are read from the dependency graphs of
+the library's compilation context, so check that they are still found when the
+library is preprocessed, and when it implements a virtual library.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.0)
@@ -39,7 +39,6 @@ Building the odoc file of A alone also builds the one of B:
   _build/default/_doc/_odoc/my_pkg/my_pkg.pp/pp.odoc
   _build/default/_doc/_odoc/my_pkg/my_pkg.pp/pp__A.odoc
   _build/default/_doc/_odoc/my_pkg/my_pkg.pp/pp__B.odoc
-  _build/default/_doc/_odoc/my_pkg/page-index.odoc
 
 A virtual library and an implementation whose own (private) module refers to a
 module of the virtual library:

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793811937781,
+  "lastUpdate": 1793811946052,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -482210,6 +482210,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 54.73857229890667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aa9d79b4a7dfe23ce6526525b5915f9087d04577",
+          "message": "test(engine): cover source-copy isolation and input invalidation (#16891)\n\nExtract independent characterization coverage from #16747:\n\n- Replacing a generated hardlink with a source-backed target must\nproduce an independent copy, even when the bytes initially match.\n- An already updated copy in one context must not hide a stale copy in\nanother, and matching build copies must not suppress invalidation of a\ndirect source reader.\n- Editing a lock input must rebuild the affected package.\n\nThese cases pass on `main` with the existing copy-rule implementation.\nNo production changes, new trace API, or source-copy snapshot-layout\nassumptions are included.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-05T00:46:11+08:00",
+          "tree_id": "872a827fc04411a8403fed072561f8f43f0ec77d",
+          "url": "https://github.com/ocaml/dune/commit/aa9d79b4a7dfe23ce6526525b5915f9087d04577"
+        },
+        "date": 1793811944944,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5146581093866667,
             "unit": "seconds"
           }
         ]

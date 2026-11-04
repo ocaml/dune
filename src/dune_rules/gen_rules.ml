@@ -620,7 +620,15 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
                 and+ project_rules =
                   match st_dir with
                   | None -> Memo.return Rules.empty
-                  | Some st_dir -> gen_project_rules sctx st_dir
+                  | Some st_dir ->
+                    let+ project_rules = gen_project_rules sctx st_dir
+                    and+ metadata_rules =
+                      Rules.collect_unit (fun () ->
+                        let* sctx = sctx in
+                        let project = Source_tree.Dir.project st_dir in
+                        Install_rules.gen_metadata_rules sctx project ~dir)
+                    in
+                    Rules.union project_rules metadata_rules
                 and+ rules = rules in
                 Rules.union (Rules.union project_rules automatic_subdir_rules) rules
               in

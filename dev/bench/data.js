@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793773974427,
+  "lastUpdate": 1793773978509,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -481775,6 +481775,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.49804689656,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "269e235220a61c27754fc587d97e39750129cb8d",
+          "message": "test(merlin): cover preprocessing with overlapping suffixes (#16888)\n\nReproduce missing source kinds and incorrect readers for preprocessed\nfiles with overlapping dialect suffixes, and preserve ambiguity when a\ndialect suffix contains `.pp`.\n\nRegression coverage for anmonteiro/dune#219.\n\nCodex session: `019ea5b2-acde-7141-bcbd-e3c833c8eefe`.\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-03T22:17:38-08:00",
+          "tree_id": "e615317e4c0aee5432b588f1f5e6f7c06604034a",
+          "url": "https://github.com/ocaml/dune/commit/269e235220a61c27754fc587d97e39750129cb8d"
+        },
+        "date": 1793773973981,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 49.95981497538,
             "unit": "seconds"
           }
         ]

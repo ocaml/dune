@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793775567262,
+  "lastUpdate": 1793775574764,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -481862,6 +481862,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 64.22561687218668,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8db4989d390da698614d8cf6b467f0bd2addd451",
+          "message": "fix(merlin): recognize complete dialect suffixes (#16889)\n\nSelect Merlin readers and source kinds using complete dialect suffixes,\nincluding preprocessed files and Melange conditional sources.\n\nUses regression coverage from #16888; upstreams anmonteiro/dune#219.\n\nCodex session: `019ea5b2-acde-7141-bcbd-e3c833c8eefe`.\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-03T22:40:17-08:00",
+          "tree_id": "2ffe763e7d45d75073fb8b7d07d15fd2d52ef231",
+          "url": "https://github.com/ocaml/dune/commit/8db4989d390da698614d8cf6b467f0bd2addd451"
+        },
+        "date": 1793775573886,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5470291156400001,
             "unit": "seconds"
           }
         ]

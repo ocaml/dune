@@ -1101,6 +1101,30 @@ module Unprocessed = struct
       ~f:(pp_flags ctx ~for_:t.config.for_ ~expander t.config.libname)
   ;;
 
+  (* Like [pp_config], but also returns the dependencies of the PPX rewriters
+     (see [ppx_deps_of_builder]). *)
+  let pp_config_and_deps t ctx ~expander =
+    let open Action_builder.O in
+    let+ pp_config_and_deps =
+      Per_item_action_builder.map t.config.preprocess ~f:(fun preprocess ->
+        let pp_flag =
+          pp_flags ctx ~for_:t.config.for_ ~expander t.config.libname preprocess
+        in
+        match preprocess with
+        | Pps _ -> ppx_deps_of_builder pp_flag
+        | No_preprocessing | Action _ | Future_syntax _ ->
+          (* Merlin never caches the output of [-pp] preprocessors, so their
+             dependencies are irrelevant to its PPX cache. *)
+          let+ pp_flag = pp_flag in
+          pp_flag, Some Path.Set.empty)
+    in
+    ( Module_reference.Per_item.map pp_config_and_deps ~f:fst
+    , Module_reference.Per_item.fold
+        pp_config_and_deps
+        ~init:(Some Path.Set.empty)
+        ~f:(fun (_, pp_deps) acc -> Processed.union_pp_deps pp_deps acc) )
+  ;;
+
   let add_lib_dirs sctx ~for_ libs =
     let cmi_kind : Lib_mode.Cm_kind.t =
       match for_ with
@@ -1167,15 +1191,17 @@ module Unprocessed = struct
     =
     let open Action_builder.O in
     let context = Super_context.context sctx in
-    let* pp_config, pp_deps =
+    let* pp_config, pp_config_deps = pp_config_and_deps t context ~expander in
+    let* (), preprocessor_deps =
       let env, _sandbox =
         Dep_conf_eval.unnamed
           Sandbox_config.no_special_requirements
           ~expander
           preprocessor_deps
       in
-      ppx_deps_of_builder (Action_builder.ignore env >>> pp_config t context ~expander)
+      ppx_deps_of_builder (Action_builder.ignore env)
     in
+    let pp_deps = Processed.union_pp_deps pp_config_deps preprocessor_deps in
     let+ config, indexes_digest =
       let* stdlib_dir =
         Action_builder.of_memo

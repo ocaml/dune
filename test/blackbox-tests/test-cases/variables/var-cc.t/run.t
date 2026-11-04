@@ -51,7 +51,12 @@ No env
   >   (action (echo %{cc})))
   > EOF
 
-  $ dune build @cc28 | sed "s,${O_CC} ${O_CFLAGS} ${O_CPPFLAGS} -Wall -fdiagnostics-color=always,OK,"
+Availability errors depend on the compiler and are tested separately.
+
+  $ dune build @cc28 \
+  > | sed \
+  > "s,${O_CC} ${O_CFLAGS} ${O_CPPFLAGS} -Wall -fdiagnostics-color=always,OK," \
+  > | sed 's/OK -Werror=unguarded-availability-new/OK/'
   OK
 
 With added env flags
@@ -59,8 +64,11 @@ With added env flags
   > (env (_ (c_flags :standard -fPIC)))
   > EOF
 
-  $ dune build @cc28 | sed "s,${O_CC} ${O_CFLAGS} ${O_CPPFLAGS} -Wall -fdiagnostics-color=always -fPIC,OK,"
-  OK
+  $ dune build @cc28 \
+  > | sed \
+  > "s,${O_CC} ${O_CFLAGS} ${O_CPPFLAGS} -Wall -fdiagnostics-color=always,OK," \
+  > | sed 's/OK -Werror=unguarded-availability-new/OK/'
+  OK -fPIC
 
 With redefining env flags
   $ sed -i.bak "s/:standard //g" dune

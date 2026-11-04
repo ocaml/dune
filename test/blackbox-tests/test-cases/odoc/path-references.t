@@ -81,21 +81,14 @@ A private library of the package:
   > {0 Guide}
   > EOF
 
-Dune does not pass -P and -L to odoc, so path references fail to resolve:
+Dune passes -P and -L to odoc, so path references resolve:
 
-  $ dune build @doc 2>&1 | grep Warning | sort
-  Warning: Failed to resolve reference //guide Path '//guide' not found
-  Warning: Failed to resolve reference /my_pkg.bar/Bar Path '/my_pkg.bar/Bar' not found
-  Warning: Failed to resolve reference /my_pkg.baz/Baz.z Path '/my_pkg.baz/Baz' not found
-  Warning: Failed to resolve reference /my_pkg.foo/Foo.x Path '/my_pkg.foo/Foo' not found
-  Warning: Failed to resolve reference /my_pkg/guide Path '/my_pkg/guide' not found
-  Warning: Failed to resolve reference /my_pkg/guide Path '/my_pkg/guide' not found
-  Warning: Failed to resolve reference /priv/Priv Path '/priv/Priv' not found
+  $ dune build @doc
 
-Flat references are rendered as links, path references as plain code:
+Both flat and path references are rendered as links:
 
   $ grep -o '<p>.*</p>' \
   >   _build/default/_doc/_html/my_pkg/my_pkg.bar/Bar/index.html \
   >   _build/default/_doc/_html/my_pkg/index.html
-  _build/default/_doc/_html/my_pkg/my_pkg.bar/Bar/index.html:<p>Flat reference: <a href="../../my_pkg.foo/Foo/index.html#val-x"><code>Foo.x</code></a>.</p><p>Module path reference: <code>/my_pkg.foo/Foo.x</code>.</p><p>Page path reference: <code>/my_pkg/guide</code>.</p><p>Current package reference: <code>//guide</code>.</p><p>Reference to a library that is not a dependency: <code>/my_pkg.baz/Baz.z</code>.</p>
-  _build/default/_doc/_html/my_pkg/index.html:<p>Flat page reference: <a href="guide.html"><code>guide</code></a>.</p><p>Page path reference: <code>/my_pkg/guide</code>.</p><p>Module path reference: <code>/my_pkg.bar/Bar</code>.</p><p>Private library reference: <code>/priv/Priv</code>.</p>
+  _build/default/_doc/_html/my_pkg/my_pkg.bar/Bar/index.html:<p>Flat reference: <a href="../../my_pkg.foo/Foo/index.html#val-x"><code>Foo.x</code></a>.</p><p>Module path reference: <a href="../../my_pkg.foo/Foo/index.html#val-x"><code>Foo.x</code></a>.</p><p>Page path reference: <a href="../../guide.html"><code>guide</code></a>.</p><p>Current package reference: <a href="../../guide.html"><code>guide</code></a>.</p><p>Reference to a library that is not a dependency: <a href="../../my_pkg.baz/Baz/index.html#val-z"><code>Baz.z</code></a>.</p>
+  _build/default/_doc/_html/my_pkg/index.html:<p>Flat page reference: <a href="guide.html"><code>guide</code></a>.</p><p>Page path reference: <a href="guide.html"><code>guide</code></a>.</p><p>Module path reference: <a href="my_pkg.bar/Bar/index.html"><code>Bar</code></a>.</p><p>Private library reference: <a href="my_pkg.__private__.priv/Priv/index.html"><code>Priv</code></a>.</p>

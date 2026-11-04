@@ -427,6 +427,31 @@ let odoc_include_flags ctx pkg requires =
         :: List.concat_map paths ~f:(fun dir -> [ Command.Args.A "-I"; Path dir ])))
 ;;
 
+let odoc_link_flags ctx pkg requires =
+  Resolve.args
+    (let open Resolve.O in
+     let+ libs = requires in
+     let tree name dir = Command.Args.Concat (":", [ A name; Path (Path.build dir) ]) in
+     let pkg_flags, pkg_dirs =
+       match pkg with
+       | None -> [], []
+       | Some p ->
+         let name = Package.Name.to_string p in
+         let dir = Paths.odocs ctx (Pkg p) in
+         [ Command.Args.A "-P"; tree name dir; A "--current-package"; A name ], [ dir ]
+     in
+     let lib_flags, lib_dirs =
+       List.filter_map libs ~f:Lib.Local.of_lib
+       |> List.map ~f:(fun lib ->
+         let dir = Paths.odocs ctx (Lib lib) in
+         let name = Lib_name.to_string (Lib.name (Lib.Local.to_lib lib)) in
+         [ Command.Args.A "-L"; tree name dir ], dir)
+       |> List.split
+     in
+     let dirs = List.map ~f:Path.build (pkg_dirs @ lib_dirs) in
+     Command.Args.S (odoc_files_in_dirs dirs :: (pkg_flags @ List.concat lib_flags)))
+;;
+
 let link_odoc_rules sctx (odoc_file : Artifact.t) ~pkg ~requires =
   let ctx = Super_context.context sctx in
   let deps = Dep.deps ctx pkg requires in
@@ -438,7 +463,7 @@ let link_odoc_rules sctx (odoc_file : Artifact.t) ~pkg ~requires =
       "link"
       ~quiet:false
       ~flags_for:(Some (Artifact.flags_for odoc_file))
-      [ odoc_include_flags ctx pkg requires
+      [ odoc_link_flags ctx pkg requires
       ; A "-o"
       ; Target (Artifact.odocl_file ctx odoc_file)
       ; Dep (Path.build (Artifact.odoc_file odoc_file))

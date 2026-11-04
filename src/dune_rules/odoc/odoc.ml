@@ -404,23 +404,16 @@ let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
   odoc_file
 ;;
 
-let odoc_include_flags ctx pkg requires =
+let odoc_include_flags ctx requires =
   Resolve.args
     (let open Resolve.O in
      let+ paths =
        let+ libs = requires in
-       let paths =
-         List.fold_left libs ~init:Path.Set.empty ~f:(fun paths lib ->
-           match Lib.Local.of_lib lib with
-           | None -> paths
-           | Some lib -> Path.Set.add paths (Path.build (Paths.odocs ctx (Lib lib))))
-       in
-       let paths =
-         match pkg with
-         | Some p -> Path.Set.add paths (Path.build (Paths.odocs ctx (Pkg p)))
+       List.fold_left libs ~init:Path.Set.empty ~f:(fun paths lib ->
+         match Lib.Local.of_lib lib with
          | None -> paths
-       in
-       Path.Set.to_list paths
+         | Some lib -> Path.Set.add paths (Path.build (Paths.odocs ctx (Lib lib))))
+       |> Path.Set.to_list
      in
      Command.Args.S
        (odoc_files_in_dirs paths
@@ -493,11 +486,8 @@ let setup_library_odoc_rules sctx (local_lib : Lib.Local.t) =
       Resolve.Memo.bind (Lib.requires lib ~for_) ~f:(fun direct ->
         Lib.closure direct ~linking:false ~for_)
     in
-    let package = Lib_info.package info in
-    let odoc_include_flags =
-      Command.Args.memo (odoc_include_flags ctx package requires)
-    in
-    Dep.deps ctx package requires, odoc_include_flags
+    let odoc_include_flags = Command.Args.memo (odoc_include_flags ctx requires) in
+    Dep.deps ctx None requires, odoc_include_flags
   in
   modules
   |> Modules.fold ~init:[] ~f:(fun m acc ->

@@ -723,7 +723,7 @@ Melange-only libraries have a default Melange configuration.
   melange_only.ml: melange true impl -
 
 A source copied through an intermediate file into both mode-specific
-implementations only returns the last recorded destination's mode.
+implementations returns both modes.
 
   $ mkdir fanout
   $ cat > fanout/dune-project <<EOF
@@ -748,10 +748,12 @@ implementations only returns the last recorded destination's mode.
   >   target.ml target.melange.ml input.txt intermediate.txt)
   target.ml: ocaml true impl -
   target.melange.ml: melange false impl -
+  input.txt: ocaml true impl -
   input.txt: melange false impl -
+  intermediate.txt: ocaml true impl -
   intermediate.txt: melange false impl -
 
-Sandboxed copies do not resolve back to their original sources.
+Sandboxed copies also resolve back to their original sources.
 
   $ mkdir sandboxed
   $ cp fanout/dune fanout/input.txt sandboxed/
@@ -762,10 +764,12 @@ Sandboxed copies do not resolve back to their original sources.
   $ dune build --root sandboxed @check
   $ (cd sandboxed && merlin_configurations \
   >   _build/default/.merlin-conf/lib-fanout input.txt intermediate.txt)
-  input.txt: none
-  intermediate.txt: none
+  input.txt: ocaml true impl -
+  input.txt: melange false impl -
+  intermediate.txt: ocaml true impl -
+  intermediate.txt: melange false impl -
 
-Rebuilding the destinations in the opposite order changes the returned mode.
+Rebuilding the destinations in the opposite order preserves both modes.
 
   $ printf 'let value = 2\n' > fanout/input.txt
   $ DUNE_SANDBOX=none dune build --root fanout target.melange.ml
@@ -774,9 +778,10 @@ Rebuilding the destinations in the opposite order changes the returned mode.
   $ (cd fanout && merlin_configurations \
   >   _build/default/.merlin-conf/lib-fanout input.txt)
   input.txt: ocaml true impl -
+  input.txt: melange false impl -
 
-Changing a destination's source leaves the old copy mapping in place. Here the
-original input still selects OCaml even though only Melange uses it now.
+Changing a destination's source replaces its old mapping. Only Melange uses
+the original input now.
 
   $ printf 'let value = 3\n' > fanout/alternate.txt
   $ sed 's/intermediate\.txt target\.ml)/alternate.txt target.ml)/' \
@@ -785,7 +790,7 @@ original input still selects OCaml even though only Melange uses it now.
   $ DUNE_SANDBOX=none dune build --root fanout @check
   $ (cd fanout && merlin_configurations \
   >   _build/default/.merlin-conf/lib-fanout input.txt alternate.txt)
-  input.txt: ocaml true impl -
+  input.txt: melange false impl -
   alternate.txt: ocaml true impl -
 
 Compound dialect suffixes also lose their readers in conditional sources.

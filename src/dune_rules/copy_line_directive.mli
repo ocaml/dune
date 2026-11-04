@@ -1,7 +1,7 @@
 open Import
 
 module DB : sig
-  val follow_while : Path.Build.t -> f:(Path.Build.t -> 'a option) -> 'a option
+  val follow : Path.Build.t -> Path.Build.t list
 end
 
 val action : Context.t -> src:Path.t -> dst:Path.Build.t -> Action.t

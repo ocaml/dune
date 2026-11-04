@@ -505,9 +505,19 @@ module Processed = struct
       match find file with
       | Some config -> Some (Exact_or_copy, config)
       | None ->
-        (match Copy_line_directive.DB.follow_while file ~f:find with
-         | Some config -> Some (Exact_or_copy, config)
-         | None ->
+        (match Copy_line_directive.DB.follow file |> List.filter_map ~f:find with
+         | config :: rest ->
+           let same_source { module_config; kind; _ } =
+             String.equal config.module_config.unit_name module_config.unit_name
+             &&
+             match config.kind, kind with
+             | None, None | Some Impl, Some Impl | Some Intf, Some Intf -> true
+             | _ -> false
+           in
+           if allow_ambiguous || List.for_all rest ~f:same_source
+           then Some (Exact_or_copy, config)
+           else None
+         | [] ->
            (* Fallback to handle preprocessed files (where the preprocessor has
               the file extensison changed).
 

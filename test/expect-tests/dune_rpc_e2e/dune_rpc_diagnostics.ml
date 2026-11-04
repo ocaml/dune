@@ -996,7 +996,7 @@ let%expect_test "cyclic dependency error" =
   setup_diagnostics (fun client ->
     files
       [ "dune", "(executable (name foo))"
-      ; "foo.ml", "open Bar open Baz"
+      ; "foo.ml", "open Bar"
       ; "bar.ml", "open Baz"
       ; "baz.ml", "open Bar"
       ];
@@ -1023,7 +1023,11 @@ let%expect_test "cyclic dependency error" =
       ; [ [ "id"; "0" ]
         ; [ "message"
           ; [ "Verbatim"
-            ; "Cycle_error.E\n\
+            ; "Error: Dependency cycle between:\n\
+               -> transitive deps of dune__exe__Baz.impl in _build/default\n\
+               -> transitive deps of dune__exe__Bar.impl in _build/default\n\
+               -> required by transitive deps of dune__exe__Foo.impl in _build/default\n\
+               -> required by _build/default/foo.exe\n\
                "
             ]
           ]

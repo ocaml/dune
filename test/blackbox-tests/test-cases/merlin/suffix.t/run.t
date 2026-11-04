@@ -169,9 +169,9 @@ An interface-only module has an unambiguous fallback and no counterpart.
   alterexe.pp: ocaml true intf -
   alterexe: ocaml true intf -
 
-Compound dialect suffixes sharing their final extension lose their readers and
-cannot be distinguished by the filename fallback. The dialect preprocessing
-also replaces the compilation sources' dialect with OCaml.
+Compound dialect suffixes sharing their final extension retain their readers
+and distinguish source kinds in the filename fallback, even after dialect
+preprocessing replaces the compilation sources' dialect with OCaml.
 
   $ mkdir compound
   $ cat > compound/dune-project <<EOF
@@ -196,8 +196,8 @@ also replaces the compilation sources' dialect with OCaml.
   >   sample.unknown sample)
   sample.impl.ml: ocaml true impl sample.intf.ml
   sample.intf.ml: ocaml true intf sample.impl.ml
-  sample.pp.impl.ml: none
-  sample.pp.intf.ml: none
+  sample.pp.impl.ml: ocaml true impl sample.intf.ml
+  sample.pp.intf.ml: ocaml true intf sample.impl.ml
   sample.unknown: none
   sample: none
 
@@ -207,10 +207,10 @@ also replaces the compilation sources' dialect with OCaml.
   >   query_ocaml_merlin_pp "$PWD/compound/$file" --root compound \
   >     | grep -Eo '\(READER \([^)]*\)\)' || echo no-reader
   > done
-  sample.impl.ml: no-reader
-  sample.intf.ml: no-reader
-  sample.pp.impl.ml: no-reader
-  sample.pp.intf.ml: no-reader
+  sample.impl.ml: (READER (implementation))
+  sample.intf.ml: (READER (interface))
+  sample.pp.impl.ml: (READER (implementation))
+  sample.pp.intf.ml: (READER (interface))
 
 If preprocessing changes the complete suffix, the final extension can still
 identify a unique source kind.
@@ -227,8 +227,8 @@ identify a unique source kind.
   sample.impl.pp.ml: ocaml true impl sample.intf.mli
   sample.intf.pp.mli: ocaml true intf sample.impl.ml
 
-When one declared suffix ends with the other, even an exact interface lookup
-uses the implementation reader.
+When one declared suffix ends with the other, the longest match determines the
+source kind and reader.
 
   $ mkdir overlap
   $ cat > overlap/dune-project <<EOF
@@ -248,21 +248,20 @@ uses the implementation reader.
   $ (cd overlap && merlin_configurations \
   >   _build/default/.merlin-conf/lib-sample \
   >   sample.pp.alt sample.pp.long.alt)
-  sample.pp.alt: none
-  sample.pp.long.alt: none
+  sample.pp.alt: ocaml true impl sample.long.alt
+  sample.pp.long.alt: ocaml true intf sample.alt
   $ for file in sample.alt sample.long.alt sample.pp.alt sample.pp.long.alt; do
   >   printf '%s: ' "$file"
   >   query_ocaml_merlin_pp "$PWD/overlap/$file" --root overlap \
   >     | grep -Eo '\(READER \([^)]*\)\)'
   > done
   sample.alt: (READER (implementation))
-  sample.long.alt: (READER (implementation))
+  sample.long.alt: (READER (interface))
   sample.pp.alt: (READER (implementation))
-  sample.pp.long.alt: (READER (implementation))
+  sample.pp.long.alt: (READER (interface))
 
 Preprocessing inserts `.pp` before the final extension. The generated files
-are ambiguous to the typed lookup, and the preprocessed interface uses the
-implementation reader.
+retain their source kinds and select the corresponding readers.
 
   $ cat > overlap/dune <<EOF
   > (library
@@ -279,15 +278,15 @@ implementation reader.
   >   sample.alt sample.long.alt sample.pp.alt sample.long.pp.alt)
   sample.alt: ocaml true impl sample.long.alt
   sample.long.alt: ocaml true intf sample.alt
-  sample.pp.alt: none
-  sample.long.pp.alt: none
+  sample.pp.alt: ocaml true impl sample.long.alt
+  sample.long.pp.alt: ocaml true intf sample.alt
   $ for file in sample.pp.alt sample.long.pp.alt; do
   >   printf '%s: ' "$file"
   >   query_ocaml_merlin_pp "$PWD/overlap/_build/default/$file" --root overlap \
   >     | grep -Eo '\(READER \([^)]*\)\)'
   > done
   sample.pp.alt: (READER (implementation))
-  sample.long.pp.alt: (READER (implementation))
+  sample.long.pp.alt: (READER (interface))
 
 A literal `.pp` in a dialect suffix must not be discarded. The typed lookup
 omits a fallback that could mean either source kind.

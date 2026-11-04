@@ -12,6 +12,18 @@ let remove_extension file =
   Path.Build.relative dir basename
 ;;
 
+let source_extension ~for_ file =
+  match String.lsplit2 (Path.Build.basename file |> Filename.to_string) ~on:'.' with
+  | None -> ""
+  | Some (_, extension) ->
+    let extension =
+      match for_, String.lsplit2 extension ~on:'.' with
+      | Compilation_mode.Melange, Some ("melange", extension) -> extension
+      | (Ocaml | Melange), (Some _ | None) -> extension
+    in
+    "." ^ extension
+;;
+
 module Processed = struct
   (* The actual content of the merlin file as built by the [Unprocessed.process]
      function from the unprocessed info gathered through [gen_rules]. The first
@@ -260,11 +272,7 @@ module Processed = struct
           sources
           ~init
           ~f:(fun acc ({ path = src; kind; has_counterpart }, src_without_extension) ->
-            let reader =
-              String.Map.find
-                readers
-                (Filename.Extension.Or_empty.to_string (Path.Build.extension src))
-            in
+            let reader = String.Map.find readers (source_extension ~for_ src) in
             let config = { module_config; reader; kind = Some kind; has_counterpart } in
             (* Also index the path without its extension for preprocessed files. *)
             let fallback =
@@ -494,7 +502,7 @@ module Processed = struct
     to_sexp ~unit_name ~opens ~pp ~reader config
   ;;
 
-  let get_configuration { per_file_config; _ } ~file ~allow_ambiguous =
+  let get_configuration { per_file_config; for_; _ } ~file ~allow_ambiguous =
     let open Option.O in
     let* match_kind, ({ kind; _ } as module_config) =
       let find file =
@@ -529,14 +537,45 @@ module Processed = struct
            let+ ({ module_config = { sources; _ }; _ } as fallback) =
              Path.Build.Map.find per_file_config (remove_extension file)
            in
-           let extension =
-             Path.Build.extension file |> Filename.Extension.Or_empty.to_string
+           let basename = Path.Build.basename file |> Filename.to_string in
+           let _, matching_sources =
+             List.fold_left
+               sources
+               ~init:(0, [])
+               ~f:(fun ((length, matches) as acc) ({ path; _ } as source) ->
+                 let extension = source_extension ~for_ path in
+                 let extension =
+                   (* [Module.pped] inserts ".pp" before the final extension. *)
+                   match String.rsplit2 extension ~on:'.' with
+                   | None -> extension
+                   | Some (prefix, suffix) ->
+                     let preprocessed = prefix ^ ".pp." ^ suffix in
+                     if String.ends_with basename ~suffix:preprocessed
+                     then preprocessed
+                     else extension
+                 in
+                 if
+                   String.is_empty extension
+                   || not (String.ends_with basename ~suffix:extension)
+                 then acc
+                 else (
+                   let source_length = String.length extension in
+                   match Int.compare source_length length with
+                   | Lt -> acc
+                   | Eq -> length, source :: matches
+                   | Gt -> source_length, [ source ]))
            in
            let matching_sources =
-             List.filter sources ~f:(fun { path; _ } ->
-               String.equal
-                 extension
-                 (Path.Build.extension path |> Filename.Extension.Or_empty.to_string))
+             match matching_sources with
+             | _ :: _ -> matching_sources
+             | [] ->
+               let extension =
+                 Path.Build.extension file |> Filename.Extension.Or_empty.to_string
+               in
+               List.filter sources ~f:(fun { path; _ } ->
+                 String.equal
+                   extension
+                   (Path.Build.extension path |> Filename.Extension.Or_empty.to_string))
            in
            let config =
              match matching_sources with

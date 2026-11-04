@@ -259,3 +259,47 @@ uses the implementation reader.
   sample.long.alt: (READER (implementation))
   sample.pp.alt: (READER (implementation))
   sample.pp.long.alt: (READER (implementation))
+
+Preprocessing inserts `.pp` before the final extension. The generated files
+are ambiguous to the typed lookup, and the preprocessed interface uses the
+implementation reader.
+
+  $ cat > overlap/dune <<EOF
+  > (library
+  >  (name sample)
+  >  (preprocess (action (run cat %{input-file}))))
+  > EOF
+  $ echo 'let value = 1' > overlap/sample.alt
+  $ echo 'val value : int' > overlap/sample.long.alt
+  $ dune build --root overlap @check
+  $ cat overlap/_build/default/sample.long.pp.alt
+  val value : int
+  $ (cd overlap && merlin_configurations \
+  >   _build/default/.merlin-conf/lib-sample \
+  >   sample.alt sample.long.alt sample.pp.alt sample.long.pp.alt)
+  sample.alt: ocaml true impl sample.long.alt
+  sample.long.alt: ocaml true intf sample.alt
+  sample.pp.alt: none
+  sample.long.pp.alt: none
+  $ for file in sample.pp.alt sample.long.pp.alt; do
+  >   printf '%s: ' "$file"
+  >   query_ocaml_merlin_pp "$PWD/overlap/_build/default/$file" --root overlap \
+  >     | grep -Eo '\(READER \([^)]*\)\)'
+  > done
+  sample.pp.alt: (READER (implementation))
+  sample.long.pp.alt: (READER (implementation))
+
+A literal `.pp` in a dialect suffix must not be discarded. The typed lookup
+omits a fallback that could mean either source kind.
+
+  $ echo '(library (name sample))' > overlap/dune
+  $ mv overlap/sample.long.alt overlap/sample.pp.alt
+  $ sed 's/extension long\.alt/extension pp.alt/' \
+  >   overlap/dune-project > overlap/dune-project.new
+  $ mv overlap/dune-project.new overlap/dune-project
+  $ dune build --root overlap @check
+  $ (cd overlap && merlin_configurations \
+  >   _build/default/.merlin-conf/lib-sample \
+  >   sample.pp.alt sample.extra.pp.alt)
+  sample.pp.alt: ocaml true intf sample.alt
+  sample.extra.pp.alt: none

@@ -93,8 +93,8 @@ the preprocessor, and are advertised as well.
   ["PPX_DEPS","$TESTCASE_ROOT/_build/default/input.txt"]
 
 Some dependencies cannot be expressed as a list of files. In that case, Merlin's
-PPX cache cannot be invalidated correctly, so it should be disabled:
-`USE_PPX_CACHE` should not be emitted.
+PPX cache cannot be invalidated correctly, so it is disabled: `USE_PPX_CACHE` is
+not emitted.
 
   $ cat >> dune <<EOF
   > (rule
@@ -133,19 +133,11 @@ PPX cache cannot be invalidated correctly, so it should be disabled:
   >   | merlinJsonEntryWithConfigNames(["PPX_DEPS", "USE_PPX_CACHE"])
   > '
   With_alias_dep: _build/default/with_alias_dep
-  ["USE_PPX_CACHE"]
   With_alias_dep: _build/default/with_alias_dep.ml
-  ["USE_PPX_CACHE"]
   With_env_dep: _build/default/with_env_dep
-  ["USE_PPX_CACHE"]
   With_env_dep: _build/default/with_env_dep.ml
-  ["USE_PPX_CACHE"]
   With_universe_dep: _build/default/with_universe_dep
-  ["USE_PPX_CACHE"]
   With_universe_dep: _build/default/with_universe_dep.ml
-  ["USE_PPX_CACHE"]
-
-This is currently not the case: the cache is enabled for all of them.
 
 The value of an environment variable used in the PPX arguments is part of the
 PPX command line, which Merlin includes in its cache key, so the cache can stay

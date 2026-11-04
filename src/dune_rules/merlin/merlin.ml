@@ -83,7 +83,9 @@ module Processed = struct
     ; extensions : string option Ml_kind.Dict.t list
     ; indexes : Path.t list
     ; parameters : Module_name.t list
-    ; pp_deps : Path.Set.t
+    ; pp_deps : Path.Set.t option
+      (* [None] when the preprocessor dependencies cannot be expressed as a
+         set of files, in which case Merlin's PPX cache is disabled. *)
     }
 
   let path_set_repr = Repr.abstract Path.Set.to_dyn
@@ -113,8 +115,13 @@ module Processed = struct
           ~get:(fun t -> t.extensions)
       ; Repr.field "indexes" (Repr.list Path.repr) ~get:(fun t -> t.indexes)
       ; Repr.field "parameters" (Repr.list Module_name.repr) ~get:(fun t -> t.parameters)
-      ; Repr.field "pp_deps" path_set_repr ~get:(fun t -> t.pp_deps)
+      ; Repr.field "pp_deps" (Repr.option path_set_repr) ~get:(fun t -> t.pp_deps)
       ]
+  ;;
+
+  let union_pp_deps pp_deps1 pp_deps2 =
+    Option.both pp_deps1 pp_deps2
+    |> Option.map ~f:(fun (pp_deps1, pp_deps2) -> Path.Set.union pp_deps1 pp_deps2)
   ;;
 
   type source =
@@ -247,7 +254,7 @@ module Processed = struct
 
     let name = "merlin-conf"
     let sharing = false
-    let version = 16
+    let version = 17
 
     let repr =
       Repr.view Repr.string ~to_:(fun _ -> "Use [dune ocaml dump-dot-merlin] instead")
@@ -399,12 +406,15 @@ module Processed = struct
         ]
       | None -> []
     in
-    let pp_deps =
-      Path.Set.to_list_map
-        ~f:(fun pp_dep -> make_directive "PPX_DEPS" (Atom (serialize_path pp_dep)))
-        pp_deps
+    let ppx_cache =
+      match pp_deps with
+      | None -> []
+      | Some pp_deps ->
+        Path.Set.to_list_map
+          ~f:(fun pp_dep -> make_directive "PPX_DEPS" (Atom (serialize_path pp_dep)))
+          pp_deps
+        @ [ Sexp.List [ Atom "USE_PPX_CACHE" ] ]
     in
-    let use_ppx_cache = [ Sexp.List [ Atom "USE_PPX_CACHE" ] ] in
     Sexp.List
       (List.concat
          [ index_files
@@ -420,8 +430,7 @@ module Processed = struct
          ; unit_name
          ; suffixes
          ; reader
-         ; pp_deps
-         ; use_ppx_cache
+         ; ppx_cache
          ])
   ;;
 
@@ -469,8 +478,9 @@ module Processed = struct
     List.iter extensions ~f:(fun x ->
       Option.iter (get_ext x) ~f:(fun (impl, intf) ->
         printf "SUFFIX %s\n" (Printf.sprintf "%s %s" impl intf)));
-    Path.Set.iter pp_deps ~f:(fun s -> printf "PPX_DEPS %s\n" (serialize_path s));
-    print "USE_PPX_CACHE\n";
+    Option.iter pp_deps ~f:(fun pp_deps ->
+      Path.Set.iter pp_deps ~f:(fun s -> printf "PPX_DEPS %s\n" (serialize_path s));
+      print "USE_PPX_CACHE\n");
     (* We print all FLG directives as comments *)
     List.iter
       pp_configs
@@ -803,7 +813,7 @@ module Processed = struct
             , flags :: acc_flags
             , extensions @ acc_ext
             , indexes @ acc_indexes
-            , Path.Set.union pp_deps acc_pp_deps ))
+            , union_pp_deps pp_deps acc_pp_deps ))
       in
       Printf.printf
         "%s\n"
@@ -1066,6 +1076,25 @@ module Unprocessed = struct
   module Per_item_action_builder =
     Module_reference.Per_item.Make_monad_traversals (Action_builder)
 
+  (* Evaluates [builder] and returns the files it depends on, to be given to
+     Merlin as [PPX_DEPS]. Returns [None] when some dependencies cannot be
+     expressed as files, in which case Merlin's PPX cache must be disabled. *)
+  let ppx_deps_of_builder builder =
+    Action_builder.dyn_memo_deps
+      (let open Memo.O in
+       let+ x, facts = Action_builder.evaluate_and_collect_facts builder in
+       let only_files =
+         Dep.Map.for_alli facts ~f:(fun dep _ ->
+           match (dep : Dep.t) with
+           | File _ | File_selector _ -> true
+           | Env _ | Alias _ | Universe -> false)
+       in
+       let pp_deps =
+         Option.some_if only_files (Dep.Facts.paths facts ~expand_aliases:false)
+       in
+       Dep.Map.map facts ~f:ignore, (x, pp_deps))
+  ;;
+
   let pp_config t ctx ~expander =
     Per_item_action_builder.map
       t.config.preprocess
@@ -1138,20 +1167,15 @@ module Unprocessed = struct
     =
     let open Action_builder.O in
     let context = Super_context.context sctx in
-    let* pp_config, pp_facts =
+    let* pp_config, pp_deps =
       let env, _sandbox =
         Dep_conf_eval.unnamed
           Sandbox_config.no_special_requirements
           ~expander
           preprocessor_deps
       in
-      let prepared_pp = Action_builder.ignore env >>> pp_config t context ~expander in
-      Action_builder.dyn_memo_deps
-        (let open Memo.O in
-         let+ pp_config, facts = Action_builder.evaluate_and_collect_facts prepared_pp in
-         Dep.Map.map facts ~f:ignore, (pp_config, facts))
+      ppx_deps_of_builder (Action_builder.ignore env >>> pp_config t context ~expander)
     in
-    let pp_deps = Dep.Facts.paths pp_facts ~expand_aliases:false in
     let+ config, indexes_digest =
       let* stdlib_dir =
         Action_builder.of_memo

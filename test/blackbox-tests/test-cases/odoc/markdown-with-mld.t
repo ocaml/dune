@@ -38,19 +38,19 @@ Test markdown generation with package documentation (.mld files)
   $ dune build @doc-markdown
 
   $ find _build/default/_doc/_markdown -name '*.md' | sort
-  _build/default/_doc/_markdown/example/Example.md
+  _build/default/_doc/_markdown/example/example/Example.md
   _build/default/_doc/_markdown/example/index.md
   _build/default/_doc/_markdown/index.md
 
   $ ls _build/default/_doc/_markdown/example/
-  Example.md
+  example
   index.md
 
   $ dune build @doc-markdown
 
   $ dune build @doc @doc-markdown
   $ find _build/default/_doc -name 'index.*' | grep -E '(html|md)$' | sort
-  _build/default/_doc/_html/example/Example/index.html
+  _build/default/_doc/_html/example/example/Example/index.html
   _build/default/_doc/_html/example/index.html
   _build/default/_doc/_html/index.html
   _build/default/_doc/_markdown/example/index.md

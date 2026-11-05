@@ -18,30 +18,20 @@ module Paths = struct
   let odoc_support_dirname = "odoc.support"
   let root (context : Context.t) = Path.Build.relative (Context.build_dir context) "_doc"
 
-  let odoc_dir ctx parent_id =
-    root ctx ++ "_odoc" ++ Odoc_scope.Parent_id.to_string parent_id
+  let parent_id = function
+    | Lib lib -> Odoc_scope.lib_parent_id (Lib.Local.to_lib lib)
+    | Pkg pkg -> Odoc_scope.pkg_parent_id pkg
   ;;
 
-  let odocs ctx = function
-    | Lib lib -> odoc_dir ctx (Odoc_scope.lib_parent_id (Lib.Local.to_lib lib))
-    | Pkg pkg -> odoc_dir ctx (Odoc_scope.pkg_parent_id pkg)
-  ;;
-
+  let add_parent_id base m = base ++ Odoc_scope.Parent_id.to_string (parent_id m)
+  let odoc_root ctx = root ctx ++ "_odoc"
+  let odocs ctx m = add_parent_id (odoc_root ctx) m
   let html_root ctx = root ctx ++ "_html"
   let markdown_root ctx = root ctx ++ "_markdown"
   let odocl_root ctx = root ctx ++ "_odocls"
-
-  let add_pkg_lnu base m =
-    base
-    ++
-    match m with
-    | Pkg pkg -> Package.Name.to_string pkg
-    | Lib lib -> Odoc_scope.pkg_or_lnu (Lib.Local.to_lib lib)
-  ;;
-
-  let html ctx m = add_pkg_lnu (html_root ctx) m
-  let markdown ctx m = add_pkg_lnu (markdown_root ctx) m
-  let odocl ctx m = add_pkg_lnu (odocl_root ctx) m
+  let html ctx m = add_parent_id (html_root ctx) m
+  let markdown ctx m = add_parent_id (markdown_root ctx) m
+  let odocl ctx m = add_parent_id (odocl_root ctx) m
   let gen_mld_dir ctx pkg = root ctx ++ "_mlds" ++ Package.Name.to_string pkg
   let odoc_support ctx = html_root ctx ++ odoc_support_dirname
   let toplevel_index ctx = html_root ctx ++ "index.html"
@@ -209,7 +199,8 @@ module Mld : sig
 
   val create : path:Path.Build.t -> name:string -> t
   val odoc_file : doc_dir:Path.Build.t -> t -> Path.Build.t
-  val odoc_input : t -> Path.Build.t
+  val source : t -> Path.Build.t
+  val odoc_input : gen_mld_dir:Path.Build.t -> t -> Path.Build.t
 end = struct
   (** The [(documentation (files ...))] stanza allows with the [as] keyword to
       distinguish the input file and the path in the documentation. Here we do
@@ -226,7 +217,16 @@ end = struct
     Path.Build.relative doc_dir (sprintf "page-%s%s" name odoc_ext)
   ;;
 
-  let odoc_input { path; _ } = path
+  let source { path; _ } = path
+
+  (* With [--parent-id], odoc names the output after the basename of its
+     input, so a renamed page is compiled from a copy in [gen_mld_dir]. *)
+  let odoc_input ~gen_mld_dir { path; name } =
+    let basename = name ^ ".mld" in
+    if String.equal (Filename.to_string (Path.Build.basename path)) basename
+    then path
+    else Path.Build.relative gen_mld_dir basename
+  ;;
 end
 
 module Flags = struct
@@ -328,7 +328,7 @@ let compile_module
       (m : Module.t)
       ~includes:(file_deps, iflags)
       ~dep_graphs
-      ~pkg_or_lnu
+      ~parent_id
       ~for_
   =
   let odoc_file = module_odoc_file ~odoc_dir m in
@@ -354,9 +354,10 @@ let compile_module
           [ A "-I"
           ; Path doc_dir
           ; iflags
-          ; As [ "--pkg"; pkg_or_lnu ]
-          ; A "-o"
-          ; Target odoc_file
+          ; A "--output-dir"
+          ; Path (Path.build (Paths.odoc_root (Super_context.context sctx)))
+          ; As [ "--parent-id"; Odoc_scope.Parent_id.to_string parent_id ]
+          ; Hidden_targets [ odoc_file ]
           ; Dep (Path.build cmti_file)
           ]
       in
@@ -371,19 +372,21 @@ let compile_module
 ;;
 
 let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
+  let ctx = Super_context.context sctx in
   let odoc_file = Mld.odoc_file m ~doc_dir in
-  let odoc_input = Mld.odoc_input m in
+  let odoc_input = Mld.odoc_input m ~gen_mld_dir:(Paths.gen_mld_dir ctx pkg) in
   let run_odoc =
     run_odoc
       sctx
       ~dir:(Path.build doc_dir)
       "compile"
       ~quiet:false
-      ~flags_for:(Some odoc_input)
+      ~flags_for:(Some (Mld.source m))
       [ Command.Args.dyn includes
-      ; As [ "--pkg"; Package.Name.to_string pkg ]
-      ; A "-o"
-      ; Target odoc_file
+      ; A "--output-dir"
+      ; Path (Path.build (Paths.odoc_root ctx))
+      ; As [ "--parent-id"; Odoc_scope.Parent_id.to_string (Paths.parent_id (Pkg pkg)) ]
+      ; Hidden_targets [ odoc_file ]
       ; Dep (Path.build odoc_input)
       ]
   in
@@ -438,9 +441,6 @@ let link_odoc_rules sctx (odoc_file : Artifact.t) ~pkg ~requires =
 ;;
 
 let setup_library_odoc_rules sctx (local_lib : Lib.Local.t) =
-  (* Using the proper package name doesn't actually work since odoc assumes that
-     a package contains only 1 library *)
-  let pkg_or_lnu = Odoc_scope.pkg_or_lnu (Lib.Local.to_lib local_lib) in
   let ctx = Super_context.context sctx in
   let info = Lib.Local.info local_lib in
   let odoc_dir = Paths.odocs ctx (Lib local_lib) in
@@ -469,7 +469,7 @@ let setup_library_odoc_rules sctx (local_lib : Lib.Local.t) =
         ~obj_dir
         ~includes
         ~dep_graphs:(Compilation_context.dep_graphs cctx)
-        ~pkg_or_lnu
+        ~parent_id:(Paths.parent_id (Lib local_lib))
         ~for_
         m
     in
@@ -1152,6 +1152,21 @@ let default_index ~pkg entry_modules =
   Buffer.contents b
 ;;
 
+let copy_renamed_mlds ~sctx ~ctx pkg mlds =
+  (* The [files] field of the [documentation] stanza can rename a page, as in
+     [(foo.mld as index.mld)]. With [--parent-id], odoc does not accept [-o]
+     and names the output [page-<basename of the input>.odoc], so a renamed
+     page is compiled from a copy that has its new name. The copy lives in
+     [_doc/_mlds/<pkg>], whose rules are produced by [package_mlds]. *)
+  let gen_mld_dir = Paths.gen_mld_dir ctx pkg in
+  String.Map.values mlds
+  |> Memo.parallel_iter ~f:(fun (path, name) ->
+    let copy = Mld.odoc_input ~gen_mld_dir (Mld.create ~path ~name) in
+    if Path.Build.equal copy path
+    then Memo.return ()
+    else add_rule sctx (Action_builder.copy ~src:(Path.build path) ~dst:copy))
+;;
+
 let package_mlds =
   let memo =
     Memo.create
@@ -1166,6 +1181,7 @@ let package_mlds =
                Path.to_string_maybe_quoted (Path.build p))
            in
            let ctx = Super_context.context sctx in
+           let* () = copy_renamed_mlds ~sctx ~ctx pkg mlds in
            if String.Map.mem mlds "index"
            then Memo.return mlds
            else (

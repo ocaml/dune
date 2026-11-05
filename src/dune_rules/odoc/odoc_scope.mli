@@ -16,9 +16,6 @@ end
     [name@key] where [key] identifies its project if it is private. *)
 val lib_unique_name : Lib.t -> string
 
-(** Package of the library if it has one, its unique name otherwise. *)
-val pkg_or_lnu : Lib.t -> string
-
 (** {1 Parent ID}
 
     See odoc's [driver.mld]. *)

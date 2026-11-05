@@ -95,7 +95,7 @@ Dune does not pass -P and -L to odoc, so path references fail to resolve:
 Flat references are rendered as links, path references as plain code:
 
   $ grep -o '<p>.*</p>' \
-  >   _build/default/_doc/_html/my_pkg/Bar/index.html \
+  >   _build/default/_doc/_html/my_pkg/my_pkg.bar/Bar/index.html \
   >   _build/default/_doc/_html/my_pkg/index.html
-  _build/default/_doc/_html/my_pkg/Bar/index.html:<p>Flat reference: <a href="../Foo/index.html#val-x"><code>Foo.x</code></a>.</p><p>Module path reference: <code>/my_pkg.foo/Foo.x</code>.</p><p>Page path reference: <code>/my_pkg/guide</code>.</p><p>Current package reference: <code>//guide</code>.</p><p>Reference to a library that is not a dependency: <code>/my_pkg.baz/Baz.z</code>.</p>
+  _build/default/_doc/_html/my_pkg/my_pkg.bar/Bar/index.html:<p>Flat reference: <a href="../../my_pkg.foo/Foo/index.html#val-x"><code>Foo.x</code></a>.</p><p>Module path reference: <code>/my_pkg.foo/Foo.x</code>.</p><p>Page path reference: <code>/my_pkg/guide</code>.</p><p>Current package reference: <code>//guide</code>.</p><p>Reference to a library that is not a dependency: <code>/my_pkg.baz/Baz.z</code>.</p>
   _build/default/_doc/_html/my_pkg/index.html:<p>Flat page reference: <a href="guide.html"><code>guide</code></a>.</p><p>Page path reference: <code>/my_pkg/guide</code>.</p><p>Module path reference: <code>/my_pkg.bar/Bar</code>.</p><p>Private library reference: <code>/priv/Priv</code>.</p>

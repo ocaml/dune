@@ -20,12 +20,27 @@ independently of the compiler version reported to Dune.
   >     in
   >     Printf.printf "%s OCAMLRUNPARAM=%s CAMLRUNPARAM=%s MANPATH=%s\n"
   >       tool (get "OCAMLRUNPARAM") (get "CAMLRUNPARAM") (get "MANPATH");
-  >     let rec output = function
-  >       | "-o" :: path :: _ -> close_out (open_out path)
-  >       | _ :: rest -> output rest
-  >       | [] -> ()
+  >     let rec find flag = function
+  >       | f :: v :: _ when f = flag -> Some v
+  >       | _ :: rest -> find flag rest
+  >       | [] -> None
   >     in
-  >     output args
+  >     let touch path = close_out (open_out path) in
+  >     match find "-o" args, find "--output-dir" args, find "--parent-id" args with
+  >     | Some path, _, _ -> touch path
+  >     | None, Some dir, Some parent ->
+  >       let input =
+  >         List.find
+  >           (fun a ->
+  >             List.exists (Filename.check_suffix a) [".mld"; ".cmti"; ".cmt"])
+  >           args
+  >       in
+  >       let name = Filename.remove_extension (Filename.basename input) in
+  >       let name =
+  >         if Filename.check_suffix input ".mld" then "page-" ^ name else name
+  >       in
+  >       touch (Filename.concat (Filename.concat dir parent) (name ^ ".odoc"))
+  >     | _ -> ()
   >   end
   > EOF
   $ ocamlopt -o native/tool.exe native/tool.ml

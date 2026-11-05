@@ -99,6 +99,8 @@ the test and also introduce the runtest alias:
 
   $ dune show aliases
   all
+  check
+  compile_commands
   default
   fmt
   mytest.t
@@ -115,6 +117,8 @@ We can also show aliases in multiple directories at once:
   $ dune show aliases . subdir
   .:
   all
+  check
+  compile_commands
   default
   fmt
   mytest.t
@@ -142,6 +146,8 @@ Including those in the _build/ directory:
   $ dune show aliases . _build/default
   .:
   all
+  check
+  compile_commands
   default
   fmt
   mytest.t
@@ -155,6 +161,8 @@ Including those in the _build/ directory:
   
   _build/default:
   all
+  check
+  compile_commands
   default
   fmt
   mytest.t

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793895228433,
+  "lastUpdate": 1793895518182,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -482239,6 +482239,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5146581093866667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1a06f6c32c62461bdcc679c146deaa3b614070e4",
+          "message": "refactor(engine): register context types without redundant context records (#16892)\n\nBuild_config only uses each context's name and type, so retaining a full\nBuild_context.t alongside the type is redundant.\n\nStore Context_type.t directly in the context map, construct the registry\nin the\nrules layer, and derive build directories from context names when\nenumerating\ntargets. This also removes the extra memoized list-to-map conversion in\nBuild_config.set.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-06T00:01:40+08:00",
+          "tree_id": "aa86b02ae15d600a03e72ccd057c0c694f9bcdc1",
+          "url": "https://github.com/ocaml/dune/commit/1a06f6c32c62461bdcc679c146deaa3b614070e4"
+        },
+        "date": 1793895516256,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 55.793713965533335,
             "unit": "seconds"
           }
         ]

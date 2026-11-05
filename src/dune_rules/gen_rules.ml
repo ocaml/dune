@@ -621,13 +621,12 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
                 | None -> Memo.return Rules.empty
                 | Some st_dir -> gen_project_rules sctx st_dir
               and+ compile_commands_rules =
-                (* Generate compile_commands.json only for the merlin
-                   context at the context root *)
+                (* Set up workspace aliases only for the Merlin context. *)
                 match components with
                 | [] ->
                   let* sctx = sctx in
                   if Context.merlin (Super_context.context sctx)
-                  then Rules.collect_unit (fun () -> Compile_commands.gen_rules sctx)
+                  then Rules.collect_unit (fun () -> Compile_commands.setup_aliases sctx)
                   else Memo.return Rules.empty
                 | _ -> Memo.return Rules.empty
               and+ rules = rules in
@@ -705,7 +704,10 @@ let gen_rules ctx sctx ~dir components : Gen_rules.t Memo.t =
          let* sctx = sctx in
          Pp_spec_rules.gen_rules sctx rest)
   | [ ".dune" ] ->
-    has_rules ~dir Subdir_set.empty (fun () -> Configurator_rules.gen_rules ctx)
+    has_rules ~dir Subdir_set.empty (fun () ->
+      let+ () = Configurator_rules.gen_rules ctx
+      and+ () = Compile_commands.gen_rules sctx ~dir in
+      ())
   | parameterised_dir :: rest
     when String.equal parameterised_dir Dune_lang.Oxcaml.parameterised_dir ->
     let* sctx = sctx in

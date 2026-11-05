@@ -28,7 +28,7 @@ Create a library with both C and C++ stubs:
 
 Build compile_commands.json:
 
-  $ dune build compile_commands.json
+  $ dune build @compile_commands
 
 Check that both C and C++ files are present in the promoted file:
 

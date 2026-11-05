@@ -37,7 +37,7 @@ Create a library with foreign stubs that depends on provider:
 
 Build compile_commands.json:
 
-  $ dune build compile_commands.json
+  $ dune build @compile_commands
 
 Check that compile_commands.json includes -I for provider's headers:
 

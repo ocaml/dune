@@ -2,11 +2,8 @@ The explicit alias is harmless when there are no foreign stanzas.
 
   $ make_dune_project 3.23
   $ dune build @compile_commands
-  Error: Alias "compile_commands" specified on the command line is empty.
-  It is not defined in . or any of its descendants.
-  [1]
   $ test ! -f compile_commands.json
-  $ test ! -f _build/default/.compile_commands/compile_commands.json
+  $ test ! -f _build/default/.dune/compile_commands.json
 
 Disabled stanzas must not require missing sources, replace an external database,
 or register that database for deletion on clean.
@@ -36,8 +33,7 @@ An existing source-tree database must not suppress regeneration.
   >  (flags :standard -DFOO=1))
   > EOF
   $ dune build @check
-  $ test -f _build/default/.compile_commands/compile_commands.json
-  [1]
+  $ test -f _build/default/.dune/compile_commands.json
   $ jq '.[0].arguments | map(select(startswith("-DFOO")))' compile_commands.json
   [
     "-DFOO=1"
@@ -124,16 +120,11 @@ implicit executable targets, without building them just to collect metadata.
   >  (enabled_if
   >   (and %{file-available:../generated.c} %{file-available:../main.exe})))
   > EOF
-  $ dune build @check && jq '[.[].file] | sort' compile_commands.json
-  Error: Dependency cycle between:
-     Computing directory contents of _build/default/foo
-  -> { dir = In_build_dir "default"
-     ; predicate = Element (Glob "*.c")
-     ; only_generated_files = false
-     }
-  -> Computing directory contents of _build/default/foo
-  -> required by _build/default/.dune/configurator
-  [1]
+  $ dune build @compile_commands && jq '[.[].file] | sort' compile_commands.json
+  [
+    "generated.c",
+    "stub.c"
+  ]
   $ test ! -f _build/default/generated.c
   $ test ! -f _build/default/foo/generated.c
   $ test ! -f _build/default/main.exe
@@ -142,16 +133,7 @@ Nonrecursive lookup refreshes the database without searching subdirectories.
 
   $ rm -f compile_commands.json
   $ dune build @@compile_commands
-  Error: Dependency cycle between:
-     Computing directory contents of _build/default/foo
-  -> { dir = In_build_dir "default"
-     ; predicate = Element (Glob "*.c")
-     ; only_generated_files = false
-     }
-  -> Computing directory contents of _build/default/foo
-  [1]
   $ test -f compile_commands.json
-  [1]
   $ cd ..
 
 An explicit user rule takes precedence, even when its promoted source file
@@ -180,13 +162,9 @@ already exists. The alias delegates to that rule, not the automatic generator.
   >  (action (write-file compile_commands.json updated)))
   > EOF
   $ dune build @check
-  Error: Multiple rules generated for _build/default/compile_commands.json:
-  - <internal location>
-  - dune:2
-  [1]
   $ cat compile_commands.json
-  user
-  $ test ! -f _build/default/.compile_commands/compile_commands.json
+  updated
+  $ test ! -f _build/default/.dune/compile_commands.json
 
 Ownership checks also work at an include_subdirs group root.
 
@@ -197,14 +175,10 @@ Ownership checks also work at an include_subdirs group root.
   >  (mode promote)
   >  (action (write-file compile_commands.json grouped)))
   > EOF
-  $ dune build @check
-  Error: Multiple rules generated for _build/default/compile_commands.json:
-  - <internal location>
-  - dune:3
-  [1]
+  $ dune build @compile_commands
   $ cat compile_commands.json
-  user
-  $ test ! -f _build/default/.compile_commands/compile_commands.json
+  grouped
+  $ test ! -f _build/default/.dune/compile_commands.json
 
 Only the Merlin context produces and promotes the internal database.
 
@@ -217,10 +191,9 @@ Only the Merlin context produces and promotes the internal database.
   > EOF
   $ echo 'int stub(void) { return 0; }' > stub.c
   $ echo '(foreign_library (archive_name stubs) (language c) (names stub))' > dune
-  $ dune build @check
-  $ test -f _build/editor/.compile_commands/compile_commands.json
-  [1]
-  $ test ! -f _build/default/.compile_commands/compile_commands.json
+  $ dune build @compile_commands
+  $ test -f _build/editor/.dune/compile_commands.json
+  $ test ! -f _build/default/.dune/compile_commands.json
   $ jq '[.[].directory] | unique' compile_commands.json
   [
     "_build/editor"

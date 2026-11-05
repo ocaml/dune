@@ -486,3 +486,23 @@ Stat failures are ignored when sizing and trimming the cache.
   0
   $ test -L "$broken"
 
+Trim should also reduce cache files for legacy (pre-dune 3.22) layouts
+
+  $ reset
+  $ files="$cache/files/v4/00"
+  $ mkdir -p "$files"
+  $ printf artifact > "$files/$key"
+
+Ensure legacy cache files exist
+  $ legacy_cache="$PWD/.xdg-cache/dune"
+  $ legacy_files="$legacy_cache/files/v4/00"
+  $ mkdir -p "$legacy_files"
+  $ printf artifact > "$legacy_files/$key"
+  $ dune cache size --machine-readable
+  16
+
+  $ dune cache trim --size 0
+  Freed 16B (2 files removed)
+
+  $ ! test -f "$files/$key"
+  $ ! test -f "$legacy_files/$key"

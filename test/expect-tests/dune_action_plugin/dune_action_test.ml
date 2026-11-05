@@ -5,14 +5,6 @@ module Error = Dune_rpc_lwt.V1.Action_plugin.Error
 let run action = Lwt_main.run (Dune_rpc_lwt.V1.Action_plugin.run action)
 
 let%expect_test _ =
-  try run (fun dap -> read_file dap ~path:"/some/absolute/path" |> Lwt.map ignore) with
-  | Invalid_argument message ->
-    print_endline message;
-    [%expect
-      {| Path "/some/absolute/path" is absolute. All paths used with Dune_rpc.V1.Action_plugin must be relative. |}]
-;;
-
-let%expect_test _ =
   let action dap =
     let open Lwt.Syntax in
     let+ data = read_file dap ~path:"some_dir/some_file" in

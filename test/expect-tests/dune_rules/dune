@@ -3,11 +3,13 @@
  (inline_tests)
  (libraries
   stdune
+  dune_digest
   dune_engine
   dune_rules
   dune_tests_common
   fiber
   memo
+  predicate_lang
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config

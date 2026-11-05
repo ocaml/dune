@@ -22,7 +22,7 @@ let stdlib_lib ctx =
 let lib_equal l1 l2 = Lib.compare l1 l2 |> Ordering.is_eq
 
 let is_public lib =
-  match Lib.Local.to_lib lib |> Lib.info |> Lib_info.status with
+  match Lib.Local.info lib |> Lib_info.status with
   | Installed_private _ -> false
   | Installed _ -> true
   | Public _ -> true
@@ -2043,5 +2043,5 @@ let gen_rules sctx ~dir rest =
   | [ "odoc" ] -> has_rules (setup_odoc_rules sctx ~all)
   | [ "index" ] -> has_rules (setup_all_index_rules sctx ~all)
   | [ "html"; "docs" ] -> has_rules (setup_all_html_rules sctx ~all)
-  | _ -> Memo.return (Gen_rules.redirect_to_parent Gen_rules.Rules.empty)
+  | _ -> Memo.return (Gen_rules.Redirect_to_parent Gen_rules.Rules.empty)
 ;;

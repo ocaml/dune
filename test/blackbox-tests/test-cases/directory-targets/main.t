@@ -528,3 +528,23 @@ Conflict between a target directory and a source file.
   - dune:1
   Hint: rm -f output
   [1]
+
+Directories declared as file targets are rejected, even when empty.
+
+  $ mkdir file-target-kinds
+  $ cd file-target-kinds
+  $ make_dune_project 3.25
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (targets foo empty)
+  >  (action (bash "mkdir foo empty; echo contents > foo/bar")))
+  > EOF
+  $ dune build foo empty
+  File "dune", lines 1-3, characters 0-87:
+  1 | (rule
+  2 |  (targets foo empty)
+  3 |  (action (bash "mkdir foo empty; echo contents > foo/bar")))
+  Error: Error trying to read targets after a rule was run:
+  - empty: Directory produced for a file target. Use (dir empty).
+  - foo: Directory produced for a file target. Use (dir foo).
+  [1]

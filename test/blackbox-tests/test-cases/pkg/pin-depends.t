@@ -14,7 +14,7 @@ Demonstrate our support for pin-depends.
   >   dune_pkg_lock_normalized && {
   >     local pkg="${default_lock_dir}/bar.1.0.0.pkg"
   >     grep version $pkg
-  >     grep dev $pkg
+  >     grep -F '(dev)' $pkg
   >     print_source "bar.1.0.0"
   >   } 
   > }

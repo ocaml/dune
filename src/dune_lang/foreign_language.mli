@@ -3,6 +3,7 @@ open Import
 type t =
   | C
   | Cxx
+  | Asm
 
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
@@ -12,7 +13,9 @@ val to_dyn : t -> Dyn.t
 val proper_name : t -> string
 
 module Dict : sig
-  type language := t
+  type language =
+    | C
+    | Cxx
 
   type 'a t =
     { c : 'a

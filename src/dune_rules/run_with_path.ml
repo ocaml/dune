@@ -194,7 +194,7 @@ module Spec = struct
     }
   ;;
 
-  let is_useful_to ~memoize:_ = true
+  let is_useful_to_memoize = true
 
   let encode { prog; args; ocamlfind_destdir; pkg = _; depexts = _ } path _ : Sexp.t =
     let prog : Sexp.t =
@@ -240,7 +240,7 @@ module Spec = struct
         let bin_folder = Temp.create Dir ~prefix:"dune" ~suffix:"self-in-path" in
         let src = Path.of_string Sys.executable_name in
         let dst = Path.relative bin_folder "dune" in
-        Io.portable_symlink ~src ~dst;
+        Io.portable_symlink ~overwrite:true ~src ~dst;
         bin_folder
       in
       let env =

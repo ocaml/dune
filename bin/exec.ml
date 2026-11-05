@@ -200,7 +200,8 @@ let step ~prog ~args ~common ~no_rebuild ~context ~on_exit () =
   and* args =
     Memo.parallel_map args ~f:(Cmd_arg.expand ~root:(Common.root common) ~sctx)
   in
-  let* env = Super_context.context_env sctx in
+  let dir = dir_of_context common sctx in
+  let* env = Super_context.context_env_by_dir ~dir sctx in
   let env = extend_with_staging_env context env in
   Memo.of_non_reproducible_fiber
   @@ Dune_engine.Process.run_inherit_std_in_out
@@ -220,7 +221,7 @@ let step ~prog ~args ~common ~no_rebuild ~context ~on_exit () =
    directory lock.
 
    Returns the absolute path to the executable. *)
-let build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog =
+let build_prog_via_rpc_if_necessary ~dir ~config ~no_rebuild builder lock_held_by prog =
   match Filename.analyze_program_name prog with
   | In_path ->
     (* This case is reached if [dune exec] is passed the name of an
@@ -263,10 +264,11 @@ let build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog =
         in
         let targets = Rpc.Rpc_common.prepare_targets [ target ] in
         let open Fiber.O in
-        Rpc.Rpc_common.fire_request
+        Rpc.Rpc_common.fire_request_with_progress
           ~name:"build"
           ~wait:false
           ~lock_held_by
+          ~config
           builder
           Dune_rpc_impl.Decl.build
           targets
@@ -289,7 +291,15 @@ let run_prepared_exec { prog; args; env } ~(root : Workspace_root.t) =
   Util.restore_cwd_and_execve root prog args env
 ;;
 
-let prepare_exec_via_rpc_server ~common ~prog ~args ~no_rebuild builder lock_held_by =
+let prepare_exec_via_rpc_server
+      ~common
+      ~config
+      ~prog
+      ~args
+      ~no_rebuild
+      builder
+      lock_held_by
+  =
   let open Fiber.O in
   let ensure_terminal v =
     match (v : Cmd_arg.t) with
@@ -312,7 +322,7 @@ let prepare_exec_via_rpc_server ~common ~prog ~args ~no_rebuild builder lock_hel
         (Context_name.build_dir context)
         (Common.prefix_target common "")
     in
-    build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog
+    build_prog_via_rpc_if_necessary ~dir ~config ~no_rebuild builder lock_held_by prog
   in
   let env = extend_with_staging_env context Env.initial in
   { prog; args; env }
@@ -347,7 +357,8 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
         let open Memo.O in
         let* setup = Util.setup () in
         let sctx = Dune_rules.Main.find_scontext_exn setup ~name:context in
-        let* env = Super_context.context_env sctx
+        let dir = dir_of_context common sctx in
+        let* env = Super_context.context_env_by_dir ~dir sctx
         and* prog =
           let* prog = Cmd_arg.expand ~root:(Common.root common) ~sctx prog in
           get_path_and_build_if_necessary common sctx ~no_rebuild ~prog >>| Path.to_string
@@ -395,7 +406,14 @@ let term : unit Term.t =
        let prepared_exec =
          Scheduler_setup.go_without_rpc_server ~common ~config
          @@ fun () ->
-         prepare_exec_via_rpc_server ~common ~prog ~args ~no_rebuild builder lock_held_by
+         prepare_exec_via_rpc_server
+           ~common
+           ~config
+           ~prog
+           ~args
+           ~no_rebuild
+           builder
+           lock_held_by
        in
        run_prepared_exec prepared_exec ~root:(Common.root common))
   | Ok () -> exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild

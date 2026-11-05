@@ -10,6 +10,7 @@ module Info : sig
     | Source_file_copy of Path.Source.t
 
   val of_loc_opt : Loc.t option -> t
+  val loc : t -> dir:Path.Build.t -> Loc.t
 end
 
 module Promote : sig
@@ -79,10 +80,6 @@ val set_action : t -> Action.Full.t Action_builder.t -> t
 val loc : t -> Loc.t
 
 module Anonymous_action : sig
-  type rule := t
-
-  (* jeremiedimino: this type correspond to a subset of [Rule.t]. We should
-     eventually share the code. *)
   type t =
     { action : Action.Full.t Action_builder.t
     ; loc : Loc.t
@@ -93,18 +90,4 @@ module Anonymous_action : sig
 
   val loc : t -> Loc.t
   val make : ?loc:Loc.t -> dir:Path.Build.t -> Action.Full.t Action_builder.t -> t
-  val info : t -> Info.t
-  val to_rule : targets:Targets.t -> ?mode:Mode.t -> t -> rule
-
-  module Evaluated : sig
-    type anon := t
-
-    type t =
-      { anon : anon
-      ; action : Action.Full.t
-      ; facts : Dep.Facts.t
-      }
-
-    val make : action:Action.Full.t -> facts:Dep.Facts.t -> anon -> t
-  end
 end

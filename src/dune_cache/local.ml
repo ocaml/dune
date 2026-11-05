@@ -136,8 +136,7 @@ module Artifacts = struct
     let of_sexp = function
       | Sexp.List [ List (Atom "metadata" :: _metadata); List (Atom "files" :: entries) ]
         ->
-        let entries = List.map entries ~f:Metadata_entry.of_sexp in
-        (match Result.List.all entries with
+        (match Result.List.map entries ~f:Metadata_entry.of_sexp with
          | Ok entries -> Ok { entries }
          | Error e -> Error e)
       | _ -> Error (Failure "Cannot parse cache metadata")

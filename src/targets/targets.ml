@@ -92,6 +92,13 @@ module Validated = struct
     ; dirs : Filename.Set.t
     }
 
+  let file path =
+    { root = Path.Build.parent_exn path
+    ; files = Filename.Set.singleton (Path.Build.basename path)
+    ; dirs = Filename.Set.empty
+    }
+  ;;
+
   let iter { root; files; dirs } ~file ~dir =
     Filename.Set.iter files ~f:(fun fn -> file (Path.Build.relative_fname root fn));
     Filename.Set.iter dirs ~f:(fun dn -> dir (Path.Build.relative_fname root dn))
@@ -140,11 +147,7 @@ let validate { files; dirs } =
   if Path.Build.Array.Set.length files = 1 && Path.Build.Array.Set.is_empty dirs
   then (
     let first = Option.value_exn first in
-    Validation_result.Valid
-      { Validated.root = Path.Build.parent_exn first
-      ; files = Filename.Set.singleton (Path.Build.basename first)
-      ; dirs = Filename.Set.empty
-      })
+    Validation_result.Valid (Validated.file first))
   else (
     let first =
       match first with

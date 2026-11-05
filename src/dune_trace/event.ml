@@ -548,6 +548,7 @@ let process_start
       ~categories
       ~targets
       ~queued
+      ~job_slots
   =
   let args =
     let always =
@@ -555,6 +556,7 @@ let process_start
       ; "pid", Arg.int (Pid.to_int pid)
       ; "categories", Arg.list (List.map categories ~f:Arg.string)
       ; "queued", Arg.span queued
+      ; "job_slots", Arg.int job_slots
       ]
     in
     let extended =

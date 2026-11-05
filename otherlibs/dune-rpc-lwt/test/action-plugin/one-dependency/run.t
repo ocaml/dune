@@ -46,6 +46,15 @@ client.
   $ test -f connection
   $ action_id=$(sed -n 1p connection)
   $ dune_rpc=$(sed -n 2p connection)
+
+An unknown action ID is rejected without disrupting the active action. The
+subsequent request with the real ID must still initialize successfully.
+
+  $ (cd _build/default &&
+  >  env DUNE_DYNAMIC_RUN_ACTION_ID=missing-action DUNE_RPC="$dune_rpc" \
+  >    ./foo.exe initialize)
+  dune rpc error: unknown dynamic action "missing-action"
+  [1]
   $ (cd _build/default &&
   >  env DUNE_DYNAMIC_RUN_ACTION_ID="$action_id" DUNE_RPC="$dune_rpc" \
   >    ./foo.exe initialize)
@@ -53,3 +62,62 @@ client.
   $ wait "$build_pid"
   $ cat _build/default/held-target
   held
+
+A plugin holds its job slot while waiting for dependencies. Inputs that need
+subprocesses rather than built-in Dune actions currently deadlock at -j 1.
+
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target scheduled-input)
+  >  (action (run sh -c "printf scheduled > scheduled-input")))
+  > (rule
+  >  (alias scheduled)
+  >  (action (dynamic-run ./foo.exe read scheduled-input)))
+  > (rule
+  >  (target parallel-first)
+  >  (action (run sh -c "printf first > parallel-first")))
+  > (rule
+  >  (target parallel-second)
+  >  (action (run sh -c "printf second > parallel-second")))
+  > (rule
+  >  (alias parallel)
+  >  (action
+  >   (dynamic-run ./foo.exe parallel parallel-first parallel-second)))
+  > (rule
+  >  (target nested-leaf)
+  >  (action (run sh -c "printf leaf > nested-leaf")))
+  > (rule
+  >  (target nested-input)
+  >  (action
+  >   (progn
+  >    (dynamic-run ./foo.exe read nested-leaf)
+  >    (write-file nested-input nested))))
+  > (rule
+  >  (alias nested)
+  >  (action (dynamic-run ./foo.exe read nested-input)))
+  > EOF
+
+Ignore signal-handler output when terminating a deadlocked build, but preserve
+all diagnostics when the build exits without timing out.
+
+  $ build_with_timeout() {
+  >   output=$(mktemp)
+  >   status=0
+  >   timeout 3 dune build "$@" >"$output" 2>&1 || status=$?
+  >   if [ "$status" -ne 124 ]; then cat "$output"; fi
+  >   rm "$output"
+  >   return "$status"
+  > }
+
+  $ build_with_timeout -j 1 @scheduled
+  [124]
+
+Overlapping requests must lend only one slot, not one slot per request.
+
+  $ build_with_timeout -j 1 @parallel
+  [124]
+
+Nested dynamic actions must be able to lend their slots independently.
+
+  $ build_with_timeout -j 1 @nested
+  [124]

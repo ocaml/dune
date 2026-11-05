@@ -18,14 +18,23 @@ Minimal RPC watch shutdown after an RPC build.
   shutdown stop
   accept stop close
 
-RPC build requests are cancelled if their client connection goes away.
+RPC build requests are cancelled if their client connection goes away. Exercise
+an unsandboxed action using a language version before user rules required
+sandboxing.
 
+  $ make_directory_targets_project 3.22
   $ cancelled="$(mktemp -u)"
   $ cat > dune <<EOF
   > (rule
-  >  (target slow)
+  >  (targets slow partial-file (dir partial-dir))
+  >  (deps (sandbox none))
   >  (action
-  >   (bash "trap \"touch '$cancelled'; exit 0\" TERM; while true; do sleep 1; done")))
+  >   (progn
+  >    (write-file slow partial)
+  >    (write-file partial-file partial)
+  >    (bash "mkdir -p partial-dir; echo partial > partial-dir/output;
+  >           trap \"touch '$cancelled'; exit 0\" TERM;
+  >           while true; do sleep 1; done"))))
   > (rule
   >  (target fast)
   >  (action (with-stdout-to fast (echo fast))))
@@ -34,8 +43,20 @@ RPC build requests are cancelled if their client connection goes away.
   $ start_dune
   $ "$timeout" 1 dune rpc build --wait slow > cancelled.out 2>&1
   [124]
-  $ wait_for_file "$cancelled"
+  $ with_timeout dune_cmd wait-for-file-to-appear "$cancelled"
   $ build_quiet fast
+
+Cancellation removes partial outputs, while a subsequent successful rule keeps
+its completed output.
+
+  $ dune_cmd exists _build/default/slow
+  false
+  $ dune_cmd exists _build/default/partial-file
+  false
+  $ dune_cmd exists _build/default/partial-dir
+  false
+  $ cat _build/default/fast
+  fast
   $ stop_dune_quiet
 
 Concurrent RPC build requests both complete.
@@ -90,16 +111,28 @@ Shutdown cancels pending RPC build requests.
   $ wait_for_pid_to_exit_with_timeout "$SLOW" 200 || (cat slow.out; false)
   $ wait "$SLOW" || true
 
-RPC build failures are reported to the client.
+RPC build failures are reported to the client. Failed unsandboxed actions have
+their partial outputs removed too.
 
   $ cat > dune <<EOF
   > (rule
-  >  (target fail)
-  >  (action (bash "exit 1")))
+  >  (targets fail failed-file (dir failed-dir))
+  >  (deps (sandbox none))
+  >  (action
+  >   (progn
+  >    (write-file fail partial)
+  >    (write-file failed-file partial)
+  >    (bash "mkdir -p failed-dir; echo partial > failed-dir/output; exit 1"))))
   > EOF
 
   $ start_dune
   $ dune rpc build --wait fail
   Failure
   [1]
+  $ dune_cmd exists _build/default/fail
+  false
+  $ dune_cmd exists _build/default/failed-file
+  false
+  $ dune_cmd exists _build/default/failed-dir
+  false
   $ stop_dune_quiet

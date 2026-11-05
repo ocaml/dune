@@ -251,6 +251,161 @@ Test metadata for multiple file targets produced by the same rule.
     ]
   }
 
+A zero or negative file-trimming goal must still collect broken metadata,
+without deleting unused artifacts. Directory-only metadata is not broken.
+
+  $ reset
+  $ cache="$PWD/.xdg-cache/dune/db"
+  $ key=00000000000000000000000000000000
+  $ for version in v3 v4; do
+  >   mkdir -p "$cache/files/$version/00"
+  >   printf artifact > "$cache/files/$version/00/$key"
+  > done
+  $ for version in v3 v4 v5; do
+  >   mkdir -p "$cache/meta/$version/00"
+  >   printf '((8:metadata)(5:files(3:dir5:<dir>)))' > "$cache/meta/$version/00/$key"
+  >   printf broken > "$cache/meta/$version/00/00000000000000000000000000000001"
+  > done
+  $ dune cache trim --trimmed-size 0
+  Freed 18B (3 files removed)
+  $ dune cache trim --size 1MB
+  Freed 0B (0 files removed)
+  $ dune cache size --machine-readable
+  16
+  $ find "$cache/meta" -type f | dune_cmd count-lines
+  3
+
+Ignored filenames and shard directories must not contribute to the cache size.
+
+  $ mkdir -p "$cache/files/v4/not-a-shard"
+  $ printf ignored > "$cache/files/v4/not-a-shard/$key"
+  $ printf ignored > "$cache/files/v4/00/not-a-digest"
+  $ dune cache size --machine-readable
+  16
+
+Trimming more than the total unused size removes everything, including files
+of size zero. Metadata containing only directories survives.
+
+  $ touch "$cache/files/v4/00/00000000000000000000000000000002"
+  $ dune cache trim --trimmed-size 1MB
+  Freed 16B (3 files removed)
+  $ find "$cache/meta" -type f | dune_cmd count-lines
+  3
+  $ dune cache size --machine-readable
+  0
+
+A goal equal to the unused byte total does not necessarily remove every file:
+older zero-byte artifacts precede the last positive-size artifact, while newer
+zero-byte artifacts survive after the goal is met.
+
+  $ reset
+  $ mkdir -p "$cache/files/v4/00"
+  $ touch "$cache/files/v4/00/00000000000000000000000000000000"
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ printf artifact > "$cache/files/v4/00/00000000000000000000000000000001"
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ touch "$cache/files/v4/00/00000000000000000000000000000002"
+  $ dune cache trim --trimmed-size 8B
+  Freed 8B (2 files removed)
+  $ find "$cache/files" -type f | dune_cmd count-lines
+  1
+  $ dune cache trim --trimmed-size 1B
+  Freed 0B (1 files removed)
+
+Check metadata validation, repeated references, and hexadecimal case across
+all supported versions. Extra fields in the metadata header are supported.
+
+  $ reset
+  $ lower=abcdef0123456789abcdef0123456789
+  $ upper=ABCDEF0123456789ABCDEF0123456789
+  $ for version in v3 v4; do
+  >   mkdir -p "$cache/files/$version/ab"
+  >   printf artifact > "$cache/files/$version/ab/$lower"
+  > done
+  $ write_metadata () {
+  >   for version in v3 v4 v5; do
+  >     mkdir -p "$cache/meta/$version/00"
+  >     name=$(printf '%032d' "$1")
+  >     printf '%s' "$2" > "$cache/meta/$version/00/$name"
+  >   done
+  > }
+  $ write_metadata 1 '((8:metadata)(5:files))'
+  $ write_metadata 2 '((8:metadata)(5:files(3:dir5:<dir>)))'
+  $ write_metadata 3 "((8:metadata)(5:files(1:a32:$lower)))"
+  $ write_metadata 4 "((8:metadata)(5:files(1:a32:$lower)(1:b32:$lower)(3:dir5:<dir>)))"
+  $ write_metadata 5 "((8:metadata(5:extra))(5:files(1:a32:$lower)))"
+  $ write_metadata 6 "((8:metadata)(5:files(6:dir/up32:$upper)))"
+  $ write_metadata 7 'broken'
+  $ write_metadata 8 ''
+  $ write_metadata 9 '((8:metadata)(5:files))()'
+  $ write_metadata 10 '((8:metadata)(5:files(1:a3:abc)))'
+  $ write_metadata 11 '((8:metadata)(5:files(1:a32:zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz)))'
+  $ write_metadata 12 '((8:metadata)(5:files(1:a)))'
+  $ write_metadata 13 '((8:not-meta)(5:files))'
+  $ write_metadata 14 "((8:metadata)(5:files(1:a32:$lower(5:extra))))"
+  $ write_metadata 15 "((8:metadata)(5:files(1:a32:$lower)(3:bad)))"
+  $ find "$cache/meta" -type f | dune_cmd count-lines
+  45
+  $ dune cache trim --trimmed-size 0 > /dev/null
+  $ find "$cache/meta" -type f | dune_cmd count-lines
+  18
+
+The next collection must notice references to artifacts deleted by trimming.
+
+  $ dune cache trim --trimmed-size 1MB > /dev/null
+  $ find "$cache/meta" -type f | dune_cmd count-lines
+  6
+
+Artifact inventories must keep file versions separate, including when the same
+digest exists in both. Keep a live v3 artifact while evicting its unused v4 copy;
+v3 metadata survives, but v4 and v5 metadata must be collected.
+
+  $ reset
+  $ for version in v3 v4; do
+  >   mkdir -p "$cache/files/$version/00"
+  >   printf artifact > "$cache/files/$version/00/$key"
+  > done
+  $ ln "$cache/files/v3/00/$key" live-artifact
+  $ for version in v3 v4 v5; do
+  >   mkdir -p "$cache/meta/$version/00"
+  >   printf '((8:metadata)(5:files(1:a32:%s)))' "$key" > "$cache/meta/$version/00/$key"
+  > done
+  $ dune cache trim --size 0 > /dev/null
+  $ for version in v3 v4 v5; do
+  >   find "$cache/meta/$version" -type f | dune_cmd count-lines
+  > done
+  1
+  0
+  0
+
+A later collection must notice that the previously live artifact is now unused.
+
+  $ rm live-artifact
+  $ dune cache trim --size 0 > /dev/null
+  $ find "$cache/meta" -type f | dune_cmd count-lines
+  0
+  $ dune cache size --machine-readable
+  0
+
+Entry-name validation accepts both hexadecimal cases, but rejects wrong lengths
+and non-hexadecimal characters. The two valid names remain distinct even on a
+case-insensitive filesystem.
+
+  $ reset
+  $ mkdir -p "$cache/files/v4/ab"
+  $ printf x > "$cache/files/v4/ab/abcdef0123456789abcdef0123456789"
+  $ printf xx > "$cache/files/v4/ab/ABCDEF0123456789ABCDEF0123456788"
+  $ printf ignored > "$cache/files/v4/ab/$(printf '%031d' 0)"
+  $ printf ignored > "$cache/files/v4/ab/$(printf '%033d' 0)"
+  $ printf ignored > "$cache/files/v4/ab/zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+  $ printf ignored > "$cache/files/v4/ab/ABCDEF0123456789ABCDEF012345678G"
+  $ dune cache size --machine-readable
+  3
+  $ dune cache trim --size 0
+  Freed 3B (2 files removed)
+  $ find "$cache/files/v4/ab" -type f | dune_cmd count-lines
+  4
+
 Test metadata for directory targets, which are stored with no digest.
 
   $ reset
@@ -277,4 +432,57 @@ Test metadata for directory targets, which are stored with no digest.
       }
     ]
   }
+
+Trim to a nonzero size counts only unused artifacts across versions and evicts
+the oldest first.
+
+  $ reset
+  $ old="$cache/files/v3/00/$key"
+  $ recent="$cache/files/v4/11/11111111111111111111111111111111"
+  $ pinned="$cache/files/v4/22/22222222222222222222222222222222"
+  $ mkdir -p "$(dirname "$old")" "$(dirname "$recent")" "$(dirname "$pinned")"
+  $ printf 1234 > "$old"
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ printf 123456 > "$recent"
+  $ printf 12345678 > "$pinned"
+  $ ln "$pinned" pinned
+  $ dune cache size --machine-readable
+  10
+
+A limit at or above the current overhead leaves artifacts alone, but still
+collects broken metadata.
+
+  $ broken="$cache/meta/v5/00/$key"
+  $ mkdir -p "$(dirname "$broken")"
+  $ printf bad > "$broken"
+  $ dune cache trim --size 12B
+  Freed 3B (1 files removed)
+  $ dune cache trim --size 10B
+  Freed 0B (0 files removed)
+  $ dune cache trim --size 6B
+  Freed 4B (1 files removed)
+  $ dune_cmd exists "$old"
+  false
+  $ dune_cmd exists "$recent"
+  true
+  $ dune cache size --machine-readable
+  6
+  $ dune_cmd stat hardlinks "$pinned"
+  2
+
+Stat failures are ignored when sizing and trimming the cache.
+
+  $ reset
+  $ files="$cache/files/v4/00"
+  $ broken="$files/$(printf '%032x' 1)"
+  $ mkdir -p "$files"
+  $ printf artifact > "$files/$key"
+  $ ln -s missing "$broken"
+  $ dune cache size --machine-readable
+  8
+  $ dune cache trim --trimmed-size 1B
+  Freed 8B (1 files removed)
+  $ dune cache size --machine-readable
+  0
+  $ test -L "$broken"
 

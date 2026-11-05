@@ -77,7 +77,7 @@ in
             oxcaml = oxcamlFlake.packages.${pkgs.stdenv.hostPlatform.system}.default;
           in
           oxcaml.overrideAttrs (old: {
-            NIX_CFLAGS_COMPILE = "-std=gnu17";
+            CFLAGS = (old.CFLAGS or "") + " -std=gnu17";
             passthru = (old.passthru or { }) // pkgs.ocamlPackages.ocaml.passthru;
             meta = (old.meta or { }) // pkgs.ocamlPackages.ocaml.meta;
             nativeBuildInputs = [

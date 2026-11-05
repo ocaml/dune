@@ -9,31 +9,23 @@ let cache_path ~dir ~hex =
   dir / two_first_chars / hex
 ;;
 
-(* List all entries in a given storage directory. *)
 let list_entries ~storage =
-  let open Result.O in
+  let readdir where = Path.readdir_unsorted where |> Result.value ~default:[] in
   let entries dir =
     match
       let dir_s = Filename.to_string dir in
       String.length dir_s = 2 && String.for_all ~f:Char.is_lowercase_hex dir_s
     with
-    | false ->
-      (* Ignore directories whose name isn't a two-character hex value. *)
-      Ok []
+    | false -> []
     | true ->
       let dir = Path.relative_fname storage dir in
-      Path.readdir_unsorted dir
-      >>| List.filter_map ~f:(fun entry_name ->
-        match Digest.from_hex (Filename.to_string entry_name) with
-        | None ->
-          (* Ignore entries whose names are not hex values. *)
-          None
-        | Some digest -> Some (Path.relative_fname dir entry_name, digest))
+      readdir dir
+      |> List.filter_map ~f:(fun entry_name ->
+        Filename.to_string entry_name
+        |> Digest.from_hex
+        |> Option.map ~f:(fun digest -> Path.relative_fname dir entry_name, digest))
   in
-  match Path.readdir_unsorted storage >>= Result.List.concat_map ~f:entries with
-  | Ok res -> res
-  | Error (ENOENT, _, _) -> []
-  | Error unix_error -> User_error.raise [ Unix_error.Detailed.pp unix_error ]
+  readdir storage |> List.to_seq |> Seq.concat_map ~f:(fun x -> List.to_seq (entries x))
 ;;
 
 module Versioned = struct
@@ -41,8 +33,15 @@ module Versioned = struct
     lazy (Lazy.force build_cache_dir / "meta" / Version.Metadata.to_string t)
   ;;
 
-  let file_storage_dir t =
-    lazy (Lazy.force build_cache_dir / "files" / Version.File.to_string t)
+  let file_storage_dir =
+    let directory version =
+      lazy (Lazy.force build_cache_dir / "files" / Version.File.to_string version)
+    in
+    let v3 = directory Version.File.V3 in
+    let v4 = directory Version.File.V4 in
+    function
+    | Version.File.V3 -> v3
+    | V4 -> v4
   ;;
 
   let metadata_path t ~rule_or_action_digest =

@@ -92,7 +92,7 @@ may start in a different directory while sharing the same action ID.
   launch
   $ dune build helper-output > helper.log 2>&1; echo $?
   1
-  $ cat _build/default/helper-output
+  $ test ! -e _build/default/helper-output
 
 The same cold read must work in sandboxes, without prebuilding the input or
 assuming the sandbox has the same root as the canonical build tree.
@@ -122,8 +122,8 @@ physical cwd and Dune's spelling of the root still refer to the same tree.
   second
   
 
-Batched declarations allow ordinary subprocess I/O without copying whole files
-into the plugin's heap.
+A batch can declare generated inputs using absolute paths before a subprocess
+reads them.
 
   $ cat >> dune <<'EOF'
   > (rule (target first) (action (write-file first first)))
@@ -172,3 +172,52 @@ The promise-returning runner leaves ownership of the event loop with the caller.
   $ cat _build/default/promise-output
   promise
   returned
+
+An absolute path can name a generated input inside the action's sandbox. The
+request must build that input and make it available before the client reads it.
+Changing the producer's source must invalidate the consuming action.
+
+  $ printf first > abs-control
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target abs-input)
+  >  (deps abs-control)
+  >  (action (copy abs-control abs-input)))
+  > (rule
+  >  (target abs-output)
+  >  (deps (sandbox always))
+  >  (action (with-stdout-to abs-output
+  >   (dynamic-run ./foo.exe absolute abs-input))))
+  > EOF
+  $ test ! -e _build/default/abs-input
+  $ dune build --sandbox hardlink abs-output
+  $ cat _build/default/abs-output
+  first
+  $ printf second > abs-control
+  $ dune build --sandbox hardlink abs-output
+  $ cat _build/default/abs-output
+  second
+
+Absolute paths also work when the plugin runs without Dune.
+
+  $ ./foo.exe read "$PWD/abs-control"
+  second
+
+Absolute inputs outside the workspace are tracked too.
+
+  $ external_input=$(mktemp)
+  $ printf external > "$external_input"
+  $ cat >> dune <<EOF
+  > (rule
+  >  (target external-output)
+  >  (action (with-stdout-to external-output
+  >   (dynamic-run ./foo.exe read "$external_input"))))
+  > EOF
+  $ dune build external-output
+  $ cat _build/default/external-output
+  external
+  $ printf changed > "$external_input"
+  $ dune build external-output
+  $ cat _build/default/external-output
+  changed
+  $ rm "$external_input"

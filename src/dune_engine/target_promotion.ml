@@ -22,20 +22,15 @@ module To_delete = struct
   (* [db] is used to accumulate promoted files from rules. *)
   let db = lazy (ref (Option.value ~default:Path.Source.Set.empty (P.load fn)))
   let get_db () = !(Lazy.force db)
-  let set_db new_db = Lazy.force db := new_db
   let needs_dumping = ref false
 
-  let modify_db f =
-    match f (get_db ()) with
-    | None -> ()
-    | Some new_db ->
-      set_db new_db;
-      needs_dumping := true
-  ;;
-
   let add p =
-    modify_db (fun db ->
-      if Path.Source.Set.mem db p then None else Some (Path.Source.Set.add db p))
+    let db = Lazy.force db in
+    if Path.Source.Set.mem !db p
+    then ()
+    else (
+      db := Path.Source.Set.add !db p;
+      needs_dumping := true)
   ;;
 
   let dump () =

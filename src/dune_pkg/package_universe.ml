@@ -46,35 +46,59 @@ let version_by_package_name ~platform local_packages (lock_dir : Lock_dir.t) =
       ]
 ;;
 
+let lock_dir_filter_env t =
+  Solver_stats.Expanded_variable_bindings.to_solver_env
+    t.lock_dir.expanded_solver_variable_bindings
+  |> Solver_env.to_env
+;;
+
+let unsatisfied_dependencies_error
+      (local_package : Local_package.t)
+      ~with_test
+      unsatisfied_formula_hints
+  =
+  User_error.raise
+    ?hints:(Option.some_if with_test lockdir_regenerate_hints)
+    ~loc:local_package.loc
+    (Pp.textf
+       "The dependencies of local package %S could not be satisfied from the lockdir%s:"
+       (Package_name.to_string local_package.name)
+       (if with_test
+        then ""
+        else " when the solver variable 'with_test' is set to 'false'")
+     :: List.map
+          unsatisfied_formula_hints
+          ~f:Resolve_opam_formula.Unsatisfied_formula_hint.pp)
+;;
+
 let concrete_dependencies_of_local_package t local_package_name ~with_test =
   let local_package = Package_name.Map.find_exn t.local_packages local_package_name in
-  let env =
-    Solver_stats.Expanded_variable_bindings.to_solver_env
-      t.lock_dir.expanded_solver_variable_bindings
-    |> Solver_env.to_env
-  in
   match
     Lock_pkg.local_package_dependencies
       (Local_package.for_solver local_package)
-      ~env
+      ~env:(lock_dir_filter_env t)
       ~with_test
       ~packages:t.version_by_package_name
       ~dune_version:(Package_version.of_opam_package_version Dune_dep.version)
   with
   | Ok regular -> regular
-  | Error (`Formula_could_not_be_satisfied unsatisfied_formula_hints) ->
-    User_error.raise
-      ?hints:(Option.some_if with_test lockdir_regenerate_hints)
-      ~loc:local_package.loc
-      (Pp.textf
-         "The dependencies of local package %S could not be satisfied from the lockdir%s:"
-         (Package_name.to_string local_package.name)
-         (if with_test
-          then ""
-          else " when the solver variable 'with_test' is set to 'false'")
-       :: List.map
-            unsatisfied_formula_hints
-            ~f:Resolve_opam_formula.Unsatisfied_formula_hint.pp)
+  | Error (`Formula_could_not_be_satisfied hints) ->
+    unsatisfied_dependencies_error local_package ~with_test hints
+;;
+
+let selected_dependencies_of_local_package t local_package_name ~with_test =
+  let local_package = Package_name.Map.find_exn t.local_packages local_package_name in
+  match
+    Lock_pkg.local_package_dependencies_with_depopts
+      (Local_package.for_solver local_package)
+      ~env:(lock_dir_filter_env t)
+      ~with_test
+      ~packages:t.version_by_package_name
+      ~dune_version:(Package_version.of_opam_package_version Dune_dep.version)
+  with
+  | Ok selected -> selected
+  | Error (`Formula_could_not_be_satisfied hints) ->
+    unsatisfied_dependencies_error local_package ~with_test hints
 ;;
 
 let all_non_local_dependencies_of_local_packages t =
@@ -234,12 +258,16 @@ let validate t =
   |> check_for_unnecessary_packges_in_lock_dir ~platform:t.platform t.lock_dir
 ;;
 
+let create_unvalidated ~platform local_packages lock_dir =
+  let version_by_package_name =
+    version_by_package_name ~platform local_packages lock_dir
+  in
+  { local_packages; lock_dir; platform; version_by_package_name }
+;;
+
 let create ~platform local_packages lock_dir =
   try
-    let version_by_package_name =
-      version_by_package_name ~platform local_packages lock_dir
-    in
-    let t = { local_packages; lock_dir; platform; version_by_package_name } in
+    let t = create_unvalidated ~platform local_packages lock_dir in
     validate t;
     Ok t
   with

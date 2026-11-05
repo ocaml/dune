@@ -37,46 +37,53 @@ module Output_format = struct
   let all = [ "sexp", Sexp; "json", Json ]
 end
 
-let rec encode_action : Action.For_shell.t -> Dune_lang.t =
+let rec encode_action ~dir (t : Action.t) : Dune_lang.t =
   let module Outputs = Dune_lang.Action.Outputs in
   let module File_perm = Dune_lang.Action.File_perm in
   let module Inputs = Dune_lang.Action.Inputs in
-  let open Dune_lang in
-  let program = Encoder.string in
+  let open Dune_sexp in
   let string = Encoder.string in
-  let path = Encoder.string in
-  let target = Encoder.string in
-  function
+  let reach p = Path.reach p ~from:dir in
+  let path p = string (reach p) in
+  let target p = path (Path.build p) in
+  let program = function
+    | Ok p -> path p
+    | Error e -> string (Filename.to_string (Action.Prog.Not_found.program e))
+  in
+  let encode = encode_action ~dir in
+  match t with
   | Run { prog; args; can_run_in_action_runner = _ } ->
     List (atom "run" :: program prog :: List.map (Appendable_list.to_list args) ~f:string)
   | With_accepted_exit_codes (pred, t) ->
     List
       [ atom "with-accepted-exit-codes"
       ; Predicate_lang.encode Dune_sexp.Encoder.int pred
-      ; encode_action t
+      ; encode t
       ]
-  | Chdir (a, r) -> List [ atom "chdir"; path a; encode_action r ]
-  | Setenv (k, v, r) -> List [ atom "setenv"; string k; string v; encode_action r ]
+  | Chdir (a, r) -> List [ atom "chdir"; path a; encode_action ~dir:a r ]
+  | Setenv (k, v, r) -> List [ atom "setenv"; string k; string v; encode r ]
   | Redirect_out (outputs, fn, perm, r) ->
     List
       [ atom (sprintf "with-%s-to%s" (Outputs.to_string outputs) (File_perm.suffix perm))
       ; target fn
-      ; encode_action r
+      ; encode r
       ]
   | Redirect_in (inputs, fn, r) ->
-    List
-      [ atom (sprintf "with-%s-from" (Inputs.to_string inputs))
-      ; path fn
-      ; encode_action r
-      ]
+    List [ atom (sprintf "with-%s-from" (Inputs.to_string inputs)); path fn; encode r ]
   | Ignore (outputs, r) ->
-    List [ atom (sprintf "ignore-%s" (Outputs.to_string outputs)); encode_action r ]
-  | Progn l -> List (atom "progn" :: List.map l ~f:encode_action)
-  | Concurrent l -> List (atom "concurrent" :: List.map l ~f:encode_action)
+    List [ atom (sprintf "ignore-%s" (Outputs.to_string outputs)); encode r ]
+  | Progn l -> List (atom "progn" :: List.map l ~f:encode)
+  | Concurrent l -> List (atom "concurrent" :: List.map l ~f:encode)
   | Echo xs -> List (atom "echo" :: List.map xs ~f:string)
   | Cat xs -> List (atom "cat" :: List.map xs ~f:path)
   | Copy (x, y) -> List [ atom "copy"; path x; target y ]
-  | Symlink (x, y) -> List [ atom "symlink"; path x; target y ]
+  | Symlink (src, dst) ->
+    let src =
+      match Path.Build.parent dst with
+      | None -> Path.to_string src
+      | Some from -> Path.reach src ~from:(Path.build from)
+    in
+    List [ atom "symlink"; string src; target dst ]
   | Hardlink (x, y) -> List [ atom "hardlink"; path x; target y ]
   | System x -> List [ atom "system"; string x ]
   | Bash { script; can_run_in_action_runner = _ } -> List [ atom "bash"; string script ]
@@ -86,8 +93,7 @@ let rec encode_action : Action.For_shell.t -> Dune_lang.t =
   | Remove_tree x -> List [ atom "remove-tree"; target x ]
   | Mkdir x -> List [ atom "mkdir"; target x ]
   | Pipe (outputs, l) ->
-    List
-      (atom (sprintf "pipe-%s" (Outputs.to_string outputs)) :: List.map l ~f:encode_action)
+    List (atom (sprintf "pipe-%s" (Outputs.to_string outputs)) :: List.map l ~f:encode)
   | Diff { optional; file1; file2; mode = Binary; directory_diffs = _ } ->
     assert (not optional);
     List [ atom "cmp"; path file1; target file2 ]
@@ -95,7 +101,14 @@ let rec encode_action : Action.For_shell.t -> Dune_lang.t =
     List [ atom "diff"; path file1; target file2 ]
   | Diff { optional = true; file1; file2; mode = _; directory_diffs = _ } ->
     List [ atom "diff?"; path file1; target file2 ]
-  | Extension ext -> List [ atom "ext"; Dune_sexp.Quoted_string (Sexp.to_string ext) ]
+  | Extension (module A) ->
+    let ext =
+      A.Spec.encode
+        A.v
+        (fun p -> Sexp.Atom (reach p))
+        (fun p -> Sexp.Atom (reach (Path.build p)))
+    in
+    List [ atom "ext"; Dune_sexp.Quoted_string (Sexp.to_string ext) ]
 ;;
 
 let encode_path p =
@@ -201,10 +214,7 @@ let dep_repr =
 ;;
 
 let deps_repr = Repr.view (Repr.list dep_repr) ~to_:Dep.Set.to_list
-
-let action_repr =
-  Repr.view syntax_repr ~to_:(fun action -> Action.for_shell action |> encode_action)
-;;
+let action_repr = Repr.view syntax_repr ~to_:(encode_action ~dir:Path.root)
 
 let target_names ~root names =
   Filename.Set.to_list_map names ~f:(fun name ->

@@ -10,13 +10,17 @@ It should be possible to include custom repos from the workspace:
   > EOF
 
   $ cat >dune-workspace<<EOF
-  > (lang dune 3.10)
+  > (lang dune 3.20)
   > (pin
-  >  (name foo)
+  >  (name selected)
   >  (url "file://$PWD/_foo")
   >  (package (name foo)))
+  > (pin
+  >  (name ignored)
+  >  (url "file://$PWD/_ignored_does_not_exist")
+  >  (package (name unused)))
   > (lock_dir
-  >  (pins foo)
+  >  (pins selected)
   >  (repositories mock))
   > (repository
   >  (name mock)
@@ -40,6 +44,20 @@ Note that sources in the projects are overriden by the workspace
   $ dune_pkg_lock_normalized
   Solution for dune.lock:
   - foo.dev
+
+Automatic locking must select the same named pin group, ignore unselected pins,
+and let the selected workspace pin override the broken project pin.
+CR: it currently looks up package names instead of pin group names.
+
+  $ mv dune.lock explicit-lock
+  $ enable_pkg
+  $ autolock=_build/_private/default/.lock/dune.lock
+  $ if dune build "$autolock" >auto-output 2>&1; then
+  >   diff -r explicit-lock "$autolock"
+  > else
+  >   grep '^Error:' auto-output
+  > fi
+  Error: pin "foo" doesn't exist
 
 Workspace pins need names so lock directories can refer to them explicitly.
 

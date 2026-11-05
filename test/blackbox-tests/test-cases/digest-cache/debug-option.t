@@ -1,5 +1,7 @@
 Test the tracing of digest events
 
+  $ umask 022
+
   $ export DUNE_TRACE="digest"
 
   $ echo '(lang dune 3.23)' > dune-project

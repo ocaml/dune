@@ -2,6 +2,7 @@ type t = bool
 
 val repr : t Repr.t
 val compare : t -> t -> Ordering.t
+val all : (string * t) list
 
 include Comparator.OPS with type t := t
 

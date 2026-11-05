@@ -198,11 +198,12 @@ a `Code_error`.
 
 ### `For_rocq_only` escape hatch
 
-`Install_layout.For_rocq_only.lib_root` exposes just the layout's `lib` root,
-filtered to `Section.Lib` and `Section.Libexec` entries. Package-set layouts
-follow opam's layout, where both sections install under `lib/<package>` and
-`Libexec` additionally preserves the executable bit. Dune records native OCaml
-plugins (`.cmxs`) in `Libexec`.
+`Install_layout.For_rocq_only.lib_root` returns the layout's `lib` root and
+records dependencies on its `Section.Lib` and `Section.Libexec` entries.
+Discovery, compilation, and extraction use it. Package-set layouts follow
+opam's layout, where both sections install under `lib/<package>` and `Libexec`
+additionally preserves the executable bit. Dune records native OCaml plugins
+(`.cmxs`) in `Libexec`.
 
 The special handling exists because rocq puts the layout's `lib` dir on
 `OCAMLPATH`, where findlib walks eagerly; for a race-free, deterministic walk,
@@ -215,6 +216,22 @@ layout symlink). Filtering to `Section.Lib` and `Section.Libexec` excludes the
 theory output while keeping METAs, `.cmi`, `.cmxs` etc., all of which are
 upstream of theory compilation. See the comment on the module in
 `install_layout.ml` for details.
+
+Grouping is lazy within the existing layout-entry memo and forced only by
+Rocq callers. Ordinary package-dependency actions and layout rule generation
+use the entries without constructing these groups.
+
+Rocq rules sharing a layout use the same file selectors for directories whose
+files all belong to `Lib` or `Libexec`. These unconditional selectors share
+dependency hashes and materialize their files in sandboxes without requiring
+alias expansion. In directories shared with other sections, library files remain
+explicit dependencies: literal-name selectors would scan a name list for every
+file in the directory. Other-section entries remain excluded.
+
+Directory install entries also remain explicit dependencies because file
+selectors do not match directories. Grouping preserves the existing dependency
+set: compilation still depends on the whole library layout, in addition to the
+individual dependencies reported by `rocqdep`.
 
 ## Future work
 

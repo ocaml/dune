@@ -18,6 +18,8 @@ generated META and opam files.
   > (library (public_name foo))
   > EOF
 
+  $ echo _build > .gitignore
+
   $ (git init -q
   >  git add .
   >  git commit -qm _

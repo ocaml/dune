@@ -375,21 +375,18 @@ let with_flock lock_path ~f =
   in
   let flock = Flock.create fd in
   let max_retries = 49 in
-  Fiber.finalize
-    ~finally:(fun () ->
-      let+ () = Fiber.return () in
-      Fd.close fd)
+  Fiber.finalize_now
+    ~finally:(fun () -> Fd.close fd)
     (fun () ->
        attempt_to_lock flock Flock.Exclusive ~max_retries
        >>= function
        | Ok `Success ->
-         Fiber.finalize
+         Fiber.finalize_now
            (fun () ->
               Unix.ftruncate (Fd.unsafe_to_unix_file_descr fd) 0;
               Global_lock.write_pid fd;
               f ())
            ~finally:(fun () ->
-             let+ () = Fiber.return () in
              Fpath.unlink_no_err (Path.to_string lock_path);
              match Flock.unlock flock with
              | Ok () -> ()
@@ -1095,9 +1092,7 @@ module At_rev = struct
     let temp_dir =
       Temp_dir.dir_for_target ~target ~prefix:"rev-store" ~suffix:(Object.to_hex revision)
     in
-    Fiber.finalize ~finally:(fun () ->
-      let+ () = Fiber.return () in
-      Temp.destroy Dir temp_dir)
+    Fiber.finalize_now ~finally:(fun () -> Temp.destroy Dir temp_dir)
     @@ fun () ->
     let stderr_to = make_stderr () in
     let* archives =

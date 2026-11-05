@@ -48,10 +48,10 @@ let check_point =
 
 let () = Memo.check_point := check_point
 
-let with_job_slot ?cancellation f =
+let with_job_slot ?cancellation ~job_slots f =
   let* () = Fiber.return () in
   let t = t () in
-  Fiber.Throttle.run t.job_throttle ~f:(fun () ->
+  Fiber.Throttle.run t.job_throttle ~size:job_slots ~f:(fun () ->
     check_cancelled cancellation;
     f ())
 ;;
@@ -529,9 +529,33 @@ let async_exn f =
 ;;
 
 let flush_file_watcher () =
-  match (t ()).file_watcher with
+  let t = t () in
+  match t.file_watcher with
   | None -> Fiber.return ()
-  | Some file_watcher -> File_watcher.flush file_watcher
+  | Some file_watcher ->
+    let sync = File_watcher.start_sync file_watcher in
+    let timer = ref None in
+    let rec retry () =
+      File_watcher.retry_sync file_watcher sync
+      >>= function
+      | `Finished -> Fiber.return ()
+      | `Wait_for delay ->
+        let sleep = Async_io.sleep t.async_io delay in
+        timer := Some sleep;
+        Async_io.Task.await sleep
+        >>= (function
+         | Ok () -> retry ()
+         | Error `Cancelled -> Fiber.return ()
+         | Error (`Exn exn) ->
+           Code_error.raise "file watcher sync timer failed" [ "exn", Exn.to_dyn exn ])
+    in
+    Fiber.fork_and_join_unit retry (fun () ->
+      Fiber.finalize
+        (fun () -> File_watcher.Sync.await sync)
+        ~finally:(fun () ->
+          match !timer with
+          | None -> Fiber.return ()
+          | Some timer -> Async_io.Task.cancel timer))
 ;;
 
 module Run = struct

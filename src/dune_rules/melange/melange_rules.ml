@@ -81,8 +81,7 @@ let output_of_lib =
             (Lib_name.to_string lib_name)
       }
   in
-  fun ~target_dir lib ->
-    let info = Lib.info lib in
+  fun ~target_dir ~info lib ->
     match Lib_info.status info with
     | Private (_, None) -> Output_kind.Private_library_or_emit target_dir
     | Private (_, Some pkg) ->
@@ -125,6 +124,30 @@ let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
   Pp_spec.pped_modules preprocess version modules
 ;;
 
+let has_staged_pps preprocess =
+  Module_reference.Per_item.exists preprocess ~f:(function
+    | Preprocess.Pps { staged; _ } -> staged
+    | No_preprocessing | Action _ | Future_syntax _ -> false)
+;;
+
+let modules_with_staged_pps ~sctx ~dir ~scope kind modules =
+  let* expander = Super_context.expander sctx ~dir in
+  (* The compilation directory owns these rules. Retain its preprocessing
+     configuration without registering the rules again in the emit directory. *)
+  let+ (modules, _), _ =
+    Rules.collect (fun () ->
+      Buildable_rules.modules_rules
+        sctx
+        kind
+        expander
+        ~dir
+        scope
+        modules
+        ~for_:Compilation_mode.Melange)
+  in
+  modules
+;;
+
 let emit_modules_and_obj_dir ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =
   Dir_contents.ml dir_contents ~for_:Compilation_mode.Melange
   >>= Ml_sources.modules_and_obj_dir
@@ -145,8 +168,8 @@ let add_rule sctx ?mode ?loc ~dir build =
 
 let for_ = Compilation_mode.Melange
 
-let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
-  match Lib_info.modules (Lib.info lib) ~for_ with
+let impl_only_modules_defined_in_this_lib ~sctx ~scope ~info lib =
+  match Lib_info.modules info ~for_ with
   | External None ->
     User_error.raise
       [ Pp.textf
@@ -162,11 +185,41 @@ let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
         |> List.filter ~f:(Module.has ~ml_kind:Impl) )
   | Local ->
     let lib = Lib.Local.of_lib_exn lib in
-    let info = Lib.Local.info lib in
     let+ modules =
       let* modules = Dir_contents.modules_of_local_lib sctx lib ~for_ in
       let preprocess = Lib_info.preprocess info ~for_ in
-      modules_in_obj_dir ~sctx ~scope ~preprocess modules >>| Modules.With_vlib.modules
+      let+ modules =
+        if has_staged_pps preprocess
+        then (
+          let dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
+          let* scope = Scope.DB.find_by_dir dir in
+          let* stanzas =
+            Dune_load.stanzas_in_dir dir
+            >>= function
+            | None -> Memo.return []
+            | Some dune_file -> Dune_file.find_stanzas dune_file Library.key
+          in
+          let lib_id = Lib_info.lib_id info |> Lib_id.to_local_exn in
+          let src_dir = Path.Build.drop_build_context_exn dir in
+          let library =
+            List.find stanzas ~f:(fun library ->
+              Lib_id.Local.equal (Library.to_lib_id ~src_dir library) lib_id)
+          in
+          match library with
+          | None ->
+            Code_error.raise
+              "missing local library stanza"
+              [ "lib_id", Lib_id.Local.to_dyn lib_id ]
+          | Some library ->
+            modules_with_staged_pps
+              ~sctx
+              ~dir
+              ~scope
+              (Library (library.buildable, snd library.name))
+              modules)
+        else modules_in_obj_dir ~sctx ~scope ~preprocess modules
+      in
+      Modules.With_vlib.modules modules
     in
     let () =
       let modes = Lib_info.modes info in
@@ -350,8 +403,9 @@ let js_targets_of_modules modules ~module_systems ~output =
 
 let js_targets_of_libs ~sctx ~scope ~module_systems ~target_dir libs =
   let of_lib lib =
-    let+ _, modules = impl_only_modules_defined_in_this_lib ~sctx ~scope lib in
-    let output = output_of_lib ~target_dir lib in
+    let info = Lib.info lib in
+    let+ _, modules = impl_only_modules_defined_in_this_lib ~sctx ~scope ~info lib in
+    let output = output_of_lib ~target_dir ~info lib in
     List.concat_map modules ~f:(fun m ->
       js_outputs_of_module ~module_systems ~output m
       |> List.map ~f:(fun (_, target) -> Path.build target))
@@ -727,7 +781,19 @@ let setup_runtime_assets_rules sctx ~scope ~dir ~mode ~promote_in_source ~output
 let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =
   let* modules, obj_dir = emit_modules_and_obj_dir ~dir_contents ~scope mel in
   let+ modules =
-    modules_in_obj_dir ~sctx ~scope ~preprocess:mel.preprocess.config modules
+    if has_staged_pps mel.preprocess.config
+    then
+      modules_with_staged_pps
+        ~sctx
+        ~dir:(Dir_contents.dir dir_contents)
+        ~scope
+        (Melange
+           { preprocess = mel.preprocess
+           ; lint = mel.lint
+           ; empty_module_interface_if_absent = false
+           })
+        modules
+    else modules_in_obj_dir ~sctx ~scope ~preprocess:mel.preprocess.config modules
   in
   let modules_for_js =
     Modules.fold_user_available modules ~init:[] ~f:(fun x acc ->
@@ -800,9 +866,10 @@ let setup_entries_js
 
 let setup_js_rules_libraries =
   let parallel_build_source_modules ~compile_flags ~sctx ~scope ~f:build_js lib =
+    let info = Lib.info lib in
     let* same_lib_emission_deps, source_modules =
       let+ lib_modules, source_modules =
-        impl_only_modules_defined_in_this_lib ~sctx ~scope lib
+        impl_only_modules_defined_in_this_lib ~sctx ~scope ~info lib
       in
       let same_lib_emission_deps =
         match Lib.Local.of_lib lib with
@@ -812,7 +879,7 @@ let setup_js_rules_libraries =
              depend on all Melange object dirs so sandboxed emission can still
              resolve same-library private modules and future cross-module
              optimization has the interface metadata it needs. *)
-          make_external_lib_emission_deps ~obj_dir:(Lib_info.obj_dir (Lib.info lib))
+          make_external_lib_emission_deps ~obj_dir:(Lib_info.obj_dir info)
         | Some lib ->
           make_same_lib_emission_deps
             ~sctx
@@ -860,7 +927,7 @@ let setup_js_rules_libraries =
           let pkg_name = Lib_info.package info in
           build_js ~loc ~promote_in_source ~pkg_name ~obj_dir
         in
-        let output = output_of_lib ~target_dir lib in
+        let output = output_of_lib ~target_dir ~info lib in
         let* includes =
           let+ requires_link =
             requires_link_for_lib
@@ -886,7 +953,8 @@ let setup_js_rules_libraries =
           | None -> Memo.return ()
           | Some vlib ->
             let* vlib = Resolve.Memo.read_memo vlib in
-            let vlib_output = output_of_lib ~target_dir vlib in
+            let vlib_info = Lib.info vlib in
+            let vlib_output = output_of_lib ~target_dir ~info:vlib_info vlib in
             (match vlib_output, output with
              | Public_library _, Private_library_or_emit _ ->
                User_error.raise
@@ -1071,41 +1139,49 @@ let emit_rules sctx { stanza_dir; stanza } =
 ;;
 
 (* Detect if [dir] is under the target directory of a melange.emit stanza. *)
-let rec under_melange_emit_target ~sctx ~dir =
-  match Path.Build.parent dir with
-  | None -> Memo.return None
-  | Some parent ->
-    Dune_load.stanzas_in_dir parent
-    >>= (function
-     | None -> under_melange_emit_target ~sctx ~dir:parent
-     | Some stanzas ->
-       Dune_file.find_stanzas stanzas Melange_stanzas.Emit.key
-       >>= Memo.List.find_map ~f:(fun (mel : Melange_stanzas.Emit.t) ->
-         let target_dir = Melange_stanzas.Emit.target_dir ~dir:parent mel in
-         match Path.Build.equal target_dir dir with
-         | false -> Memo.return None
-         | true ->
-           (* In the case where we have two melange.emit stanzas in the same folder,
-              with one enabled in the current context and one disabled, we want to
-              make sure that we pick the enabled one *)
-           let+ enabled =
-             let* expander =
-               let* sctx = sctx in
-               Super_context.expander sctx ~dir
-             in
-             Expander.eval_blang expander mel.enabled_if
-           in
-           Option.some_if enabled mel)
-       >>= (function
-        | None -> under_melange_emit_target ~sctx ~dir:parent
-        | Some stanza -> Memo.return @@ Some { stanza_dir = parent; stanza }))
+let under_melange_emit_target =
+  let memo =
+    Memo.create_rec
+      "under-melange-emit-target"
+      ~input:(module Path.Build)
+      (fun under_melange_emit_target dir ->
+         match Path.Build.parent dir with
+         | None -> Memo.return None
+         | Some parent ->
+           Dune_load.stanzas_in_dir parent
+           >>= (function
+            | None -> under_melange_emit_target parent
+            | Some stanzas ->
+              Dune_file.find_stanzas stanzas Melange_stanzas.Emit.key
+              >>= Memo.List.find_map ~f:(fun (mel : Melange_stanzas.Emit.t) ->
+                let target_dir = Melange_stanzas.Emit.target_dir ~dir:parent mel in
+                match Path.Build.equal target_dir dir with
+                | false -> Memo.return None
+                | true ->
+                  (* Several stanzas may share the target when enabled in
+                     different contexts. Pick the enabled one. *)
+                  let+ enabled =
+                    let* expander =
+                      let* sctx =
+                        Context.DB.by_dir dir >>| Context.name >>= Super_context.find_exn
+                      in
+                      Super_context.expander sctx ~dir
+                    in
+                    Expander.eval_blang expander mel.enabled_if
+                  in
+                  Option.some_if enabled mel)
+              >>= (function
+               | None -> under_melange_emit_target parent
+               | Some stanza -> Memo.return @@ Some { stanza_dir = parent; stanza })))
+  in
+  fun ~dir -> Memo.exec memo dir
 ;;
 
 let gen_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
   match Path.Build.equal dir (Melange_stanzas.Emit.target_dir ~dir:stanza_dir stanza) with
   | false -> Memo.return None
   | true ->
-    under_melange_emit_target ~sctx ~dir:stanza_dir
+    under_melange_emit_target ~dir:stanza_dir
     >>| (function
      | None -> Some (emit_rules sctx for_melange)
      | Some { stanza_dir = _; stanza = parent_stanza } ->
@@ -1132,12 +1208,12 @@ let gen_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
 module Gen_rules = Build_config.Gen_rules
 
 let setup_emit_js_rules sctx ~dir =
-  under_melange_emit_target ~sctx ~dir
+  under_melange_emit_target ~dir
   >>= function
   | Some melange ->
     gen_emit_rules sctx ~dir melange
     >>= (function
-     | None -> Memo.return (Gen_rules.redirect_to_parent Gen_rules.Rules.empty)
+     | None -> Memo.return (Gen_rules.Redirect_to_parent Gen_rules.Rules.empty)
      | Some melange ->
        let+ directory_targets, melange = melange in
        Gen_rules.make ~directory_targets (Memo.return melange))

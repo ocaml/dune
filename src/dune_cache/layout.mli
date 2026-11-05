@@ -61,8 +61,8 @@ module Versioned : sig
   (** List all metadata entries currently stored in the cache. Note that there
       is no guarantee that the result is up-to-date, since files can be added or
       removed concurrently by other processes. *)
-  val list_metadata_entries : Version.Metadata.t -> (Path.t * Digest.t) list
+  val list_metadata_entries : Version.Metadata.t -> (Path.t * Digest.t) Seq.t
 
   (** List [list_metadata_entries] but for file entries. *)
-  val list_file_entries : Version.File.t -> (Path.t * Digest.t) list
+  val list_file_entries : Version.File.t -> (Path.t * Digest.t) Seq.t
 end

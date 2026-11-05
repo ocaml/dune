@@ -2,7 +2,7 @@
 emitted inside the worker are stamped with the action runner name, and process
 events routed through the worker record the worker name and pid.
 
-  $ make_dune_project 3.23
+  $ make_dune_project 3.26
   $ export DUNE_TRACE=action,process
   $ echo one > input
   $ cat > dune <<'EOF'
@@ -14,15 +14,29 @@ events routed through the worker record the worker name and pid.
   > (rule
   >  (target proc)
   >  (deps input)
+  >  (job_slots (echo 3))
   >  (action (bash "cat input > %{target}")))
   > EOF
 
-  $ dune build pure proc
+  $ dune build -j 4 pure proc
   $ dune trace cat | jq -s 'include "dune"; actionRunnerTraceEvents("action-runner")'
   []
 
+The process start event records the granted job slots with and without the
+worker:
+
+  $ job_slots () {
+  >   dune trace cat | jq '
+  >     select(.cat == "process" and .name == "start") | .args
+  >     | select(.target_files == ["_build/default/proc"]) | .job_slots'
+  > }
+  $ job_slots
+  3
+
   $ echo two > input
-  $ dune build --action-runner pure proc
+  $ dune build -j 4 --action-runner pure proc
+  $ job_slots
+  3
   $ dune trace cat | jq -s 'include "dune"; actionRunnerTraceEvents("action-runner")'
   [
     {

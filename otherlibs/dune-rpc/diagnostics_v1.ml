@@ -28,51 +28,11 @@ module Related = struct
   ;;
 end
 
-type t =
-  { targets : Target.t list
-  ; id : Diagnostic.Id.t
-  ; message : unit Pp.t
-  ; loc : Loc.t option
-  ; severity : Diagnostic.severity option
-  ; promotion : Diagnostic.Promotion.t list
-  ; directory : string option
-  ; related : Related.t list
-  }
+type t = (unit Pp.t, Related.t) Diagnostic.fields
 
-let sexp_severity =
-  let open Conv in
-  enum [ "error", Diagnostic.Error; "warning", Warning ]
-;;
+let sexp = Diagnostic.sexp_fields ~message:sexp_pp_unit ~related:Related.sexp
 
-let sexp =
-  let open Conv in
-  record
-    (Record.make (fun targets message loc severity promotion directory id related ->
-       { targets; message; loc; severity; promotion; directory; id; related })
-     |> Record.field
-          "targets"
-          (required (list Target.sexp))
-          ~get:(fun { targets; _ } -> targets)
-     |> Record.field "message" (required sexp_pp_unit) ~get:(fun { message; _ } ->
-       message)
-     |> Record.field "loc" (optional Loc.sexp) ~get:(fun { loc; _ } -> loc)
-     |> Record.field "severity" (optional sexp_severity) ~get:(fun { severity; _ } ->
-       severity)
-     |> Record.field
-          "promotion"
-          (required (list Diagnostic.Promotion.sexp))
-          ~get:(fun { promotion; _ } -> promotion)
-     |> Record.field "directory" (optional string) ~get:(fun { directory; _ } ->
-       directory)
-     |> Record.field "id" (required Diagnostic.Id.sexp) ~get:(fun { id; _ } -> id)
-     |> Record.field
-          "related"
-          (required (list Related.sexp))
-          ~get:(fun { related; _ } -> related)
-     |> Record.finish)
-;;
-
-let to_diagnostic t : Diagnostic.t =
+let to_diagnostic (t : t) : Diagnostic.t =
   { targets = t.targets
   ; message = t.message |> Pp.map_tags ~f:(fun _ -> User_message.Style.Details)
   ; loc = t.loc
@@ -84,7 +44,7 @@ let to_diagnostic t : Diagnostic.t =
   }
 ;;
 
-let of_diagnostic (t : Diagnostic.t) =
+let of_diagnostic (t : Diagnostic.t) : t =
   { targets = t.targets
   ; message = t.message |> Pp.map_tags ~f:(fun _ -> ())
   ; loc = t.loc

@@ -56,10 +56,11 @@ let runtest_term =
     in
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
       let open Fiber.O in
-      Rpc.Rpc_common.fire_request
+      Rpc.Rpc_common.fire_request_with_progress
         ~name:"runtest"
         ~wait:false
         ~lock_held_by
+        ~config
         builder
         Dune_rpc.Procedures.Public.runtest
         test_paths

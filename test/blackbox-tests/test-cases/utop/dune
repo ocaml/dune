@@ -1,3 +1,8 @@
 (cram
  (deps
   (package utop)))
+
+(cram
+ (applies_to ppx-cookies.t)
+ (deps
+  (package ppxlib)))

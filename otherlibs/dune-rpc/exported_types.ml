@@ -503,16 +503,18 @@ module Diagnostic = struct
     ;;
   end
 
-  type t =
+  type ('message, 'related) fields =
     { targets : Target.t list
     ; id : Id.t
-    ; message : User_message.Style.t Pp.t
+    ; message : 'message
     ; loc : Loc.t option
     ; severity : severity option
     ; promotion : Promotion.t list
     ; directory : string option
-    ; related : Related.t list
+    ; related : 'related list
     }
+
+  type t = (User_message.Style.t Pp.t, Related.t) fields
 
   let loc t = t.loc
   let message t = t.message |> Pp.map_tags ~f:(fun _ -> ())
@@ -534,25 +536,23 @@ module Diagnostic = struct
     | Warning -> Dyn.string "warning"
   ;;
 
-  let sexp =
+  let sexp_fields ~message ~related =
     let open Conv in
     record
       (Record.make (fun targets message loc severity promotion directory id related ->
          { targets; message; loc; severity; promotion; directory; id; related })
        |> Record.field "targets" (required (list Target.sexp)) ~get:targets
-       |> Record.field
-            "message"
-            (required (Pp.sexp User_message.Style.sexp))
-            ~get:message_with_style
+       |> Record.field "message" (required message) ~get:message_with_style
        |> Record.field "loc" (optional Loc.sexp) ~get:loc
        |> Record.field "severity" (optional sexp_severity) ~get:severity
        |> Record.field "promotion" (required (list Promotion.sexp)) ~get:promotion
        |> Record.field "directory" (optional string) ~get:directory
        |> Record.field "id" (required Id.sexp) ~get:id
-       |> Record.field "related" (required (list Related.sexp)) ~get:related
+       |> Record.field "related" (required (list related)) ~get:(fun t -> t.related)
        |> Record.finish)
   ;;
 
+  let sexp = sexp_fields ~message:(Pp.sexp User_message.Style.sexp) ~related:Related.sexp
   let to_dyn t = Sexp.to_dyn (Conv.to_sexp sexp t)
 
   let to_user_message t =
@@ -588,6 +588,11 @@ module Progress = struct
         { complete : int
         ; remaining : int
         ; failed : int
+        ; running_jobs : int
+        ; goals : int
+        ; run : int option
+        ; started_at : float option
+        ; action_duration : float
         }
     | Failed
     | Interrupted
@@ -601,10 +606,41 @@ module Progress = struct
       let complete = field "complete" (required int) in
       let remaining = field "remaining" (required int) in
       let failed = field "failed" (required int) in
+      let running_jobs = field "running_jobs" (required int) in
+      let goals = field "goals" (required int) in
+      let run = field "run" (optional int) in
+      let started_at = field "started_at" (optional float) in
+      let action_duration = field "action_duration" (required float) in
       constr
         "in_progress"
-        (record (three complete remaining failed))
-        (fun (complete, remaining, failed) -> In_progress { complete; remaining; failed })
+        (record
+           (eight
+              complete
+              remaining
+              failed
+              running_jobs
+              goals
+              run
+              started_at
+              action_duration))
+        (fun ( complete
+             , remaining
+             , failed
+             , running_jobs
+             , goals
+             , run
+             , started_at
+             , action_duration ) ->
+           In_progress
+             { complete
+             ; remaining
+             ; failed
+             ; running_jobs
+             ; goals
+             ; run
+             ; started_at
+             ; action_duration
+             })
     in
     let interrupted = constr "interrupted" unit (fun () -> Interrupted) in
     let success = constr "success" unit (fun () -> Success) in
@@ -614,8 +650,26 @@ module Progress = struct
     in
     let serialize = function
       | Waiting -> case () waiting
-      | In_progress { complete; remaining; failed } ->
-        case (complete, remaining, failed) in_progress
+      | In_progress
+          { complete
+          ; remaining
+          ; failed
+          ; running_jobs
+          ; goals
+          ; run
+          ; started_at
+          ; action_duration
+          } ->
+        case
+          ( complete
+          , remaining
+          , failed
+          , running_jobs
+          , goals
+          , run
+          , started_at
+          , action_duration )
+          in_progress
       | Failed -> case () failed
       | Interrupted -> case () interrupted
       | Success -> case () success

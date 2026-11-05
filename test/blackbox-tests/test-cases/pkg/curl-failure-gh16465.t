@@ -107,4 +107,27 @@ proxies.
   Error: 'curl' returned an error code 255 with no error message.
   [1]
 
+A successful curl process must still provide a valid HTTP status. Its
+--write-out output must contain a quoted integer, not an arbitrary response.
+
+  $ unset FAKE_CURL_EXIT_CODE
+  $ export FAKE_CURL_RESPONSE='"not-a-status"'
+  $ build_pkg foo
+  File "dune.lock/foo.pkg", line 4, characters 7-25:
+  4 |   (url "http://0.0.0.0:1")))
+             ^^^^^^^^^^^^^^^^^^
+  Error: 'curl' returned an HTTP code we don't understand: "\"not-a-status\""
+  [1]
+
+A plain number without the quotes required by Dune's curl invocation is also
+rejected, rather than being interpreted as HTTP success.
+
+  $ export FAKE_CURL_RESPONSE=200
+  $ build_pkg foo
+  File "dune.lock/foo.pkg", line 4, characters 7-25:
+  4 |   (url "http://0.0.0.0:1")))
+             ^^^^^^^^^^^^^^^^^^
+  Error: 'curl' returned an HTTP code we don't understand: "200"
+  [1]
+
 

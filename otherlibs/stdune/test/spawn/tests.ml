@@ -2,6 +2,11 @@ open Stdune
 
 let no_args = Array.Immutable.of_list []
 
+(* On Windows, ppx_expect redirects CRT descriptors without updating the
+   native handles in Unix.stdout and Unix.stderr. Obtain fresh handles
+   after redirection. *)
+let output_fd oc = Unix.descr_of_out_channel oc |> Fd.unsafe_of_unix_file_descr
+
 let show_raise f =
   try ignore (f ()) with
   | exn ->
@@ -16,7 +21,14 @@ let show_raise f =
 ;;
 
 let%expect_test "non-existing program" =
-  show_raise (fun () -> Spawn.spawn () ~prog:"/doesnt-exist" ~argv0:"blah" ~args:no_args);
+  show_raise (fun () ->
+    Spawn.spawn
+      ()
+      ~prog:"/doesnt-exist"
+      ~argv0:"blah"
+      ~args:no_args
+      ~stdout:(output_fd stdout)
+      ~stderr:(output_fd stderr));
   [%expect
     {|
     raised Unix.Unix_error _
@@ -30,6 +42,8 @@ let%expect_test "non-existing dir" =
       ~prog:"/bin/true"
       ~argv0:"true"
       ~args:no_args
+      ~stdout:(output_fd stdout)
+      ~stderr:(output_fd stderr)
       ~cwd:(Spawn.Working_dir.path "/doesnt-exist"));
   [%expect
     {|
@@ -65,7 +79,14 @@ let with_sub f =
 
 let%expect_test "array arguments" =
   let args = Array.Immutable.of_list [ "print-args"; "one"; "two" ] in
-  wait (Spawn.spawn () ~prog:print_env ~argv0:"custom-argv0" ~args);
+  wait
+    (Spawn.spawn
+       ()
+       ~prog:print_env
+       ~argv0:"custom-argv0"
+       ~args
+       ~stdout:(output_fd stdout)
+       ~stderr:(output_fd stderr));
   [%expect
     {|
     custom-argv0
@@ -82,6 +103,8 @@ let%expect_test "cwd:Path" =
          ~prog:list_files
          ~argv0:"list_files.exe"
          ~args:no_args
+         ~stdout:(output_fd stdout)
+         ~stderr:(output_fd stderr)
          ~cwd:(Spawn.Working_dir.path (Path.to_string sub))));
   [%expect
     {|
@@ -204,6 +227,8 @@ let%expect_test "env" =
          ~prog:"./print_env.exe"
          ~argv0:"print_env"
          ~args:no_args
+         ~stdout:(output_fd stdout)
+         ~stderr:(output_fd stderr)
          ~cwd:(Spawn.Working_dir.path "exe"))
   in
   tst (Some "foo");
@@ -221,7 +246,9 @@ let%expect_test "pgid tests" =
        ()
        ~prog:"pgid_test/checkpgid.exe"
        ~argv0:"checkpgid.exe"
-       ~args:no_args);
+       ~args:no_args
+       ~stdout:(output_fd stdout)
+       ~stderr:(output_fd stderr));
   [%expect {||}]
 ;;
 

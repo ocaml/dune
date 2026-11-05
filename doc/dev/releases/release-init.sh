@@ -7,7 +7,7 @@
 #
 # Usage:
 #
-#  $ INCREMENT=(patch|minor|major) [DUNE_REMOTE] [DUNE_REPO] ./release-init.sh
+#  $ INCREMENT=(patch|minor|major) [DUNE_REMOTE] [DUNE_REPO] [ISSUE_URL] ./release-init.sh
 #
 # where
 #
@@ -17,10 +17,12 @@
 #   set or finally to 'origin' if not.
 # - The optional DUNE_REPO can be set to your personal fork, to open issues
 #   and PRs there instead of on ocaml/dune. Intended for testing.
+# - The optional ISSUE_URL will use the provided release tracking issue URL
+#   instead of creating a new issue for it.
 #
 # E.g.,
 #
-#  $ VERSION=patch ./release-init.sh
+#  $ INCREMENT=patch ./release-init.sh
 #
 # The script will create the appropriate tracking issue, and start a release
 # candidate branch from the appropriate branch point.
@@ -35,10 +37,10 @@ function err () {
 }
 
 # Validate and prepare input variables
-[ ! -z "${INCREMENT}" ] || err "variable INCREMENT is not set"
+[[ -n "${INCREMENT:-}" ]] || err "variable INCREMENT is not set"
 DUNE_REPO=${DUNE_REPO:-"ocaml/dune"}
 # Get the remote configured by envvar, or via the git config remote.pushDefault,
-DUNE_REMOTE=${DUNE_REMOTE:-$(git config remote.pushdefault || echo "")}
+DUNE_REMOTE=${DUNE_REMOTE:-$(git config --get remote.pushdefault || true)}
 # Finally fallback to 'origin' if the remote isn't configured
 DUNE_REMOTE=${DUNE_REMOTE:-"origin"}
 
@@ -49,18 +51,26 @@ command -v git >/dev/null 2>&1 || err "script requires git"
 # All variables should be set from this point on
 set -u
 
+# The github owner of the repo is required to avoid a manual prompt when running
+# gh pr create in the final steps (see https://github.com/cli/cli/issues/5009)
+REMOTE_URL=$(git remote get-url "${DUNE_REMOTE}") \
+    || err "git remote '${DUNE_REMOTE}' does not exist"
+GITHUB_OWNER=$(printf '%s\n' "${REMOTE_URL}" | sed -nE 's#.*github\.com[:/]([^/]+)/.*#\1#p')
+[[ -n "${GITHUB_OWNER}" ]] || \
+    err "could not determine GitHub owner from remote '${DUNE_REMOTE}'"
+
 # For testing, you can set this to your fork
 DUNE_GIT_URL="https://github.com/${DUNE_REPO}.git"
 
-POST_RELEASE_STEPS="""## Post-release
+POST_RELEASE_STEPS="## Post-release
 
 - [ ] Merge release branch into \`main\`
 - [ ] Write a post about the release on Discuss: [link]
 - [ ] Open PR announcing release on ocaml.org: [link]
 - [ ] Store the revdeps error file in the [logs](https://github.com/ocaml/dune/wiki/Reverse-dependencies-CI-logs) as HTML
-"""
+"
 
-MINOR_OR_MAJOR_BODY="""## Known blockers
+MINOR_OR_MAJOR_BODY="## Known blockers
 
 Issues blocking the release
 
@@ -89,7 +99,7 @@ ${POST_RELEASE_STEPS}
   - [ ] in the [CI workflow](https://github.com/ocaml/dune/tree/main/.github/workflows/workflow.yml.in)
   - [ ] in [dune-project](https://github.com/ocaml/dune/blob/main/dune-project#L1)
   - [ ] in the [dune-rpc](https://github.com/ocaml/dune/blob/main/otherlibs/dune-rpc/types.ml#L30)
-"""
+"
 
 function confirm () {
     read \
@@ -110,14 +120,26 @@ next_version=
 issue_body=
 rc_branch=
 
+function last_version_of_pattern () {
+    local pattern
+    pattern="$1"
+
+    local last_version
+    last_version=$(git -c versionsort.suffix="_alpha" tag --list "${pattern}" --sort=-version:refname | head -n 1)
+    [[ -n "${last_version}" ]] || err "could not find a previous release tag matching pattern ${pattern}"
+
+    echo "${last_version}"
+}
+
 function patch_release () {
-    local last_version=$(git -c versionsort.suffix="_alpha" tag --list '*.*.*' --sort=-version:refname | head -n 1 )
-    next_version=$(echo "${last_version}" | awk -F. -v OFS=. '{print $1, $2, $3+1 }')
+    local last_version
+    last_version=$(last_version_of_pattern '*.*.*')
+    next_version=$(echo "$last_version" | awk -F. -v OFS=. '{print $1, $2, $3+1 }')
     rc_branch="${next_version}-rc"
 
     confirm
 
-    issue_body="""## Fixes
+    issue_body="## Fixes
 
 Regressions requiring fixes in \`main\` and backports to \`${next_version}-rc\`:
 
@@ -140,14 +162,12 @@ For each PR needing a backport
 [point-release]: https://github.com/ocaml/dune/blob/main/doc/dev/releases/process.md#point-releases--patch-releases-xyz-z--0
 
 ${POST_RELEASE_STEPS}
-"""
+"
     git switch -c "${rc_branch}" "${last_version}"
 }
 
 function minor_release () {
-    next_version=$(git -c versionsort.suffix="_alpha" tag --list '*.*.0' --sort=-version:refname | \
-        head -n 1 | \
-        awk -F. -v OFS=. '{print $1, $2+1, 0 }')
+    next_version=$(last_version_of_pattern '*.*.0' | awk -F. -v OFS=. '{print $1, $2+1, 0 }')
     rc_branch="${next_version}-rc"
 
     confirm
@@ -158,9 +178,7 @@ function minor_release () {
 }
 
 function major_release () {
-    next_version=$(git -c versionsort.suffix="_alpha" tag --list '*.0.0' --sort=-version:refname | \
-        head -n 1 | \
-        awk -F. -v OFS=. '{print $1+1, 0, 0 }')
+    next_version=$(last_version_of_pattern '*.0.0' | awk -F. -v OFS=. '{print $1+1, 0, 0 }')
     rc_branch="${next_version}-rc"
 
     confirm
@@ -171,7 +189,8 @@ function major_release () {
 }
 
 # For version sorting, see https://git-scm.com/docs/git-tag#Documentation/git-tag.txt---sortkey
-git fetch --tags
+git fetch --tags "${DUNE_REMOTE}"
+
 case "${INCREMENT}" in
     "patch") patch_release ;;
     "minor") minor_release ;;
@@ -179,25 +198,26 @@ case "${INCREMENT}" in
     *) err "INCREMENT must be 'patch' 'minor' or 'major'" ;;
 esac
 
-issue_url=$(gh issue create \
-    --repo "${DUNE_REPO}" \
-    --assignee "@me" \
-    --label "release" \
-    --title "${next_version} release tracker" \
-    --body "${issue_body}")
+if [[ -n "${ISSUE_URL:-}" ]]
+then
+    issue_url="${ISSUE_URL}"
+else
+    issue_url=$(gh issue create \
+        --repo "${DUNE_REPO}" \
+        --assignee "@me" \
+        --label "release" \
+        --title "${next_version} release tracker" \
+        --body "${issue_body}")
+fi
 
 # Empty commit necessary to start a PR that initially has no diff
 git commit --allow-empty --signoff -m "[${next_version}] initiate release"
-
-# The github owner of the repo
-# Required to avoid a manual prompt (see https://github.com/cli/cli/issues/5009)
-github_owner=$(git remote get-url "${DUNE_REMOTE}" | sed -E 's#.*github\.com[:/]([^/]+).*#\1#')
 
 git push -u "${DUNE_REMOTE}" HEAD
 gh pr create \
     --draft \
     --repo "${DUNE_REPO}" \
-    --head "${github_owner}:${rc_branch}" \
+    --head "${GITHUB_OWNER}:${rc_branch}" \
     --base "main" \
     --title "[${next_version}] release" \
     --body "Release branch for ${issue_url}"

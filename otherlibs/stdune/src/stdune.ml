@@ -49,6 +49,7 @@ module Bool = Bool
 module Sexp = Sexp
 module Path = Path
 module Fpath = Fpath
+module Tree_traversal = Tree_traversal
 module Univ_map = Univ_map
 module Loc = Loc
 module Env = Env

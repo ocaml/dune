@@ -1,6 +1,6 @@
 open Stdune
 open Dune_engine
-module Generated_rules = Build_config.Gen_rules.Rules
+module Gen_rules = Build_config.Gen_rules
 
 let () = Dune_tests_common.init ()
 
@@ -12,20 +12,25 @@ let run rules =
 let%expect_test "empty generated rule combinations remain deferred" =
   let calls = ref 0 in
   let effectful =
-    Generated_rules.create
+    Gen_rules.make
       (Memo.of_thunk (fun () ->
          incr calls;
          Memo.return Rules.empty))
   in
   List.iter
-    [ "both empty", Generated_rules.empty, Generated_rules.empty
-    ; "empty left", Generated_rules.empty, effectful
-    ; "empty right", effectful, Generated_rules.empty
+    [ "both empty", Gen_rules.no_rules, Gen_rules.no_rules
+    ; "empty left", Gen_rules.no_rules, effectful
+    ; "empty right", effectful, Gen_rules.no_rules
     ; "same effectful record", effectful, effectful
     ]
     ~f:(fun (name, left, right) ->
       calls := 0;
-      let { Generated_rules.rules; _ } = Generated_rules.combine_exn left right in
+      let rules =
+        match Gen_rules.combine left right with
+        | Rules { rules; _ } -> rules
+        | Unknown_context | Redirect_to_parent _ ->
+          Code_error.raise "Expected a normal generated-rules result" []
+      in
       let deferred = !calls = 0 in
       let result = run rules in
       printfn
@@ -40,33 +45,5 @@ let%expect_test "empty generated rule combinations remain deferred" =
     empty left: deferred=true calls=1 empty=true
     empty right: deferred=true calls=1 empty=true
     same effectful record: deferred=true calls=2 empty=true
-    |}]
-;;
-
-let%expect_test "empty generated rules retain subdirectory declarations" =
-  let dir = Path.Build.relative Path.Build.root "default/generated" in
-  let build_dir_only_sub_dirs =
-    Build_config.Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty
-  in
-  let declared =
-    Generated_rules.create ~build_dir_only_sub_dirs (Memo.return Rules.empty)
-  in
-  List.iter
-    [ "empty left", Generated_rules.empty, declared
-    ; "empty right", declared, Generated_rules.empty
-    ]
-    ~f:(fun (name, left, right) ->
-      let { Generated_rules.build_dir_only_sub_dirs; directory_targets; _ } =
-        Generated_rules.combine_exn left right
-      in
-      printfn
-        "%s: declaration=%b directory_targets_empty=%b"
-        name
-        (Path.Build.Map.mem build_dir_only_sub_dirs dir)
-        (Path.Build.Map.is_empty directory_targets));
-  [%expect
-    {|
-    empty left: declaration=true directory_targets_empty=true
-    empty right: declaration=true directory_targets_empty=true
     |}]
 ;;

@@ -452,7 +452,7 @@ module DB = struct
     ;;
 
     let loc = function
-      | Library lib -> Lib.Local.to_lib lib |> Lib.info |> Lib_info.loc
+      | Library lib -> Lib.Local.info lib |> Lib_info.loc
       | Deprecated_library_name { old_name = old_public_name, _; _ } ->
         Public_lib.loc old_public_name
     ;;

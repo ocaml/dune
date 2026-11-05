@@ -180,9 +180,7 @@ let with_download url checksum ~target ~f =
     Temp_dir.dir_for_target ~target ~prefix ~suffix
   in
   let output = Path.relative temp_dir "download" in
-  Fiber.finalize ~finally:(fun () ->
-    Temp.destroy Dir temp_dir;
-    Fiber.return ())
+  Fiber.finalize_now ~finally:(fun () -> Temp.destroy Dir temp_dir)
   @@ fun () ->
   Curl.run ~temp_dir ~url ~output
   >>= function
@@ -328,20 +326,20 @@ let resolve_symlinks_in root =
               let src = Path.relative_fname resolved child_name in
               let dst = Path.relative_fname relative child_name in
               match (child_kind : Unix.file_kind) with
-              | S_REG -> Io.portable_hardlink ~src ~dst
+              | S_REG -> Io.portable_hardlink ~overwrite:true ~src ~dst
               (* To avoid recursing here, we create symlinks will get resolved
                  one step down in [traverse]. *)
-              | S_DIR -> Io.portable_symlink ~src ~dst
+              | S_DIR -> Io.portable_symlink ~overwrite:true ~src ~dst
               | S_LNK ->
                 Fpath.follow_symlink (Path.to_string src)
                 |> Result.iter ~f:(fun linked_path ->
                   let src = Path.of_string linked_path in
-                  Io.portable_symlink ~src ~dst)
+                  Io.portable_symlink ~overwrite:true ~src ~dst)
               | _ -> ());
             (), Some Unix.S_DIR)
        | { st_kind = S_REG; _ } ->
          (* We turn file symlinks into hardlinks to be able to cache them. *)
-         Io.portable_hardlink ~src:resolved ~dst:relative;
+         Io.portable_hardlink ~overwrite:true ~src:resolved ~dst:relative;
          (), None
        | { st_kind = _; _ } ->
          (* We do not care about symlinks pointing to anything but directories
@@ -379,11 +377,10 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
   let unsupported_backend s =
     User_error.raise ~loc:url_loc [ Pp.textf "Unsupported backend: %s" s ]
   in
-  Fiber.finalize
+  Fiber.finalize_now
     ~finally:(fun () ->
       Option.iter (Dune_trace.global ()) ~f:(fun trace ->
-        Dune_trace.Out.finish trace event);
-      Fiber.return ())
+        Dune_trace.Out.finish trace event))
     (fun () ->
        let+ fetch_result =
          match url.backend with

@@ -42,3 +42,12 @@ Package build commands are not restricted by the shared-cache Landlock policy.
   $ build_pkg cache-writer
   $ test -e "$DUNE_CACHE_ROOT/db/package-marker" && echo wrote
   wrote
+
+Editing a lock input must rebuild the affected package.
+
+  $ make_lockpkg foo <<EOF
+  > (build (run echo rebuilt foo))
+  > (version dev)
+  > EOF
+  $ build_pkg foo
+  rebuilt foo

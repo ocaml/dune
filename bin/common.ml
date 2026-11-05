@@ -1418,10 +1418,11 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
                   Dune_rpc_impl.Server.Enabled
                     { build_loop = c.build_loop; build_action = rpc_request_action ~root })
            in
-           let registry, build =
+           let registry, build, required =
              match c.builder.watch with
-             | Yes _ -> `Add, Lazy.force rpc_build
-             | No -> `Skip, Dune_rpc_impl.Server.Disabled
+             | Yes Passive -> `Add, Lazy.force rpc_build, true
+             | Yes Eager -> `Add, Lazy.force rpc_build, false
+             | No -> `Skip, Dune_rpc_impl.Server.Disabled, false
            in
            Dune_rpc_impl.Server.create
              ~registry
@@ -1429,6 +1430,7 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
              ~build
              ~where:(Lazy.force where)
              ~action_runner:(Lazy.force action_runner)
+             ~required
              c.builder.watch))
     else `Forbid_builds
   in

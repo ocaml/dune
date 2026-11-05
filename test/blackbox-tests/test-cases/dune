@@ -16,6 +16,7 @@
    ../utils/action_trace.exe
    ../utils/dunepp.exe
    ../utils/melc_stdlib_prefix.exe
+   ../utils/merlin_configurations.exe
    ../utils/refmt.exe
    ../utils/curl
    ../utils/sherlodoc.exe
@@ -105,6 +106,12 @@
   (or
    (<> %{system} macosx)
    (<> %{architecture} arm64))))
+
+(cram
+ (applies_to auto-concurrency-spawn-failure.t)
+ (enabled_if
+  (= %{system} linux))
+ (deps %{bin:strace} %{bin:awk}))
 
 (cram
  (applies_to corrupt-persistent.t)

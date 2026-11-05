@@ -17,4 +17,4 @@ val gen_rules
   -> dir:Path.Build.t
   -> nearest_src_dir:Source_tree.Dir.t option
   -> src_dir:Path.Source.t
-  -> Build_config.Gen_rules.Rules.t option
+  -> Build_config.Gen_rules.t

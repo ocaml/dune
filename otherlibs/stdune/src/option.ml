@@ -1,6 +1,4 @@
-type 'a t = 'a option =
-  | None
-  | Some of 'a
+include Stdlib.Option
 
 module O = struct
   let ( >>| ) t f =

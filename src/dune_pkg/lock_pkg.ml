@@ -35,6 +35,22 @@ let local_package_dependencies
     List.filter regular ~f:(Fun.negate (Package_name.equal Dune_dep.name)))
 ;;
 
+let local_package_dependencies_with_depopts
+      (local_package : Local_package.For_solver.t)
+      ~env
+      ~with_test
+      ~packages
+      ~dune_version
+  =
+  local_package_dependencies local_package ~env ~with_test ~packages ~dune_version
+  |> Result.map ~f:(fun depends ->
+    let depopts =
+      List.filter_map local_package.depopts ~f:(fun (depopt : Package_dependency.t) ->
+        Option.some_if (Package_name.Map.mem packages depopt.name) depopt.name)
+    in
+    depends @ depopts)
+;;
+
 let simplify_filter get_solver_var =
   OpamFilter.partial_eval (fun var ->
     match OpamVariable.Full.scope var with

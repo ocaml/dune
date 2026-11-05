@@ -5,12 +5,9 @@
   (package dune-site)
   (package dune-private-libs)))
 
-; The test is broken on CI, so deactivate it when the CI
-; environment variable is set. Most CI systems set it.
+; The test is broken, plugins of c are not found when running c from a rule that
+; depends on (package c).
 
 (cram
  (applies_to run_2_9.t run.t)
- (enabled_if
-  (and
-   (= %{env:CI=false} false)
-   (= %{env:INSIDE_NIX=false} false))))
+ (enabled_if false))

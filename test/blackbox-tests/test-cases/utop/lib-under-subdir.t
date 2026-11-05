@@ -21,3 +21,9 @@ dune utop should read libraries in (subdir ..)
 
   $ dune utop . -- foo.ml
   foolib
+
+The subdir stanza also allows foo's automatic .utop subdirectory.
+
+  $ dune build foo/.utop/utop.bc
+  $ dune exec -- ./foo/.utop/utop.bc foo.ml
+  foolib

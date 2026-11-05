@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   build:
-    name: Build OxCaml trunk with Dune
+    name: Build Dune and OxCaml trunk
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Dune
@@ -34,3 +34,6 @@ jobs:
 
       - name: Build OxCaml trunk
         run: nix develop .#ox-minimal-trunk --impure -c true
+
+      - name: Bootstrap Dune with OxCaml trunk
+        run: nix develop .#ox-minimal-trunk --impure -c make test-bootstrap

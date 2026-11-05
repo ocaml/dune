@@ -238,6 +238,11 @@ module Progress : sig
         { complete : int
         ; remaining : int
         ; failed : int
+        ; running_jobs : int
+        ; goals : int
+        ; run : int option
+        ; started_at : float option
+        ; action_duration : float
         }
     | Failed
     | Interrupted

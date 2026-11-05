@@ -206,8 +206,16 @@ let extract_directory_targets ~jsoo_enabled ~dir stanzas =
       directory_targets_of_executables ~jsoo_enabled ~dir exes
     | Library.T lib -> directory_targets_of_library ~jsoo_enabled ~dir lib
     | Rocq_stanza.Theory.T m ->
-      Rocq_doc.rocqdoc_directory_targets ~dir m
-      >>= when_enabled ~dir ~enabled_if:m.enabled_if
+      let* enabled =
+        match m.enabled_if with
+        | Blang.Const b -> Memo.return b
+        | enabled_if ->
+          let* expander = Expander0.get ~dir in
+          Expander0.eval_blang expander enabled_if
+      in
+      if enabled
+      then Rocq_doc.rocqdoc_directory_targets ~dir m
+      else Memo.return Path.Build.Map.empty
     | _ -> Memo.return Path.Build.Map.empty)
   >>| Path.Build.Map.union_all ~f:(fun path loc1 loc2 ->
     User_error.raise

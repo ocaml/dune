@@ -41,7 +41,8 @@ Build compile_commands.json:
 
 Check that compile_commands.json includes -I for provider's headers:
 
-  $ jq '.[] | select(.file == "stub.c") | .arguments | map(select(contains("provider")))' compile_commands.json
+  $ jq '.[] | select(.file == (env.PWD + "/consumer/stub.c")) |
+  >   .arguments | map(select(contains("provider")))' compile_commands.json
   [
     "../provider"
   ]

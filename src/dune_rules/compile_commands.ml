@@ -4,15 +4,15 @@ let filename = "compile_commands.json"
 
 (* A single entry in compile_commands.json *)
 type entry =
-  { directory : Path.t
-  ; file : Path.Local.t
+  { directory : Path.Build.t
+  ; file : Path.t
   ; arguments : string list
   }
 
 let entry_to_json { directory; file; arguments } : Json.t =
   `Assoc
-    [ "directory", `String (Path.to_string directory)
-    ; "file", `String (Path.Local.to_string file)
+    [ "directory", `String (Path.to_absolute_filename (Path.build directory))
+    ; "file", `String (Path.to_absolute_filename file)
     ; "arguments", `List (List.map arguments ~f:(fun arg -> `String arg))
     ]
 ;;
@@ -26,8 +26,15 @@ let build_c_command
       (src : Foreign.Source.t)
       ~ext_obj
   =
+  let src_path = Foreign.Source.path src in
+  let source = Path.source (Path.Build.drop_build_context_exn src_path) in
   let open Action_builder.O in
   let+ ocaml = Action_builder.of_memo (Context.ocaml (Super_context.context sctx))
+  and+ file =
+    Action_builder.if_file_exists
+      source
+      ~then_:(Action_builder.return source)
+      ~else_:(Action_builder.return (Path.build src_path))
   and+ args =
     (* Expand the command args to strings, discarding file-level deps (header
        files, include directories). Flag values flow through Memo, so changes
@@ -39,13 +46,8 @@ let build_c_command
     >>| fst
     >>| Appendable_list.to_list
   in
-  let src_relative =
-    Foreign.Source.path src
-    |> Path.Build.basename
-    |> Path.Local.relative_fname Path.Local.root
-  in
-  { directory = Path.build dir
-  ; file = src_relative
+  { directory = dir
+  ; file
   ; arguments =
       List.concat
         [ [ Ocaml_config.c_compiler ocaml.ocaml_config ]
@@ -57,7 +59,7 @@ let build_c_command
            match ocaml.lib_config.ccomp_type with
            | Msvc -> [ "/Fo" ^ dst ]
            | Cc | Other _ -> [ "-o"; dst ])
-        ; [ "-c"; Path.Local.to_string src_relative ]
+        ; [ "-c"; Path.to_absolute_filename file ]
         ]
   }
 ;;

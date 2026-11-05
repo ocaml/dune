@@ -68,7 +68,7 @@ Build compile_commands.json:
 
 Check that we have entries for both C files:
 
-  $ jq '[.[].file] | sort' compile_commands.json
+  $ jq '[.[].file | ltrimstr(env.PWD + "/")] | sort' compile_commands.json
   [
     "add.c",
     "mul.c"
@@ -77,7 +77,9 @@ Check that we have entries for both C files:
 Check that include directories appear in the arguments for each file.
 mul.c should have just "include", add.c should have both "include" and "headerslib":
 
-  $ jq '.[] | {file: .file, includes: [.arguments | indices("-I") as $i | .[$i[]+1]] | map(select(contains("ocaml") | not))}' compile_commands.json
+  $ jq '.[] | {file: (.file | ltrimstr(env.PWD + "/")),
+  >   includes: [.arguments | indices("-I") as $i | .[$i[]+1]] |
+  >   map(select(contains("ocaml") | not))}' compile_commands.json
   {
     "file": "mul.c",
     "includes": [

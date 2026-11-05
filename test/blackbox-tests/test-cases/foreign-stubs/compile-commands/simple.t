@@ -29,7 +29,7 @@ The file is promoted to the workspace root:
 
 Check that the file contains our stub:
 
-  $ jq '.[0].file' compile_commands.json
+  $ jq '.[0].file | ltrimstr(env.PWD + "/")' compile_commands.json
   "stub.c"
 
 Building @check also produces the file:
@@ -68,11 +68,10 @@ building them just to generate the database. Cover sources in subdirectories.
   $ test ! -f _build/default/stubs/generated.c
 
 Both the working directory and file identity should be absolute.
-TODO: The database currently identifies neither source correctly.
 
   $ jq 'all(.[]; (.directory | startswith(env.PWD + "/")) and
   >   (.file | startswith(env.PWD + "/")))' compile_commands.json
-  false
+  true
   $ jq 'map({directory: (.directory | ltrimstr(env.PWD + "/")),
   >   file: (.file | ltrimstr(env.PWD + "/")),
   >   input: (.arguments[-1] | ltrimstr(env.PWD + "/"))}) |
@@ -80,12 +79,12 @@ TODO: The database currently identifies neither source correctly.
   [
     {
       "directory": "_build/default",
-      "file": "generated.c",
-      "input": "generated.c"
+      "file": "_build/default/stubs/generated.c",
+      "input": "_build/default/stubs/generated.c"
     },
     {
       "directory": "_build/default",
-      "file": "stub.c",
-      "input": "stub.c"
+      "file": "stubs/stub.c",
+      "input": "stubs/stub.c"
     }
   ]

@@ -32,7 +32,7 @@ Build compile_commands.json:
 
 Check that both C and C++ files are present in the promoted file:
 
-  $ jq '[.[].file] | sort' compile_commands.json
+  $ jq '[.[].file | ltrimstr(env.PWD + "/")] | sort' compile_commands.json
   [
     "c_stub.c",
     "cxx_stub.cpp"

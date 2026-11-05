@@ -101,12 +101,7 @@ type t =
   ; rule_generator :
       Context_name.t -> dir:Path.Build.t -> string list -> Gen_rules.t Memo.t
   ; sandboxing_preference : Sandbox_mode.t list
-  ; promote_source :
-      chmod:(Permissions.Mode.t -> Permissions.Mode.t)
-      -> delete_dst_if_it_is_a_directory:bool
-      -> src:Path.Build.t
-      -> dst:Path.Source.t
-      -> unit Fiber.t
+  ; promote_source : src:Path.Build.t -> dst:Path.Source.t -> unit Fiber.t
   ; implicit_default_alias : Path.Build.t -> unit Action_builder.t option Memo.t
   ; execution_parameters :
       Context_name.t -> dir:Path.Build.t -> Execution_parameters.t Memo.t

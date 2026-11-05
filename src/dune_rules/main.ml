@@ -71,15 +71,18 @@ let execution_parameters ~sandbox_actions =
 ;;
 
 let init ~sandbox_actions ~sandboxing_preference () : unit =
-  let promote_source ~chmod ~delete_dst_if_it_is_a_directory ~src ~dst =
+  let promote_source ~src ~dst =
     let open Fiber.O in
     let* ctx = Path.Build.parent_exn src |> Context.DB.by_dir |> Memo.run in
     let conf = Artifact_substitution.Conf.of_context ctx in
     let src = Path.build src in
     let dst = Path.source dst in
+    (* The file in the build directory might be read-only if it comes from the
+       shared cache. However, we want the file in the source tree to be
+       writable by the user, so we explicitly set the user writable bit. *)
     Artifact_substitution.copy_file
-      ~chmod
-      ~delete_dst_if_it_is_a_directory
+      ~chmod:(Permissions.add Permissions.write)
+      ~delete_dst_if_it_is_a_directory:true
       ~src
       ~dst
       ~conf

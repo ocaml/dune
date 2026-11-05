@@ -73,7 +73,7 @@ And to a renamed page:
   > [broken
   > EOF
   $ dune build @doc
-  File "../../../doc/draft.mld", line 4, characters 0-0:
+  File "../../_mlds/my_pkg/guide.mld", line 4, characters 0-0:
   Error: End of text is not allowed in '[...]' (code).
   ERROR: Warnings have been generated.
   [1]

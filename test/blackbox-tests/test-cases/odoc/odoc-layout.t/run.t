@@ -14,17 +14,17 @@ pages are produced.
 
   $ find _build/default/_doc/_html -name '*.html' | sort
   _build/default/_doc/_html/index.html
-  _build/default/_doc/_html/my_pkg/Bar/index.html
-  _build/default/_doc/_html/my_pkg/Foo/A/index.html
-  _build/default/_doc/_html/my_pkg/Foo/B/index.html
-  _build/default/_doc/_html/my_pkg/Foo/index.html
-  _build/default/_doc/_html/my_pkg/Priv/index.html
   _build/default/_doc/_html/my_pkg/index.html
+  _build/default/_doc/_html/my_pkg/my_pkg.__private__.priv/Priv/index.html
+  _build/default/_doc/_html/my_pkg/my_pkg.bar/Bar/index.html
+  _build/default/_doc/_html/my_pkg/my_pkg.foo/Foo/A/index.html
+  _build/default/_doc/_html/my_pkg/my_pkg.foo/Foo/B/index.html
+  _build/default/_doc/_html/my_pkg/my_pkg.foo/Foo/index.html
   _build/default/_doc/_html/solo@e3b9de2fb703/Solo/index.html
 
   $ find . -name '*.odocl' | sort
-  ./_build/default/_doc/_odocls/my_pkg/bar.odocl
-  ./_build/default/_doc/_odocls/my_pkg/foo.odocl
+  ./_build/default/_doc/_odocls/my_pkg/my_pkg.__private__.priv/priv.odocl
+  ./_build/default/_doc/_odocls/my_pkg/my_pkg.bar/bar.odocl
+  ./_build/default/_doc/_odocls/my_pkg/my_pkg.foo/foo.odocl
   ./_build/default/_doc/_odocls/my_pkg/page-index.odocl
-  ./_build/default/_doc/_odocls/my_pkg/priv.odocl
   ./_build/default/_doc/_odocls/solo@e3b9de2fb703/solo.odocl

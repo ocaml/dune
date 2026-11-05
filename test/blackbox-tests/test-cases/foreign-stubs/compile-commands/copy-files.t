@@ -16,14 +16,6 @@ works because compilation database generation is disabled.
 
   $ make_dune_project 3.23
   $ dune build foo/file.txt @check
-  Error: Dependency cycle between:
-     Computing directory contents of _build/default/foo
-  -> { dir = In_build_dir "default"
-     ; predicate = Element (Glob "file.txt")
-     ; only_generated_files = false
-     }
-  -> Computing directory contents of _build/default/foo
-  [1]
   $ test ! -f compile_commands.json
 
 Selecting only source files also works. No compilation database should be
@@ -43,17 +35,8 @@ workaround or prebuilding the input.
   > EOF
   $ echo '(copy_files ../generated.txt)' > foo/dune
   $ dune build foo/generated.txt @check
-  Error: Dependency cycle between:
-     Computing directory contents of _build/default/foo
-  -> { dir = In_build_dir "default"
-     ; predicate = Element (Glob "generated.txt")
-     ; only_generated_files = false
-     }
-  -> Computing directory contents of _build/default/foo
-  [1]
   $ cat _build/default/foo/generated.txt
-  cat: _build/default/foo/generated.txt: No such file or directory
-  [1]
+  generated
   $ test ! -f compile_commands.json
 
 A foreign library with copied sources also cycles. Skipping non-foreign
@@ -178,12 +161,7 @@ Enumerating that target for an unrelated copy_files stanza creates a cycle.
   $ echo '(copy_files ../reports/*.txt)' > unrelated/dune
   $ dune build compile_commands.json
   Error: Dependency cycle between:
-     Computing directory contents of _build/default/unrelated
-  -> { dir = In_build_dir "default/reports"
-     ; predicate = Element (Glob "*.txt")
-     ; only_generated_files = false
-     }
-  -> Computing directory contents of _build/default/unrelated
+     %{file-available:../stub.c} at foo/dune:5
   [1]
   $ test ! -d _build/default/reports
 

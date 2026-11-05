@@ -111,7 +111,17 @@ let collect_entries sctx =
   let ctx = Super_context.context sctx in
   let open Memo.O in
   let* dune_files = Dune_load.dune_files (Context.name ctx) in
-  Dune_file.fold_static_stanzas dune_files ~init:[] ~f:(fun dune_file stanza acc ->
+  let stanzas =
+    Dune_file.fold_static_stanzas dune_files ~init:[] ~f:(fun dune_file stanza acc ->
+      match Stanza.repr stanza with
+      | Foreign_library.T _ -> (dune_file, stanza) :: acc
+      | Library.T { buildable; _ }
+      | Executables.T { buildable; _ }
+      | Tests.T { exes = { buildable; _ }; _ }
+        when Buildable.has_foreign_stubs buildable -> (dune_file, stanza) :: acc
+      | _ -> acc)
+  in
+  List.fold_right stanzas ~init:[] ~f:(fun (dune_file, stanza) acc ->
     let dir =
       Path.Build.append_source (Context.build_dir ctx) (Dune_file.dir dune_file)
     in

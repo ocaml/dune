@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793897202424,
+  "lastUpdate": 1793897498424,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -482297,6 +482297,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.52803621134,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "14a90ee932f87ee16ea7732a16cef0d38719ed1c",
+          "message": "Revert \"fix(compile_commands): avoid copy_files discovery cycles (#16518)\" (#16894)\n\nReverts #16518 for the following reasons:\n\n1. Rules should not depend on source files.\n2. Rules should not inspect existing rules to find if something has been\ndefined.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-06T00:32:17+08:00",
+          "tree_id": "8cd1ce349b91bd9153db1ef15eab3d9297920076",
+          "url": "https://github.com/ocaml/dune/commit/14a90ee932f87ee16ea7732a16cef0d38719ed1c"
+        },
+        "date": 1793897496145,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 55.72261625839334,
             "unit": "seconds"
           }
         ]

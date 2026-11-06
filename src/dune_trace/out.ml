@@ -215,3 +215,94 @@ let create how =
   if runtime_enabled then Runtime.resume ();
   t
 ;;
+
+let%test_module "writer" =
+  (module struct
+    let emit trace ~buffered =
+      match emit ~buffered trace (Event.spawn_thread ~name:"test") with
+      | () -> print_endline "ok"
+      | exception Unix.Unix_error (error, _, _) ->
+        printfn "error: %s" (Unix.error_message error)
+    ;;
+
+    let close trace =
+      match close trace with
+      | () -> print_endline "closed"
+      | exception Unix.Unix_error (error, _, _) ->
+        printfn "close error: %s" (Unix.error_message error)
+    ;;
+
+    let%expect_test "trace write failure" =
+      let read, write = Unix.pipe () in
+      Unix.close write;
+      let fd = Fd.unsafe_of_unix_file_descr read in
+      let trace = create (`Fd fd) in
+      emit trace ~buffered:true;
+      [%expect {| ok |}];
+      emit trace ~buffered:false;
+      [%expect {| error: Bad file descriptor |}];
+      printfn "closed: %b" (Fd.is_closed fd);
+      [%expect {| closed: false |}];
+      emit trace ~buffered:true;
+      [%expect {| ok |}];
+      emit trace ~buffered:false;
+      [%expect {| error: Bad file descriptor |}];
+      close trace;
+      [%expect {| close error: Bad file descriptor |}];
+      close trace;
+      [%expect {| close error: Bad file descriptor |}];
+      Fd.close fd
+    ;;
+
+    let%expect_test "trace descriptor cleanup failure" =
+      let read, write = Unix.pipe () in
+      Unix.close write;
+      let trace = create (`Fd (Fd.unsafe_of_unix_file_descr read)) in
+      Unix.close read;
+      emit trace ~buffered:false;
+      [%expect {| error: Bad file descriptor |}];
+      close trace;
+      [%expect {| close error: Bad file descriptor |}]
+    ;;
+
+    let%expect_test "trace close failure" =
+      let read, write = Unix.pipe () in
+      Unix.close write;
+      let trace = create (`Fd (Fd.unsafe_of_unix_file_descr read)) in
+      Unix.close read;
+      close trace;
+      [%expect {| close error: Bad file descriptor |}]
+    ;;
+
+    let%expect_test "trace buffered flush failure on close" =
+      let read, write = Unix.pipe () in
+      Unix.close write;
+      let fd = Fd.unsafe_of_unix_file_descr read in
+      let trace = create (`Fd fd) in
+      emit trace ~buffered:true;
+      [%expect {| ok |}];
+      close trace;
+      [%expect {| close error: Bad file descriptor |}];
+      printfn "closed: %b" (Fd.is_closed fd);
+      [%expect {| closed: false |}];
+      close trace;
+      [%expect {| close error: Bad file descriptor |}];
+      Fd.close fd
+    ;;
+
+    let%expect_test "trace close succeeds" =
+      let read, write = Unix.pipe () in
+      let fd = Fd.unsafe_of_unix_file_descr write in
+      let trace = create (`Fd fd) in
+      emit trace ~buffered:true;
+      [%expect {| ok |}];
+      close trace;
+      [%expect {| closed |}];
+      printfn "closed: %b" (Fd.is_closed fd);
+      [%expect {| closed: true |}];
+      close trace;
+      [%expect {| closed |}];
+      Unix.close read
+    ;;
+  end)
+;;

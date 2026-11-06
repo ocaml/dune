@@ -151,6 +151,14 @@ and work =
   | Nforki_work : int * 'a * 'a list * (int -> 'a -> eff) -> work
   | Nfork_seq_work : int ref * 'a * 'a Seq.t * ('a -> eff) -> work
   | Nfork_array_work : 'a array * int * ('a -> eff) -> work
+  | Nfork_appendable_list_work :
+      'a Appendable_list.t
+      * 'a list
+      * 'a Appendable_list.t list
+      * 'a Appendable_list.t list list
+      * int
+      * ('a -> eff)
+      -> work
   | Apply_thunk_work : (unit -> 'a t) * 'a continuation -> work
   | Continue_work : unit continuation -> work
 
@@ -427,12 +435,49 @@ let rec nfork_array a i f =
     | eff -> Fork (eff, Nfork_array_work (a, i + 1, f)))
 ;;
 
+let rec nfork_appendable_list t values rest stack remaining f =
+  match values with
+  | x :: values -> nfork_appendable_list_item x t values rest stack remaining f
+  | [] ->
+    (match (t : _ Appendable_list.t) with
+     | Empty | Concat [] -> nfork_appendable_list_next rest stack remaining f
+     | Singleton x ->
+       nfork_appendable_list_item x Appendable_list.empty [] rest stack remaining f
+     | Cons (x, xs) -> nfork_appendable_list_item x xs [] rest stack remaining f
+     | List values ->
+       nfork_appendable_list Appendable_list.empty values rest stack remaining f
+     | Append (xs, ys) -> nfork_appendable_list xs [] (ys :: rest) stack remaining f
+     | Concat xs ->
+       (match rest with
+        | [] -> nfork_appendable_list_next xs stack remaining f
+        | _ :: _ -> nfork_appendable_list_next xs (rest :: stack) remaining f))
+
+and nfork_appendable_list_next rest stack remaining f =
+  match rest with
+  | t :: rest -> nfork_appendable_list t [] rest stack remaining f
+  | [] ->
+    (match stack with
+     | rest :: stack -> nfork_appendable_list_next rest stack remaining f
+     | [] -> Code_error.raise "Fiber.map_reduce_appendable_list: length mismatch" [])
+
+and nfork_appendable_list_item x t values rest stack remaining f =
+  if remaining = 1
+  then f x
+  else (
+    match apply f x with
+    | End_of_fiber () -> nfork_appendable_list t values rest stack (remaining - 1) f
+    | eff ->
+      Fork (eff, Nfork_appendable_list_work (t, values, rest, stack, remaining - 1, f)))
+;;
+
 let run_work = function
   | Function_work f -> f ()
   | Nfork_work (x, l, f) -> nfork x l f
   | Nforki_work (i, x, l, f) -> nforki_from i x l f
   | Nfork_seq_work (left_over, x, seq, f) -> nfork_seq left_over x seq f
   | Nfork_array_work (a, i, f) -> nfork_array a i f
+  | Nfork_appendable_list_work (t, values, rest, stack, remaining, f) ->
+    nfork_appendable_list t values rest stack remaining f
   | Apply_thunk_work (f, k) -> apply_t f () k
   | Continue_work k -> continue k ()
 ;;
@@ -477,6 +522,21 @@ let run_map_reduce_array a f empty combine k =
 
 let map_reduce_array a ~f ~empty ~combine =
   primitive4 run_map_reduce_array a f empty combine
+;;
+
+let run_map_reduce_appendable_list t f empty combine k =
+  match Appendable_list.length t with
+  | 0 -> continue k empty
+  | len ->
+    let current = ref empty in
+    let running = ref len in
+    let complete = Map_reduce_complete (current, running, combine, k) in
+    let f' x = apply_t f x complete in
+    nfork_appendable_list t [] [] [] len f'
+;;
+
+let map_reduce_appendable_list t ~f ~empty ~combine =
+  primitive4 run_map_reduce_appendable_list t f empty combine
 ;;
 
 let run_map_reduce l f empty combine k =

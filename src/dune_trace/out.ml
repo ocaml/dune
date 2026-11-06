@@ -20,6 +20,12 @@ type t =
   ; mutable error : Unix.error option
   }
 
+let on_error = Fdecl.create Dyn.opaque
+
+let notify_error error =
+  Option.iter (Fdecl.get_opt on_error) ~f:(fun notify -> notify error)
+;;
+
 let cats t = t.cats
 let alloc t = t.alloc
 let failed t = Option.is_some t.error
@@ -115,15 +121,28 @@ let emit_buffered t event =
 ;;
 
 let emit ?(buffered = false) t event =
-  Mutex.protect t.mutex (fun () ->
-    if not (failed t || Fd.is_closed t.fd)
-    then (
-      emit_buffered t event;
-      if not buffered then flush_unlocked t))
+  let error =
+    Mutex.protect t.mutex (fun () ->
+      if failed t || Fd.is_closed t.fd
+      then None
+      else (
+        emit_buffered t event;
+        if not buffered then flush_unlocked t;
+        t.error))
+  in
+  Option.iter error ~f:notify_error
 ;;
 
 let flush t =
-  Mutex.protect t.mutex (fun () -> if not (Fd.is_closed t.fd) then flush_unlocked t)
+  let error =
+    Mutex.protect t.mutex (fun () ->
+      if failed t || Fd.is_closed t.fd
+      then None
+      else (
+        flush_unlocked t;
+        t.error))
+  in
+  Option.iter error ~f:notify_error
 ;;
 
 let emit_runtime t =
@@ -333,6 +352,65 @@ let%test_module "writer" =
       close trace;
       [%expect {| closed |}];
       Unix.close read
+    ;;
+
+    let%expect_test "emit and flush notify once after unlocking" =
+      let current_trace = ref None in
+      let notifications = ref 0 in
+      Fdecl.set on_error (fun error ->
+        match !current_trace with
+        | None -> ()
+        | Some trace ->
+          incr notifications;
+          printfn "error: %s" (Unix.error_message error);
+          let { mutex; _ } = trace in
+          let unlocked = Mutex.try_lock mutex in
+          printfn "unlocked: %b" unlocked;
+          if unlocked
+          then (
+            Mutex.unlock mutex;
+            close trace));
+      List.iter [ `Emit; `Flush ] ~f:(fun operation ->
+        print_endline
+          (match operation with
+           | `Emit -> "emit"
+           | `Flush -> "flush");
+        let read, write = Unix.pipe () in
+        Unix.close write;
+        let trace = create (`Fd (Fd.unsafe_of_unix_file_descr read)) in
+        current_trace := Some trace;
+        notifications := 0;
+        Exn.protect
+          ~finally:(fun () -> current_trace := None)
+          ~f:(fun () ->
+            (match operation with
+             | `Emit -> emit trace ~buffered:false
+             | `Flush ->
+               emit trace ~buffered:true;
+               flush trace);
+            emit trace ~buffered:false;
+            flush trace;
+            close trace;
+            printfn "notifications: %d" !notifications));
+      [%expect
+        {|
+        emit
+        error: Bad file descriptor
+        unlocked: true
+        close error: Bad file descriptor
+        ok
+        ok
+        close error: Bad file descriptor
+        notifications: 1
+        flush
+        ok
+        error: Bad file descriptor
+        unlocked: true
+        close error: Bad file descriptor
+        ok
+        close error: Bad file descriptor
+        notifications: 1
+        |}]
     ;;
   end)
 ;;

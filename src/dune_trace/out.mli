@@ -2,6 +2,7 @@ open Stdune
 
 type t
 
+val on_error : (Unix.error -> unit) Fdecl.t
 val duplicate_fd : t -> Fd.t option
 val cats : t -> Category.Set.t
 val alloc : t -> Alloc.t option

@@ -347,6 +347,12 @@ module Out : sig
   val finish : t -> Event.Async.t option -> unit
 end
 
+(** Called on the emitting thread when [Out.emit] or [flush] first fails,
+    after the writer is disabled and its mutex released. The handler must return
+    normally. If unset, notification does nothing; errors are reported at
+    finalization. The scheduler registers its dispatcher once. *)
+val on_error : (Unix.error -> unit) Fdecl.t
+
 val global : unit -> Out.t option
 val set_global : Out.t -> path:Path.t -> unit
 val set_global_inherited_fd : ?common_args:(string * Sexp.t) list -> Fd.t -> unit

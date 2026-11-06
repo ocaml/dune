@@ -4,6 +4,8 @@ module Event = Event
 module File_watcher_event = File_watcher_event
 module Out = Out
 
+let on_error = Out.on_error
+
 type ownership =
   | Owned of Path.t
   | Borrowed

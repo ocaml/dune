@@ -17,7 +17,9 @@ both directly and through their process group.
   $ LD_PRELOAD="$PWD/../../utils/fail_trace_write.so" \
   >   $timeout -s KILL 5 dune build result
   Warning: Unable to write trace: No space left on device. Disabling tracing.
+  [1]
   $ test -f _build/default/result
+  [1]
 
 A trace write can also fail during initialization. Using an action runner checks
 that a failed trace is not subsequently shared with a worker. Capture the output
@@ -49,26 +51,22 @@ work has completed. Fail only the signal watcher's final SIGUSR1 event.
   $ DUNE_TRACE_FAIL_CLEANUP=1 \
   >   LD_PRELOAD="$PWD/../../utils/fail_trace_write.so" \
   >   $timeout -s KILL 5 dune build result > cleanup.log 2>&1
+  [1]
   $ grep -E '^(Error|Warning):' cleanup.log
   Warning: Unable to write trace: No space left on device. Disabling tracing.
   $ test -f _build/default/result
   $ test ! -s _build/.lock
 
-A watch build still handles build and shutdown requests after a trace failure.
-The warning is reported only when the watch process exits.
+A watch build stops after a trace failure and exits unsuccessfully.
 
   $ LD_PRELOAD="$PWD/../../utils/fail_trace_write.so" start_dune
-  $ build result
-  Success
-  $ build result
-  Success
-  $ grep '^Warning:' .#dune-output
+  $ build result > watch-request.log 2>&1
   [1]
-  $ stop_dune_quiet
+  $ wait_for_dune_exit_with_timeout
   $ grep '^Warning:' .#dune-output
   Warning: Unable to write trace: No space left on device. Disabling tracing.
   $ grep '^exit ' .#dune-output
-  [1]
+  exit 1
 
 A failure writing the final exit event is reported during shutdown and prevents
 exporting the incomplete trace.
@@ -122,7 +120,7 @@ its process group. Arm the failure only after the long-running child has started
   >   LD_PRELOAD="$PWD/../../utils/fail_trace_write.so" \
   >   $timeout -k 2 3 dune build -j 2 running trigger \
   >   > running.log 2>&1
-  [124]
+  [1]
   $ grep -E '^(Error|Warning):' running.log
   Warning: Unable to write trace: No space left on device. Disabling tracing.
   $ test -s "$child_pid"

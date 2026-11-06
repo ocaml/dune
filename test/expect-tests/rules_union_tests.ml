@@ -3,6 +3,37 @@ open Dune_engine
 
 let () = Dune_tests_common.init ()
 
+let%expect_test "alias specifications preserve declaration order across fragments" =
+  let dir = Path.Build.relative Path.Build.root "default/aliases" in
+  let alias = Alias.make (Alias.Name.of_string "test") ~dir in
+  let run memo =
+    Fiber.run (Memo.run memo) ~iter:(fun () -> failwith "unexpected suspension")
+  in
+  let emit names =
+    run
+      (Rules.collect_unit (fun () ->
+         Memo.sequential_iter names ~f:(fun name ->
+           let loc = Loc.in_file (Path.source (Path.Source.of_string name)) in
+           Rules.Produce.Alias.add_deps alias ~loc (Action_builder.return ()))))
+  in
+  let first = emit [ "first"; "second" ] in
+  let second = emit [ "third"; "fourth" ] in
+  let rules = Rules.union second (Rules.union first first) in
+  let { Rules.Dir_rules.aliases; _ } =
+    Rules.Dir_rules.consume (Rules.find rules (Path.build dir))
+  in
+  let spec = Alias.Name.Map.find_exn aliases (Alias.name alias) in
+  Appendable_list.iter spec ~f:(fun (loc, _) ->
+    print_endline (Loc.to_file_colon_line loc));
+  [%expect
+    {|
+    first:1
+    second:1
+    third:1
+    fourth:1
+    |}]
+;;
+
 let%expect_test "directory rule unions preserve emission identity and order" =
   let dir = Path.Build.relative Path.Build.root "default/union" in
   let emission name =

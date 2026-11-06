@@ -925,16 +925,24 @@ and dep_on_alias_definition (definition : Rules.Dir_rules.Alias_spec.item) =
   | Action x -> dep_on_anonymous_action x
 
 and build_alias_impl alias =
-  let+ l =
-    Load_rules.get_alias_definition alias
-    >>= Memo.parallel_map ~f:(fun (loc, definition) ->
-      Memo.push_stack_frame
-        (fun () ->
-           Action_builder.evaluate_and_collect_facts (dep_on_alias_definition definition)
-           >>| snd)
-        ~human_readable_description:(fun () -> Alias.describe alias ~loc))
+  let* spec = Load_rules.get_alias_definition alias in
+  let+ facts =
+    (* Fact grouping below is independent of the completion order. *)
+    Memo.map_reduce_appendable_list
+      spec
+      ~empty:[]
+      ~combine:(fun acc facts -> List.rev_append facts acc)
+      ~f:(fun (loc, definition) ->
+        Memo.push_stack_frame
+          (fun () ->
+             let+ (), facts =
+               Action_builder.evaluate_and_collect_facts
+                 (dep_on_alias_definition definition)
+             in
+             [ facts ])
+          ~human_readable_description:(fun () -> Alias.describe alias ~loc))
   in
-  Dep.Facts.group_paths_as_fact_files l
+  Dep.Facts.group_paths_as_fact_files facts
 
 and eval_pred_impl g =
   let dir = File_selector.dir g in

@@ -7,11 +7,9 @@ module Dir_rules = struct
       | Deps of unit Action_builder.t
       | Action of Rule.Anonymous_action.t
 
-    type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
+    type t = (Loc.t * item) Appendable_list.t
 
-    let singleton loc item = { expansions = Appendable_list.singleton (loc, item) }
-    let union x y = { expansions = Appendable_list.( @ ) x.expansions y.expansions }
-    let to_list t = Appendable_list.to_list_rev t.expansions
+    let singleton loc item = Appendable_list.singleton (loc, item)
   end
 
   type alias =
@@ -49,12 +47,8 @@ module Dir_rules = struct
     let aliases =
       let add_item what = function
         | None -> Some what
-        | Some base -> Some (Alias_spec.union what base)
+        | Some base -> Some Appendable_list.(base @ what)
       in
-      (* This accumulates the aliases in reverse order, but there's another
-         reversal whenever the expansion is inspected. The order doesn't really
-         matter, but it does change the tests. So it's nice to maintain it if
-         possible *)
       List.fold_left aliases ~init:Alias.Name.Map.empty ~f:(fun acc (name, item) ->
         Alias.Name.Map.update acc name ~f:(add_item item))
     in

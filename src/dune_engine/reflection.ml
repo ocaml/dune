@@ -24,18 +24,19 @@ end = struct
         "expand-alias"
         ~input:(module Alias)
         (fun alias ->
+           let* spec = Load_rules.get_alias_definition alias in
            let* deps =
-             Load_rules.get_alias_definition alias
-             >>= Memo.map_reduce
-                   ~empty:Dep.Set.empty
-                   ~combine:Dep.Set.union
-                   ~f:(fun (loc, definition) ->
-                     Memo.push_stack_frame
-                       (fun () ->
-                          Action_builder.evaluate_and_collect_deps
-                            (Build_system.dep_on_alias_definition definition)
-                          >>| snd)
-                       ~human_readable_description:(fun () -> Alias.describe alias ~loc))
+             Memo.map_reduce_appendable_list
+               spec
+               ~empty:Dep.Set.empty
+               ~combine:Dep.Set.union
+               ~f:(fun (loc, definition) ->
+                 Memo.push_stack_frame
+                   (fun () ->
+                      Action_builder.evaluate_and_collect_deps
+                        (Build_system.dep_on_alias_definition definition)
+                      >>| snd)
+                   ~human_readable_description:(fun () -> Alias.describe alias ~loc))
            in
            Expand.deps deps)
     in

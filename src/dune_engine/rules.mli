@@ -27,10 +27,9 @@ module Dir_rules : sig
            will be re-executed. *)
         Action of Rule.Anonymous_action.t
 
-    type t
+    type t = (Loc.t * item) Appendable_list.t
 
     val singleton : Loc.t -> item -> t
-    val to_list : t -> (Loc.t * item) list
   end
 
   (** A ready to process view of the rules of a directory *)

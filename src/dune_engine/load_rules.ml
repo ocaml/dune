@@ -30,7 +30,7 @@ module Loaded = struct
   type build =
     { allowed_subdirs : Path.Unspecified.w Dir_set.t
     ; rules_here : rules_here
-    ; aliases : (Loc.t * Rules.Dir_rules.Alias_spec.item) list Alias.Name.Map.t
+    ; aliases : Rules.Dir_rules.Alias_spec.t Alias.Name.Map.t
     }
 
   type t =
@@ -277,10 +277,7 @@ let no_rule_found ~loc fn =
 module rec Load_rules : sig
   val load_dir : dir:Path.t -> Loaded.t Memo.t
   val is_under_directory_target : Path.t -> bool Memo.t
-
-  val lookup_alias
-    :  Alias.t
-    -> (Loc.t * Rules.Dir_rules.Alias_spec.item) list option Memo.t
+  val get_alias_definition : Alias.t -> Rules.Dir_rules.Alias_spec.t Memo.t
 end = struct
   open Load_rules
 
@@ -346,33 +343,37 @@ end = struct
     { Loaded.by_file_targets; by_directory_targets }
   ;;
 
-  let lookup_alias alias =
+  let get_alias_definition alias =
+    let not_found () =
+      let open Pp.O in
+      let+ loc = Current_rule_loc.get () in
+      User_error.raise ?loc [ Pp.text "No rule found for " ++ Alias.describe alias ]
+    in
     load_dir ~dir:(Path.build (Alias.dir alias))
-    >>| function
+    >>= function
     | Source _ | External _ ->
       Code_error.raise "Alias in a non-build dir" [ "alias", Alias.to_dyn alias ]
-    | Build { aliases; _ } -> Alias.Name.Map.find aliases (Alias.name alias)
-    | Build_under_directory_target _ -> None
+    | Build { aliases; _ } ->
+      (match Alias.Name.Map.find aliases (Alias.name alias) with
+       | None -> not_found ()
+       | Some spec -> Memo.return spec)
+    | Build_under_directory_target _ -> not_found ()
   ;;
 
-  let compute_alias_expansions ~(collected : Rules.Dir_rules.ready) ~dir =
-    let+ aliases =
-      let aliases = collected.aliases in
-      if Alias.Name.Map.mem aliases Alias.Name.default
-      then Memo.return aliases
-      else
-        (Build_config.get ()).implicit_default_alias dir
-        >>| function
-        | None -> aliases
-        | Some expansion ->
-          Alias.Name.Map.set
-            aliases
-            Alias.Name.default
-            (Rules.Dir_rules.Alias_spec.singleton
-               Loc.none
-               (Rules.Dir_rules.Alias_spec.Deps expansion))
-    in
-    Alias.Name.Map.map aliases ~f:Rules.Dir_rules.Alias_spec.to_list
+  let add_implicit_default_alias aliases ~dir =
+    if Alias.Name.Map.mem aliases Alias.Name.default
+    then Memo.return aliases
+    else
+      (Build_config.get ()).implicit_default_alias dir
+      >>| function
+      | None -> aliases
+      | Some expansion ->
+        Alias.Name.Map.set
+          aliases
+          Alias.Name.default
+          (Rules.Dir_rules.Alias_spec.singleton
+             Loc.none
+             (Rules.Dir_rules.Alias_spec.Deps expansion))
   ;;
 
   let add_non_fallback_rules ~init ~dir ~source_filenames rules =
@@ -885,7 +886,7 @@ end = struct
          ~subdirs_to_keep);
       let+ aliases =
         match context_type with
-        | With_sources -> compute_alias_expansions ~collected ~dir
+        | With_sources -> add_implicit_default_alias collected.aliases ~dir
         | Empty ->
           (* There are no aliases in contexts without sources *)
           Memo.return Alias.Name.Map.empty
@@ -972,16 +973,6 @@ let get_rule_or_source path =
      | None ->
        let* loc = Current_rule_loc.get () in
        no_rule_found ~loc path)
-;;
-
-let get_alias_definition alias =
-  lookup_alias alias
-  >>= function
-  | None ->
-    let open Pp.O in
-    let+ loc = Current_rule_loc.get () in
-    User_error.raise ?loc [ Pp.text "No rule found for " ++ Alias.describe alias ]
-  | Some x -> Memo.return x
 ;;
 
 type target_type =

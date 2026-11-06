@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793979111709,
+  "lastUpdate": 1793979119646,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -482384,6 +482384,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 58.875251743706656,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b85eb414640cb87c082ae1d66887a0216a18fc78",
+          "message": "refactor(odoc): move library naming to Odoc_scope (#16904)\n\n## Description\n\nThis PR moves the logic that computes library names in the generated\ndocumentation from `odoc.ml` into a new `Odoc_scope` module.\n\n## Motivation\n\nThis is the first brick needed by @art-w, @xvw, and me to update Dune\nrules for Odoc 3.\n\n## Changelog\n\nNo changelog entry, since this is an internal refactoring with no\nuser-visible change.",
+          "timestamp": "2026-11-06T15:11:44Z",
+          "tree_id": "8e375e09006f3aeec586d1bafeb1fc6f852e1c71",
+          "url": "https://github.com/ocaml/dune/commit/b85eb414640cb87c082ae1d66887a0216a18fc78"
+        },
+        "date": 1793979118505,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.55315864618,
             "unit": "seconds"
           }
         ]

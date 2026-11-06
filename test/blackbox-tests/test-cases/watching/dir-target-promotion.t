@@ -37,7 +37,7 @@ Remove a file and rebuild.
 
 Remove a directory and rebuild.
 
-  $ rm -rf d2
+  $ rm -rf d1/d2
   $ build d1
   Success
   $ cat d1/a d1/b d1/d2/c
@@ -98,7 +98,6 @@ Now test file-system events generated during directory target promotion.
   $ start_dune
   $ build d1
   Success
-
   $ stop_dune > /dev/null
 
 Show that Dune ignores the initial "dune-workspace" events (injected by Dune).
@@ -106,11 +105,6 @@ Show that Dune ignores the initial "dune-workspace" events (injected by Dune).
   $ dune trace cat | jq_dune 'cacheEvent("dune-workspace")'
   {
     "cache_type": "dir_contents",
-    "path": "dune-workspace",
-    "result": "skipped"
-  }
-  {
-    "cache_type": "file_digest",
     "path": "dune-workspace",
     "result": "skipped"
   }
@@ -127,11 +121,6 @@ Dune correctly notices that the contents of . changed because [d1] was created.
     "cache_type": "dir_contents",
     "path": ".",
     "result": "changed"
-  }
-  {
-    "cache_type": "file_digest",
-    "path": ".",
-    "result": "skipped"
   }
   {
     "cache_type": "path_stat",
@@ -158,11 +147,6 @@ evicted its entry. In either case, it must not report a change.
     "changed": false
   }
   {
-    "cache_type": "file_digest",
-    "path": "d1",
-    "result": "skipped"
-  }
-  {
     "cache_type": "path_stat",
     "path": "d1",
     "result": "changed"
@@ -173,19 +157,26 @@ evicted its entry. In either case, it must not report a change.
     "changed": false
   }
   {
-    "cache_type": "file_digest",
-    "path": "d1",
-    "result": "skipped"
-  }
-  {
     "cache_type": "path_stat",
     "path": "d1",
     "result": "unchanged"
   }
 
-Events below occurred because we replaced file [d1/b] with a directory. Dune
-undid this change to bring the promoted directory target up to date, which
-explains why [file_digest] remained unchanged.
+Replacing file [d1/b] with a directory is fixed by re-promoting the directory
+target. Trace that replacement separately so the [d1/b] events are not hidden
+behind the initial promotion.
+
+  $ export DUNE_TRACE=cache
+  $ start_dune
+  $ build d1/b
+  Success
+  $ rm d1/b
+  $ mkdir d1/b
+  $ build d1/b
+  Success
+  $ cat d1/b
+  +
+  $ stop_dune > /dev/null
 
   $ dune trace cat | jq_dune 'cacheEvent("d1/b")'
   {
@@ -194,9 +185,14 @@ explains why [file_digest] remained unchanged.
     "result": "skipped"
   }
   {
-    "cache_type": "file_digest",
+    "cache_type": "path_stat",
     "path": "d1/b",
-    "result": "unchanged"
+    "result": "skipped"
+  }
+  {
+    "cache_type": "dir_contents",
+    "path": "d1/b",
+    "result": "skipped"
   }
   {
     "cache_type": "path_stat",

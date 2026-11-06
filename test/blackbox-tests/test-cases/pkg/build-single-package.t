@@ -51,3 +51,33 @@ Editing a lock input must rebuild the affected package.
   > EOF
   $ build_pkg foo
   rebuilt foo
+
+Lock inputs are read as configuration during rule generation. Their contents
+are captured in actions without content-digesting source files.
+
+  $ lock_copy=_build/_private/default/.lock/dune.lock
+  $ cmp dune.lock/foo.pkg "$lock_copy/foo.pkg"
+  $ dune internal digest-db dump 2>&1 | grep 'In_source_tree'
+  [1]
+
+Lock inputs preserve binary contents and executable bits, including changes
+that leave the bytes unchanged. Removed inputs must not survive in the copy.
+
+  $ mkdir -p dune.lock/foo.files/sub
+  $ printf 'payload\000tail\n' > dune.lock/foo.files/sub/data
+  $ printf '#!/bin/sh\nexit 0\n' > dune.lock/foo.files/script
+  $ chmod +x dune.lock/foo.files/script
+  $ dune build "$lock_copy"
+  $ cmp dune.lock/foo.files/sub/data "$lock_copy/foo.files/sub/data"
+  $ cmp dune.lock/foo.files/script "$lock_copy/foo.files/script"
+  $ test -x "$lock_copy/foo.files/script"
+  $ chmod -x dune.lock/foo.files/script
+  $ dune build "$lock_copy"
+  $ test ! -x "$lock_copy/foo.files/script"
+  $ rm dune.lock/foo.files/sub/data
+  $ dune build "$lock_copy"
+  $ test ! -e "$lock_copy/foo.files/sub/data"
+
+  $ dune rules "$lock_copy" > .#lock-rules
+  $ if grep -q '(copy' .#lock-rules; then echo copy; else echo contents; fi
+  contents

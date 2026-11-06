@@ -135,38 +135,16 @@ Show that Dune ignores the initial "dune-workspace" events (injected by Dune).
     "result": "skipped"
   }
   {
-    "cache_type": "file_digest",
-    "path": "dune-workspace",
-    "result": "skipped"
-  }
-  {
     "cache_type": "path_stat",
     "path": "dune-workspace",
     "result": "unchanged"
   }
 
-Show that Dune ignores "promoted" events. Events for ".#promoted.dune-temp" are
-filtered out by Dune's file watcher and don't show up here. The [path_digest]
-event for [promoted] is more interesting: the file's content did change from "hi"
-to "bye" but Dune subscribed to it *after* making the promotion, precisely to
-avoid unnecessarily restarting after receiving the event that it caused itself.
+Events for ".#promoted.dune-temp" are filtered out by Dune's file watcher.
+The promoted source file is tracked directly, without a cached content digest,
+so it does not produce filesystem-cache updates either.
 
   $ dune trace cat | jq_dune 'fsUpdateWithPath("promoted")'
-  {
-    "cache_type": "dir_contents",
-    "path": "promoted",
-    "result": "skipped"
-  }
-  {
-    "cache_type": "file_digest",
-    "path": "promoted",
-    "result": "unchanged"
-  }
-  {
-    "cache_type": "path_stat",
-    "path": "promoted",
-    "result": "skipped"
-  }
 
 Show that Dune ignores events for the . directory: [dir_contents] didn't change
 because [promoted] existed before running the build. Also, the subset of fields
@@ -178,11 +156,6 @@ change but [fs_memo] does not provide a way to subscribe to it).
     "cache_type": "dir_contents",
     "path": ".",
     "result": "unchanged"
-  }
-  {
-    "cache_type": "file_digest",
-    "path": ".",
-    "result": "skipped"
   }
   {
     "cache_type": "path_stat",

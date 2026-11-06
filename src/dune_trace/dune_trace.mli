@@ -24,6 +24,7 @@ module Category : sig
     | Cache
     | Digest
     | Artifact_substitution
+    | Source_copy
     | Thread
     | Runtime
     | Sat
@@ -311,6 +312,14 @@ module Event : sig
 
   val debug : (string * Dyn.t) list -> t
   val artifact_substitution : file:Path.t -> placeholder:Dyn.t -> value:string -> t
+
+  val source_copy
+    :  src:Path.Source.t
+    -> dst:Path.Build.t
+    -> start:Time.t
+    -> stop:Time.t
+    -> result:[ `Already_up_to_date | `Cached | `Copied ]
+    -> t
 end
 
 module File_watcher_event : sig

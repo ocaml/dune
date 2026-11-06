@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793979119646,
+  "lastUpdate": 1793980502282,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -671291,6 +671291,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.56191138048,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c540ea66ff90e3cd981ab1991a37c75e4230d9cb",
+          "message": "fix(memo): preserve parallel restoration for sequence reductions (#16759)\n\nMake `Memo.map_reduce_seq` record independent branches as `Par`\ndependencies so cache restoration can check them concurrently. Collect\nbranches incrementally, preserving one-shot sequence consumption and\nrecording dependencies before propagating errors.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-06T23:32:41+08:00",
+          "tree_id": "d277a8bcf4f8934f63a7203016f6e313ff0ad25b",
+          "url": "https://github.com/ocaml/dune/commit/c540ea66ff90e3cd981ab1991a37c75e4230d9cb"
+        },
+        "date": 1793980104943,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 4.091450320286666,
             "unit": "seconds"
           }
         ]

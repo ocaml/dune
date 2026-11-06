@@ -552,21 +552,6 @@ module Var : sig
   end
 end
 
-(** Memoization of polymorphic functions ['a input -> 'a output t]. The provided
-    [id] function must be injective, i.e. there must be a one-to-one
-    correspondence between [input]s and their [id]s. *)
-module Poly (Function : sig
-    type 'a input
-    type 'a output
-
-    val name : string
-    val eval : 'a input -> 'a output t
-    val to_dyn : _ input -> Dyn.t
-    val id : 'a input -> 'a Type_eq.Id.t
-  end) : sig
-  val eval : 'a Function.input -> 'a Function.output t
-end
-
 (** Diagnostics features that affect performance but are useful for debugging. *)
 module Debug : sig
   (** If [true], Memo will record the location of [Lazy.t] values. *)

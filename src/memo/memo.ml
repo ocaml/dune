@@ -330,52 +330,6 @@ end
 
 let lazy_ = Lazy.create
 
-module Poly (Function : sig
-    type 'a input
-    type 'a output
-
-    val name : string
-    val id : 'a input -> 'a Type_eq.Id.t
-    val to_dyn : _ input -> Dyn.t
-    val eval : 'a input -> 'a output Fiber.t
-  end) =
-struct
-  open Function
-
-  module Key = struct
-    type t = T : _ input -> t
-
-    let to_dyn (T t) = to_dyn t
-    let hash (T t) = Type_eq.Id.hash (id t)
-    let equal (T x) (T y) = Type_eq.Id.equal (id x) (id y)
-  end
-
-  module Value = struct
-    type t = T : ('a Type_eq.Id.t * 'a output) -> t
-
-    let get (type a) ~(input_with_matching_id : a input) value : a output =
-      match value with
-      | T (id_v, res) ->
-        (match Type_eq.Id.same id_v (id input_with_matching_id) with
-         | None ->
-           Code_error.raise
-             "Type_eq.Id.t mismatch in Memo.Poly: the likely reason is that the provided \
-              Function.id returns different ids for the same input."
-             [ "Function.name", Dyn.String name ]
-         | Some Type_eq.T -> res)
-    ;;
-  end
-
-  let memo =
-    create
-      name
-      ~input:(module Key)
-      (function Key.T input -> eval input >>| fun v -> Value.T (id input, v))
-  ;;
-
-  let eval x = exec memo (Key.T x) >>| Value.get ~input_with_matching_id:x
-end
-
 let reset invalidation =
   (* We rely on [invalidation] to list the actual reasons for the reset, which
      justifies the [~reason:Unknown] below. *)

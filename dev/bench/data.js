@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793981738734,
+  "lastUpdate": 1793981746439,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -482616,6 +482616,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 43.28048494474,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "64705019+dibrinsofor@users.noreply.github.com",
+            "name": "dibrinsofor",
+            "username": "dibrinsofor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ad5c80b00c35f3ede8f26adab53da7529cb11814",
+          "message": "fix(dune-cache): recognize legacy cache files  (#16899)\n\nFixes #15060. Forces cache, trim and size to recognize legacy cache\nfiles (pre v. 3,22)\n\nSigned-off-by: Dibri Nsofor <dibrinsofor@gmail.com>",
+          "timestamp": "2026-11-07T00:02:49+08:00",
+          "tree_id": "66613d433b8b04a1b06482d1b61eb9918e06efd2",
+          "url": "https://github.com/ocaml/dune/commit/ad5c80b00c35f3ede8f26adab53da7529cb11814"
+        },
+        "date": 1793981745500,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4089233916600001,
             "unit": "seconds"
           }
         ]

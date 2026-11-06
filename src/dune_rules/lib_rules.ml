@@ -116,6 +116,7 @@ let build_lib
     |> Command.run
          (Ok compiler)
          ~dir:(Path.build (Context.build_dir ctx))
+         ~env:(Action_builder.of_memo (Super_context.ocaml_env sctx ~dir))
          ~forbid_action_runner:true
     |> Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc)
 ;;
@@ -399,6 +400,7 @@ let build_shared (lib : Library.t) ~native_archives ~sctx ~dir ~flags =
     ]
     |> Command.run
          ~dir:(Path.build (Context.build_dir ctx))
+         ~env:(Action_builder.of_memo (Super_context.ocaml_env sctx ~dir))
          ~forbid_action_runner:true
          (Ok ocamlopt)
     |> Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc)

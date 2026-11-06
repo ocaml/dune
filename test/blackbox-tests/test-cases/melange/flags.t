@@ -255,7 +255,7 @@ Both fields in the same library or env configuration are rejected.
   exclusive.
   [1]
 
-The new field must still require the Melange extension.
+The new field works without an explicit Melange extension declaration in 3.26.
 
   $ make_dune_project 3.26
   $ cat > dune <<'EOF'
@@ -265,13 +265,6 @@ The new field must still require the Melange extension.
   >  (melange.flags))
   > EOF
   $ dune build @check
-  File "dune", line 4, characters 1-16:
-  4 |  (melange.flags))
-       ^^^^^^^^^^^^^^^
-  Error: 'melange.flags' is available only when melange is enabled in the
-  dune-project or workspace file. You must enable it using (using melange 1.0)
-  in the file.
-  [1]
 
 melange.flags overrides the library's shared flags for Melange, while the
 deprecated melange.compile_flags keeps adding to them. In both fields,

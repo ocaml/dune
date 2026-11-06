@@ -136,6 +136,28 @@ supported shape that combines OCaml modes with Melange.
   $ check_mixed_library mixed-standard "melange :standard"
   mixed-standard: 0
 
+Automatically enabling Melange in Dune 3.26 does not require melc when building
+the OCaml modes of a mixed-mode library.
+
+  $ mkdir mixed-default
+  $ cat > mixed-default/dune-project <<EOF
+  > (lang dune 3.26)
+  > EOF
+  $ cat > mixed-default/dune <<EOF
+  > (library
+  >  (name mylib)
+  >  (modules mylib)
+  >  (modes byte melange))
+  > EOF
+  $ cat > mixed-default/mylib.ml <<EOF
+  > let t = "hello"
+  > EOF
+
+  $ (unset INSIDE_DUNE; PATH=$PWD/_path dune build --root mixed-default \
+  >    --no-print-directory @all @check)
+  $ test -f mixed-default/_build/default/mylib.cma && \
+  >   find mixed-default/_build/default -name '*.cmj'
+
 Shared per-module settings may mention Melange-only modules even when melc is
 unavailable:
 

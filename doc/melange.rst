@@ -20,14 +20,14 @@ Dune can build Melange projects, and produces JavaScript files by defining a
 adding ``melange`` to ``(modes ...)`` in the :doc:`/reference/dune/library`
 stanza.
 
-Melange support must be enabled in the :doc:`/reference/dune-project/index`
-file:
+Melange 1.0 is enabled by default starting with Dune language 3.26. For older
+language versions, enable it in the :doc:`/reference/dune-project/index` file:
 
 .. code:: dune
 
     (using melange 1.0)
 
-Once that's in place, you can use the Melange mode in
+You can then use the Melange mode in
 :doc:`/reference/dune/library` and ``melange.emit`` stanzas.
 
 Simple Project

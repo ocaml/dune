@@ -31,13 +31,13 @@ would introduce a separate dependency-overlap problem.
   $ dune_cmd stat kind _build/default/tree/sub/file
   regular file
 
-CR: Patch-back sandbox population currently tries to copy the directory as a
-single file, so the action never runs.
+The action runs with a writable copy of the directory dependency.
 
   $ dune build copied
-  Error: Is a directory
-  -> required by _build/default/copied
-  [1]
+  $ cat _build/default/copied
+  contents
+  $ dune_cmd stat kind _build/default/copied
+  regular file
 
 Neither the declared output nor the untouched directory dependency should be
 promoted into the source tree.
@@ -61,46 +61,41 @@ with identical contents must not be mistaken for a patch-back change.
   $ dune build @edit
   $ dune promotion list
 
-CR: Editing a generated input currently produces an ordinary diff, and unrelated
-source changes from the same action are still registered for promotion.
+Editing a generated input must be rejected before any promotions are registered,
+including unrelated source changes from the same action.
 
   $ cat > edit.sh <<'EOF'
   > echo source-change > aaa-source
   > echo changed > tree/sub/file
   > EOF
   $ dune build @edit
-  File "aaa-source", line 1, characters 0-0:
-  --- aaa-source
-  +++ _build/default/aaa-source
-  @@ -0,0 +1 @@
-  +source-change
-  File "tree/sub/file", line 1, characters 0-0:
-  --- tree/sub/file
-  +++ _build/default/tree/sub/file
-  @@ -0,0 +1 @@
-  +changed
+  File "dune", lines 17-20, characters 0-110:
+  17 | (rule
+  18 |  (alias edit)
+  19 |  (deps tree/sub/file edit.sh (sandbox patch_back_source_tree))
+  20 |  (action (run sh edit.sh)))
+  Error: Cannot patch back changes to tree/sub/file because it is part of a
+  directory target.
   [1]
   $ dune promotion list
-  aaa-source
   $ test ! -e _build/.to-promote
-  [1]
 
-CR: A new file inside a directory target is incorrectly offered for promotion.
+New files inside a directory target must be rejected too.
 
   $ echo 'echo added > tree/sub/added' > edit.sh
   $ dune build @edit
-  File "tree/sub/added", line 1, characters 0-0:
-  --- tree/sub/added
-  +++ _build/default/tree/sub/added
-  @@ -0,0 +1 @@
-  +added
+  File "dune", lines 17-20, characters 0-110:
+  17 | (rule
+  18 |  (alias edit)
+  19 |  (deps tree/sub/file edit.sh (sandbox patch_back_source_tree))
+  20 |  (action (run sh edit.sh)))
+  Error: Cannot patch back changes to tree/sub/added because it is part of a
+  directory target.
   [1]
   $ dune promotion list
-  tree/sub/added
   $ test ! -e _build/.to-promote
-  [1]
 
-CR: Deleting a generated input incorrectly registers a source-tree deletion.
+Deleting a generated input must not register a source-tree deletion.
 
   $ echo 'rm tree/sub/file' > edit.sh
   $ dune build @edit
@@ -109,16 +104,24 @@ CR: Deleting a generated input incorrectly registers a source-tree deletion.
   18 |  (alias edit)
   19 |  (deps tree/sub/file edit.sh (sandbox patch_back_source_tree))
   20 |  (action (run sh edit.sh)))
-  Error: File tree/sub/file should be deleted
+  Error: Cannot patch back changes to tree/sub/file because it is part of a
+  directory target.
   [1]
   $ dune promotion list
   $ test ! -e _build/.to-promote
-  [1]
 
-CR: Creating an empty directory inside a directory target goes unnoticed.
+Creating an empty directory inside a directory target must also be rejected.
 
   $ echo 'mkdir tree/new-empty' > edit.sh
   $ dune build @edit
+  File "dune", lines 17-20, characters 0-110:
+  17 | (rule
+  18 |  (alias edit)
+  19 |  (deps tree/sub/file edit.sh (sandbox patch_back_source_tree))
+  20 |  (action (run sh edit.sh)))
+  Error: Cannot patch back changes to tree/new-empty because it is part of a
+  directory target.
+  [1]
   $ dune promotion list
   $ test ! -e _build/.to-promote
 

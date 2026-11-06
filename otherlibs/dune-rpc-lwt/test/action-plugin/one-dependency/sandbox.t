@@ -251,19 +251,8 @@ must be fully recorded in the snapshot.
   >    (run rm tree/file))))
   > EOF
 
-CR: Directory population currently fails before either action finishes.
-
   $ dune build @dynamic-read --build-dir _build-dynamic-patch-back
-  File "dune", lines 7-13, characters 0-150:
-   7 | (rule
-   8 |  (alias dynamic-read)
-   9 |  (deps (sandbox patch_back_source_tree))
-  10 |  (action
-  11 |   (progn
-  12 |    (dynamic-run ./foo.exe build tree)
-  13 |    (run cat tree/file))))
-  Sys_error("Is a directory")
-  [1]
+  generated
   $ dune build @dynamic-edit --build-dir _build-dynamic-patch-back
   File "dune", lines 14-20, characters 0-149:
   14 | (rule
@@ -273,7 +262,8 @@ CR: Directory population currently fails before either action finishes.
   18 |   (progn
   19 |    (dynamic-run ./foo.exe build tree)
   20 |    (run rm tree/file))))
-  Sys_error("Is a directory")
+  Error: Cannot patch back changes to tree/file because it is part of a
+  directory target.
   [1]
   $ dune promotion list --build-dir _build-dynamic-patch-back
   $ test ! -e _build-dynamic-patch-back/.to-promote

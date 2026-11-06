@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793987626922,
+  "lastUpdate": 1793987634621,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -482674,6 +482674,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 57.93658866902666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b8a141df5191ccc77c416c4ae3a8f86c7df5a926",
+          "message": "test(source): cover source-tree child reloads in watch mode (#16910)\n\nCover inherited `(subdir ...)` stanza updates, physical/virtual\ndirectory transitions, and `data_only_dirs` status changes within a\nsingle watcher. These passing scenarios guard source-tree memoization\nrefactors against retaining stale child inputs; no implementation\nchanges are included.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-07T01:34:02+08:00",
+          "tree_id": "dc0b7dac0519090b57c58c22563aadf8f5206dac",
+          "url": "https://github.com/ocaml/dune/commit/b8a141df5191ccc77c416c4ae3a8f86c7df5a926"
+        },
+        "date": 1793987633508,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5358993496866667,
             "unit": "seconds"
           }
         ]

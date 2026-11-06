@@ -18,6 +18,9 @@ val for_module_impl
   -> Module.t
   -> Module.t list Action_builder.t Memo.t
 
+(** Single-module stanzas short-circuit ocamldep when [not has_library_deps] or
+    [for_ = Melange]: the per-module filter that consumes the dep graph doesn't
+    activate in those cases. *)
 val rules
   :  obj_dir:Path.Build.t Obj_dir.t
   -> modules:Modules.With_vlib.t
@@ -26,6 +29,7 @@ val rules
   -> sctx:Super_context.t
   -> dir:Path.Build.t
   -> for_:Compilation_mode.t
+  -> has_library_deps:bool
   -> Dep_graph.Ml_kind.t Memo.t
 
 val read_immediate_deps_of

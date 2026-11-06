@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793980911236,
+  "lastUpdate": 1793980918942,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -482500,6 +482500,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 65.75447760416,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "26a2f077716e2ffe35a53e8be6d7e36202bb038d",
+          "message": "test(trace): strengthen writer and shutdown regressions (#16905)\n\nPlace writer expectation tests beside the implementation so close\nremains private. Cover close-only and buffered flush failures, immediate\ndescriptor cleanup, retained errors on repeated close, and healthy\nfinalization.\n\nTarget fault injection at received signals and the final exit event.\nAssert initialization and watch-process exit statuses, run a second\nwatch build, and cover incomplete trace export suppression.\n\nRecord the existing failures before the writer fix.",
+          "timestamp": "2026-11-06T15:42:19Z",
+          "tree_id": "56dfb3be6b573a91311457778b41c07523d1cd6f",
+          "url": "https://github.com/ocaml/dune/commit/26a2f077716e2ffe35a53e8be6d7e36202bb038d"
+        },
+        "date": 1793980918177,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.56936720764,
             "unit": "seconds"
           }
         ]

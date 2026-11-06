@@ -343,6 +343,11 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t) =
      |> List.concat_map ~f:(fun p -> [ Command.Args.A "-I"; Path (Path.build p) ])
    in
    let can_go_in_shared_cache = cm_kind_can_go_in_shared_cache cm_kind in
+   let env =
+     match mode with
+     | Melange -> Super_context.context_env_by_dir sctx ~dir
+     | Ocaml _ -> Super_context.ocaml_env sctx ~dir
+   in
    add_rule
      ~can_go_in_shared_cache
      sctx
@@ -358,6 +363,7 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t) =
       >>> Command.run
             ~dir:(Path.build (Context.build_dir ctx))
             ~sandbox
+            ~env:(Action_builder.of_memo env)
             ~forbid_action_runner:true
             compiler
             [ flags
@@ -480,6 +486,7 @@ let build_inference_alias cctx ~name ~aliases =
   let+ () =
     Command.run
       (Ok ocaml.ocamlc)
+      ~env:(Action_builder.of_memo (Super_context.ocaml_env sctx ~dir))
       ~dir:(Path.build (Context.build_dir (Super_context.context sctx)))
       ~sandbox:Sandbox_config.needs_sandboxing
       ~forbid_action_runner:true
@@ -504,7 +511,8 @@ let build_inference_alias cctx ~name ~aliases =
 
 let ocamlc_i_action ~impl_deps ~alias cctx (m : Module.t) =
   let obj_dir = Compilation_context.obj_dir cctx in
-  let ctx = Compilation_context.super_context cctx |> Super_context.context in
+  let sctx = Compilation_context.super_context cctx in
+  let ctx = Super_context.context sctx in
   let src = Option.value_exn (Module.file m ~ml_kind:Impl) in
   let original = Module.source_without_pp m ~ml_kind:Impl in
   let sandbox =
@@ -543,6 +551,9 @@ let ocamlc_i_action ~impl_deps ~alias cctx (m : Module.t) =
   cm_deps
   >>> Command.run'
         (Ok ocaml.ocamlc)
+        ~env:
+          (Action_builder.of_memo
+             (Super_context.ocaml_env sctx ~dir:(Compilation_context.dir cctx)))
         ~dir:(Path.build (Context.build_dir ctx))
         ~sandbox
         ~forbid_action_runner:true

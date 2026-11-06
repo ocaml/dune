@@ -215,7 +215,13 @@ let link_exe
     >>> Command.run
           ~dir:(Path.build (Context.build_dir ctx))
           ~sandbox
-          ~env
+          ~env:
+            (let open Action_builder.O in
+             let+ env = env
+             and+ context_env =
+               Action_builder.of_memo (Super_context.context_env_by_dir sctx ~dir)
+             in
+             Install.Roots.extend_env_concat_path_vars context_env env)
           ~forbid_action_runner:true
           (Ocaml_toolchain.compiler ocaml mode)
           [ Command.Args.dyn ocaml_flags

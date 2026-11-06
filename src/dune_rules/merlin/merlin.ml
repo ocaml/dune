@@ -254,7 +254,7 @@ module Processed = struct
 
     let name = "merlin-conf"
     let sharing = false
-    let version = 17
+    let version = 16
 
     let repr =
       Repr.view Repr.string ~to_:(fun _ -> "Use [dune ocaml dump-dot-merlin] instead")

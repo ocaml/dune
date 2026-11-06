@@ -12,10 +12,8 @@ signal-received events, leaving initialization unaffected.
   $ export DUNE_TRACE=process
   $ LD_PRELOAD="$PWD/../../utils/fail_trace_write.so" \
   >   $timeout --foreground -s KILL 5 dune build result
-  Error: dune_trace_write(): No space left on device
-  [137]
+  Warning: Unable to write trace: No space left on device. Disabling tracing.
   $ test -f _build/default/result
-  [1]
 
 A trace write can also fail during initialization. Using an action runner checks
 that a failed trace is not subsequently shared with a worker. Capture the output
@@ -25,9 +23,8 @@ separately to check the build's exit status before filtering diagnostics.
   $ DUNE_ACTION_TRACE_DIR="$PWD/action-traces" \
   >   $timeout --foreground -s KILL 5 dune build --trace-file /dev/full \
   >   --action-runner result > initialization.log 2>&1
-  [1]
   $ grep -E '^(Error|Warning):' initialization.log
-  Error: dune_trace_write(): No space left on device
+  Warning: Unable to write trace: No space left on device. Disabling tracing.
 
 An incomplete trace must not be exported as an action trace.
 
@@ -46,18 +43,16 @@ The warning is reported only when the watch process exits.
 
   $ LD_PRELOAD="$PWD/../../utils/fail_trace_write.so" start_dune
   $ build result
-  Timed out
-  Error: dune_trace_write(): No space left on device
+  Success
   $ build result
-  Timed out
-  Error: dune_trace_write(): No space left on device
+  Success
   $ grep '^Warning:' .#dune-output
   [1]
   $ stop_dune_quiet
   $ grep '^Warning:' .#dune-output
-  [1]
+  Warning: Unable to write trace: No space left on device. Disabling tracing.
   $ grep '^exit ' .#dune-output
-  exit 1
+  [1]
 
 A failure writing the final exit event is reported during shutdown and prevents
 exporting the incomplete trace.
@@ -68,5 +63,5 @@ exporting the incomplete trace.
   >   LD_PRELOAD="$PWD/../../utils/fail_trace_write.so" \
   >   $timeout --foreground -s KILL 5 dune build result > exit.log 2>&1
   $ grep -E '^(Warning:|\| Unix.Unix_error)' exit.log
-  | Unix.Unix_error(Unix.ENOSPC, "dune_trace_write", "")
+  Warning: Unable to write trace: No space left on device. Disabling tracing.
   $ ls exit-action-traces

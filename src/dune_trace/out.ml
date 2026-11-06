@@ -17,11 +17,29 @@ type t =
   ; mutex : Mutex.t
   ; alloc : Alloc.t option
   ; runtime : runtime option
+  ; mutable error : Unix.error option
   }
 
-let fd t = t.fd
 let cats t = t.cats
 let alloc t = t.alloc
+let failed t = Option.is_some t.error
+
+let duplicate_fd t =
+  Mutex.protect t.mutex (fun () ->
+    if failed t || Fd.is_closed t.fd
+    then None
+    else (
+      let fd = Fd.dup t.fd in
+      Fd.clear_close_on_exec fd;
+      Some fd))
+;;
+
+let close_fd_unlocked t =
+  match Fd.close t.fd with
+  | () -> ()
+  | exception Unix.Unix_error (error, _, _) ->
+    if not (failed t) then t.error <- Some error
+;;
 
 (* CR-someday rgrinberg: remove this once we drop support for < 5.2 *)
 external write_bigstring
@@ -49,6 +67,10 @@ let flush_unlocked =
           (Buffer.pos t.buf - pos)
       with
       | n -> loop t (pos + n) (len - n)
+      | exception Unix.Unix_error (error, _, _) ->
+        t.error <- Some error;
+        Buffer.clear t.buf;
+        close_fd_unlocked t
       | exception e ->
         let () =
           (* inefficient, but we just want to make sure we're preserving the
@@ -65,7 +87,8 @@ let close t =
     if not (Fd.is_closed t.fd)
     then (
       flush_unlocked t;
-      Fd.close t.fd))
+      if not (failed t) then close_fd_unlocked t);
+    t.error)
 ;;
 
 let to_buffer t sexp =
@@ -93,7 +116,7 @@ let emit_buffered t event =
 
 let emit ?(buffered = false) t event =
   Mutex.protect t.mutex (fun () ->
-    if not (Fd.is_closed t.fd)
+    if not (failed t || Fd.is_closed t.fd)
     then (
       emit_buffered t event;
       if not buffered then flush_unlocked t))
@@ -202,7 +225,15 @@ let create how =
   let buf = Buffer.create (1 lsl 16) in
   let alloc = if Category.Set.mem cats Alloc then Some (Alloc.start ()) else None in
   let rec t =
-    lazy { fd; cats; buf; mutex = Mutex.create (); alloc; runtime = Lazy.force runtime }
+    lazy
+      { fd
+      ; cats
+      ; buf
+      ; mutex = Mutex.create ()
+      ; alloc
+      ; runtime = Lazy.force runtime
+      ; error = None
+      }
   and runtime =
     lazy
       (match runtime_enabled with
@@ -227,9 +258,8 @@ let%test_module "writer" =
 
     let close trace =
       match close trace with
-      | () -> print_endline "closed"
-      | exception Unix.Unix_error (error, _, _) ->
-        printfn "close error: %s" (Unix.error_message error)
+      | None -> print_endline "closed"
+      | Some error -> printfn "close error: %s" (Unix.error_message error)
     ;;
 
     let%expect_test "trace write failure" =
@@ -240,13 +270,13 @@ let%test_module "writer" =
       emit trace ~buffered:true;
       [%expect {| ok |}];
       emit trace ~buffered:false;
-      [%expect {| error: Bad file descriptor |}];
+      [%expect {| ok |}];
       printfn "closed: %b" (Fd.is_closed fd);
-      [%expect {| closed: false |}];
+      [%expect {| closed: true |}];
       emit trace ~buffered:true;
       [%expect {| ok |}];
       emit trace ~buffered:false;
-      [%expect {| error: Bad file descriptor |}];
+      [%expect {| ok |}];
       close trace;
       [%expect {| close error: Bad file descriptor |}];
       close trace;
@@ -260,7 +290,7 @@ let%test_module "writer" =
       let trace = create (`Fd (Fd.unsafe_of_unix_file_descr read)) in
       Unix.close read;
       emit trace ~buffered:false;
-      [%expect {| error: Bad file descriptor |}];
+      [%expect {| ok |}];
       close trace;
       [%expect {| close error: Bad file descriptor |}]
     ;;
@@ -284,7 +314,7 @@ let%test_module "writer" =
       close trace;
       [%expect {| close error: Bad file descriptor |}];
       printfn "closed: %b" (Fd.is_closed fd);
-      [%expect {| closed: false |}];
+      [%expect {| closed: true |}];
       close trace;
       [%expect {| close error: Bad file descriptor |}];
       Fd.close fd

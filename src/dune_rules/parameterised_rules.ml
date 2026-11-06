@@ -81,6 +81,7 @@ let build_instance
          ~forbid_action_runner:true
          (Ok compiler)
          ~dir:(Path.build dir)
+         ~env:(Ocaml_runtime_env.toolchain sctx ~dir Env.empty)
     |> Super_context.add_rule ~dir sctx)
 ;;
 
@@ -165,6 +166,7 @@ let build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules =
          ~forbid_action_runner:true
          (Ok compiler)
          ~dir:(Path.build dir)
+         ~env:(Ocaml_runtime_env.toolchain sctx ~dir Env.empty)
     |> Super_context.add_rule ~dir sctx)
 ;;
 

@@ -215,7 +215,7 @@ let link_exe
     >>> Command.run
           ~dir:(Path.build (Context.build_dir ctx))
           ~sandbox
-          ~env
+          ~env:Action_builder.O.(env >>= Ocaml_runtime_env.toolchain sctx ~dir)
           ~forbid_action_runner:true
           (Ocaml_toolchain.compiler ocaml mode)
           [ Command.Args.dyn ocaml_flags

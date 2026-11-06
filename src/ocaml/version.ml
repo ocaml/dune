@@ -30,6 +30,7 @@ let add_std_cxx_flag version = version >= (5, 0, 0)
 let supports_cmi_file version = version >= (5, 0, 0)
 let supports_bytecode_hints version = version >= (5, 6, 0)
 let supports_ocamldep_strict version = version >= (5, 7, 0)
+let supports_small_heap_limit version = version >= (5, 5, 0)
 
 let supports_oxcaml version =
   let jst = "+jst" in

@@ -2,6 +2,7 @@ open Import
 
 let ( / ) = Path.relative
 let build_cache_dir = lazy (Lazy.force Dune_util.cache_root_dir / "db")
+let legacy_cache_dir = lazy (Lazy.force Dune_util.cache_root_dir)
 let temp_dir = lazy (Lazy.force build_cache_dir / "temp")
 
 let cache_path ~dir ~hex =
@@ -27,6 +28,14 @@ let list_entries ~storage =
   in
   readdir storage |> List.to_seq |> Seq.concat_map ~f:(fun x -> List.to_seq (entries x))
 ;;
+
+module Legacy = struct
+  let file_storage_dir version =
+    lazy (Lazy.force Dune_util.cache_root_dir / "files" / Version.File.to_string version)
+  ;;
+
+  let list_file_entries t = list_entries ~storage:(Lazy.force (file_storage_dir t))
+end
 
 module Versioned = struct
   let metadata_storage_dir t =

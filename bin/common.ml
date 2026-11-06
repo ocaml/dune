@@ -587,6 +587,7 @@ let shared_with_config_file ~allow_pkg_flag =
   ; action_stderr_on_success
   ; project_defaults = None
   ; pkg_enabled
+  ; ppx_driver_link_flags = None
   ; experimental = None
   }
 ;;

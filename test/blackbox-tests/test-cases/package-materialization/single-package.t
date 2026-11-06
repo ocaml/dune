@@ -72,3 +72,21 @@ Different package set produces a different layout directory:
 
   $ dune rules --format=json _build/default/out3 | jq_dune '.[] | ruleDepFilePaths' | censor | grep dune-package | sort
   "_build/install/default/.packages/$DIGEST/lib/bar/dune-package"
+
+Each package's entry list combines shared project documentation with only that
+package's install stanzas, even when stanzas are interleaved in the same file.
+
+  $ echo license > LICENSE
+  $ echo foo > foo-data
+  $ echo bar > bar-data
+  $ cat >> dune <<'EOF'
+  > (install (package bar) (section share) (files (bar-data as data)))
+  > (install (package foo) (section share) (files (foo-data as data)))
+  > EOF
+  $ dune build out1 out3
+  $ dune rules --format=json _build/default/out1 | jq_dune '.[] | ruleDepFilePaths | select(test("/(share|doc)/"))' | censor | sort
+  "_build/install/default/.packages/$DIGEST/doc/foo/LICENSE"
+  "_build/install/default/.packages/$DIGEST/share/foo/data"
+  $ dune rules --format=json _build/default/out3 | jq_dune '.[] | ruleDepFilePaths | select(test("/(share|doc)/"))' | censor | sort
+  "_build/install/default/.packages/$DIGEST/doc/bar/LICENSE"
+  "_build/install/default/.packages/$DIGEST/share/bar/data"

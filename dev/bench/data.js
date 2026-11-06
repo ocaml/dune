@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793981027465,
+  "lastUpdate": 1793981264573,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -482529,6 +482529,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.56936720764,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "52bbabc4178b20a5d2e6483a2d825de4fde8124f",
+          "message": "refactor(memo): remove unused Memo.Poly (#16906)\n\nRemove the unused polymorphic memoization functor from Memo’s\nimplementation and interface, along with its dedicated expect test and\nfixture. No production code uses it.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-06T23:54:26+08:00",
+          "tree_id": "026a7dcdf815bf610f3fc823bf179624b072fc33",
+          "url": "https://github.com/ocaml/dune/commit/52bbabc4178b20a5d2e6483a2d825de4fde8124f"
+        },
+        "date": 1793981262424,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 45.176802586093324,
             "unit": "seconds"
           }
         ]

@@ -89,6 +89,38 @@ module Dir0 = struct
   let sub_dir_as_t (s : sub_dir) = s.sub_dir_as_t
 end
 
+module Physical_input = struct
+  type t =
+    { default_vcs : Dir0.Vcs.t
+    ; path : Path.Source.t
+    ; basename : Filename.t
+    ; dirs_visited : Dirs_visited.t
+    ; dune_file : Dune_file.t option
+    ; status : Source_dir_status.t
+    ; project : Dune_project.t
+    }
+
+  let repr = Repr.view Path.Source.repr ~to_:(fun { path; _ } -> path)
+  let to_dyn = Repr.to_dyn repr
+end
+
+module Virtual_input = struct
+  type t =
+    { parent_dir : Path.Source.t
+    ; basename : Filename.t
+    ; dune_file : Dune_file.t option
+    ; status : Source_dir_status.t
+    ; project : Dune_project.t
+    }
+
+  let repr =
+    Repr.view Path.Source.repr ~to_:(fun { parent_dir; basename; _ } ->
+      Path.Source.relative_fname parent_dir basename)
+  ;;
+
+  let to_dyn = Repr.to_dyn repr
+end
+
 let eval_status ~status_map ~(parent_status : Source_dir_status.t) dir
   : Source_dir_status.t option
   =
@@ -131,16 +163,15 @@ let rec physical
       Some
         { Dir0.sub_dir_status = dir_status
         ; sub_dir_as_t =
-            Memo.lazy_node ~name:"source-tree-sub-dir" (fun () ->
-              find_dir_raw
-                ~default_vcs
-                ~path
-                ~basename:fn
-                ~virtual_:false
-                ~dirs_visited
-                ~dune_file
-                ~status:dir_status
-                ~project)
+            (Lazy.force physical_node)
+              { Physical_input.default_vcs
+              ; path
+              ; basename = fn
+              ; dirs_visited
+              ; dune_file
+              ; status = dir_status
+              ; project
+              }
             |> Memo.Node.read
         })
 
@@ -164,16 +195,13 @@ and virtual_ ~project ~sub_dirs ~parent_status ~dune_file ~init ~path =
               ( fn
               , { Dir0.sub_dir_status = status
                 ; sub_dir_as_t =
-                    Memo.lazy_node ~name:"source-tree-virtual-sub-dir" (fun () ->
-                      find_dir_raw
-                        ~default_vcs:Dir0.Vcs.Ancestor_vcs
-                        ~path:(Path.Source.relative_fname path fn)
-                        ~basename:fn
-                        ~virtual_:true
-                        ~dune_file
-                        ~status
-                        ~dirs_visited:Dirs_visited.empty
-                        ~project)
+                    (Lazy.force virtual_node)
+                      { Virtual_input.parent_dir = path
+                      ; basename = fn
+                      ; dune_file
+                      ; status
+                      ; project
+                      }
                     |> Memo.Node.read
                 } ))
       |> List.filter_opt
@@ -261,6 +289,47 @@ and find_dir_raw
       >>| Option.value ~default:project
   in
   contents readdir ~default_vcs ~path ~dune_file ~dirs_visited ~project ~dir_status:status
+
+and physical_node =
+  lazy
+    (Memo.node_staged
+       ~name:"source-tree-sub-dir"
+       ~input:(module Physical_input)
+       (fun { Physical_input.default_vcs
+            ; path
+            ; basename
+            ; dirs_visited
+            ; dune_file
+            ; status
+            ; project
+            } ->
+          find_dir_raw
+            ~default_vcs
+            ~path
+            ~basename
+            ~virtual_:false
+            ~dirs_visited
+            ~dune_file
+            ~status
+            ~project)
+     |> Staged.unstage)
+
+and virtual_node =
+  lazy
+    (Memo.node_staged
+       ~name:"source-tree-virtual-sub-dir"
+       ~input:(module Virtual_input)
+       (fun { Virtual_input.parent_dir; basename; dune_file; status; project } ->
+          find_dir_raw
+            ~default_vcs:Dir0.Vcs.Ancestor_vcs
+            ~path:(Path.Source.relative_fname parent_dir basename)
+            ~basename
+            ~virtual_:true
+            ~dune_file
+            ~status
+            ~dirs_visited:Dirs_visited.empty
+            ~project)
+     |> Staged.unstage)
 ;;
 
 let root =

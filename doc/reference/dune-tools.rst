@@ -150,6 +150,11 @@ Print a shell command that, when evaluated, adds all dev tool binary
 directories to your ``PATH``. This allows running dev tools directly as
 commands without going through ``dune tools exec``.
 
+When the project has a lock directory, the binary directories of all its
+packages are added as well since they are all considered tools. This command
+does not build anything: binaries of packages that have not been built yet are
+not available.
+
 Flags:
 
 * ``--fish``

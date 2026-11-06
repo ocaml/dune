@@ -166,19 +166,28 @@ let env_command =
             [ "fish" ]
             ~doc:(Some "Print command for the fish shell rather than POSIX shells"))
     in
-    let _ : Common.t * Dune_config.t = Common.init builder in
+    let _common, config = Common.init builder in
+    let lock_dir_bin_dirs =
+      Scheduler_setup.no_build_no_rpc ~config (fun () ->
+        Memo.run
+          (Dune_rules.Pkg_rules.bin_paths_for_packages
+             ~packages:Package.Name.Selection.All
+             Context_name.default))
+    in
     if fish
     then (
-      let space_separated_dev_tool_paths =
-        List.map dev_tool_bin_dirs ~f:Path.to_string_maybe_quoted
+      let space_separated_paths =
+        List.map (dev_tool_bin_dirs @ lock_dir_bin_dirs) ~f:Path.to_string_maybe_quoted
         |> String.concat ~sep:" "
       in
-      print_endline (sprintf "fish_add_path --prepend %s" space_separated_dev_tool_paths))
+      print_endline (sprintf "fish_add_path --prepend %s" space_separated_paths))
     else (
       let initial_path = Env.get Env.initial Env_path.var in
       let new_path =
-        List.fold_left dev_tool_bin_dirs ~init:initial_path ~f:(fun acc bin_dir ->
-          Some (Bin.cons_path bin_dir ~_PATH:acc))
+        List.fold_left
+          (List.rev lock_dir_bin_dirs @ dev_tool_bin_dirs)
+          ~init:initial_path
+          ~f:(fun acc bin_dir -> Some (Bin.cons_path bin_dir ~_PATH:acc))
       in
       match new_path with
       | None -> ()
@@ -187,8 +196,8 @@ let env_command =
   in
   let info =
     let doc =
-      "Print a command which can be eval'd to enter an environment where all dev tools \
-       are runnable as commands."
+      "Print a command which can be eval'd to enter an environment where all tools are \
+       runnable as commands."
     in
     Cmd.info "env" ~doc
   in

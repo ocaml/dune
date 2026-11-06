@@ -829,8 +829,7 @@ let gen_rules ctx ~dir components =
   else if Context_name.equal ctx Private_context.t.name
   then private_context ~dir components ctx
   else if Context_name.equal ctx Fetch_rules.context.name
-  then
-    Fetch_rules.gen_rules ~dir ~components:(List.map components ~f:Filename.of_string_exn)
+  then Fetch_rules.gen_rules components
   else
     let* () = raise_on_lock_dir_out_of_sync ctx in
     let gen_pkg_alias_rule = Pkg_rules.setup_pkg_install_alias ~dir ctx in

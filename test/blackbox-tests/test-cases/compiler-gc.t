@@ -1,5 +1,5 @@
-Compilation, archiving, linking and dependency analysis preserve the directory
-environment, as do user actions and executables.
+Compiler GC defaults apply to compilation, archiving, linking and dependency
+analysis, but not to user actions or executables.
 
   $ make_dune_project 3.25
   $ unset OCAMLRUNPARAM CAMLRUNPARAM
@@ -57,9 +57,9 @@ environment, as do user actions and executables.
   >   sort -u "$GC_LOG"
   > }
   $ build defaults
-  ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
-  ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
-  ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamlc.opt OCAMLRUNPARAM=Xsmall_heap_limit=16777216 CAMLRUNPARAM=unset
+  ocamldep.opt OCAMLRUNPARAM=Xsmall_heap_limit=16777216 CAMLRUNPARAM=unset
+  ocamlopt.opt OCAMLRUNPARAM=Xsmall_heap_limit=16777216 CAMLRUNPARAM=unset
   $ dune build --build-dir _build_defaults @runtest
   action: unset unset
   $ dune exec --build-dir _build_defaults ./main.exe
@@ -80,7 +80,7 @@ Explicit runtime parameters, including an empty value, are preserved.
   ocamldep.opt OCAMLRUNPARAM= CAMLRUNPARAM=unset
   ocamlopt.opt OCAMLRUNPARAM= CAMLRUNPARAM=unset
 
-Runtime parameters are unchanged for older compilers as well.
+Use the compiler's version, not the version used to build Dune.
 
   $ REPORTED_OCAML_VERSION=5.4.0 build older
   ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset

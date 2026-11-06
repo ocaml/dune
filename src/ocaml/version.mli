@@ -80,3 +80,6 @@ val supports_bytecode_hints : t -> bool
 
 (** Whether ocamldep supports the [-strict] flag *)
 val supports_ocamldep_strict : t -> bool
+
+(** Whether the runtime supports the [small_heap_limit] GC tweak. *)
+val supports_small_heap_limit : t -> bool

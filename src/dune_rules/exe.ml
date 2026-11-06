@@ -221,7 +221,8 @@ let link_exe
              and+ context_env =
                Action_builder.of_memo (Super_context.context_env_by_dir sctx ~dir)
              in
-             Install.Roots.extend_env_concat_path_vars context_env env)
+             Install.Roots.extend_env_concat_path_vars context_env env
+             |> Ocaml.Env.with_gc_defaults ~version:ocaml.version)
           ~forbid_action_runner:true
           (Ocaml_toolchain.compiler ocaml mode)
           [ Command.Args.dyn ocaml_flags

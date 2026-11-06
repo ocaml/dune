@@ -29,7 +29,7 @@ val env_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
     are on PATH. *)
 val context_env_by_dir : t -> dir:Path.Build.t -> Env.t Memo.t
 
-(** Directory environment for the context's OCaml toolchain. *)
+(** Directory environment with GC defaults for the context's OCaml toolchain. *)
 val ocaml_env : t -> dir:Path.Build.t -> Env.t Memo.t
 
 val artifacts_host : t -> dir:Path.Build.t -> Artifacts.t Memo.t

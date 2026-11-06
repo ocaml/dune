@@ -421,4 +421,9 @@ let () =
 let context t = t.context
 let env_node t ~dir = t.get_node dir
 let context_env_by_dir t ~dir = env_node t ~dir >>= Env_node.external_env
-let ocaml_env t ~dir = context_env_by_dir t ~dir
+
+let ocaml_env t ~dir =
+  let+ env = context_env_by_dir t ~dir
+  and+ ocaml = Context.ocaml t.context in
+  Ocaml.Env.with_gc_defaults env ~version:ocaml.version
+;;

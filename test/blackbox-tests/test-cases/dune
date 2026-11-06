@@ -141,6 +141,11 @@
  (deps %{bin:ocaml}))
 
 (cram
+ (applies_to compiler-gc.t)
+ (enabled_if
+  (>= %{ocaml_version} 5.5.0)))
+
+(cram
  (applies_to hidden-deps-supported.t)
  (enabled_if
   (>= %{ocaml_version} 5.2.0)))

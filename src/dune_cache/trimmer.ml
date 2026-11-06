@@ -71,8 +71,14 @@ let garbage_collect () =
 ;;
 
 let files_in_cache_for_all_supported_versions () =
-  let legacy = Version.File.all |> List.to_seq |> Seq.concat_map ~f:Layout.Legacy.list_file_entries in
-  let current = Version.File.all |> List.to_seq |> Seq.concat_map ~f:Layout.Versioned.list_file_entries in
+  let legacy =
+    Version.File.all |> List.to_seq |> Seq.concat_map ~f:Layout.Legacy.list_file_entries
+  in
+  let current =
+    Version.File.all
+    |> List.to_seq
+    |> Seq.concat_map ~f:Layout.Versioned.list_file_entries
+  in
   Seq.append current legacy
 ;;
 

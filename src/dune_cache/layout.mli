@@ -52,9 +52,9 @@ val legacy_cache_dir : Path.t Lazy.t
     functions provided by the top module are obtained by a partial application
     of the corresponding function defined here to a suitable current version. *)
 module Legacy : sig
-    val file_storage_dir : Version.File.t -> Path.t Lazy.t
-    val list_file_entries : Version.File.t -> (Path.t * Digest.t) Seq.t
-end 
+  val file_storage_dir : Version.File.t -> Path.t Lazy.t
+  val list_file_entries : Version.File.t -> (Path.t * Digest.t) Seq.t
+end
 
 module Versioned : sig
   val metadata_storage_dir : Version.Metadata.t -> Path.t Lazy.t

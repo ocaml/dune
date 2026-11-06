@@ -32,9 +32,9 @@ let list_entries ~storage =
 module Legacy = struct
   let file_storage_dir version =
     lazy (Lazy.force Dune_util.cache_root_dir / "files" / Version.File.to_string version)
+  ;;
 
-  let list_file_entries t =
-    list_entries ~storage:(Lazy.force (file_storage_dir t))
+  let list_file_entries t = list_entries ~storage:(Lazy.force (file_storage_dir t))
 end
 
 module Versioned = struct

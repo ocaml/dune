@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794065196813,
+  "lastUpdate": 1794068510807,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -672596,6 +672596,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.887279921193333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0e9ebd06451912f90151e163f9025bc618d12381",
+          "message": "test(watch): disable the slow sync-timeout regression (#16927)\n\nReliably exclude sync-timeout.t from the regular test suite. Its two\nintentional five-second retry deadlines cost about 10.34 seconds per\nrun.\n\nThe existing `(runtest_alias false)` is overwritten by a later matching\ncram stanza, so the test still runs. Replace it with `(enabled_if\nfalse)`, retaining the test source and explicit test alias for manual\nexecution.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-08T00:12:58+08:00",
+          "tree_id": "e98ac9b9a5d881d0f68d3788dee273bb90577706",
+          "url": "https://github.com/ocaml/dune/commit/0e9ebd06451912f90151e163f9025bc618d12381"
+        },
+        "date": 1794068289102,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.5726249436599997,
             "unit": "seconds"
           }
         ]

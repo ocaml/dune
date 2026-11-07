@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794063769900,
+  "lastUpdate": 1794064857426,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -672509,6 +672509,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.7335843982199997,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a95a92a4b40475817d97901fe00f6615cf61857b",
+          "message": "fix(action-plugin): lend job slots while building dependencies (#16867)\n\nDynamic actions currently retain their scheduler reservation while\nwaiting for dependencies. At `-j 1`, a dependency that needs another\nsubprocess cannot start, so the build deadlocks.\n\nLend the full weighted reservation while dependency requests are\noutstanding, and reacquire it before returning the last reply.\nOverlapping requests share one reservation. Cancel queued reacquisition\nwhen another request arrives or the plugin exits, while continuing to\ndrain accepted dependency work. Earlier replies remain cooperative\nrather than imposing a strict bound on runnable processes.\n\nRelated to #5681.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-07T23:07:05+08:00",
+          "tree_id": "f3e96fc813f813f9eda049bf2e6d546a61fa1c79",
+          "url": "https://github.com/ocaml/dune/commit/a95a92a4b40475817d97901fe00f6615cf61857b"
+        },
+        "date": 1794064457417,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.887279921193333,
             "unit": "seconds"
           }
         ]

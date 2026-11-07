@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794071282826,
+  "lastUpdate": 1794071290450,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -483486,6 +483486,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 63.797836368566664,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0d18dfcccff8ebcca88ab316e8001f9f9cf8a51d",
+          "message": "test(vcs): disable the Mercurial expectation tests (#16928)\n\nExclude the Mercurial expectation-test module from the inline-test\nlibrary to avoid repeated hg process startup costs in the regular suite.\n\nKeep Git coverage, the excluded test source, and Mercurial support in\nDune unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-08T00:48:36+08:00",
+          "tree_id": "ba74afa626d07b876c50d8f1bf58205baddf60e7",
+          "url": "https://github.com/ocaml/dune/commit/0d18dfcccff8ebcca88ab316e8001f9f9cf8a51d"
+        },
+        "date": 1794071289272,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5097282055266666,
             "unit": "seconds"
           }
         ]

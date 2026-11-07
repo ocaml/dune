@@ -62,3 +62,27 @@ Build the app that depends on `foo`, which in turn depends on a private lib
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build @melange --root app
 
+A public alias into the installed private library works in OCaml, but Melange
+omits the private library's hidden CMI directory on supported compilers.
+Direct references to the private library remain unavailable in both modes.
+
+  $ if ocamlc -H . -version > /dev/null 2>&1; then
+  >   sed -i.bak 's/(name foo)/(name consumer)/' app/dune-project &&
+  >   sed -i.bak 's/(modes melange)/(modes byte melange)/' \
+  >     lib/priv/dune lib/lib/dune &&
+  >   printf '\nmodule P = Priv\n' >> lib/lib/foo.ml &&
+  >   dune build @install --root lib &&
+  >   dune install --prefix "$PWD/prefix" --root lib --display quiet &&
+  >   printf '(library (name entry) (modes byte melange) (libraries foo))\n' \
+  >     > app/dune &&
+  >   printf 'let x = Foo.P.x\n' > app/entry.ml &&
+  >   export OCAMLPATH="$PWD/prefix/lib/:$OCAMLPATH" &&
+  >   dune build .entry.objs/byte/entry.cmo --root app &&
+  >   ! dune build .entry.objs/melange/entry.cmj --root app > errors 2>&1 &&
+  >   grep -q 'Foo.P is an alias for module Priv, which is missing$' errors &&
+  >   printf 'let x = Priv.x\n' > app/entry.ml &&
+  >   ! dune build .entry.objs/byte/entry.cmo --root app > errors 2>&1 &&
+  >   grep -q '^Error: Unbound module Priv$' errors &&
+  >   ! dune build .entry.objs/melange/entry.cmj --root app > errors 2>&1 &&
+  >   grep -q '^Error: Unbound module Priv$' errors
+  > fi

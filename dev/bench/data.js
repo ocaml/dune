@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794026229857,
+  "lastUpdate": 1794026559102,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -482993,6 +482993,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5557821604666666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f1354261fb71b3f2285847dac974707456521029",
+          "message": "perf: delay major GC marking on small heaps (#16913)\n\nSet `small_heap_limit` to 16,777,216 GC-work units for Dune on OCaml\n5.5+, delaying major marking on small heaps. This is the nominal 128 MiB\nthreshold on 64-bit OCaml, not a literal memory limit.\n\nPreserve explicit `OCAMLRUNPARAM`/`CAMLRUNPARAM` settings and the\nexisting `space_overhead` default. Older OCaml versions remain\nunchanged; catch `Invalid_argument` if the unstable tweak is\nunavailable. Record active GC tweaks in the first `config/init` trace\nevent.\n\nOn AArch64 with OCaml 5.5.1, eight randomized warmed runs of a no-op\nDune build had a median of 626 ms by default versus 572 ms with this\nthreshold (about 9% less wall time). This change tunes Dune itself, not\ncompiler subprocesses.\n\nCompiler tuning is proposed independently in #16914.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-07T12:23:28+08:00",
+          "tree_id": "236a168affacc8f351cc93cd1b581ee4504cd30b",
+          "url": "https://github.com/ocaml/dune/commit/f1354261fb71b3f2285847dac974707456521029"
+        },
+        "date": 1794026557614,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 63.76448695495333,
             "unit": "seconds"
           }
         ]

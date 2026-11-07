@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794026890435,
+  "lastUpdate": 1794027189879,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -483051,6 +483051,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5066048450533334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4dcd53ce57da3c65b52c95fcbbd365a65e8fcf5f",
+          "message": "refactor(fiber): split submodule tests into dedicated modules (#16921)\n\nMove the Fiber.Lazy and Fiber.Mutex tests from fiber_tests.ml into\ndedicated test modules, matching the existing per-submodule layout. Test\nbodies and expectations are unchanged; top-level Fiber API tests remain\nin fiber_tests.ml.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-07T12:33:06+08:00",
+          "tree_id": "b07eaf7604227911efda3a6a60f4ca7f83a0da89",
+          "url": "https://github.com/ocaml/dune/commit/4dcd53ce57da3c65b52c95fcbbd365a65e8fcf5f"
+        },
+        "date": 1794027188433,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 58.32870848222666,
             "unit": "seconds"
           }
         ]

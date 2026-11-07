@@ -821,11 +821,13 @@ let build_cm'
     ~sourcemap
 ;;
 
+let cm_target ~mode ~src ~obj_dir ~config =
+  let name = with_js_ext ~mode (Path.basename src |> Filename.to_string) in
+  in_obj_dir ~obj_dir ~config [ name ]
+;;
+
 let build_from_cm sctx ~dir ~in_context ~mode ~src ~obj_dir ~shapes ~config ~sourcemap =
-  let target =
-    let name = with_js_ext ~mode (Path.basename src |> Filename.to_string) in
-    in_obj_dir ~obj_dir ~config [ name ]
-  in
+  let target = cm_target ~mode ~src ~obj_dir ~config in
   build_cm'
     sctx
     ~dir

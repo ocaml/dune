@@ -560,6 +560,15 @@ let create_sh_script cram_stanzas ~temp_dir ~setup_scripts (shell : Cram_stanza.
         }
   in
   fprln oc "trap 'exit 0' EXIT";
+  let () =
+    let temp_dir = Path.relative temp_dir "tmp" in
+    Path.mkdir_p temp_dir;
+    fprln
+      oc
+      "export %s=%s"
+      (Env.Var.to_string Env.Var.temp_dir)
+      (quote_for_sh (Path.to_absolute_filename temp_dir))
+  in
   let* () =
     Fiber.sequential_iter setup_scripts ~f:(fun (script_path : Path.t) ->
       let+ script_sh_path = sh_path script_path in
@@ -586,15 +595,12 @@ let _display_with_bars s = List.iter (String.split_lines s) ~f:(Printf.eprintf "
 let make_run_env env ~temp_dir ~cwd =
   let env = Env.add env ~var:Env.Var._LC_ALL ~value:"C" in
   let temp_dir = Path.relative temp_dir "tmp" in
-  let env =
-    Dune_util.Build_path_prefix_map.extend_build_path_prefix_map
-      env
-      `New_rules_have_precedence
-      [ Some { source = Path.to_absolute_filename cwd; target = "$TESTCASE_ROOT" }
-      ; Some { source = Path.to_absolute_filename temp_dir; target = "$TMPDIR" }
-      ]
-  in
-  Env.add env ~var:Env.Var.temp_dir ~value:(Path.to_absolute_filename temp_dir)
+  Dune_util.Build_path_prefix_map.extend_build_path_prefix_map
+    env
+    `New_rules_have_precedence
+    [ Some { source = Path.to_absolute_filename cwd; target = "$TESTCASE_ROOT" }
+    ; Some { source = Path.to_absolute_filename temp_dir; target = "$TMPDIR" }
+    ]
 ;;
 
 let make_temp_dir ~script =
@@ -878,7 +884,7 @@ module Run = struct
       }
 
     let name = "cram-run"
-    let version = 7
+    let version = 8
     let runs_process = true
     let can_run_in_action_runner = true
 
@@ -1041,7 +1047,7 @@ module Action = struct
     type ('path, _) t = 'path
 
     let name = "cram"
-    let version = 2
+    let version = 3
     let runs_process = true
     let can_run_in_action_runner = true
     let bimap path f _ = f path

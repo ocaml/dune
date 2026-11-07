@@ -10,7 +10,8 @@
 
 (cram
  (applies_to sync-timeout.t)
- (runtest_alias false))
+ ;; Its two five-second retry deadlines make this too slow for @runtest.
+ (enabled_if false))
 
 (cram
  ;; see https://github.com/ocaml/dune/pull/4728

@@ -3,10 +3,16 @@ let () =
     Dune_rpc.V1.Request.Initialize.create
       ~id:(Dune_rpc.V1.Request.Id.make (Csexp.Atom "example_rpc_client"))
   in
-  let where = Dune_rpc_lwt.V1.Where.default ~build_dir:"_build" () in
   Lwt_main.run
     (let open Lwt.Syntax in
      let open Lwt.Infix in
+     let* where =
+       let* result = Dune_rpc_lwt.V1.Where.get ~env:Sys.getenv_opt ~build_dir:"_build" in
+       match result with
+       | Ok (Some where) -> Lwt.return where
+       | Ok None -> Lwt.fail_with "No running Dune RPC server in _build"
+       | Error exn -> Lwt.fail exn
+     in
      let* chan = Dune_rpc_lwt.V1.connect_chan where in
      Dune_rpc_lwt.V1.Client.connect chan init ~f:(fun client ->
        print_endline "Sending ping to server...";

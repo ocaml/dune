@@ -90,19 +90,21 @@ let read_all_fd =
       | 0 -> `Eof
       | n -> read fd buf (pos + n) (left - n))
   in
-  fun fd ->
-    match Unix.fstat fd with
+  fun fd ~max_size ->
+    match Unix.LargeFile.fstat fd with
     | exception Unix.Unix_error (e, x, y) -> Error (`Unix (e, x, y))
-    | { Unix.st_kind = S_DIR; _ } ->
+    | { Unix.LargeFile.st_kind = S_DIR; _ } ->
       (* Empty directories can report size zero (e.g. on Btrfs), so reject
          them before applying the empty-file shortcut. *)
       Error (`Unix (Unix.EISDIR, "read", ""))
-    | { Unix.st_size; _ } ->
-      if st_size = 0
+    | { Unix.LargeFile.st_size; _ } ->
+      if st_size = 0L
       then Ok ""
-      else if st_size > Sys.max_string_length
+      else if
+        Int64.compare st_size (Int64.of_int (min max_size Sys.max_string_length)) > 0
       then Error `Too_big
       else (
+        let st_size = Int64.to_int st_size in
         let b = Bytes.create st_size in
         match read fd b 0 st_size with
         | exception Unix.Unix_error (e, x, y) -> Error (`Unix (e, x, y))
@@ -117,10 +119,22 @@ let with_file_in_fd fn ~f =
 let read_file fn =
   match
     with_file_in_fd fn ~f:(fun fd ->
-      match read_all_fd fd with
+      match read_all_fd fd ~max_size:Sys.max_string_length with
       | Ok s -> Ok s
       | Error `Retry -> read_file_chan fn
       | Error `Too_big -> Error too_big
+      | Error (`Unix (e, s, x)) -> Error (Unix.Unix_error (e, s, x)))
+  with
+  | result -> result
+  | exception (Unix.Unix_error _ as exn) -> Error exn
+;;
+
+let read_file_if_small fn ~max_size =
+  match
+    with_file_in_fd fn ~f:(fun fd ->
+      match read_all_fd fd ~max_size with
+      | Ok s -> Ok (Some s)
+      | Error (`Too_big | `Retry) -> Ok None
       | Error (`Unix (e, s, x)) -> Error (Unix.Unix_error (e, s, x)))
   with
   | result -> result

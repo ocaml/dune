@@ -10,6 +10,12 @@
 val read_all_unless_large : in_channel -> (string, exn) result
 
 val read_file : string -> (string, exn) result
+
+(** Read through a file descriptor without creating a channel. Returns [None]
+    if the file exceeds [max_size] or [Sys.max_string_length], or ends before
+    its reported size. *)
+val read_file_if_small : string -> max_size:int -> (string option, exn) result
+
 val write_file : perm:int -> path:string -> data:string -> (unit, exn) result
 
 (** Write the entire string without closing the descriptor. *)

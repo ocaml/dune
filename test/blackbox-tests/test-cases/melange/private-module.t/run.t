@@ -1,6 +1,7 @@
 Without sandboxing, OCaml resolves this wrapper alias since 5.2.
 
-  $ if ocamlc -H . -version > /dev/null 2>&1; then
+  $ if ocamlc -H . -version > /dev/null 2>&1 &&
+  >    melc -H . --version > /dev/null 2>&1; then
   >   mv dune dune.melange
   >   cat > dune <<'EOF'
   > (executable

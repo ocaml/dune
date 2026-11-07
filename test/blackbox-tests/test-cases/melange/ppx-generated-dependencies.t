@@ -41,6 +41,7 @@ interfaces, with ordinary and staged preprocessing for OCaml and Melange.
   >  (libraries $1))
   > (melange.emit
   >  (target out)
+  >  (emit_stdlib false)
   >  (modules main)
   >  (libraries $1))
   > EOF
@@ -115,6 +116,7 @@ in the sandbox through preprocessor_deps.
   >  (action (copy %{deps} %{target})))
   > (melange.emit
   >  (target out)
+  >  (emit_stdlib false)
   >  (preprocess
   >   (staged_pps dependency_ppx -- --module-file emit/module-name))
   >  (preprocessor_deps module-name (sandbox always)))

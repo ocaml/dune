@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794019388351,
+  "lastUpdate": 1794019577537,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -672016,6 +672016,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8229666257666666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a360cc418be1ea2c23ab7cc1df592c7e3b069cfc",
+          "message": "test(pkg): keep unrelated Git sources unresolved when loading fetch rules (#16912)\n\nExtend the existing Git-source test with an unrelated package whose\nrepository does not exist. Building the requested package must still\nsucceed, guarding against eager Git URL resolution while loading fetch\nrules.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-07T10:31:33+08:00",
+          "tree_id": "c5fe8f0b0d5f8cff7fc382493dcb31e63ab282d6",
+          "url": "https://github.com/ocaml/dune/commit/a360cc418be1ea2c23ab7cc1df592c7e3b069cfc"
+        },
+        "date": 1794019178590,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.823677744433333,
             "unit": "seconds"
           }
         ]

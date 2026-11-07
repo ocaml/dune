@@ -151,6 +151,18 @@ Among other things, dune-configurator allows one to:
  (description "Specialization of dune-rpc to Lwt"))
 
 (package
+ (name dune-rules-plugin)
+ (dir otherlibs/dune-rules-plugin)
+ (synopsis "API for writing Dune rule plugins")
+ (depends
+  (dune-rpc (= :version))
+  (dune-rpc-lwt (= :version))
+  (csexp (>= 1.5.0))
+  (lwt (>= 5.6.0))
+  base-unix)
+ (description "Experimental API for generating Dune rules from plugins."))
+
+(package
  (name dyn)
  (dir otherlibs/dyn)
  (synopsis "Dynamic type")

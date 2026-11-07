@@ -6,6 +6,13 @@ module V1 : sig
     with type 'a fiber := 'a Lwt.t
      and type chan := Lwt_io.input_channel * Lwt_io.output_channel
 
+  module Private : sig
+    module Client :
+      Dune_rpc.Private.Client.S
+      with type 'a fiber := 'a Lwt.t
+       and type chan := Lwt_io.input_channel * Lwt_io.output_channel
+  end
+
   module Where : Where.S with type 'a fiber := 'a Lwt.t
 
   val connect_chan

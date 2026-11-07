@@ -14,6 +14,7 @@
   dune_patch
   dune_pkg
   re
+  rpc
   dune_rpc
   dune_section
   dune_site_private

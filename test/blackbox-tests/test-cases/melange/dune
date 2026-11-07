@@ -58,4 +58,7 @@
 (cram
  (applies_to merlin-private-transitive-alias.t)
  (enabled_if
-  (>= %{ocaml_version} 5.2)))
+  (and
+   %{bin-available:melc}
+   (>= %{ocaml_version} 5.2)
+   %{read:../../utils/melange-supports-hidden-includes})))

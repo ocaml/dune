@@ -311,6 +311,7 @@ let exec
       }
       ~build_deps
   =
+  let env = Dtemp.add_to_env env ~purpose:(Process_metadata.Build_job targets) in
   let ectx =
     let metadata =
       Process_metadata.create ~purpose:(Process_metadata.Build_job targets) ()

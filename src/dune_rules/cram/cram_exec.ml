@@ -610,7 +610,7 @@ let make_temp_dir ~script =
     in
     Dune_engine.Dtemp.action Dir ~prefix:"dune_cram" ~suffix
   in
-  Path.mkdir_p temp_dir;
+  Path.mkdir_p (Path.relative temp_dir "tmp");
   temp_dir
 ;;
 
@@ -878,7 +878,7 @@ module Run = struct
       }
 
     let name = "cram-run"
-    let version = 7
+    let version = 8
     let runs_process = true
     let can_run_in_action_runner = true
 
@@ -1041,7 +1041,7 @@ module Action = struct
     type ('path, _) t = 'path
 
     let name = "cram"
-    let version = 2
+    let version = 3
     let runs_process = true
     let can_run_in_action_runner = true
     let bimap path f _ = f path

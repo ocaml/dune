@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794019716866,
+  "lastUpdate": 1794019723997,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -482906,6 +482906,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 63.240968270046665,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "matt@media-flame.com",
+            "name": "Dirk",
+            "username": "DirkEmmett"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2dc2d35a0d4982949e5263361c2541745a3d20fb",
+          "message": "Fix Merlin hidden includes for libraries with private modules (#16629)\n\nDepends on #16848 (tests-only; merge first).\n\nPublic aliases backed by private modules can build successfully but fail\nin Merlin because Dune omits their hidden CMI directory. Add the missing\n`BH` paths for local direct and hidden transitive dependencies,\npreserving annotation paths and existing visibility.\n\nThe test setup is submitted separately in #16848; this branch builds on\nthat commit and changes the expectations to require successful alias\ntyping. Until the tests PR lands, GitHub's main-based diff includes the\nshared test commit. [Fix-only\ncomparison](https://github.com/DirkEmmett/dune/compare/test%2F16531-merlin-hidden-includes...fix%2F16531-merlin-hidden-includes).\n\nFixes #16531.\n\nValidation: `dune build @check @fmt @runtest` passed locally on both\nbranches with OCaml 5.5.0 and ppxlib 0.39.0. Actual Merlin 5.8.1 queries\nconfirmed that the tests-only branch retains the alias error and this\nfix restores typing, completion, and navigation while direct private\nnames remain inaccessible.\n\nSigned-off-by: Dirk Emmett <329616727+DirkEmmett@users.noreply.github.com>\nCo-authored-by: Dirk Emmett <329616727+DirkEmmett@users.noreply.github.com>",
+          "timestamp": "2026-11-07T10:27:24+08:00",
+          "tree_id": "a0a3f534f253e05f399bc34fb6c0098e115c9e9c",
+          "url": "https://github.com/ocaml/dune/commit/2dc2d35a0d4982949e5263361c2541745a3d20fb"
+        },
+        "date": 1794019723245,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5415297771400001,
             "unit": "seconds"
           }
         ]

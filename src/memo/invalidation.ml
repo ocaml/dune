@@ -44,7 +44,6 @@ module Leaf = struct
     | Invalidate_node : _ Node.Dep_node.t -> kind
     | Clear_cache : ('input, ('input, 'output) Node.Dep_node.t) Store.t -> kind
     | Invalidate_caches
-    | Custom of (unit -> unit)
 
   type t =
     { kind : kind
@@ -80,7 +79,6 @@ let execute_leaf { Leaf.kind; _ } =
   | Invalidate_node dep_node -> Node.invalidate dep_node
   | Clear_cache store -> invalidate_store store
   | Invalidate_caches -> Caches.invalidate ()
-  | Custom f -> f ()
 ;;
 
 let rec execute x xs =
@@ -164,10 +162,6 @@ let invalidate_table ~reason ({ cache; _ } : _ Table0.t) =
 let invalidate_node ~reason (dep_node : _ Node.Dep_node.t) =
   Leaf { kind = Invalidate_node dep_node; reason }
 ;;
-
-(* For out-of-band caching mechanisms that need to run an arbitrary action when the build
-   is invalidated. *)
-let custom ~reason ~f = Leaf { kind = Custom f; reason }
 
 let to_reason_list t =
   List.fold_left (to_list t) ~init:[] ~f:(fun acc ({ Leaf.reason; _ } : Leaf.t) ->

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794019028945,
+  "lastUpdate": 1794019035497,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -482790,6 +482790,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 50.814905386940005,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "81f0c7b6df99447c12fc71dfeb347a83c7ef3de5",
+          "message": "test(trace): avoid duplicate timeout signals in write-error regression (#16918)\n\nUse foreground timeouts throughout the trace write-error regression. GNU\ntimeout otherwise sends SIGTERM both directly to the RPC client and to\nits process group; depending on signal coalescing, Dune prints an\nunexpected emergency-exit banner.\n\nFixes the flaky failure seen in [CI for\n#16913](https://github.com/ocaml/dune/actions/runs/42269669750/job/128070799195?pr=16913).\nThe trace-error expectations are unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-07T10:21:37+08:00",
+          "tree_id": "187ae0d51c0b2c491cfbf384b06222ea0e53853e",
+          "url": "https://github.com/ocaml/dune/commit/81f0c7b6df99447c12fc71dfeb347a83c7ef3de5"
+        },
+        "date": 1794019034824,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.48772867934,
             "unit": "seconds"
           }
         ]

@@ -1334,28 +1334,28 @@ let run_build_requests ?restart_started_at ~build_started_at ?build (request : R
     | Complete_goals, _ -> Request.Goal.complete goal outcome
   in
   let run_request goal =
-    Fiber.collect_errors (fun () ->
-      Memo.run_with_error_handler ~handle_error_no_raise:report_early_exn (fun () ->
-        Request.Goal.build goal
-        |> Action_builder.evaluate_and_collect_facts
-        |> Memo.map ~f:fst))
+    Memo.run_and_collect_errors (fun () ->
+      Request.Goal.build goal
+      |> Action_builder.evaluate_and_collect_facts
+      |> Memo.map ~f:fst)
     >>= function
     | Ok () ->
       let+ () = finish_request goal Success in
       Ok ()
-    | Error exns when List.for_all exns ~f:caused_by_cancellation ->
+    | Error exns when Memo.Exn_set.for_all exns ~f:caused_by_cancellation ->
       Fiber.return (Error exns)
     | Error exns ->
       let+ () = finish_request goal Failure in
       Error exns
   in
   run_with_error_collection ?restart_started_at ~build_started_at ~build (fun () ->
-    Request.goals request
-    |> Fiber.parallel_map ~f:run_request
-    >>| List.concat_map ~f:(function
-      | Ok () -> []
-      | Error exns -> exns)
-    >>| function
+    Memo.with_error_handler ~handle_error_no_raise:report_early_exn (fun () ->
+      Request.goals request |> Fiber.parallel_map ~f:run_request)
+    >>| List.filter_map ~f:(function
+      | Ok () -> None
+      | Error exns -> Some exns)
+    >>| fun exns ->
+    match Memo.Exn_set.(to_list (union_all exns)) with
     | [] -> Ok ()
     | exns -> Error exns)
 ;;

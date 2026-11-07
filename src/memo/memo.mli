@@ -38,24 +38,61 @@ end
 (* CR-someday amokhov: Return the set of exceptions explicitly. *)
 val run : 'a t -> 'a Fiber.t
 
-(** Every error gets reported twice: once early, in non-deterministic order, by
-    calling [handler_error], and once later, in deterministic order, by raising
-    a fiber exception.
+(** [with_error_handler f ~handle_error_no_raise] installs a single error
+    reporting scope for every [run_and_collect_errors] performed by [f]. Each
+    error is passed to [handle_error_no_raise] early, in non-deterministic
+    order, and at most once in this scope, even if several computations fail
+    because of it.
 
     [handle_error_no_raise] must not raise exceptions, otherwise internal memo
     invariants get messed up and you get confusing errors like "Attempted to
     create a cached value based on some stale inputs".
 
-    Nested calls of [run_with_error_handler] are not allowed.
+    Nested scopes are not allowed.
 
-    If multiple calls to [run_with_error_handler] happen concurrently (possibly
-    with different error handlers), then each handler will correctly receive all
-    errors it would be expected to receive if run independently. However, each
-    error will only be sent "early" to one of the handlers, while the other
-    handler will get this error delayed. If this limitation becomes problematic,
-    it may be possible to lift it by eagerly bubbling up each error through
-    individual dependency edges instead of sending errors directly to the
-    handler in scope. *)
+    If multiple scopes exist concurrently (possibly with different error
+    handlers), then each handler will correctly receive all errors it would be
+    expected to receive if its scope ran independently. However, each error
+    will only be sent "early" to one of the handlers, while the other handler
+    will get this error delayed. If this limitation becomes problematic, it may
+    be possible to lift it by eagerly bubbling up each error through individual
+    dependency edges instead of sending errors directly to the handler in
+    scope. *)
+val with_error_handler
+  :  (unit -> 'a Fiber.t)
+  -> handle_error_no_raise:(Exn_with_backtrace.t -> unit Fiber.t)
+  -> 'a Fiber.t
+
+(** A set where exceptions raised by the same failing computation are considered
+    equal regardless of the stack they were observed through. *)
+module Exn_set : sig
+  (** A set of errors. *)
+  type t
+
+  (** [for_all ~f t] is whether [f] is true for all exceptions in [t]. *)
+  val for_all : t -> f:(Exn_with_backtrace.t -> bool) -> bool
+
+  (** [union_all ts] is the union of all sets in [ts]. *)
+  val union_all : t list -> t
+
+  (** [to_list t] is a list of exceptions in [t] in a deterministic order. *)
+  val to_list : t -> Exn_with_backtrace.t list
+end
+
+(** [run_and_collect_errors f] runs [f] in the scope installed by
+    [with_error_handler], returning the errors it failed with. *)
+val run_and_collect_errors : (unit -> 'a t) -> ('a, Exn_set.t) result Fiber.t
+
+(** [run_with_error_handler] is [with_error_handler] and
+    [run_and_collect_errors] combined: run a single computation in its own error
+    reporting scope, and re-raise the errors it failed with. Every error thus
+    gets reported twice: once early, in non-deterministic order, by calling
+    [handle_error_no_raise], and once later, in deterministic order, by raising
+    a fiber exception.
+
+    The restrictions of [with_error_handler] apply: [handle_error_no_raise]
+    must not raise, nested calls of [run_with_error_handler] are not allowed,
+    and concurrent calls get some errors delayed rather than early. *)
 val run_with_error_handler
   :  (unit -> 'a t)
   -> handle_error_no_raise:(Exn_with_backtrace.t -> unit Fiber.t)

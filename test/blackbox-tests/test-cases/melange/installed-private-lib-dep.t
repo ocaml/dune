@@ -66,7 +66,8 @@ A public alias into the installed private library works in OCaml, but Melange
 omits the private library's hidden CMI directory on supported compilers.
 Direct references to the private library remain unavailable in both modes.
 
-  $ if ocamlc -H . -version > /dev/null 2>&1; then
+  $ if ocamlc -H . -version > /dev/null 2>&1 &&
+  >    melc -H . --version > /dev/null 2>&1; then
   >   sed -i.bak 's/(name foo)/(name consumer)/' app/dune-project &&
   >   sed -i.bak 's/(modes melange)/(modes byte melange)/' \
   >     lib/priv/dune lib/lib/dune &&

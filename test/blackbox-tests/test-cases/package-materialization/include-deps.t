@@ -43,5 +43,5 @@ The action's OCAMLPATH includes the outer and the included package's
 layout lib/ dirs:
 
   $ env_added "$(cat _build/default/out)" "$baseline" | censor
-  $PWD/_build/install/default/.packages/$DIGEST1/lib
-  $PWD/_build/install/default/.packages/$DIGEST2/lib
+  $PWD/_build/_private/default/.packages/$DIGEST1/lib
+  $PWD/_build/_private/default/.packages/$DIGEST2/lib

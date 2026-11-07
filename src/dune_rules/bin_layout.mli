@@ -17,7 +17,7 @@ val create
   -> string list
   -> (Path.Build.t * Path.t list) option Memo.t
 
-(** Dispatch a path under [_build/install/<context>/.binaries/...].
+(** Dispatch a path under [_build/_private/<context>/.binaries/...].
     [rest] is the components after [.binaries].
     - [[]]: at the [.binaries/] directory itself, no rules but the
       engine descends.

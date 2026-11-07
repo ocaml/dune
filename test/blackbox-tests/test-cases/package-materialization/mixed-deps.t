@@ -23,5 +23,5 @@ Test that package deps and file deps work together in the same (deps ...).
 The layout deps include foo, and the file dep is also present:
 
   $ dune rules --format=json _build/default/out | jq_dune '.[] | ruleDepFilePaths' | censor | grep -E 'dune-package|src/mylib' | sort
+  "_build/_private/default/.packages/$DIGEST/lib/foo/dune-package"
   "_build/default/src/mylib.ml"
-  "_build/install/default/.packages/$DIGEST/lib/foo/dune-package"

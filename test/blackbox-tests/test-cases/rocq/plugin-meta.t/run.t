@@ -15,10 +15,10 @@ the META file and native plugin are present:
 
   $ echo 'Declare ML Module "bar.foo".' > theory/bar.v
   $ dune build theory/.bar.theory.d
-  $ find _build/install/default/.packages \( -name META -o -name '*.cmxs' \) \
+  $ find _build/_private/default/.packages \( -name META -o -name '*.cmxs' \) \
   >   | sort | censor
-  _build/install/default/.packages/$DIGEST/lib/bar/META
-  _build/install/default/.packages/$DIGEST/lib/bar/foo/foo.cmxs
+  _build/_private/default/.packages/$DIGEST/lib/bar/META
+  _build/_private/default/.packages/$DIGEST/lib/bar/foo/foo.cmxs
 
 The plugin is used by theory/bar.v and, transitively, by other/qux.v.
 theory/baz.v does not load it. Currently all three proofs depend on the complete
@@ -50,10 +50,10 @@ plugin layout.
   >   include "dune";
   >   map({target: ([ruleTargets[] | select(endswith(".vo"))][0]),
   >        layout_files: ([ruleDepFilePathsOfKind("In_build_dir")
-  >          | select(startswith("_build/install/default/.packages/"))]
+  >          | select(startswith("_build/_private/default/.packages/"))]
   >          | length),
   >        layout_groups: ([ruleDepGlobEntries
-  >          | select(.dir | startswith("_build/install/default/.packages/"))]
+  >          | select(.dir | startswith("_build/_private/default/.packages/"))]
   >          | length)})
   >   | sort_by(.target)'
   [
@@ -83,11 +83,11 @@ file groups rather than repeating the complete layout dependencies:
   $ dune rules --format=json theory/.bar.theory.d other/.qux.theory.d | jq '
   >   include "dune";
   >   map([ruleDepGlobEntries
-  >        | select(.dir | startswith("_build/install/default/.packages/"))])
+  >        | select(.dir | startswith("_build/_private/default/.packages/"))])
   >   as $groups
   >   | {layout_file_dependencies:
   >      ([.[] | ruleDepFilePathsOfKind("In_build_dir")
-  >        | select(startswith("_build/install/default/.packages/"))]
+  >        | select(startswith("_build/_private/default/.packages/"))]
   >       | length),
   >      shared_layout_groups:
   >        ($groups[0] == $groups[1] and ($groups[0] | length) > 0)}'
@@ -126,11 +126,11 @@ directories still use unconditional selectors.
   >   include "dune";
   >   .[0]
   >   | [ruleDepGlobEntries
-  >      | select(.dir | startswith("_build/install/default/.packages/"))]
+  >      | select(.dir | startswith("_build/_private/default/.packages/"))]
   >   as $groups
   >   | {layout_files:
   >        ([ruleDepFilePathsOfKind("In_build_dir")
-  >          | select(startswith("_build/install/default/.packages/"))]
+  >          | select(startswith("_build/_private/default/.packages/"))]
   >         | length),
   >      layout_groups: ($groups | length),
   >      unconditional_groups: all($groups[]; .predicate == ["or", []])}'
@@ -149,8 +149,8 @@ directories still use unconditional selectors.
   >     */_sandbox/.sandbox/*/default/theory) ;;
   >     *) echo 'Discovery is not sandboxed' >&2; exit 1 ;;
   >   esac
-  >   for file in ../../install/default/.packages/*/lib/bar/META \
-  >       ../../install/default/.packages/*/lib/bar/foo/foo.cmxs; do
+  >   for file in ../../_private/default/.packages/*/lib/bar/META \
+  >       ../../_private/default/.packages/*/lib/bar/foo/foo.cmxs; do
   >     if [ ! -f "$file" ]; then
   >       echo 'Missing sandbox plugin file' >&2
   >       exit 1

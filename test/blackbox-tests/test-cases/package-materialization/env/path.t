@@ -21,4 +21,4 @@ Test that (deps (package ...)) adds the package's bin/ to PATH.
   $ baseline=$PATH
   $ dune build out
   $ env_added "$(cat _build/default/out)" "$baseline" | censor
-  $PWD/_build/install/default/.packages/$DIGEST/bin
+  $PWD/_build/_private/default/.packages/$DIGEST/bin

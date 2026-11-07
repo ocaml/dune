@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794069606959,
+  "lastUpdate": 1794069934777,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -483399,6 +483399,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.44507030545333337,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a1c5fd20c753fbe37c462f01337755742a90d53d",
+          "message": "test(cram): demonstrate shared temporary directories (#16925)\n\nAdd a deterministic reproduction of Cram tests sharing `TMPDIR`: a\nproducer writes a marker, then a separate consumer reads it through its\nown temporary directory instead of observing isolation.\n\nAn explicit alias dependency orders the tests, and they run with `-j 1`\nand caching disabled, so the reproduction does not depend on a\nscheduling race. The outer test records the consumer’s failing isolation\nexpectation.\n\nThis exposes the underlying collision behind the flaky counters in\n`watching/batch-mode.t` and `watching/watch-mode.t`.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-08T00:26:24+08:00",
+          "tree_id": "795c7458d6d138370024a1313772fb28a7248c4f",
+          "url": "https://github.com/ocaml/dune/commit/a1c5fd20c753fbe37c462f01337755742a90d53d"
+        },
+        "date": 1794069933441,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 63.74520283391333,
             "unit": "seconds"
           }
         ]

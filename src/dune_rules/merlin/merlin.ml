@@ -83,6 +83,9 @@ module Processed = struct
     ; extensions : string option Ml_kind.Dict.t list
     ; indexes : Path.t list
     ; parameters : Module_name.t list
+    ; pp_deps : Path.Set.t option
+      (* [None] when the preprocessor dependencies cannot be expressed as a
+         set of files, in which case Merlin's PPX cache is disabled. *)
     }
 
   let path_set_repr = Repr.abstract Path.Set.to_dyn
@@ -112,7 +115,13 @@ module Processed = struct
           ~get:(fun t -> t.extensions)
       ; Repr.field "indexes" (Repr.list Path.repr) ~get:(fun t -> t.indexes)
       ; Repr.field "parameters" (Repr.list Module_name.repr) ~get:(fun t -> t.parameters)
+      ; Repr.field "pp_deps" (Repr.option path_set_repr) ~get:(fun t -> t.pp_deps)
       ]
+  ;;
+
+  let union_pp_deps pp_deps1 pp_deps2 =
+    Option.both pp_deps1 pp_deps2
+    |> Option.map ~f:(fun (pp_deps1, pp_deps2) -> Path.Set.union pp_deps1 pp_deps2)
   ;;
 
   type source =
@@ -245,7 +254,7 @@ module Processed = struct
 
     let name = "merlin-conf"
     let sharing = false
-    let version = 15
+    let version = 16
 
     let repr =
       Repr.view Repr.string ~to_:(fun _ -> "Use [dune ocaml dump-dot-merlin] instead")
@@ -323,6 +332,7 @@ module Processed = struct
         ; extensions
         ; indexes
         ; parameters
+        ; pp_deps
         }
     =
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
@@ -396,6 +406,15 @@ module Processed = struct
         ]
       | None -> []
     in
+    let ppx_cache =
+      match pp_deps with
+      | None -> []
+      | Some pp_deps ->
+        Path.Set.to_list_map
+          ~f:(fun pp_dep -> make_directive "PPX_DEPS" (Atom (serialize_path pp_dep)))
+          pp_deps
+        @ [ Sexp.List [ Atom "USE_PPX_CACHE" ] ]
+    in
     Sexp.List
       (List.concat
          [ index_files
@@ -411,6 +430,7 @@ module Processed = struct
          ; unit_name
          ; suffixes
          ; reader
+         ; ppx_cache
          ])
   ;;
 
@@ -431,6 +451,7 @@ module Processed = struct
         stdlib_dir
         source_root
         pp_configs
+        pp_deps
         flags
         obj_dirs
         cmt_dirs
@@ -457,6 +478,9 @@ module Processed = struct
     List.iter extensions ~f:(fun x ->
       Option.iter (get_ext x) ~f:(fun (impl, intf) ->
         printf "SUFFIX %s\n" (Printf.sprintf "%s %s" impl intf)));
+    Option.iter pp_deps ~f:(fun pp_deps ->
+      Path.Set.iter pp_deps ~f:(fun s -> printf "PPX_DEPS %s\n" (serialize_path s));
+      print "USE_PPX_CACHE\n");
     (* We print all FLG directives as comments *)
     List.iter
       pp_configs
@@ -732,7 +756,8 @@ module Processed = struct
           , hidden_src_dirs
           , flags
           , extensions
-          , indexes )
+          , indexes
+          , pp_deps )
         =
         (* We merge what is easy to merge and ignore the rest *)
         List.fold_left
@@ -746,7 +771,8 @@ module Processed = struct
             , init.config.hidden_src_dirs
             , [ init.config.flags ]
             , init.config.extensions
-            , init.config.indexes )
+            , init.config.indexes
+            , init.config.pp_deps )
           ~f:
             (fun
               ( acc_pp
@@ -757,7 +783,8 @@ module Processed = struct
               , acc_hidden_src
               , acc_flags
               , acc_ext
-              , acc_indexes )
+              , acc_indexes
+              , acc_pp_deps )
               { per_file_config = _
               ; pp_config
               ; for_ = _
@@ -773,6 +800,7 @@ module Processed = struct
                   ; extensions
                   ; indexes
                   ; parameters = _
+                  ; pp_deps
                   }
               }
             ->
@@ -784,7 +812,8 @@ module Processed = struct
             , Path.Set.union acc_hidden_src hidden_src_dirs
             , flags :: acc_flags
             , extensions @ acc_ext
-            , indexes @ acc_indexes ))
+            , indexes @ acc_indexes
+            , union_pp_deps pp_deps acc_pp_deps ))
       in
       Printf.printf
         "%s\n"
@@ -792,6 +821,7 @@ module Processed = struct
            init.config.stdlib_dir
            init.config.source_root
            pp_configs
+           pp_deps
            flags
            obj_dirs
            cmt_dirs
@@ -867,6 +897,7 @@ module Unprocessed = struct
     ; flags : string list Action_builder.t
     ; preprocess :
         Preprocess.Without_instrumentation.t Preprocess.t Module_reference.Per_item.t
+    ; preprocessor_deps : Dep_conf.t list
     ; libname : Lib_name.Local.t option
     ; objs_dirs : Path.Set.t
     ; extensions : string option Ml_kind.Dict.t list
@@ -887,6 +918,7 @@ module Unprocessed = struct
         ~stdlib_dir
         ~flags
         ~preprocess
+        ~preprocessor_deps
         ~libname
         ~modules
         ~obj_dir
@@ -914,6 +946,7 @@ module Unprocessed = struct
       ; requires_hidden
       ; flags
       ; preprocess
+      ; preprocessor_deps
       ; libname
       ; objs_dirs
       ; extensions
@@ -1043,10 +1076,53 @@ module Unprocessed = struct
   module Per_item_action_builder =
     Module_reference.Per_item.Make_monad_traversals (Action_builder)
 
+  (* Evaluates [builder] and returns the files it depends on, to be given to
+     Merlin as [PPX_DEPS]. Returns [None] when some dependencies cannot be
+     expressed as files, in which case Merlin's PPX cache must be disabled. *)
+  let ppx_deps_of_builder builder =
+    Action_builder.dyn_memo_deps
+      (let open Memo.O in
+       let+ x, facts = Action_builder.evaluate_and_collect_facts builder in
+       let only_files =
+         Dep.Map.for_alli facts ~f:(fun dep _ ->
+           match (dep : Dep.t) with
+           | File _ | File_selector _ -> true
+           | Env _ | Alias _ | Universe -> false)
+       in
+       let pp_deps =
+         Option.some_if only_files (Dep.Facts.paths facts ~expand_aliases:false)
+       in
+       Dep.Map.map facts ~f:ignore, (x, pp_deps))
+  ;;
+
   let pp_config t ctx ~expander =
     Per_item_action_builder.map
       t.config.preprocess
       ~f:(pp_flags ctx ~for_:t.config.for_ ~expander t.config.libname)
+  ;;
+
+  (* Like [pp_config], but also returns the dependencies of the PPX rewriters
+     (see [ppx_deps_of_builder]). *)
+  let pp_config_and_deps t ctx ~expander =
+    let open Action_builder.O in
+    let+ pp_config_and_deps =
+      Per_item_action_builder.map t.config.preprocess ~f:(fun preprocess ->
+        let pp_flag =
+          pp_flags ctx ~for_:t.config.for_ ~expander t.config.libname preprocess
+        in
+        match preprocess with
+        | Pps _ -> ppx_deps_of_builder pp_flag
+        | No_preprocessing | Action _ | Future_syntax _ ->
+          (* Merlin never caches the output of [-pp] preprocessors, so their
+             dependencies are irrelevant to its PPX cache. *)
+          let+ pp_flag = pp_flag in
+          pp_flag, Some Path.Set.empty)
+    in
+    ( Module_reference.Per_item.map pp_config_and_deps ~f:fst
+    , Module_reference.Per_item.fold
+        pp_config_and_deps
+        ~init:(Some Path.Set.empty)
+        ~f:(fun (_, pp_deps) acc -> Processed.union_pp_deps pp_deps acc) )
   ;;
 
   let add_lib_dirs sctx ~for_ libs =
@@ -1102,6 +1178,7 @@ module Unprocessed = struct
              ; requires_compile
              ; requires_hidden
              ; preprocess = _
+             ; preprocessor_deps
              ; libname = _
              ; for_
              ; parameters
@@ -1114,6 +1191,17 @@ module Unprocessed = struct
     =
     let open Action_builder.O in
     let context = Super_context.context sctx in
+    let* pp_config, pp_config_deps = pp_config_and_deps t context ~expander in
+    let* (), preprocessor_deps =
+      let env, _sandbox =
+        Dep_conf_eval.unnamed
+          Sandbox_config.no_special_requirements
+          ~expander
+          preprocessor_deps
+      in
+      ppx_deps_of_builder (Action_builder.ignore env)
+    in
+    let pp_deps = Processed.union_pp_deps pp_config_deps preprocessor_deps in
     let+ config, indexes_digest =
       let* stdlib_dir =
         Action_builder.of_memo
@@ -1195,9 +1283,9 @@ module Unprocessed = struct
         ; extensions
         ; indexes
         ; parameters
+        ; pp_deps
         }
       , indexes_digest )
-    and+ pp_config = pp_config t context ~expander
     and+ source_dirs =
       Action_builder.of_memo
         (let open Memo.O in

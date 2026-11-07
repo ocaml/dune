@@ -252,10 +252,6 @@ module Invalidation : sig
   (** Invalidate all computations stored in a given [memo] table. *)
   val invalidate_table : reason:Reason.t -> _ Table.t -> t
 
-  (** A custom invalidation, for use by out-of-band caching mechanisms: [f] is run when the
-      invalidation is applied. *)
-  val custom : reason:Reason.t -> f:(unit -> unit) -> t
-
   (** All reasons contributing to an invalidation, deduplicated and in first-seen order. *)
   val to_reason_list : t -> Reason.t list
 
@@ -279,11 +275,6 @@ val set_incremental : bool -> unit
     removes the values specified by [Invalidation.t] from the memoization cache,
     and advances the current run. *)
 val reset : Invalidation.t -> unit
-
-(** Like [reset], but does nothing when [invalidation] is empty and no non-reproducible
-    error was produced during the current run. Use this to avoid advancing the run (and
-    thus invalidating the whole cache) when nothing relevant has changed. *)
-val reset_if_necessary : Invalidation.t -> unit
 
 module type Input = sig
   type t

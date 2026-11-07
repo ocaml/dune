@@ -1161,11 +1161,8 @@ module Unprocessed = struct
       let+ flags = flags
       and+ indexes, indexes_digest = Ocaml_index.context_indexes context ~for_
       and+ use_hidden_includes =
-        match for_ with
-        | Melange -> Action_builder.return false
-        | Ocaml ->
-          let+ ocaml = Action_builder.of_memo (Context.ocaml context) in
-          Ocaml.Version.supports_hidden_includes ocaml.version
+        let+ ocaml = Action_builder.of_memo (Context.ocaml context) in
+        Ocaml.Version.supports_hidden_includes ocaml.version
       and+ deps_src_dirs, deps_obj_dirs, deps_cmt_dirs =
         add_lib_dirs sctx ~for_ requires_compile
       and+ hidden_src_dirs, hidden_obj_dirs, hidden_cmt_dirs =

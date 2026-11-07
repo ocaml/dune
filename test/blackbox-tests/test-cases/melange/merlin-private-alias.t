@@ -29,34 +29,28 @@ Build the dependency interfaces and the consumer's Merlin configuration.
   > | jq '[.[] | select(.module_name == "Consumer") | .config[]] | unique' \
   > > merlin.json
 
-The private object directory is available for annotations, but not typing.
+The private object directory supplies hidden CMIs and annotations.
 
   $ jq_dune -r '.[]
   > | select(.[0] == "B" or .[0] == "BH" or .[0] == "CMT")
   > | select(.[1] | contains("/lib/.dep.objs/"))
   > | "\(.[0]) \(.[1])"' merlin.json
   B $TESTCASE_ROOT/_build/default/lib/.dep.objs/public_cmi_melange
+  BH $TESTCASE_ROOT/_build/default/lib/.dep.objs/melange
   CMT $TESTCASE_ROOT/_build/default/lib/.dep.objs/melange
 
-Replay the generated include paths. The alias cannot be resolved.
+Replay the generated include paths. The public alias can be resolved.
 
   $ jq -r '.[] | select(.[0] == "B" or .[0] == "BH")
   > | [(if .[0] == "B" then "-I" else "-H" end), .[1]]
   > | @sh' merlin.json > includes
-  $ ! xargs melc -color never --mel-stop-after-cmj -o replay.cmj \
-  >   consumer/consumer.ml < includes 2> errors
-  $ sed -n '/^Error:/p' errors
-  Error: The module Dep.Api.P is an alias for module Dep__Private, which is missing
-
-Adding the missing hidden path restores typing without exposing the private
-compilation unit directly.
-
   $ xargs melc -color never --mel-stop-after-cmj -o replay.cmj \
-  >   -H "$PWD/_build/default/lib/.dep.objs/melange" \
   >   consumer/consumer.ml < includes
+
+The private compilation unit is still unavailable by its direct name.
+
   $ echo 'let answer = Dep__Private.answer' > consumer/consumer.ml
   $ ! xargs melc -color never --mel-stop-after-cmj -o replay.cmj \
-  >   -H "$PWD/_build/default/lib/.dep.objs/melange" \
   >   consumer/consumer.ml < includes 2> errors
   $ sed -n '/^Error:/p' errors
   Error: Unbound module Dep__Private

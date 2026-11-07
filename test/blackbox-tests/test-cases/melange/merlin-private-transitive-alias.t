@@ -31,40 +31,33 @@ Build the dependency interfaces and the consumer's Merlin configuration.
   > | jq '[.[] | select(.module_name == "Consumer") | .config[]] | unique' \
   > > merlin.json
 
-Only the public CMI directory of the transitive dependency is hidden.
+Both CMI directories of the transitive dependency remain hidden.
 
   $ jq_dune -r '.[]
   > | select(.[0] == "B" or .[0] == "BH" or .[0] == "CMT")
   > | select(.[1] | contains("/lib/.dep.objs/"))
   > | "\(.[0]) \(.[1])"' merlin.json
+  BH $TESTCASE_ROOT/_build/default/lib/.dep.objs/melange
   BH $TESTCASE_ROOT/_build/default/lib/.dep.objs/public_cmi_melange
   CMT $TESTCASE_ROOT/_build/default/lib/.dep.objs/melange
 
-Replay the generated include paths. The alias cannot be resolved.
+Replay the generated include paths. The public alias can be resolved.
 
   $ jq -r '.[] | select(.[0] == "B" or .[0] == "BH")
   > | [(if .[0] == "B" then "-I" else "-H" end), .[1]]
   > | @sh' merlin.json > includes
-  $ ! xargs melc -color never --mel-stop-after-cmj -o replay.cmj \
-  >   consumer/consumer.ml < includes 2> errors
-  $ sed -n '/^Error:/p' errors
-  Error: The module Bridge.P is an alias for module Dep__Private, which is missing
-
-Adding the missing hidden path restores typing. Neither the dependency nor
-its private compilation unit becomes directly available.
-
   $ xargs melc -color never --mel-stop-after-cmj -o replay.cmj \
-  >   -H "$PWD/_build/default/lib/.dep.objs/melange" \
   >   consumer/consumer.ml < includes
+
+Neither the dependency nor its private compilation unit is directly available.
+
   $ echo 'let answer = Dep.Api.P.answer' > consumer/consumer.ml
   $ ! xargs melc -color never --mel-stop-after-cmj -o replay.cmj \
-  >   -H "$PWD/_build/default/lib/.dep.objs/melange" \
   >   consumer/consumer.ml < includes 2> errors
   $ sed -n '/^Error:/p' errors
   Error: Unbound module Dep
   $ echo 'let answer = Dep__Private.answer' > consumer/consumer.ml
   $ ! xargs melc -color never --mel-stop-after-cmj -o replay.cmj \
-  >   -H "$PWD/_build/default/lib/.dep.objs/melange" \
   >   consumer/consumer.ml < includes 2> errors
   $ sed -n '/^Error:/p' errors
   Error: Unbound module Dep__Private

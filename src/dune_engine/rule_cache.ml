@@ -103,7 +103,6 @@ module Workspace_local = struct
       | Rule_changed of Digest.t * Digest.t
       | Targets_changed
       | Targets_missing
-      | Dynamic_deps_changed
       | Always_rerun
       | Error_while_collecting_directory_targets of Targets.Produced.Error.t
 
@@ -118,7 +117,6 @@ module Workspace_local = struct
       | Targets_missing -> "target missing from build dir"
       | Targets_changed -> "target changed in build dir"
       | Always_rerun -> "not trying to use the cache"
-      | Dynamic_deps_changed -> "dynamic dependencies changed"
       | Error_while_collecting_directory_targets error ->
         sprintf
           "error while collecting directory targets: %s"
@@ -142,63 +140,40 @@ module Workspace_local = struct
        | Error _ -> Miss Miss_reason.Targets_missing)
   ;;
 
-  let lookup_impl ~rule_digest ~targets ~env ~build_deps =
-    let prev_trace_with_produced_targets =
-      match
-        (* will be [None] if [head_target] was never built before. *)
-        let head_target = Targets.Validated.head targets in
-        Database.get (Path.build head_target)
-      with
-      | None -> Miss Miss_reason.No_previous_record
-      | Some prev_trace ->
-        (match Digest.equal prev_trace.rule_digest rule_digest with
-         | false -> Miss (Miss_reason.Rule_changed (prev_trace.rule_digest, rule_digest))
-         | true ->
-           (* [compute_target_digests] returns a [Miss] if not all targets are
-              available in the workspace-local cache. *)
-           (match compute_target_digests targets with
-            | Miss reason -> Miss reason
-            | Hit produced_targets ->
-              if
-                Digest.equal
-                  prev_trace.targets_digest
-                  (Targets.Produced.digest produced_targets)
-              then Hit (prev_trace, produced_targets)
-              else Miss Targets_changed))
-    in
-    match prev_trace_with_produced_targets with
-    | Miss reason -> Fiber.return (Miss reason)
-    | Hit (prev_trace, produced_targets) ->
-      (* CR-someday aalekseyev: If there's a change at one of the last stages,
-         we still re-run all the previous stages, which is a bit of a waste. We
-         could remember what stage needs re-running and only re-run that (and
-         later stages). *)
-      let rec loop stages =
-        match stages with
-        | [] -> Fiber.return (Hit produced_targets)
-        | (deps, old_digest) :: rest ->
-          let open Fiber.O in
-          let* deps = Memo.run (build_deps deps) in
-          let new_digest =
-            let d = Digest.Manual.create () in
-            Dep.Facts.digest deps d ~env;
-            Digest.Manual.get d
-          in
-          if Digest.equal old_digest new_digest
-          then loop rest
-          else Fiber.return (Miss Miss_reason.Dynamic_deps_changed)
-      in
-      loop prev_trace.dynamic_deps_stages
+  type hit =
+    { produced_targets : Digest.t Targets.Produced.t
+    ; dynamic_deps_stages : (Dep.Set.t * Digest.t) list
+    }
+
+  let lookup_impl ~rule_digest ~targets =
+    match
+      let head_target = Targets.Validated.head targets in
+      Database.get (Path.build head_target)
+    with
+    | None -> Miss Miss_reason.No_previous_record
+    | Some prev_trace ->
+      (match Digest.equal prev_trace.rule_digest rule_digest with
+       | false -> Miss (Miss_reason.Rule_changed (prev_trace.rule_digest, rule_digest))
+       | true ->
+         (match compute_target_digests targets with
+          | Miss reason -> Miss reason
+          | Hit produced_targets ->
+            if
+              Digest.equal
+                prev_trace.targets_digest
+                (Targets.Produced.digest produced_targets)
+            then
+              Hit
+                { produced_targets; dynamic_deps_stages = prev_trace.dynamic_deps_stages }
+            else Miss Targets_changed))
   ;;
 
-  let lookup ~always_rerun ~rule_digest ~targets ~env ~build_deps
-    : Digest.t Targets.Produced.t option Fiber.t
-    =
-    let open Fiber.O in
-    (if always_rerun
-     then Fiber.return (Miss Miss_reason.Always_rerun)
-     else lookup_impl ~rule_digest ~targets ~env ~build_deps)
-    >>| function
+  let lookup ~always_rerun ~rule_digest ~targets =
+    match
+      if always_rerun
+      then Miss Miss_reason.Always_rerun
+      else lookup_impl ~rule_digest ~targets
+    with
     | Hit result -> Some result
     | Miss reason ->
       let always_emit =

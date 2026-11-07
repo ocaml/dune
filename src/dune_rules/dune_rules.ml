@@ -76,6 +76,7 @@ end
 module Pkg_rules = struct
   let all_filtered_depexts = Pkg_rules.all_filtered_depexts
   let pkg_digest_of_project_dependency = Pkg_rules.pkg_digest_of_project_dependency
+  let bin_paths_for_packages = Pkg_rules.bin_paths_for_packages
 
   module Pkg_digest = Pkg_rules.Pkg_digest
 end

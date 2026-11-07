@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794028811910,
+  "lastUpdate": 1794029139586,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -483109,6 +483109,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.45374477138,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27d95d8dbf977a38059334618d539bb9d699ac21",
+          "message": "test(melange): skip unnecessary stdlib emission in PPX regressions (#16920)\n\nSet `(emit_stdlib false)` in the three PPX regression fixtures: their\nprograms only need JavaScript primitives and local modules, not a\nfreshly emitted copy of the entire standard library in each output\ndirectory. Preserve the native, staged, direct-emission, and\ncookie-conflict checks.\n\nMedian per-test wall times over three matched trace runs:\n- Compilation-mode: 9.49s → 3.60s\n- Cookies: 6.81s → 1.23s\n- Generated dependencies: 8.45s → 2.86s\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-07T13:06:37+08:00",
+          "tree_id": "08f90124f49c21b879d04455184ce3645e5048c6",
+          "url": "https://github.com/ocaml/dune/commit/27d95d8dbf977a38059334618d539bb9d699ac21"
+        },
+        "date": 1794029138110,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 63.51173394234667,
             "unit": "seconds"
           }
         ]

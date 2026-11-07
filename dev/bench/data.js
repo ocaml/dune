@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793987634621,
+  "lastUpdate": 1794017777185,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -671726,6 +671726,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.4829189710866664,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a48e27d9c17a719433a3c5fb2f0c5822c90d3ffc",
+          "message": "test(pkg): cover binary lock payloads (#16911)\n\nExisting lock-payload coverage exercises text files, patches, and\nexecutable scripts, but not binary data.\n\nCheck that NUL-containing `.files` payloads reach the installed package\nbyte-for-byte. Verify a null build and a same-size edit after the NUL\nwithout changing package metadata.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-07T10:02:18+08:00",
+          "tree_id": "2110408e2d4e4eaedb85beb521eb696d7abbf08e",
+          "url": "https://github.com/ocaml/dune/commit/a48e27d9c17a719433a3c5fb2f0c5822c90d3ffc"
+        },
+        "date": 1794017380474,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 4.01158094688,
             "unit": "seconds"
           }
         ]

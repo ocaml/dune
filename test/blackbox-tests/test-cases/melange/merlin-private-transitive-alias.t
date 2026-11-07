@@ -1,4 +1,4 @@
-Merlin omits private CMIs from hidden transitive Melange dependencies.
+Merlin includes private CMIs from hidden transitive Melange dependencies.
 
   $ make_melange_project 3.25 1.0
   $ echo '(implicit_transitive_deps false)' >> dune-project
@@ -21,7 +21,7 @@ Merlin omits private CMIs from hidden transitive Melange dependencies.
   > EOF
   $ echo 'let answer = Bridge.P.answer' > consumer/consumer.ml
 
-The transitive dependency's private CMI directory should also be hidden.
+Both of the transitive dependency's CMI directories remain hidden.
 
   $ dune build consumer/.merlin-conf/lib-consumer
   $ dune ocaml merlin dump-config --format=json "$PWD/consumer" \
@@ -29,4 +29,5 @@ The transitive dependency's private CMI directory should also be hidden.
   >   [merlinEntry("Consumer") | merlinConfigItemsNamed(["B", "BH"])
   >    | select(.[1] | contains("/lib/.dep.objs/"))]
   >   | unique[] | join(" ")'
+  BH $TESTCASE_ROOT/_build/default/lib/.dep.objs/melange
   BH $TESTCASE_ROOT/_build/default/lib/.dep.objs/public_cmi_melange

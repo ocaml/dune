@@ -1,4 +1,4 @@
-Merlin omits hidden CMIs needed for aliases of private Melange modules.
+Merlin includes hidden CMIs needed for aliases of private Melange modules.
 
   $ make_melange_project 3.25 1.0
   $ mkdir lib consumer
@@ -18,7 +18,7 @@ Merlin omits hidden CMIs needed for aliases of private Melange modules.
   > EOF
   $ echo 'let answer = Dep.Api.P.answer' > consumer/consumer.ml
 
-The dependency's private CMI directory should also appear as a hidden include.
+The dependency's private CMI directory is a hidden include.
 
   $ dune build consumer/.merlin-conf/lib-consumer
   $ dune ocaml merlin dump-config --format=json "$PWD/consumer" \
@@ -27,3 +27,4 @@ The dependency's private CMI directory should also appear as a hidden include.
   >    | select(.[1] | contains("/lib/.dep.objs/"))]
   >   | unique[] | join(" ")'
   B $TESTCASE_ROOT/_build/default/lib/.dep.objs/public_cmi_melange
+  BH $TESTCASE_ROOT/_build/default/lib/.dep.objs/melange

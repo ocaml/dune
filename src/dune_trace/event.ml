@@ -168,6 +168,24 @@ let evalauted_rules ~rule_total =
   Event.instant ~name:"evalauted_rules" ~args now Rules
 ;;
 
+[%%if ocaml_version >= (5, 5, 0)]
+
+let gc_tweak_args () =
+  match Gc.Tweak.list_active () with
+  | [] -> []
+  | tweaks ->
+    [ ( "gc_tweaks"
+      , Arg.list
+          (Arg.record (List.map tweaks ~f:(fun (name, value) -> name, Arg.int value))) )
+    ]
+;;
+
+[%%else]
+
+let gc_tweak_args () = []
+
+[%%endif]
+
 let init ~version =
   let now = Time.now () in
   let args =
@@ -180,6 +198,7 @@ let init ~version =
       ; "initial_cwd", Arg.string Fpath.initial_cwd
       ; "start", Arg.time Time.start
       ]
+      @ gc_tweak_args ()
     in
     match version with
     | None -> args

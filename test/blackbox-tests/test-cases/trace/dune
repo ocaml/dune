@@ -21,3 +21,8 @@
  (applies_to runtime-events.t)
  (enabled_if
   (>= %{ocaml_version} 5.0.0)))
+
+(cram
+ (applies_to gc-tweaks.t)
+ (enabled_if
+  (>= %{ocaml_version} 5.5.0)))

@@ -62,6 +62,7 @@ Excluding action events retains Dune's own trace events.
   > | .args.pid = 0
   > | .args.initial_cwd = "REDACTED"
   > | .args.start = 0
+  > | del(.args.gc_tweaks)
   > '
   {
     "cat": "config",

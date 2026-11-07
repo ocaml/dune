@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794069111713,
+  "lastUpdate": 1794069379633,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -483341,6 +483341,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.3602546091266667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e27dad752f7485500b9ad4bfbe305711732358d6",
+          "message": "test(install): cover descriptor limits and unreadable sources (#16924)\n\nAdd two standalone Unix cram regressions:\n- Install 300 independent files under a 128-descriptor limit and verify\nevery file is installed without descriptor exhaustion.\n- Make a regular source unreadable after the build and verify\ninstallation fails before copying a later entry. Skip the\npermission-specific assertions when mode-000 files remain readable, such\nas when running as root.\n\nBoth pass on main and fail against #13054, covering the regressions\nfound while reviewing concurrent installation. Neither test introduces\nintentional timeout waits.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-08T00:20:18+08:00",
+          "tree_id": "16bb2a2ac783a6fa6a90f911f5bdc8d8f55e4e8e",
+          "url": "https://github.com/ocaml/dune/commit/e27dad752f7485500b9ad4bfbe305711732358d6"
+        },
+        "date": 1794069377827,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 51.03752904850666,
             "unit": "seconds"
           }
         ]

@@ -1228,7 +1228,6 @@ let setup_emit_js_rules sctx ~dir =
          >>| List.map ~f:(fun (mel : Melange_stanzas.Emit.t) ->
            Filename.of_string_exn mel.target)
          >>| Subdir_set.of_list
-         >>| Gen_rules.Build_only_sub_dirs.singleton ~dir
        in
-       Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty))
+       Gen_rules.make_empty build_dir_only_sub_dirs)
 ;;

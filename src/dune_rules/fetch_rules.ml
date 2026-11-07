@@ -266,14 +266,14 @@ let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
   Gen_rules.make rules ~directory_targets
 ;;
 
-let gen_rules ~dir ~components =
+let gen_rules ~components =
   let components = Filename.L.to_string components in
   match components with
   | [] ->
     Subdir_set.of_list [ Filename.checksum; Filename.url ]
-    |> Gen_rules.make_empty ~dir
+    |> Gen_rules.make_empty
     |> Memo.return
-  | [ ("url" | "checksum") ] -> Gen_rules.make_empty ~dir Subdir_set.all |> Memo.return
+  | [ ("url" | "checksum") ] -> Gen_rules.make_empty Subdir_set.all |> Memo.return
   | [ "checksum"; checksum ] ->
     let checksum = Dune_pkg.Checksum.parse_string_exn (Loc.none, checksum) in
     let+ url, checksum = find_checksum checksum in

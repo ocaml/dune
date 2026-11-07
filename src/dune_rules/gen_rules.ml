@@ -520,12 +520,9 @@ module Automatic_subdir = struct
   ;;
 end
 
-let has_rules ~dir subdirs f =
+let has_rules subdirs f =
   let rules = Rules.collect_unit f in
-  Memo.return
-    (Gen_rules.make
-       ~build_dir_only_sub_dirs:(Gen_rules.Build_only_sub_dirs.singleton ~dir subdirs)
-       rules)
+  Memo.return (Gen_rules.make ~build_dir_only_sub_dirs:subdirs rules)
 ;;
 
 let gen_rules_standalone_or_root sctx ~dir ~source_dir =
@@ -638,10 +635,7 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
                 rules
             in
             Gen_rules.Rules.create
-              ~build_dir_only_sub_dirs:
-                (Gen_rules.Build_only_sub_dirs.singleton
-                   ~dir
-                   (Subdir_set.of_set allowed_subdirs))
+              ~build_dir_only_sub_dirs:(Subdir_set.of_set allowed_subdirs)
               ~directory_targets
               rules
         in
@@ -655,7 +649,7 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
           Gen_rules.Rules
             (make_rules (gen_rules_standalone_or_root sctx ~dir ~source_dir))
       in
-      let opam_rules = Opam_create.gen_rules sctx ~dir ~nearest_src_dir ~src_dir in
+      let opam_rules = Opam_create.gen_rules sctx ~nearest_src_dir ~src_dir in
       Gen_rules.combine opam_rules rules
     and+ melange_rules = Melange_rules.setup_emit_js_rules sctx ~dir in
     Gen_rules.combine melange_rules rules
@@ -668,7 +662,6 @@ let gen_rules ctx sctx ~dir components : Gen_rules.t Memo.t =
   match components with
   | ".js" :: rest ->
     has_rules
-      ~dir
       (match rest with
        | [] | [ _ ] -> Subdir_set.all
        | [ _; ".runtime" ] -> Subdir_set.all
@@ -682,13 +675,12 @@ let gen_rules ctx sctx ~dir components : Gen_rules.t Memo.t =
          Jsoo_rules.setup_separate_compilation_rules sctx rest)
   | "_doc" :: rest ->
     let* sctx = sctx in
-    Odoc.gen_rules sctx rest ~dir
+    Odoc.gen_rules sctx rest
   | "_doc_new" :: rest ->
     let* sctx = sctx in
-    Odoc_new.gen_rules sctx rest ~dir
+    Odoc_new.gen_rules sctx rest
   | ".topmod" :: comps ->
     has_rules
-      ~dir
       (match comps with
        | [] -> Subdir_set.all
        | _ -> Subdir_set.empty)
@@ -697,15 +689,13 @@ let gen_rules ctx sctx ~dir components : Gen_rules.t Memo.t =
          Top_module.gen_rules sctx ~dir ~comps)
   | ".ppx" :: rest ->
     has_rules
-      ~dir
       (match rest with
        | [] -> Subdir_set.all
        | _ -> Subdir_set.empty)
       (fun () ->
          let* sctx = sctx in
          Pp_spec_rules.gen_rules sctx rest)
-  | [ ".dune" ] ->
-    has_rules ~dir Subdir_set.empty (fun () -> Configurator_rules.gen_rules ctx)
+  | [ ".dune" ] -> has_rules Subdir_set.empty (fun () -> Configurator_rules.gen_rules ctx)
   | parameterised_dir :: rest
     when String.equal parameterised_dir Dune_lang.Oxcaml.parameterised_dir ->
     let* sctx = sctx in
@@ -715,7 +705,7 @@ let gen_rules ctx sctx ~dir components : Gen_rules.t Memo.t =
     >>= (function
      | Jsoo_archive_rules.Not_found ->
        gen_rules_regular_directory sctx ~src_dir ~components ~dir
-     | Jsoo_archive_rules.Root -> Gen_rules.make_empty ~dir Subdir_set.all |> Memo.return
+     | Jsoo_archive_rules.Root -> Gen_rules.make_empty Subdir_set.all |> Memo.return
      | Jsoo_archive_rules.Rules rules -> Gen_rules.make (Memo.return rules) |> Memo.return)
 ;;
 
@@ -745,18 +735,16 @@ let private_context ~dir components _ctx =
   | `Invalid_context -> Memo.return Gen_rules.Unknown_context
   | `Valid (ctx, components) ->
     let+ lock_rules = Lock_rules.setup_rules ~dir ~components
-    and+ pkg_rules = Pkg_rules.setup_rules ctx ~dir ~components in
+    and+ pkg_rules = Pkg_rules.setup_rules ctx ~components in
     Gen_rules.combine lock_rules pkg_rules
   | `Root ->
     let+ contexts = Per_context.list () in
-    let build_dir_only_sub_dirs =
-      Gen_rules.Build_only_sub_dirs.singleton
-        ~dir
-        (Subdir_set.of_list
-           (List.rev_map contexts ~f:(fun context_name ->
-              Filename.of_string_exn (Context_name.to_string context_name))))
+    let subdirs =
+      Subdir_set.of_list
+        (List.rev_map contexts ~f:(fun context_name ->
+           Filename.of_string_exn (Context_name.to_string context_name)))
     in
-    Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
+    Gen_rules.make_empty subdirs
 ;;
 
 let raise_on_lock_dir_out_of_sync =
@@ -795,20 +783,17 @@ let gen_rules ctx ~dir components =
   then (
     match components with
     | [] ->
-      let+ build_dir_only_sub_dirs =
-        let+ context_dirs =
-          let+ workspace = Workspace.workspace () in
-          Workspace.build_contexts workspace
-          |> List.map ~f:(fun (ctx : Build_context.t) ->
-            Filename.of_string_exn (Context_name.to_string ctx.name))
-          |> Subdir_set.of_list
-        in
-        Gen_rules.Build_only_sub_dirs.singleton ~dir context_dirs
+      let+ workspace = Workspace.workspace () in
+      let subdirs =
+        Workspace.build_contexts workspace
+        |> List.map ~f:(fun (ctx : Build_context.t) ->
+          Filename.of_string_exn (Context_name.to_string ctx.name))
+        |> Subdir_set.of_list
       in
-      Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
+      Gen_rules.make_empty subdirs
     | _ctx :: ".binaries" :: rest -> Bin_layout.gen_rules ~dir rest |> Memo.return
     | ctx :: ".packages" :: rest ->
-      Install_layout.gen_rules (Context_name.of_string ctx) ~dir rest
+      Install_layout.gen_rules (Context_name.of_string ctx) rest
     | ctx :: rest ->
       let ctx = Context_name.of_string ctx in
       with_context ctx ~f:(fun sctx ->
@@ -835,14 +820,13 @@ let gen_rules ctx ~dir components =
         in
         let directory_targets = Rules.directory_targets rules in
         Gen_rules.make
-          ~build_dir_only_sub_dirs:(Gen_rules.Build_only_sub_dirs.singleton ~dir subdirs)
+          ~build_dir_only_sub_dirs:subdirs
           ~directory_targets
           (Memo.return rules)))
   else if Context_name.equal ctx Private_context.t.name
   then private_context ~dir components ctx
   else if Context_name.equal ctx Fetch_rules.context.name
-  then
-    Fetch_rules.gen_rules ~dir ~components:(List.map components ~f:Filename.of_string_exn)
+  then Fetch_rules.gen_rules ~components:(List.map components ~f:Filename.of_string_exn)
   else
     let* () = raise_on_lock_dir_out_of_sync ctx in
     let gen_pkg_alias_rule = Pkg_rules.setup_pkg_install_alias ~dir ctx in

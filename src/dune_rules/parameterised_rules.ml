@@ -436,7 +436,7 @@ let find_scope ~sctx encoded_scope =
 
 let gen_rules ~sctx ~dir rest =
   match rest with
-  | [] | [ _ ] -> Memo.return (Build_config.Gen_rules.make_empty ~dir Subdir_set.all)
+  | [] | [ _ ] -> Memo.return (Build_config.Gen_rules.make_empty Subdir_set.all)
   | [ scope; lib_name ] ->
     let* scope = find_scope ~sctx scope in
     has_rules @@ fun () -> external_dep_rules ~sctx ~dir ~scope lib_name

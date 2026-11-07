@@ -501,7 +501,7 @@ let add_rules sctx project =
 
 module Gen_rules = Build_config.Gen_rules
 
-let gen_rules sctx ~dir ~nearest_src_dir ~src_dir =
+let gen_rules sctx ~nearest_src_dir ~src_dir =
   match nearest_src_dir with
   | None -> Gen_rules.no_rules
   | Some nearest_src_dir ->
@@ -540,10 +540,5 @@ let gen_rules sctx ~dir ~nearest_src_dir ~src_dir =
              in
              ())
          in
-         Gen_rules.make
-           ~build_dir_only_sub_dirs:
-             (Gen_rules.Build_only_sub_dirs.singleton
-                ~dir
-                (Subdir_set.of_set allowed_subdirs))
-           rules))
+         Gen_rules.make ~build_dir_only_sub_dirs:(Subdir_set.of_set allowed_subdirs) rules))
 ;;

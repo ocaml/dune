@@ -7,22 +7,15 @@ module Context_type = struct
 end
 
 module Gen_rules = struct
-  module Build_only_sub_dirs = struct
-    type t = Subdir_set.t Path.Build.Map.t
-
-    let singleton ~dir sub_dirs = Path.Build.Map.singleton dir sub_dirs
-    let union a b = Path.Build.Map.union a b ~f:(fun _ a b -> Some (Subdir_set.union a b))
-  end
-
   module Rules = struct
     type nonrec t =
-      { build_dir_only_sub_dirs : Build_only_sub_dirs.t
+      { build_dir_only_sub_dirs : Subdir_set.t
       ; directory_targets : Loc.t Path.Build.Map.t
       ; rules : Rules.t Memo.t
       }
 
     let empty =
-      { build_dir_only_sub_dirs = Path.Build.Map.empty
+      { build_dir_only_sub_dirs = Subdir_set.empty
       ; directory_targets = Path.Build.Map.empty
       ; rules = Memo.return Rules.empty
       }
@@ -44,7 +37,7 @@ module Gen_rules = struct
          | true -> r
          | false ->
            { build_dir_only_sub_dirs =
-               Build_only_sub_dirs.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
+               Subdir_set.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
            ; directory_targets =
                Path.Build.Map.union_exn r.directory_targets directory_targets
            ; rules =
@@ -67,11 +60,8 @@ module Gen_rules = struct
     Rules (Rules.create ?build_dir_only_sub_dirs ?directory_targets rules)
   ;;
 
-  let make_empty ~dir subdirs =
-    Rules
-      { Rules.empty with
-        build_dir_only_sub_dirs = Build_only_sub_dirs.singleton ~dir subdirs
-      }
+  let make_empty build_dir_only_sub_dirs =
+    Rules { Rules.empty with build_dir_only_sub_dirs }
   ;;
 
   let combine x y =

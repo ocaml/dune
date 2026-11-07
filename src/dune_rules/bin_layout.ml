@@ -103,19 +103,15 @@ let symlink_rules_for_key ~dir key =
     Rules.Produce.rule (Rule.make ~targets build))
 ;;
 
-let make_dispatch ~dir subdirs f =
+let make_dispatch subdirs f =
   let rules = Rules.collect_unit f in
-  Build_config.Gen_rules.make
-    ~build_dir_only_sub_dirs:
-      (Build_config.Gen_rules.Build_only_sub_dirs.singleton ~dir subdirs)
-    rules
+  Build_config.Gen_rules.make ~build_dir_only_sub_dirs:subdirs rules
 ;;
 
 let gen_rules ~dir rest =
   match rest with
-  | [] -> make_dispatch ~dir Subdir_set.all (fun () -> Memo.return ())
-  | [ key ] ->
-    make_dispatch ~dir Subdir_set.empty (fun () -> symlink_rules_for_key ~dir key)
+  | [] -> Build_config.Gen_rules.make_empty Subdir_set.all
+  | [ key ] -> make_dispatch Subdir_set.empty (fun () -> symlink_rules_for_key ~dir key)
   | _ :: _ :: _ ->
     Build_config.Gen_rules.Redirect_to_parent Build_config.Gen_rules.Rules.empty
 ;;

@@ -2036,10 +2036,10 @@ let has_rules m =
   Memo.return (Gen_rules.make ~directory_targets (Memo.return rules))
 ;;
 
-let gen_rules sctx ~dir rest =
+let gen_rules sctx rest =
   let all = true in
   match rest with
-  | [] -> Memo.return (Build_config.Gen_rules.make_empty ~dir Subdir_set.all)
+  | [] -> Memo.return (Build_config.Gen_rules.make_empty Subdir_set.all)
   | [ "odoc" ] -> has_rules (setup_odoc_rules sctx ~all)
   | [ "index" ] -> has_rules (setup_all_index_rules sctx ~all)
   | [ "html"; "docs" ] -> has_rules (setup_all_html_rules sctx ~all)

@@ -187,25 +187,15 @@ let env context_name packages =
   Install.Roots.add_to_env roots Env.empty
 ;;
 
-let make_dispatch ~dir ~directory_targets subdirs f =
+let make_dispatch ~directory_targets subdirs f =
   let rules = Rules.collect_unit f in
-  Build_config.Gen_rules.make
-    ~build_dir_only_sub_dirs:
-      (Build_config.Gen_rules.Build_only_sub_dirs.singleton ~dir subdirs)
-    ~directory_targets
-    rules
+  Build_config.Gen_rules.make ~build_dir_only_sub_dirs:subdirs ~directory_targets rules
 ;;
 
-let gen_rules context_name ~dir rest =
+let gen_rules context_name rest =
   let open Memo.O in
   match rest with
-  | [] ->
-    Memo.return
-    @@ make_dispatch
-         ~dir
-         ~directory_targets:Path.Build.Map.empty
-         Subdir_set.all
-         (fun () -> Memo.return ())
+  | [] -> Memo.return (Build_config.Gen_rules.make_empty Subdir_set.all)
   | [ key ] ->
     (match Key.decode key with
      | None -> Memo.return Build_config.Gen_rules.no_rules
@@ -217,7 +207,7 @@ let gen_rules context_name ~dir rest =
            | File -> None
            | Directory -> Some Loc.none)
        in
-       make_dispatch ~dir ~directory_targets Subdir_set.empty (fun () ->
+       make_dispatch ~directory_targets Subdir_set.empty (fun () ->
          Path.Build.Map.to_seq entries
          |> Memo.parallel_iter_seq ~f:(fun (dst, { Install.Entry.kind; src; _ }) ->
            let { Action_builder.With_targets.build; targets } =

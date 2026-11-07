@@ -12,21 +12,11 @@ end
 module Gen_rules : sig
   type rules := Rules.t
 
-  module Build_only_sub_dirs : sig
-    (** The set of either directory targets or internally generated directories,
-        indexed by their parent build directory. *)
-    type t = Subdir_set.t Path.Build.Map.t
-
-    val singleton : dir:Path.Build.t -> Subdir_set.t -> t
-    val union : t -> t -> t
-  end
-
   module Rules : sig
     type nonrec t =
-      { build_dir_only_sub_dirs : Build_only_sub_dirs.t
-        (** Sub-directories that don't exist in the source tree but exists in
-        the build directory. This is for internal directories such as
-        [.dune] or [.ppx]. *)
+      { build_dir_only_sub_dirs : Subdir_set.t
+        (** Subdirectories of the requested directory that exist only in the
+            build tree, such as [.dune] or [.ppx]. *)
       ; directory_targets : Loc.t Path.Build.Map.t
         (** Directories that are target of a rule. For each directory target,
         give the location of the rule that generates it. The keys in this
@@ -39,7 +29,7 @@ module Gen_rules : sig
       }
 
     val create
-      :  ?build_dir_only_sub_dirs:Build_only_sub_dirs.t
+      :  ?build_dir_only_sub_dirs:Subdir_set.t
       -> ?directory_targets:Loc.t Path.Build.Map.t
       -> rules Memo.t
       -> t
@@ -53,12 +43,12 @@ module Gen_rules : sig
     | Redirect_to_parent of Rules.t
 
   val make
-    :  ?build_dir_only_sub_dirs:Build_only_sub_dirs.t
+    :  ?build_dir_only_sub_dirs:Subdir_set.t
     -> ?directory_targets:Loc.t Path.Build.Map.t
     -> rules Memo.t
     -> t
 
-  val make_empty : dir:Path.Build.t -> Subdir_set.t -> t
+  val make_empty : Subdir_set.t -> t
   val no_rules : t
   val combine : t -> t -> t
 end

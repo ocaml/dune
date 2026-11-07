@@ -2436,13 +2436,10 @@ let setup_pkg_install_alias =
           in
           Rules.Produce.Alias.add_deps alias deps)
       in
-      Gen_rules.make
-        ~build_dir_only_sub_dirs:
-          (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty)
-        rule
+      Gen_rules.make rule
 ;;
 
-let setup_package_rules db ~package_universe ~dir ~pkg_digest : Gen_rules.t Memo.t =
+let setup_package_rules db ~package_universe ~pkg_digest : Gen_rules.t Memo.t =
   let* pkg = Resolve.resolve db Loc.none pkg_digest package_universe in
   let paths = Paths.make pkg.pkg_digest package_universe ~relative:Path.Build.relative in
   let+ directory_targets =
@@ -2459,15 +2456,12 @@ let setup_package_rules db ~package_universe ~dir ~pkg_digest : Gen_rules.t Memo
        | `Local (`File, _) | `Fetch ->
          Path.Build.Map.add_exn map paths.source_dir (fst source.url))
   in
-  let build_dir_only_sub_dirs =
-    Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty
-  in
   let context_name = Package_universe.context_name package_universe in
   let rules = Rules.collect_unit (fun () -> gen_rules context_name pkg) in
-  Gen_rules.make ~directory_targets ~build_dir_only_sub_dirs rules
+  Gen_rules.make ~directory_targets rules
 ;;
 
-let setup_rules ~components ~dir ctx =
+let setup_rules ~components ctx =
   (* Note that the path components in the following patterns must
      correspond to the paths returned by [Paths.make]. The string
      ".dev-tool" is hardcoded into several patterns, and must match
@@ -2478,9 +2472,9 @@ let setup_rules ~components ~dir ctx =
     let pkg_name = Package.Name.of_string dev_tool_package_name in
     let dev_tool = Pkg_dev_tool.of_package_name pkg_name in
     let* db, pkg_digest = DB.of_dev_tool (Dune_pkg.Dev_tool.of_package_name pkg_name) in
-    setup_package_rules db ~package_universe:(Dev_tool dev_tool) ~dir ~pkg_digest
-  | true, [ ".dev-tool" ] -> Gen_rules.make_empty ~dir Subdir_set.all |> Memo.return
-  | _, [ ".pkg" ] -> Gen_rules.make_empty ~dir Subdir_set.all |> Memo.return
+    setup_package_rules db ~package_universe:(Dev_tool dev_tool) ~pkg_digest
+  | true, [ ".dev-tool" ] -> Gen_rules.make_empty Subdir_set.all |> Memo.return
+  | _, [ ".pkg" ] -> Gen_rules.make_empty Subdir_set.all |> Memo.return
   | _, [ ".pkg"; pkg_digest_string ] ->
     (* Only generate pkg rules if there is a lock dir for that context *)
     let* lock_dir_active = Lock_dir.lock_dir_active ctx in
@@ -2489,7 +2483,7 @@ let setup_rules ~components ~dir ctx =
      | true ->
        let pkg_digest = Pkg_digest.of_string pkg_digest_string in
        let* db = DB.of_ctx ctx ~allow_sharing:true in
-       setup_package_rules db ~package_universe:(Dependencies ctx) ~dir ~pkg_digest)
+       setup_package_rules db ~package_universe:(Dependencies ctx) ~pkg_digest)
   | _, ".pkg" :: _ :: _ ->
     Memo.return (Gen_rules.Redirect_to_parent Gen_rules.Rules.empty)
   | true, ".dev-tool" :: _ :: _ :: _ ->
@@ -2499,10 +2493,7 @@ let setup_rules ~components ~dir ctx =
       Filename.pkg_dir_basename
       :: (if is_default then [ Filename.dev_tool_dir_basename ] else [])
     in
-    let build_dir_only_sub_dirs =
-      Gen_rules.Build_only_sub_dirs.singleton ~dir @@ Subdir_set.of_list sub_dirs
-    in
-    Memo.return @@ Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
+    Memo.return (Gen_rules.make_empty (Subdir_set.of_list sub_dirs))
   | _ -> Memo.return Gen_rules.no_rules
 ;;
 

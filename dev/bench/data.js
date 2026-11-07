@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794071290450,
+  "lastUpdate": 1794087416136,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -672944,6 +672944,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.7909220409933333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bcdd56539be7bbde4de89cde76d075f48032c485",
+          "message": "test(melange): skip stdlib in remaining rule tests (#16938)\n\nDisable implicit stdlib dependencies in the cross-module optimization\nand extension-version tests, following #16920.\n\n01a1b7be-5a87-7e13-a7b3-b816718b84ed\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-07T13:23:57-08:00",
+          "tree_id": "ee18f6a4c07d6b27afbe81135d3fbd72bfa1f248",
+          "url": "https://github.com/ocaml/dune/commit/bcdd56539be7bbde4de89cde76d075f48032c485"
+        },
+        "date": 1794087060436,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.66110251828,
             "unit": "seconds"
           }
         ]

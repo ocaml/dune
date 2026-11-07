@@ -163,12 +163,11 @@ module External = struct
     |> Path.Set.to_list
   ;;
 
-  let all_cmis { public_dir; private_dir; public_cmi_dir } =
+  let all_cmis { public_dir; private_dir; public_cmi_dir } ~for_ =
     List.filter_opt
-      [ Some public_dir.ocaml
-      ; private_dir.ocaml
-      ; public_cmi_dir.ocaml
-        (* TODO: might need to pass mode to conditionally include public_cmi_melange_dir *)
+      [ Some (Compilation_mode.Per_mode.get public_dir ~for_)
+      ; Compilation_mode.Per_mode.get private_dir ~for_
+      ; Compilation_mode.Per_mode.get public_cmi_dir ~for_
       ]
   ;;
 
@@ -421,11 +420,16 @@ let convert_to_external (t : Path.Build.t t) ~dir ~has_private_modules =
   | _ -> assert false
 ;;
 
-let all_cmis (type path) (t : path t) : path list =
+let all_cmis (type path) (t : path t) ~(for_ : Compilation_mode.t) : path list =
+  let local_dir =
+    match for_ with
+    | Ocaml -> Local.byte_dir
+    | Melange -> Local.melange_dir
+  in
   match t with
-  | Local e -> [ Local.byte_dir e ]
-  | Local_as_path e -> [ Path.build (Local.byte_dir e) ]
-  | External e -> External.all_cmis e
+  | Local e -> [ local_dir e ]
+  | Local_as_path e -> [ Path.build (local_dir e) ]
+  | External e -> External.all_cmis e ~for_
 ;;
 
 let all_obj_dirs (type path) (t : path t) ~mode : path list =

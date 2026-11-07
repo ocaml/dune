@@ -149,17 +149,18 @@ module L = struct
   let include_paths =
     let add_public_dir ocaml ~visible_cmi obj_dir acc mode =
       let use_hidden =
-        Ocaml.Version.supports_hidden_includes ocaml
-        &&
+        Ocaml.Version.supports_hidden_includes ocaml && not mode.melange_emit
+      in
+      let for_ : Compilation_mode.t =
         match mode.lib_mode with
-        | Ocaml _ -> true
-        | Melange -> false
+        | Ocaml _ -> Ocaml
+        | Melange -> Melange
       in
       match visible_cmi with
       | false ->
         if use_hidden
         then
-          Obj_dir.all_cmis obj_dir
+          Obj_dir.all_cmis obj_dir ~for_
           |> List.fold_left ~init:acc ~f:(fun acc dir -> add_flag acc dir Hidden)
         else acc
       | true ->
@@ -178,7 +179,15 @@ module L = struct
           List.fold_left public_cmi_dirs ~init:acc ~f:(fun acc dir ->
             add_flag acc dir Include)
         in
-        if use_hidden then add_flag acc (Obj_dir.byte_dir obj_dir) Hidden else acc
+        if use_hidden
+        then (
+          let dir =
+            match for_ with
+            | Ocaml -> Obj_dir.byte_dir obj_dir
+            | Melange -> Obj_dir.melange_dir obj_dir
+          in
+          add_flag acc dir Hidden)
+        else acc
     in
     fun ?project ts mode (lib_config : Lib_config.t) ->
       let ocaml = lib_config.ocaml_version in

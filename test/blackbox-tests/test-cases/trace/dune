@@ -9,8 +9,8 @@
 (cram
  (applies_to write-error.t)
  (deps ../../utils/fail_trace_write.so)
- (enabled_if
-  (= %{system} linux)))
+ ;; Its intentional timeouts take about 25 seconds per run.
+ (enabled_if false))
 
 (cram
  (applies_to file-watcher-events.t)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794019126161,
+  "lastUpdate": 1794019133048,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -482848,6 +482848,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 46.73578979168667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bebe4b5b8491c404134f8d617bcdf7680b1640e5",
+          "message": "test(trace): disable the slow write-error regression (#16919)\n\nDisable write-error.t: its intentional timeouts take about 25 seconds\nper run, which is too expensive for the regular test suite. Keep the\ntest source intact for future re-enabling.\n\nFollows #16918, which fixed its intermittent timeout-signal output.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-07T10:24:29+08:00",
+          "tree_id": "32d4a9a7ced66cebd8f995d2f287b48d4dd07838",
+          "url": "https://github.com/ocaml/dune/commit/bebe4b5b8491c404134f8d617bcdf7680b1640e5"
+        },
+        "date": 1794019132072,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4545271679666667,
             "unit": "seconds"
           }
         ]

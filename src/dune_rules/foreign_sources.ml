@@ -88,16 +88,17 @@ module Unresolved = struct
         String.Map.add_multi acc obj (language, path))
   ;;
 
-  let find_source sources language (loc, name) =
+  let find_source sources languages (loc, name) =
     let open Option.O in
     let* candidates = String.Map.find sources name in
     match
-      List.filter_map candidates ~f:(fun (l, path) ->
-        Option.some_if (Foreign_language.equal l language) path)
+      List.filter candidates ~f:(fun (language, _) ->
+        List.mem languages language ~equal:Foreign_language.equal)
     with
-    | [ path ] -> Some path
+    | [ source ] -> Some source
     | [] -> None
-    | _ :: _ :: _ as paths -> multiple_sources_error ~mode:All ~name ~loc ~paths
+    | _ :: _ :: _ as candidates ->
+      multiple_sources_error ~mode:All ~name ~loc ~paths:(List.map candidates ~f:snd)
   ;;
 
   let load_dirs ~dune_version dirs =
@@ -110,20 +111,24 @@ module Unresolved = struct
   ;;
 end
 
-let possible_sources ~language obj ~dune_version =
+let possible_sources ~languages obj ~dune_version =
   String.Map.to_list Foreign_language.source_extensions
   |> List.filter_map ~f:(fun (ext, (lang, version)) ->
     Option.some_if
-      (Foreign_language.equal lang language && dune_version >= version)
+      (List.mem languages lang ~equal:Foreign_language.equal && dune_version >= version)
       (obj ^ "." ^ ext))
 ;;
 
-let valid_name language ~loc s =
+let valid_name languages ~loc s =
   match s with
   | "" | "." | ".." ->
     User_error.raise
       ~loc
-      [ Pp.textf "%S is not a valid %s name." s (Foreign_language.proper_name language) ]
+      [ (match languages with
+         | [ language ] ->
+           Pp.textf "%S is not a valid %s name." s (Foreign_language.proper_name language)
+         | _ -> Pp.textf "%S is not a valid foreign source name." s)
+      ]
   | _ -> s
 ;;
 
@@ -139,14 +144,14 @@ let ctypes_stubs sources (ctypes : Ctypes_field.t) =
         Ctypes_field.c_generated_functions_cout_c ctypes fd
         |> Stdlib.Filename.remove_extension
       in
-      let path =
-        match Unresolved.find_source sources C (loc, name) with
-        | Some p -> p
+      let language, path =
+        match Unresolved.find_source sources [ C ] (loc, name) with
+        | Some source -> source
         | None ->
           (* impossible b/c ctypes fields generates this *)
           assert false
       in
-      let source = Foreign.Source.make (Ctypes ctypes) ~path in
+      let source = Foreign.Source.make (Ctypes ctypes) ~path ~language in
       name, (loc, source))
 ;;
 
@@ -158,12 +163,14 @@ let eval_foreign_stubs
   : Foreign.Sources.t
   =
   let eval (stubs : Foreign.Stubs.t) =
-    let language = stubs.language in
+    let languages = Nonempty_list.to_list stubs.languages in
     let names =
       let standard : (Loc.t * string) String.Map.t =
         String.Map.filter_mapi sources ~f:(fun name srcs ->
           List.find_map srcs ~f:(fun (l, _) ->
-            Option.some_if (Foreign_language.equal l language) (stubs.loc, name)))
+            Option.some_if
+              (List.mem languages l ~equal:Foreign_language.equal)
+              (stubs.loc, name)))
       in
       Ordered_set_lang.Unordered_string.eval_loc
         stubs.names
@@ -172,7 +179,7 @@ let eval_foreign_stubs
         ~parse:(fun ~loc:_ -> Fun.id)
     in
     String.Map.fold names ~init:String.Map.empty ~f:(fun (loc, s) acc ->
-      let name = valid_name language ~loc s in
+      let name = valid_name languages ~loc s in
       let basename = Filename.basename s in
       if name <> basename
       then
@@ -182,9 +189,9 @@ let eval_foreign_stubs
               "Relative part of stub is not necessary and should be removed. To include \
                sources in subdirectories, use the (include_subdirs ...) stanza."
           ];
-      match Unresolved.find_source sources language (loc, name) with
-      | Some path ->
-        let src = Foreign.Source.make (Stubs stubs) ~path in
+      match Unresolved.find_source sources languages (loc, name) with
+      | Some (language, path) ->
+        let src = Foreign.Source.make (Stubs stubs) ~path ~language in
         let new_key = Foreign.Source.object_name src |> Filename.to_string in
         String.Map.add_exn acc new_key (loc, src)
       | None ->
@@ -194,7 +201,7 @@ let eval_foreign_stubs
               "Object %S has no source; %s must be present."
               name
               (String.enumerate_one_of
-                 (possible_sources ~language name ~dune_version
+                 (possible_sources ~languages name ~dune_version
                   |> List.map ~f:(fun s -> sprintf "%S" s)))
           ])
   in

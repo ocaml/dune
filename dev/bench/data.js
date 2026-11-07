@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794063556083,
+  "lastUpdate": 1794063763835,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -483167,6 +483167,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5092843585,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "546773770c47cbf51e443f651a77f3e0355aaf15",
+          "message": "test(ocaml): cover compiler action runtime environments (#16922)\n\nAdd baseline coverage for runtime-parameter propagation to OCaml\ncompilation, library archiving, executable linking and dependency\nanalysis.\n\nCheck inherited `OCAMLRUNPARAM` and `CAMLRUNPARAM`, empty values,\ndirectory-specific overrides, and the environments of user actions and\n`dune exec` programs. These tests pass with the existing implementation:\nthere are no production-code or GC-default changes.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-07T22:50:19+08:00",
+          "tree_id": "49aee652af765365d28cf55c6ef338cec9b3d022",
+          "url": "https://github.com/ocaml/dune/commit/546773770c47cbf51e443f651a77f3e0355aaf15"
+        },
+        "date": 1794063762102,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 39.46357461966667,
             "unit": "seconds"
           }
         ]

@@ -16,7 +16,10 @@
 (cram
  (applies_to merlin-private-alias.t)
  (enabled_if
-  (>= %{ocaml_version} 5.2)))
+  (and
+   %{bin-available:melc}
+   (>= %{ocaml_version} 5.2)
+   %{read:../../utils/melange-supports-hidden-includes})))
 
 (cram
  (deps %{bin:melc_stdlib_prefix} %{bin:merlin_configurations})

@@ -68,3 +68,16 @@
  (deps fakegit.sh)
  (action
   (run %{bin:shellcheck} -s bash %{deps})))
+
+(rule
+ (target melange-supports-hidden-includes)
+ (enabled_if %{bin-available:melc})
+ (action
+  (with-stdout-to
+   %{target}
+   (run
+    %{bin:sh}
+    -c
+    "\"$1\" -H . --version >/dev/null 2>&1 && printf true || printf false"
+    sh
+    %{bin:melc}))))

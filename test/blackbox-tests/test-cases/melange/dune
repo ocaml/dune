@@ -14,6 +14,11 @@
  (applies_to ppx-generated-dependencies.t))
 
 (cram
+ (applies_to merlin-private-alias.t)
+ (enabled_if
+  (>= %{ocaml_version} 5.2)))
+
+(cram
  (deps %{bin:melc_stdlib_prefix} %{bin:merlin_configurations})
  (enabled_if
   ; CR-soon Alizter: re-enable this test inside Nix

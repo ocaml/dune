@@ -1,0 +1,70 @@
+A public alias can also refer to a private module in a hidden transitive
+dependency.
+
+  $ make_melange_project 3.25 1.0
+  $ mkdir lib consumer
+  $ cat > lib/dune <<'EOF'
+  > (library
+  >  (name dep)
+  >  (modes melange)
+  >  (private_modules private))
+  > EOF
+  $ echo 'let answer = 42' > lib/private.ml
+  $ echo 'module P = Private' > lib/api.ml
+  $ echo '(implicit_transitive_deps false)' >> dune-project
+  $ mkdir bridge
+  $ cat > bridge/dune <<'EOF'
+  > (library
+  >  (name bridge)
+  >  (modes melange)
+  >  (libraries dep))
+  > EOF
+  $ echo 'module P = Dep.Api.P' > bridge/bridge.ml
+  $ cat > consumer/dune <<'EOF'
+  > (library
+  >  (name consumer)
+  >  (modes melange)
+  >  (libraries bridge))
+  > EOF
+  $ echo 'let answer = Bridge.P.answer' > consumer/consumer.ml
+
+The public alias currently fails to resolve its private target.
+
+  $ dune build consumer/.consumer.objs/melange/consumer.cmj
+  File "consumer/consumer.ml", line 1, characters 13-21:
+  1 | let answer = Bridge.P.answer
+                   ^^^^^^^^
+  Error: The module Bridge.P is an alias for module Dep__Private, which is missing
+  [1]
+
+A fresh copy sandbox has the same failure.
+
+  $ dune build --sandbox copy --cache=disabled --build-dir _build-copy \
+  >   consumer/.consumer.objs/melange/consumer.cmj
+  File "consumer/consumer.ml", line 1, characters 13-21:
+  1 | let answer = Bridge.P.answer
+                   ^^^^^^^^
+  Error: The module Bridge.P is an alias for module Dep__Private, which is missing
+  [1]
+
+The hidden transitive dependency cannot be named directly.
+
+  $ echo 'let answer = Dep.Api.P.answer' > consumer/consumer.ml
+  $ dune build --sandbox copy --cache=disabled --build-dir _build-copy \
+  >   consumer/.consumer.objs/melange/consumer.cmj
+  File "consumer/consumer.ml", line 1, characters 13-16:
+  1 | let answer = Dep.Api.P.answer
+                   ^^^
+  Error: Unbound module Dep
+  [1]
+
+The internal compilation-unit name remains unavailable.
+
+  $ echo 'let answer = Dep__Private.answer' > consumer/consumer.ml
+  $ dune build --sandbox copy --cache=disabled --build-dir _build-copy \
+  >   consumer/.consumer.objs/melange/consumer.cmj
+  File "consumer/consumer.ml", line 1, characters 13-25:
+  1 | let answer = Dep__Private.answer
+                   ^^^^^^^^^^^^
+  Error: Unbound module Dep__Private
+  [1]

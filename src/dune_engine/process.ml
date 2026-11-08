@@ -1112,7 +1112,7 @@ let actions_nice =
         (match Option.bind (Int.of_string value) ~f:Spawn.Nice.of_int with
          | Some nice -> Ok (Some nice)
          | None -> Error "expected \"none\" or an integer between 0 and 19"))
-    ~default:None
+    ~default:(Spawn.Nice.of_int 5)
 ;;
 
 let spawn

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794120334574,
+  "lastUpdate": 1794120341619,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -484124,6 +484124,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 59.955345315373336,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d93a3d236abd4a7635a838e0b509537426e6b948",
+          "message": "test(action-plugin): cover detached requests with one job slot (#16948)\n\nRun the existing detached-request regression with a single scheduler\nslot. This checks that an accepted request can finish after its client\nexits without starving its producer, and that its dependencies still\ninvalidate the cached action on subsequent builds.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-08T14:20:29+08:00",
+          "tree_id": "1a68679af4259bcf81ac302ba64132fdf0d318f4",
+          "url": "https://github.com/ocaml/dune/commit/d93a3d236abd4a7635a838e0b509537426e6b948"
+        },
+        "date": 1794120340433,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4794251648466667,
             "unit": "seconds"
           }
         ]

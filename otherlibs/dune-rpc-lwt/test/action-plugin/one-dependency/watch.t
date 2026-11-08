@@ -42,7 +42,7 @@ RPC requests do not record Memo dependency edges back to the caller.
   > }
   $ mkdir .runtime
   $ export XDG_RUNTIME_DIR="$PWD/.runtime"
-  $ timeout -k 1 30 dune build -w -j 2 watched-output > watch.log 2>&1 &
+  $ timeout -k 1 30 dune build -w -j 1 watched-output > watch.log 2>&1 &
   $ watch_pid=$!
   $ trap 'kill -TERM "$watch_pid" 2>/dev/null; wait "$watch_pid" 2>/dev/null' EXIT
   $ wait_for_value _build/default/watched-started started

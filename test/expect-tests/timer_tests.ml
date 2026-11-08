@@ -59,7 +59,12 @@ let%expect_test "run process with timeout" =
         in
         Bin.which ~path "sleep" |> Option.value_exn |> Path.to_string
       in
-      Spawn.spawn ~prog ~argv0:prog ~args:(Array.Immutable.of_list [ "100000" ]) ()
+      Spawn.spawn
+        ~nice:None
+        ~prog
+        ~argv0:prog
+        ~args:(Array.Immutable.of_list [ "100000" ])
+        ()
     in
     let+ (_ : Proc.Process_info.t) =
       Scheduler.wait_for_process

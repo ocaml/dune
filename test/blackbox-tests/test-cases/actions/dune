@@ -13,3 +13,9 @@
 (cram
  (applies_to concurrent.t)
  (enabled_if false))
+
+(cram
+ (applies_to niceness.t)
+ (enabled_if
+  (= %{system} linux))
+ (deps %{bin:nice} %{bin:awk} %{bin:strace}))

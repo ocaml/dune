@@ -362,7 +362,7 @@ let run cmd =
     |> Path.to_string
   in
   let args = Array.Immutable.of_list args in
-  let pid = Spawn.spawn ~prog ~argv0 ~args () in
+  let pid = Spawn.spawn ~nice:None ~prog ~argv0 ~args () in
   match Proc.wait (Pid pid) [] with
   | Some { status = WEXITED 0; _ } -> ()
   | _ -> assert false

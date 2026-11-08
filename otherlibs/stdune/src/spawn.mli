@@ -44,6 +44,13 @@ module Pgid : sig
   val of_pid : Pid.t -> t
 end
 
+module Nice : sig
+  type t
+
+  (** Returns [None] unless the adjustment is between 0 and 19 inclusive. *)
+  val of_int : int -> t option
+end
+
 (** Spawn a sub-command and return its PID. This function is low-level and
     should be used to build higher-level APIs.
 
@@ -107,13 +114,26 @@ end
     [pdeathsig] is ignored. The parent is the thread that created the
     sub-process, not necessarily the whole parent process.
 
+    {b Niceness}
+
+    On Unix, [Some adjustment] increases the child's inherited niceness by
+    [adjustment], capped at the platform's limit. [None] leaves niceness
+    untouched without making priority system calls.
+
+    On macOS, adjustment happens after spawning and is best-effort: the child
+    may run or fork first, and priority adjustment errors are ignored. Callers
+    must not reap the child before [spawn] returns.
+
+    On Windows, [nice] is ignored.
+
     {b Landlock}
 
     If [landlock] is provided, its restrictions are applied to the child before
     executing [prog]. This parameter is only supported on systems where
     [Landlock.available ()] is true. *)
 val spawn
-  :  ?env:Env.t
+  :  nice:Nice.t option
+  -> ?env:Env.t
   -> ?cwd:Working_dir.t (* default: [Inherit] *)
   -> prog:string
   -> argv0:string

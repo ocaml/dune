@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794121608090,
+  "lastUpdate": 1794121615797,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -484298,6 +484298,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 64.33840505161334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fe557de1ccd457bb4169ae379d1ea626c631f255",
+          "message": "test(action-plugin): cover independent helper discovery (#16951)\n\nExercise concurrent helper processes and a later reconnection sharing\none action ID, with only one scheduler slot. Check that inputs\ndiscovered by either helper invalidate the parent action, expired IDs\nare rejected, and a caught helper dependency failure still fails the\naction.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-08T14:44:10+08:00",
+          "tree_id": "db95ff29d07dd9df63af8ff021ebd80e46135262",
+          "url": "https://github.com/ocaml/dune/commit/fe557de1ccd457bb4169ae379d1ea626c631f255"
+        },
+        "date": 1794121614571,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5276087565666666,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794174821931,
+  "lastUpdate": 1794174829568,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -484762,6 +484762,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 64.02671834706,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0a69aef99efd63f9685de8dcd09a4f59d06e36f3",
+          "message": "test(pkg): replace sanitize_pkg_digest with censor (#16965)\n\nReplace `sanitize_pkg_digest` with `censor` throughout package tests and\nupdate expectations.\n\nValidated with `@check @fmt`, focused package tests, and shell lint.\nWindows-only test not run.",
+          "timestamp": "2026-11-08T21:34:14Z",
+          "tree_id": "1ff3b2a0f493b1c234cd130b8d1fcf69c8875363",
+          "url": "https://github.com/ocaml/dune/commit/0a69aef99efd63f9685de8dcd09a4f59d06e36f3"
+        },
+        "date": 1794174828203,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5147263124266667,
             "unit": "seconds"
           }
         ]

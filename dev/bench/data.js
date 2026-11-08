@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794118533465,
+  "lastUpdate": 1794118865170,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -673553,6 +673553,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.27330669216,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0e05bfa5c8e720d81c97a5e019bbe72b2e277ab8",
+          "message": "fix(menhir): preserve alias opens during inference (#16952)\n\nFix Menhir inference for imported types that refer to guarded alias\nmodules.\n\nFixes the regression from #16464 reproduced in #16946.\n\n01a1b975-a696-7a32-bc0a-070cda37a5af\n\n---------\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-07T22:06:48-08:00",
+          "tree_id": "af2aea8634749ca67d90981e41fe91a9e6b034d7",
+          "url": "https://github.com/ocaml/dune/commit/0e05bfa5c8e720d81c97a5e019bbe72b2e277ab8"
+        },
+        "date": 1794118466697,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.818564568813333,
             "unit": "seconds"
           }
         ]

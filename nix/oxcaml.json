@@ -1,14 +1,23 @@
 {
   "opamRepository": {
-    "rev": "c2662be9bcad3875554acccff7bd1e3fe8cb57bc",
-    "narHash": "sha256-2zn4PKRw7vsSh7tp+/nBZFjGE6fWrYm9lgrIWmvfVS8="
+    "rev": "b66db7ae4ad21debd1b078635cc92e88d73610f8",
+    "narHash": "sha256-ntQoIxYUEeMJ5ERMUaR4FCigX68jBfAY/6I3qJZh/2E="
   },
   "release": {
-    "version": "5.2.0minus39",
-    "tag": "5.2.0minus-39",
-    "variant": "5.2.0+ox",
-    "rev": "dd4e8507373d22fb295422eb6dd3d997c76c47cb",
-    "narHash": "sha256-IXgxNbNS5JlZeR3loZt2SRKrOI7hrOfC//mQHGafhxY="
+    "version": "5.4.0-ox9",
+    "tag": "5.4.0-ox9",
+    "variant": "5.4.0+ox",
+    "rev": "c4aac9393f6763c9697206a972e112eb89bcc244",
+    "narHash": "sha256-9JcNBPHqfR4Ga+4G4cSH2unoeQaLYDtbMC4pSsGAAIM="
+  },
+  "odoc": {
+    "version": "3.3.0~dev+ox9",
+    "rev": "bb3357031b7b674eab198a0ad21c10491451850f",
+    "narHash": "sha256-h6HpQ4HhzEM0V/XD0UlIV6dOZ4Qd3ESubKo3Up/1X4Y=",
+    "patch": {
+      "rev": "52a4618be8e085d981f1b449b5919e112180df2a",
+      "hash": "sha256-QlGP4VhKy95CgNAU8c8WJIGcGdkRnMRxUbwpleJXN+8="
+    }
   },
   "latest": {
     "tag": "5.2.0minus-39",

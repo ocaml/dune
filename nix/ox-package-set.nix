@@ -7,6 +7,7 @@
 
 oself: osuper:
 let
+  pins = builtins.fromJSON (builtins.readFile ./oxcaml.json);
   packagesDir = "${oxcamlOpamRepo}/packages";
   overlay = import ./opam-overlay.nix
     {
@@ -38,8 +39,6 @@ let
       ];
 
       skipPackages = [
-        "angstrom"
-        "faraday"
         "mdx"
         "odoc"
         "odoc-parser"
@@ -59,31 +58,43 @@ overlay // {
   js_of_ocaml-compiler = overlay.js_of_ocaml-compiler.overrideAttrs (old: {
     nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ oself.menhir ];
   });
-  # CR-soon Alizter: binaryen-bin is a conf package (skipped by opam-overlay)
-  # that provides wasm-merge, needed at build time. Consider adding conf
-  # package mapping to opam-overlay.
-  #
-  # runtime/wasm/args.ml derives module names from %{deps} via
-  # Filename.chop_suffix on the raw path string. When dune emits same-
-  # directory paths with a leading "./" this yields module names like
-  # "./array" instead of "array", and the wasm linker fails to resolve
-  # primitives. Patch routes through Filename.basename first. Drop once
-  # the fix lands upstream in js_of_ocaml and the OxCaml opam-repository
-  # pin updates.
+  # conf-binaryen is skipped by opam-overlay, but wasm-merge is needed
+  # while building the runtime.
   wasm_of_ocaml-compiler = overlay.wasm_of_ocaml-compiler.overrideAttrs (old: {
     nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.binaryen ];
-    patches = (old.patches or [ ]) ++ [ ./patches/wasm_of_ocaml-args-basename.patch ];
   });
-  # Use the OxCaml fork of Odoc for AST compatibility
-  odoc = osuper.odoc.overrideAttrs (old: {
-    version = "3.2.0+ox2";
+  # Apply the upstream OxCaml port to regular odoc.
+  odoc-parser = osuper.odoc-parser.overrideAttrs (_: {
+    inherit (pins.odoc) version;
     src = pkgs.fetchFromGitHub {
-      owner = "oxcaml";
+      owner = "ocaml";
       repo = "odoc";
-      # branch 5.2.0minus-39
-      rev = "b7b9090ac3dadc7b4b2108b2d21dd6667cd1be0f";
-      hash = "sha256-frnTw0yGFfN/Hh89z70jWTa4VXDzNDeuH0Miblrx2m0=";
+      inherit (pins.odoc) rev;
+      hash = pins.odoc.narHash;
     };
-    buildInputs = (old.buildInputs or [ ]) ++ [ oself.result ];
   });
+  odoc =
+    (osuper.odoc.override {
+      odoc-parser = oself.odoc-parser;
+    }).overrideAttrs
+      (old: {
+        patches = (old.patches or [ ]) ++ [
+          (pkgs.fetchurl {
+            url = lib.concatStrings [
+              "https://github.com/ocaml/odoc/compare/"
+              "${pins.odoc.rev}...${pins.odoc.patch.rev}.diff"
+            ];
+            inherit (pins.odoc.patch) hash;
+          })
+        ];
+        postPatch =
+          (old.postPatch or "")
+          + "\n"
+          + ''
+            while IFS= read -r -d "" file; do
+              substituteInPlace "$file" \
+                --replace-fail "%%VERSION%%" "${pins.odoc.version}"
+            done < <(grep -rlZ '%%VERSION%%' src test)
+          '';
+      });
 }

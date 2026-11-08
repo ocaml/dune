@@ -37,10 +37,10 @@ Account for any niceness inherited by the test runner.
   >   echo "action +$adjustment, inherited +$inherited: ok"
   > }
 
-By default no niceness adjustment is made.
+By default actions have their niceness increased by 5.
 
-  $ check_nice 0 0 _build-default env -u DUNE_CONFIG__ACTIONS_NICE
-  action +0, inherited +0: ok
+  $ check_nice 0 5 _build-default env -u DUNE_CONFIG__ACTIONS_NICE
+  action +5, inherited +0: ok
 
 An explicit adjustment affects the action but leaves Dune unchanged.
 

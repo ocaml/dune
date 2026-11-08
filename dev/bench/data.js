@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794114484910,
+  "lastUpdate": 1794114492542,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -483602,6 +483602,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 63.36292435683333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7838947cc8fa717ba82d312cf71eff96ae4a8f15",
+          "message": "test(utop): use a lightweight runtime cookie fixture (#16944)\n\nReplace the Ppxlib-based cookie fixture with a small PPX driver that\nreports runtime cookie arguments and forwards the compiler input\nunchanged. This avoids linking Ppxlib into UTop; omitting unrelated\nfixture debug information further reduces linking cost.\n\nBoth the custom toplevel and UTop remain exercised with Dune language\nversions 3.25 and 3.26, checking string-cookie forwarding and the\nabsence/presence of the compilation-mode cookie. Each invocation now\nchecks both cookies together.\n\nAcross three alternating baseline/optimized trace runs, median test\nduration falls from 6.35s to 3.19s (about 2× faster). No production\nbehavior changes.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-08T12:48:59+08:00",
+          "tree_id": "673eeecfcb2d9d0b610703c78a64ede5434fb698",
+          "url": "https://github.com/ocaml/dune/commit/7838947cc8fa717ba82d312cf71eff96ae4a8f15"
+        },
+        "date": 1794114491451,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.49372572325333336,
             "unit": "seconds"
           }
         ]

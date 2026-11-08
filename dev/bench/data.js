@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794116718022,
+  "lastUpdate": 1794117963591,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -673292,6 +673292,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.2168055507333335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cc1021633346953fada47fadd7dd5b75c9ff3067",
+          "message": "feature(clean): accept source directories (#2288) (#15305)\n\nFixes #2288.\n\n`dune clean PATH` previously only accepted paths inside the build\ndirectory\n(e.g. `_build/default/foo`); passing a source directory failed with\n`<path> is\nnot inside the build directory`. This makes `dune clean` accept source\ndirectories (and the project root) too, mirroring how `dune build PATH`\naccepts\na source directory.\n\nA source path is resolved against every build context and the\ncorresponding\nartifacts are removed (`_build/<context>/<path>`). For example:\n\n```\n$ dune clean foo   # removes _build/<context>/foo for every context\n$ dune clean .     # cleans each build context\n```\n\nPaths already inside `_build` keep their previous behaviour, and `dune\nclean`\nwith no arguments still removes the whole build directory.\n\nImplementation notes:\n\n- Arguments are partitioned: those already in `_build` are removed\ndirectly (no\nengine startup, as before); source paths are mapped across\n`Context.DB.all`.\n- Reading the contexts needs the engine, so when a source path is given\nthe\n  command now starts a server-less scheduler (`go_without_rpc_server`).\n\nThe `clean.t` test added in #15300 (which demonstrated the rejection) is\nupdated to assert the new behaviour.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\nCo-authored-by: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-11-08T13:52:43+08:00",
+          "tree_id": "4e1c2d0cbc397bc0420d6ef41fc0956b4449848b",
+          "url": "https://github.com/ocaml/dune/commit/cc1021633346953fada47fadd7dd5b75c9ff3067"
+        },
+        "date": 1794117642763,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.083625963513333,
             "unit": "seconds"
           }
         ]

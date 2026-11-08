@@ -63,24 +63,50 @@ module Sandbox = struct
   ;;
 end
 
-let limit_output output ~n =
-  let message = "TRUNCATED BY DUNE" in
-  let noutput = String.length output in
-  if noutput <= n
-  then output
-  else (
-    match
-      ( String.index_from output (n / 2) '\n'
-      , String.rindex_from output (noutput - 1 - (n / 2)) '\n' )
-    with
-    | Some i1, Some i2 when i1 < i2 ->
-      String.concat
-        ~sep:""
-        [ String.take output (i1 + 1); "..."; message; "..."; String.drop output i2 ]
-    | _ ->
-      let message = "\n..." ^ message ^ "...\n" in
-      let output = String.take output (n - String.length message |> max 0) in
-      output ^ message)
+let read_output path ~n =
+  match Stdune.Io.read_file_if_small path ~max_size:n |> Result.ok_exn with
+  | Some contents -> contents
+  | None ->
+    Stdune.Io.with_file_in path ~f:(fun ic ->
+      let length = Stdlib.LargeFile.in_channel_length ic in
+      let read pos length =
+        Stdlib.LargeFile.seek_in ic pos;
+        really_input_string ic (Int64.to_int length)
+      in
+      if Int64.compare length (Int64.of_int n) <= 0
+      then read 0L length
+      else (
+        let rec index_from pos char =
+          if Int64.compare pos length >= 0
+          then None
+          else (
+            let count = Int64.min 4096L (Int64.sub length pos) in
+            match String.index (read pos count) char with
+            | None -> index_from (Int64.add pos count) char
+            | Some index -> Some (Int64.add pos (Int64.of_int index)))
+        in
+        let rec rindex_from pos char =
+          if Int64.compare pos 0L < 0
+          then None
+          else (
+            let stop = Int64.succ pos in
+            let start = Int64.max 0L (Int64.sub stop 4096L) in
+            match String.rindex (read start (Int64.sub stop start)) char with
+            | None -> rindex_from (Int64.pred start) char
+            | Some index -> Some (Int64.add start (Int64.of_int index)))
+        in
+        let message = "...TRUNCATED BY DUNE..." in
+        match
+          let half = Int64.of_int (n / 2) in
+          index_from half '\n', rindex_from (Int64.sub (Int64.pred length) half) '\n'
+        with
+        | Some first, Some last when Int64.compare first last < 0 ->
+          String.concat
+            ~sep:""
+            [ read 0L (Int64.succ first); message; read last (Int64.sub length last) ]
+        | _ ->
+          let message = "\n" ^ message ^ "\n" in
+          read 0L (Int64.of_int (max 0 (n - String.length message))) ^ message))
 ;;
 
 module Failure_mode = struct
@@ -792,7 +818,7 @@ module Result = struct
       | No_capture -> ""
       | Read s -> s
       | File p ->
-        let contents = Stdune.Io.read_file_exn p |> limit_output ~n:t.limit in
+        let contents = read_output p ~n:t.limit in
         Temp.destroy File p;
         t.state <- Read contents;
         contents

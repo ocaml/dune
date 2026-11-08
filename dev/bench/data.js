@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794119200650,
+  "lastUpdate": 1794119206665,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -483979,6 +483979,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5045132525066666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "30643633a3a8ed303bc17fad6846e52e825ac401",
+          "message": "test(melange): isolate preprocessing dependencies from OCaml builds (#16947)\n\nCheck that Melange-only preprocessing dependencies are not built for\nOCaml artifacts or Merlin configurations. Passes on main and fails with\n#16460.\n\n01a1b8f2-7469-7990-90da-c0049284abf1\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-07T22:12:37-08:00",
+          "tree_id": "b9889e0b3685030a24b66e6da0e9d92ca93e1d26",
+          "url": "https://github.com/ocaml/dune/commit/30643633a3a8ed303bc17fad6846e52e825ac401"
+        },
+        "date": 1794119204338,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 41.66767499636,
             "unit": "seconds"
           }
         ]

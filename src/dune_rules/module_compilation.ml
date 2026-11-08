@@ -532,7 +532,8 @@ let ocamlc_i_action ~impl_deps ~alias cctx (m : Module.t) =
     | None -> opens modules m
     | Some cmi ->
       Command.Args.S
-        [ A "-no-alias-deps"
+        [ opens modules m
+        ; A "-no-alias-deps"
         ; A "-I"
         ; Path (Path.build (Path.Build.parent_exn cmi))
         ; Hidden_deps (Dep.Set.of_files [ Path.build cmi ])

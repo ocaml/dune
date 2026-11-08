@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794118245571,
+  "lastUpdate": 1794118253650,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -673408,6 +673408,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.4608839804333336,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "80a8f88be6acb81014d718f77d693283a65a2efb",
+          "message": "doc: make syntax symbols searchable (#15189)\n\nAdd a reference page that gives punctuation-heavy Dune syntax searchable\ntext names, including `@@`, `@`, `%{...}`, `:standard`, and related\nsymbols.\n\nAlso add a small documentation search hook that redirects exact symbol\nsearches such as `@@` to the corresponding section.\n\nFixes #7307.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-08T13:56:43+08:00",
+          "tree_id": "2250b5687ca48f96a337c695a92d7b119b6d55de",
+          "url": "https://github.com/ocaml/dune/commit/80a8f88be6acb81014d718f77d693283a65a2efb"
+        },
+        "date": 1794117933189,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.27330669216,
             "unit": "seconds"
           }
         ]

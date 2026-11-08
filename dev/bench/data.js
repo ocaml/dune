@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794156348322,
+  "lastUpdate": 1794158621833,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -674597,6 +674597,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.2208678273866673,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "39faa116bc7915649bfba56f7f8f235b3db4bbe4",
+          "message": "perf: lower action priority by default (#16963)\n\nDefault Unix build actions to a relative `+5` niceness adjustment using\nthe configuration introduced in #16957. This favors Dune's coordinator\nwhen it competes with spawned work for CPU.\n\nDune itself and internal jobs keep their inherited priorities.\n`DUNE_CONFIG__ACTIONS_NICE=none` disables the adjustment; values from\n`0` to `19` override it. Windows is unchanged, and macOS retains its\nexisting best-effort behavior.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-09T01:14:26+08:00",
+          "tree_id": "2269735365c787a76fb25959080a40329e4a9673",
+          "url": "https://github.com/ocaml/dune/commit/39faa116bc7915649bfba56f7f8f235b3db4bbe4"
+        },
+        "date": 1794158392952,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.5479870125466673,
             "unit": "seconds"
           }
         ]

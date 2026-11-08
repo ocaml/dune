@@ -16,6 +16,9 @@ environment, as do user actions and executables.
   >     exec "$REAL_OCAML_BIN/${0##*/}" "$@"
   >   fi
   > else
+  >   if [ "${REPORT_COMPILER_ENV-}" = yes ]; then
+  >     printf '%s MANPATH=%s\n' "${0##*/}" "$MANPATH" >> "$GC_LOG"
+  >   fi
   >   printf '%s OCAMLRUNPARAM=%s CAMLRUNPARAM=%s\n' "${0##*/}" \
   >     "${OCAMLRUNPARAM-unset}" "${CAMLRUNPARAM-unset}" >> "$GC_LOG"
   >   exec "$REAL_OCAML_BIN/${0##*/}" "$@"
@@ -91,9 +94,21 @@ Directory-specific environment settings take precedence as well.
 
   $ cat >> dune <<'EOF'
   > (env
-  >  (_ (env-vars (OCAMLRUNPARAM Xsmall_heap_limit=4194304))))
+  >  (_
+  >   (env-vars
+  >    (OCAMLRUNPARAM Xsmall_heap_limit=4194304)
+  >    (MANPATH /compiler-env-manpath))))
   > EOF
   $ build stanza
   ocamlc.opt OCAMLRUNPARAM=Xsmall_heap_limit=4194304 CAMLRUNPARAM=unset
   ocamldep.opt OCAMLRUNPARAM=Xsmall_heap_limit=4194304 CAMLRUNPARAM=unset
   ocamlopt.opt OCAMLRUNPARAM=Xsmall_heap_limit=4194304 CAMLRUNPARAM=unset
+
+Print a path-like environment variable inside each compiler tool. Directory
+settings must not gain duplicate entries when constructing the action
+environment.
+
+  $ REPORT_COMPILER_ENV=yes build paths | grep ' MANPATH='
+  ocamlc.opt MANPATH=/compiler-env-manpath
+  ocamldep.opt MANPATH=/compiler-env-manpath
+  ocamlopt.opt MANPATH=/compiler-env-manpath

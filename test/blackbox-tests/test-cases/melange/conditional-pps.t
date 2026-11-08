@@ -61,6 +61,34 @@ The field is available starting in Dune 3.24.
   ./app/_build/default/.melange_src/foo.pp.ml
   ./app/_build/default/.melange_src/melange_only.pp.ml
 
+Melange-only preprocessor dependencies must not be built for OCaml compilation
+or for the shared Merlin configuration.
+
+  $ cat > app/dune <<'EOF'
+  > (library
+  >  (name app)
+  >  (modes melange :standard)
+  >  (melange.preprocess (pps noop_ppx))
+  >  (melange.preprocessor_deps (alias melange-inputs)))
+  > (rule
+  >  (alias melange-inputs)
+  >  (action (system "echo 'Melange dependency ran'; exit 1")))
+  > EOF
+  $ dune build --root app .merlin-conf/lib-app
+  $ dune build --root app app.cma
+
+Melange preprocessing must still build those dependencies.
+
+  $ dune build --root app "$pp_dir/foo.pp.ml"
+  Entering directory 'app'
+  File "dune", lines 6-8, characters 0-89:
+  6 | (rule
+  7 |  (alias melange-inputs)
+  8 |  (action (system "echo 'Melange dependency ran'; exit 1")))
+  Melange dependency ran
+  Leaving directory 'app'
+  [1]
+
 `melange.preprocessor_deps` is available starting in Dune 3.24.
 
   $ mkdir old-preprocessor-deps

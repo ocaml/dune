@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794158980864,
+  "lastUpdate": 1794158988004,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -484704,6 +484704,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 51.30629087118667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0d6211f2ceca5eb1012a43b05ad0b352c4c21bfe",
+          "message": "test(ocaml): observe runtime environments for tool actions (#16964)\n\nRecord the existing runtime-environment behavior before changing GC\ndefaults for OCaml tools.\n\nExtend compiler coverage to release-profile builds and add native\nstand-ins for odoc and js_of_ocaml. Cover explicit and empty\n`OCAMLRUNPARAM`/`CAMLRUNPARAM`, directory settings, path-variable\npreservation, action runners and unrelated user actions. The stand-ins\nalso let subsequent changes distinguish a tool's runtime capabilities\nfrom the build context's compiler version.\n\nThis is test-only coverage based directly on main. It does not depend on\nthe proposed environment-default engine changes or enable any GC tuning.\nPreparatory coverage for #16914 and #16956.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-09T01:13:38+08:00",
+          "tree_id": "18cfc63eefd04c67c136a82b8d0dd292a9d121f4",
+          "url": "https://github.com/ocaml/dune/commit/0d6211f2ceca5eb1012a43b05ad0b352c4c21bfe"
+        },
+        "date": 1794158987014,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4538948318466667,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794121725970,
+  "lastUpdate": 1794121732536,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -484356,6 +484356,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 48.168176993133336,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "679752fb57e0ee6f1ea789f68fb3f3f9f87963fb",
+          "message": "test(ocaml): observe compiler path environment entries (#16929)\n\nExtend the existing compiler-environment test to print a controlled\n`MANPATH` from the compiler wrappers, rather than checking only GC\nruntime parameters.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-08T14:54:29+08:00",
+          "tree_id": "6b868da9c1dc8947ba4e53f1f948b437622dd077",
+          "url": "https://github.com/ocaml/dune/commit/679752fb57e0ee6f1ea789f68fb3f3f9f87963fb"
+        },
+        "date": 1794121731643,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.42965203034,
             "unit": "seconds"
           }
         ]

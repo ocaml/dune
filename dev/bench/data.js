@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794119737994,
+  "lastUpdate": 1794119744717,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -484066,6 +484066,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 51.48693751965334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "58b3e27a0b0b7ff26400956a5cc2c28edb253020",
+          "message": "fix(spawn): clean up initialized macOS state only (#15531)\n\nThe POSIX spawn initializers return error numbers directly. On failure\nthe stub discarded those values and entered cleanup with spawn\nattributes, file actions, and spawn_info still uninitialized.\n\nRecord each initializer result and track which objects were initialized\nso cleanup only destroys valid state and reports the original error.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-08T14:19:39+08:00",
+          "tree_id": "a5336a40b0b424b6a4694b5a82a00d5c9e37f235",
+          "url": "https://github.com/ocaml/dune/commit/58b3e27a0b0b7ff26400956a5cc2c28edb253020"
+        },
+        "date": 1794119743743,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.44462489536000005,
             "unit": "seconds"
           }
         ]

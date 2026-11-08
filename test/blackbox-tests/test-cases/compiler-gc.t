@@ -80,6 +80,14 @@ Release-profile actions and programs preserve the same environment.
   action: unset unset
   $ dune exec --profile release --build-dir _build_release ./main.exe
   hello: unset unset
+  $ build release_alias --release
+  ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  $ build custom --profile custom
+  ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
   $ REPORTED_OCAML_VERSION=5.4.0 build older_release --profile release
   ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
   ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
@@ -134,3 +142,22 @@ environment.
   ocamlc.opt MANPATH=/compiler-env-manpath
   ocamldep.opt MANPATH=/compiler-env-manpath
   ocamlopt.opt MANPATH=/compiler-env-manpath
+
+Directory overrides for the legacy variable and empty settings are respected.
+
+  $ sed -i.bak \
+  >   's/OCAMLRUNPARAM Xsmall_heap_limit=4194304/CAMLRUNPARAM s=123456/' dune
+  $ build stanza_legacy --profile release
+  ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=s=123456
+  ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=s=123456
+  ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=s=123456
+  $ sed -i.bak 's/CAMLRUNPARAM s=123456/OCAMLRUNPARAM ""/' dune
+  $ build stanza_empty --profile release
+  ocamlc.opt OCAMLRUNPARAM= CAMLRUNPARAM=unset
+  ocamldep.opt OCAMLRUNPARAM= CAMLRUNPARAM=unset
+  ocamlopt.opt OCAMLRUNPARAM= CAMLRUNPARAM=unset
+  $ sed -i.bak 's/OCAMLRUNPARAM ""/CAMLRUNPARAM ""/' dune
+  $ build stanza_legacy_empty --profile release
+  ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=
+  ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=
+  ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794116683229,
+  "lastUpdate": 1794116711366,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -483689,6 +483689,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4759861146266667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d494904c4c41a4f45bcffc37bd641db655728157",
+          "message": "perf(process): avoid loading entire captures before truncation (#16769)\n\nKeep small captures on the fd-based read path through a new\n`read_file_if_small` helper. It uses the existing file-size check,\nwithout a preliminary stat or channel allocation.\n\nWhen the bounded read declines the file, fall back to the local\nchannel-search helpers and read only the retained head and tail ranges.\nExisting truncation output and on-disk output capture are unchanged.\n\nCover the bounded reader with correctness tests for size boundaries,\nempty files, missing files, and directories.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-08T13:29:20+08:00",
+          "tree_id": "05d5f0a08f46fbe508ba419f4f07f9a9708835f4",
+          "url": "https://github.com/ocaml/dune/commit/d494904c4c41a4f45bcffc37bd641db655728157"
+        },
+        "date": 1794116708915,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 50.91730894454,
             "unit": "seconds"
           }
         ]

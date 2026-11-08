@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794116676378,
+  "lastUpdate": 1794116683229,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -483660,6 +483660,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 55.1423416889,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "shon.feder@gmail.com",
+            "name": "Shon",
+            "username": "shonfeder"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fe9ecca4798524d691a6cc3ebbd1e00ba686c034",
+          "message": "test(menhir): repro for inferred types that name the alias module (#16946)\n\nhttps://github.com/ocaml/dune/pull/16464 changed how module opens are\nhandled during inference, triggered during menhir rules. This offers a\nminimal repro of the related errors detected in the 3.25.0~alpha1\nrevdeps run at https://github.com/ocaml/opam-repository/pull/31082.\n\nThe related failure in CI is\nhttps://opam.ci.ocaml.org/github/ocaml/opam-repository/commit/6b2dc4292a7fe02b2ac183f092630bee19d98729/variant/compilers,4.14,dune.3.25.0~alpha1,revdeps,melange.3.0.0-414\n\n@anmonteiro, since this is only affecting melange and apparently only on\n4.14, and since (if my debugging is correct) it follows from a change\nyou introduced, I think you are best positioned to evaluate the impact.\n\nIs this something we should fix and backport before releasing #16520 do\nyou think? Is the needed fix clear to you?\n\nSigned-off-by: Shon Feder <shon.feder@gmail.com>",
+          "timestamp": "2026-11-07T21:25:12-08:00",
+          "tree_id": "c1a175053478b8ea5040935f61c956ceb2e97717",
+          "url": "https://github.com/ocaml/dune/commit/fe9ecca4798524d691a6cc3ebbd1e00ba686c034"
+        },
+        "date": 1794116682229,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4759861146266667,
             "unit": "seconds"
           }
         ]

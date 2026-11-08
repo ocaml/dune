@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794156341565,
+  "lastUpdate": 1794156348322,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -484588,6 +484588,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 51.5737273296,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "796a669552a0c2d40e8002e1a69ec6dfb9431063",
+          "message": "feat: configure niceness of spawned actions (#16957)\n\nAdd an opt-in niceness adjustment for Unix build actions so Dune can be\nfavored over spawned work when both need CPU, without a wrapper process.\n\n- `DUNE_CONFIG__ACTIONS_NICE=none` is the default and makes no priority\nsyscalls.\n- Integers from `0` to `19` increase inherited niceness, capped at the\nplatform's limit.\n- The low-level spawn API takes `Spawn.Nice.t option`, with the range\nvalidated by `Spawn.Nice.of_int` at construction.\n- Dune itself and internal jobs keep their current behavior. Windows\nremains unchanged.\n- Fork-based backends adjust before exec. macOS adjusts immediately\nafter `posix_spawn`, before returning to the scheduler. This is\nbest-effort: the child may already have run or exited, and\npriority-adjustment errors do not fail a successful spawn.\n\nThis adds the configuration, spawn plumbing, and regression tests only.\nEnabling `+5` by default is deliberately left for a separate PR.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-09T00:29:48+08:00",
+          "tree_id": "b082873d906f0440c8a6fe332c88afad9f21e220",
+          "url": "https://github.com/ocaml/dune/commit/796a669552a0c2d40e8002e1a69ec6dfb9431063"
+        },
+        "date": 1794156347320,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4504079662866667,
             "unit": "seconds"
           }
         ]

@@ -10,6 +10,8 @@
 CAMLprim value dune_flock_lock(value v_fd, value v_block, value v_exclusive) {
   CAMLparam3(v_fd, v_block, v_exclusive);
   OVERLAPPED overlapped = { 0 };
+  HANDLE fd = FD_val(v_fd);
+  DWORD error = ERROR_SUCCESS;
   DWORD ok, dwFlags = 0;
   if (Bool_val(v_exclusive)) {
     dwFlags |= LOCKFILE_EXCLUSIVE_LOCK;
@@ -18,10 +20,13 @@ CAMLprim value dune_flock_lock(value v_fd, value v_block, value v_exclusive) {
     dwFlags |= LOCKFILE_FAIL_IMMEDIATELY;
   }
   caml_release_runtime_system();
-  ok = LockFileEx(FD_val(v_fd), dwFlags, 0, MAXDWORD, MAXDWORD, &overlapped);
+  ok = LockFileEx(fd, dwFlags, 0, MAXDWORD, MAXDWORD, &overlapped);
+  if (!ok) {
+    error = GetLastError();
+  }
   caml_acquire_runtime_system();
   if (!ok) {
-    win32_maperr(GetLastError());
+    win32_maperr(error);
     uerror("LockFileEx", Nothing);
   }
   CAMLreturn(Val_unit);
@@ -30,12 +35,17 @@ CAMLprim value dune_flock_lock(value v_fd, value v_block, value v_exclusive) {
 CAMLprim value dune_flock_unlock(value v_fd) {
   CAMLparam1(v_fd);
   OVERLAPPED overlapped = { 0 };
+  HANDLE fd = FD_val(v_fd);
+  DWORD error = ERROR_SUCCESS;
   DWORD ok;
   caml_release_runtime_system();
-  ok = UnlockFileEx(FD_val(v_fd), 0, MAXDWORD, MAXDWORD, &overlapped);
+  ok = UnlockFileEx(fd, 0, MAXDWORD, MAXDWORD, &overlapped);
+  if (!ok) {
+    error = GetLastError();
+  }
   caml_acquire_runtime_system();
   if (!ok) {
-    win32_maperr(GetLastError());
+    win32_maperr(error);
     uerror("UnlockFileEx", Nothing);
   }
   CAMLreturn(Val_unit);

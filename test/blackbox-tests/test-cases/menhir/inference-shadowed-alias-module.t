@@ -1,6 +1,6 @@
-https://github.com/ocaml/dune/pull/16464 changes how module opens are handled
-for menhir rules. This test shows how it can lead to breakage via module
-shadowing errors and identiefier lookup failures.
+Menhir inference must print imported types using accessible module names.
+Opening the private inference alias must preserve the normal alias opens
+used by the compiler's short-path printer (#16946).
 
   $ make_menhir_project 3.8 2.1
   $ cat >dune <<'EOF'
@@ -8,26 +8,24 @@ shadowing errors and identiefier lookup failures.
   > (menhir (modules parser))
   > EOF
 
-Create the library's module alias, to trigger dune's name-mangling module name hacks:
+A handwritten library main module makes Dune generate a guarded alias Foo__.
 
   $ touch foo.ml
 
-Create a new module, 'Parsetree', that defines an abbreviation. Helper mentions it in its interface, where
-the compiler records it as Foo__.Parsetree.attributes.
+Create a type abbreviation that Helper will mention in its interface.
 
   $ cat >parsetree.ml <<'EOF'
   > type result = string list
   > EOF
 
-Create a helper module that refers to the type from parsetree.ml, to trigger
-dune's addition of the [-open Foo__] when it is compiled (required to grant
-access to the [Foo__.Parsetree.result]).
+Helper is compiled with [-open Foo__], so its inferred interface stores
+the type as [Foo__.Parsetree.result].
 
   $ cat >helper.ml <<'EOF'
   > let keep (x : Parsetree.result) = x
   > EOF
 
-Now define the parser that will try to use the [Helper.keep]
+The parser uses [Helper.keep] and must infer a printable result type.
 
   $ cat >parser.mly <<'EOF'
   > %token EOF
@@ -37,15 +35,8 @@ Now define the parser that will try to use the [Helper.keep]
   > EOF
 
   $ dune build foo.cma
-  File "parser.mli", line 13, characters 56-61:
-  13 | val main: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Foo__.Parsetree.result)
-                                                               ^^^^^
-  Error (alert deprecated): module Foo__.Foo__
-  this module is shadowed
-  
-  File "parser.mli", line 13, characters 56-71:
-  13 | val main: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (Foo__.Parsetree.result)
-                                                               ^^^^^^^^^^^^^^^
-  Error: Unbound module Foo__.Parsetree
-  [1]
-
+  $ cat _build/default/parser__mock.mli.inferred
+  type token = EOF
+  val menhir_begin_marker : int
+  val xv_main : Parsetree.result
+  val menhir_end_marker : int

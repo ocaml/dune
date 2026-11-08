@@ -1,8 +1,4 @@
-type 'a t = 'a Stdlib.Seq.t
-
-and +'a node = 'a Stdlib.Seq.node =
-  | Nil
-  | Cons of 'a * 'a t
+include module type of Stdlib.Seq
 
 val empty : 'a t
 val return : 'a -> 'a t

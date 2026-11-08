@@ -73,6 +73,17 @@ let
     pkgName: version:
     lib.splitString "\n" (builtins.readFile "${packagesDir}/${pkgName}/${version}/opam");
 
+  enterSubpath =
+    pkgName: version:
+    let
+      line = lib.findFirst (line: lib.hasPrefix "x-subpath:" line) null (
+        readOpamLines pkgName version
+      );
+    in
+    lib.optionalString (line != null) ''
+      sourceRoot="$sourceRoot/${extractQuoted line}"
+    '';
+
   getPatches =
     pkgName: version:
     let
@@ -167,6 +178,8 @@ let
       pname = pkgName;
       version = lib.removePrefix "${pkgName}." versionDir;
       inherit src patches;
+      postUnpack = enterSubpath pkgName versionDir;
+      DUNE_ROOT = ".";
       nativeBuildInputs = resolveDeps oself deps.buildDeps;
       propagatedBuildInputs = resolveDeps oself deps.runtimeDeps;
       preBuild = ''
@@ -186,7 +199,10 @@ let
     if existing != null && lib.isDerivation existing then
       existing.overrideAttrs (old:
         { doCheck = false; }
-        // (lib.optionalAttrs (src != null) { inherit src; })
+        // (lib.optionalAttrs (src != null) {
+          inherit src;
+          postUnpack = (old.postUnpack or "") + enterSubpath opamName ver;
+        })
         // (lib.optionalAttrs (patches != [ ]) {
           patches = (old.patches or [ ]) ++ patches;
         })

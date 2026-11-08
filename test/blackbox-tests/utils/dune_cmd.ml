@@ -75,7 +75,7 @@ module NativePath = struct
         | Some cygpath ->
           let cygpath = Path.to_string cygpath in
           let args = Array.Immutable.of_list [ "-wl"; fn ] in
-          ignore (Spawn.spawn ~prog:cygpath ~argv0:cygpath ~args ())
+          ignore (Spawn.spawn ~nice:None ~prog:cygpath ~argv0:cygpath ~args ())
   ;;
 
   let of_args = function

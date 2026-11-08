@@ -1103,6 +1103,18 @@ let await ?cancellation ~timeout { response_file; pid; is_process_group_leader; 
   process_info, termination_reason
 ;;
 
+let actions_nice =
+  Config.make
+    ~name:"actions_nice"
+    ~of_string:(function
+      | "none" -> Ok None
+      | value ->
+        (match Option.bind (Int.of_string value) ~f:Spawn.Nice.of_int with
+         | Some nice -> Ok (Some nice)
+         | None -> Error "expected \"none\" or an integer between 0 and 19"))
+    ~default:None
+;;
+
 let spawn
       ?dir
       ?(env = Env.initial)
@@ -1168,8 +1180,15 @@ let spawn
       | Some dir -> Spawn.Working_dir.path (Path.to_string dir)
     in
     let landlock = Option.bind sandbox ~f:Sandbox.to_landlock in
+    let { Process_metadata.purpose; _ } = metadata in
+    let nice =
+      match purpose with
+      | Internal_job -> None
+      | Build_job _ -> Config.get actions_nice
+    in
     Spawn.spawn
       ()
+      ~nice
       ~prog:prog_str
       ~argv0:prog_str
       ~args

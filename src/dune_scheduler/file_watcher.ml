@@ -624,7 +624,7 @@ let spawn_external_watcher ~backend ~watch_exclusions =
     let prog = Path.to_absolute_filename prog in
     let args = Array.Immutable.of_list args in
     (* CR-someday rgrinberg: we sohuldn't let this program write anything to our stderr *)
-    Spawn.spawn () ~prog ~argv0:prog ~args ~stdout:w_stdout
+    Spawn.spawn () ~nice:None ~prog ~argv0:prog ~args ~stdout:w_stdout
   in
   Fd.close w_stdout;
   Unix.in_channel_of_descr r_stdout, pid

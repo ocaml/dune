@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794122386289,
+  "lastUpdate": 1794122392089,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -484414,6 +484414,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 39.891694737879995,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b8e0eeea27d31c0aae241c1e865b8dcc92587a73",
+          "message": "test(cram): cover separation from runner temporary files (#16954)\n\nRecord the current separation between Cram's internal temporary files\nand the directory exposed to tests as `TMPDIR`. Writing `main.sh`,\n`1.output`, and `cram.metadata` inside `TMPDIR` must not corrupt the\nrunner's scripts, captured output, or metadata.\n\nCover `sh`, Bash, and directory tests. Preserve the existing\ndemonstration that different Cram tests currently share `TMPDIR`.\n\nThis is test-only preparatory coverage for #16930 and passes without the\nisolation fix.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-08T14:58:06+08:00",
+          "tree_id": "0691eeacec31d5524babd7913dc493ac33941c9e",
+          "url": "https://github.com/ocaml/dune/commit/b8e0eeea27d31c0aae241c1e865b8dcc92587a73"
+        },
+        "date": 1794122391201,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.35361425611999997,
             "unit": "seconds"
           }
         ]

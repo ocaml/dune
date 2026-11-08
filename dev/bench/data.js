@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794149669342,
+  "lastUpdate": 1794149943177,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -484443,6 +484443,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.35361425611999997,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "778207156ba18927cad31d1460652b6bce2d851e",
+          "message": "test(sandbox): expose undeclared env binaries on PATH (#16962)\n\nRecord a sandboxed action finding an undeclared `env (binaries ...)`\nbinary through `PATH` after another rule has built the binding.\n\nThe action requires sandboxing and declares no file dependencies. It\nverifies that `.bin/foobar` is absent from its sandbox, but `command -v\nfoobar` resolves to the real build directory and executing it succeeds.\n\nThis is a test-only reproduction of the build-order-dependent\navailability behind #16959. It complements the existing PATH-relocation\ntest for declared `%{bin:...}` dependencies by covering an undeclared\nbinary.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-08T22:42:55+08:00",
+          "tree_id": "2ab8fb5cee7997f3072971b571d7e2c969400c7f",
+          "url": "https://github.com/ocaml/dune/commit/778207156ba18927cad31d1460652b6bce2d851e"
+        },
+        "date": 1794149941171,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 52.634320908586666,
             "unit": "seconds"
           }
         ]

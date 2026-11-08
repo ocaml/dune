@@ -20,11 +20,11 @@ symlink before hardlinking will fail with EACCES.
 
 Build fails with a symlink resolution error:
 
-  $ build_pkg foo 2>&1 | sanitize_pkg_digest foo.0.0.1 | dune_cmd subst '\.sandbox/[^/]+' '.sandbox/SANDBOX'
+  $ build_pkg foo 2>&1 | censor
   Error:
-  unlink(_build/.sandbox/SANDBOX/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/target/lib/foo/link.txt): Permission denied
+  unlink(_build/.sandbox/$DIGEST1/_private/default/.pkg/foo.0.0.1-$DIGEST2/target/lib/foo/link.txt): Permission denied
   -> required by
-     _build/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/target
+     _build/_private/default/.pkg/foo.0.0.1-$DIGEST2/target
   [1]
 
 Restore permissions for cleanup:

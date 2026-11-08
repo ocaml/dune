@@ -18,9 +18,9 @@ Case 1: relative direct parent
   > EOF
 
 This fails correctly
-  $ build_pkg bar 2>&1 | sanitize_pkg_digest bar.0.0.1 | tail -3
+  $ build_pkg bar 2>&1 | censor | tail -3
   Error: Unable to resolve symlink
-  _build/_private/default/.pkg/bar.0.0.1-DIGEST_HASH/source/mydir/link_to_parent,
+  _build/_private/default/.pkg/bar.0.0.1-$DIGEST/source/mydir/link_to_parent,
   it is part of a cycle.
   [1]
 
@@ -31,8 +31,8 @@ Case 2: relative parent outside the source directory
   $ tar czf _src.tar.gz _src
 
 This fails correctly
-  $ build_pkg bar 2>&1 | sanitize_pkg_digest bar.0.0.1 | tail -3
+  $ build_pkg bar 2>&1 | censor | tail -3
   Error: Unable to resolve symlink
-  _build/_private/default/.pkg/bar.0.0.1-DIGEST_HASH/source/mydir/link_to_parent,
+  _build/_private/default/.pkg/bar.0.0.1-$DIGEST/source/mydir/link_to_parent,
   it is part of a cycle.
   [1]

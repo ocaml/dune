@@ -58,9 +58,9 @@ Unless the dune-project disables transitive dependencies:
   > EOF
 
   $ dune build
-  File "mylib/mylib.ml", line 1, characters 14-36:
+  File "mylib/mylib.ml", line 1, characters 14-23:
   1 | let test () = Signature.do_something (module Param_intf.M)
-                    ^^^^^^^^^^^^^^^^^^^^^^
+                    ^^^^^^^^^
   Error: Unbound module Signature
   [1]
 

@@ -141,7 +141,8 @@
  (deps %{bin:ocaml}))
 
 (cram
- (applies_to compiler-gc.t)
+ (applies_to
+  (or compiler-gc.t ocaml-tool-runtime.t))
  (enabled_if
   (>= %{ocaml_version} 5.5.0)))
 

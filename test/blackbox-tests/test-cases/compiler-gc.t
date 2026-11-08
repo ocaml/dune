@@ -56,7 +56,9 @@ environment, as do user actions and executables.
   > EOF
   $ build () {
   >   : > "$GC_LOG"
-  >   dune build --cache=disabled --build-dir "_build_$1" @all
+  >   build_dir="_build_$1"
+  >   shift
+  >   dune build --cache=disabled --build-dir "$build_dir" "$@" @all
   >   sort -u "$GC_LOG"
   > }
   $ build defaults
@@ -68,20 +70,40 @@ environment, as do user actions and executables.
   $ dune exec --build-dir _build_defaults ./main.exe
   hello: unset unset
 
+Release-profile actions and programs preserve the same environment.
+
+  $ build release --profile release
+  ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  $ dune build --profile release --build-dir _build_release @runtest
+  action: unset unset
+  $ dune exec --profile release --build-dir _build_release ./main.exe
+  hello: unset unset
+  $ REPORTED_OCAML_VERSION=5.4.0 build older_release --profile release
+  ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+
 Explicit runtime parameters, including an empty value, are preserved.
 
-  $ OCAMLRUNPARAM=s=123456 build explicit
+  $ OCAMLRUNPARAM=s=123456 build explicit --profile release
   ocamlc.opt OCAMLRUNPARAM=s=123456 CAMLRUNPARAM=unset
   ocamldep.opt OCAMLRUNPARAM=s=123456 CAMLRUNPARAM=unset
   ocamlopt.opt OCAMLRUNPARAM=s=123456 CAMLRUNPARAM=unset
-  $ CAMLRUNPARAM=s=123456 build legacy
+  $ CAMLRUNPARAM=s=123456 build legacy --profile release
   ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=s=123456
   ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=s=123456
   ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=s=123456
-  $ OCAMLRUNPARAM= build empty
+  $ OCAMLRUNPARAM= build empty --profile release
   ocamlc.opt OCAMLRUNPARAM= CAMLRUNPARAM=unset
   ocamldep.opt OCAMLRUNPARAM= CAMLRUNPARAM=unset
   ocamlopt.opt OCAMLRUNPARAM= CAMLRUNPARAM=unset
+
+  $ CAMLRUNPARAM= build legacy_empty --profile release
+  ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=
+  ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=
+  ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=
 
 Runtime parameters are unchanged for older compilers as well.
 
@@ -99,7 +121,7 @@ Directory-specific environment settings take precedence as well.
   >    (OCAMLRUNPARAM Xsmall_heap_limit=4194304)
   >    (MANPATH /compiler-env-manpath))))
   > EOF
-  $ build stanza
+  $ build stanza --profile release
   ocamlc.opt OCAMLRUNPARAM=Xsmall_heap_limit=4194304 CAMLRUNPARAM=unset
   ocamldep.opt OCAMLRUNPARAM=Xsmall_heap_limit=4194304 CAMLRUNPARAM=unset
   ocamlopt.opt OCAMLRUNPARAM=Xsmall_heap_limit=4194304 CAMLRUNPARAM=unset

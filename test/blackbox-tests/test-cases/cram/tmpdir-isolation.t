@@ -37,3 +37,25 @@ Cram test. This records the current isolation bug.
   -  isolated
   +  written by producer.t
   [1]
+
+The runner's internal files are separate from the directory exposed to a test.
+Reusing its filenames in TMPDIR must not corrupt scripts, output, or metadata.
+
+  $ cat > runner-sh.t <<'EOF'
+  >   $ echo 'captured before overwriting'
+  >   captured before overwriting
+  >   $ for file in main.sh 1.output cram.metadata; do
+  >   >   echo 'not a Cram internal file' > "$TMPDIR/$file"
+  >   > done
+  >   $ echo 'still running'
+  >   still running
+  > EOF
+  $ cp runner-sh.t runner-bash.t
+  $ mkdir runner-dir.t
+  $ cp runner-sh.t runner-dir.t/run.t
+  $ cat >> dune <<'EOF'
+  > (cram
+  >  (applies_to runner-bash.t)
+  >  (shell bash))
+  > EOF
+  $ dune runtest runner-sh.t runner-bash.t runner-dir.t -j 1

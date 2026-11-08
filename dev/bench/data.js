@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794117963591,
+  "lastUpdate": 1794118176891,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -673321,6 +673321,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.083625963513333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b83dd615bc24107d10c432d1a2134a39b2687e9d",
+          "message": "refactor(engine): pass filesystem cache tables directly (#16672)\n\nPass cache state and concrete tables to the filesystem cache helpers\ninstead of table-selector callbacks. Callers force and unpack the lazy\ncache explicitly, removing indirection without changing cache updates or\ntimestamp invalidation.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-08T13:55:34+08:00",
+          "tree_id": "6ec986a073a2970a5757a95f1da9c07393d345a1",
+          "url": "https://github.com/ocaml/dune/commit/b83dd615bc24107d10c432d1a2134a39b2687e9d"
+        },
+        "date": 1794117886608,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.4608839804333336,
             "unit": "seconds"
           }
         ]

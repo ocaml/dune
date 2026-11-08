@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794120341619,
+  "lastUpdate": 1794120403478,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -484153,6 +484153,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4794251648466667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "608214bfb4497e499fbd795641f2cf4515af2972",
+          "message": "test(action-plugin): reproduce nested rule-lock deadlocks (#16949)\n\nRecord a dynamic dependency request deadlocking when its producer needs\na lock already held by the caller. Include successful increasing-order\nacquisition and uncontended reverse acquisition as comparisons. The\nexpectations preserve current behavior; this PR does not change lock\nhandling.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-08T14:21:38+08:00",
+          "tree_id": "64028c5ddf4fe95bcafa459a0805a1a0d2b7cfb1",
+          "url": "https://github.com/ocaml/dune/commit/608214bfb4497e499fbd795641f2cf4515af2972"
+        },
+        "date": 1794120400583,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 64.31661595037333,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794120068616,
+  "lastUpdate": 1794120203336,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -673872,6 +673872,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8909108442733333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c390b094035289e5388011e606faaeef4faaa419",
+          "message": "test(action-plugin): exercise watch cancellation with one job slot (#16953)\n\nRun the existing cancellation regression with a single scheduler slot,\nchecking that an in-flight dynamic dependency can be cancelled and the\nreplacement build can complete without leaking its slot. Keep the\nexisting expectation documenting missed subsequent invalidation.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-08T14:22:13+08:00",
+          "tree_id": "9c1d54243d1adf6f1775b85e548407a3087a4591",
+          "url": "https://github.com/ocaml/dune/commit/c390b094035289e5388011e606faaeef4faaa419"
+        },
+        "date": 1794119706436,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.5409736390133335,
             "unit": "seconds"
           }
         ]

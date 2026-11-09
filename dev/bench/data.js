@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794238183114,
+  "lastUpdate": 1794238251818,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -675815,6 +675815,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.5562772199333335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f084afabe57a44102aeee5eecde9ce67bdf961a1",
+          "message": "test(action-plugin): mix absolute and relative sandbox reads (#16981)\n\nStrengthen the existing sandbox regression by requesting the same\ngenerated input concurrently through relative and absolute paths. Both\nspellings must return identical contents across copy, hardlink, and\nsymlink sandboxes. This is a test-only change and passes without the\nunmerged absolute-path implementation changes.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-09T23:16:54+08:00",
+          "tree_id": "4071eb9acf5f789a0dec4e62ac7a0873f34c00b5",
+          "url": "https://github.com/ocaml/dune/commit/f084afabe57a44102aeee5eecde9ce67bdf961a1"
+        },
+        "date": 1794237847622,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.8513475153200005,
             "unit": "seconds"
           }
         ]

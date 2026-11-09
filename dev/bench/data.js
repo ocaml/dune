@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794201544627,
+  "lastUpdate": 1794201880541,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -485197,6 +485197,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4940082172733334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bfdfed338da4a28c90d21a6ed88e5cf4ed88bb95",
+          "message": "ci: update flake inputs and OCaml 4.14 builds (#16943)\n\nUpdate flake inputs and use OCaml 4.14.5 or `4.14.x` for the 4.14 CI\nbuilds. Follows nix-ocaml/nix-overlays#2786.\n\n01a1b7b4-83e6-7c63-a2b6-478365fafccc\n\n---------\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-08T21:04:47-08:00",
+          "tree_id": "116af4d4c4d346ee1133dab62f910488e9ac9ef6",
+          "url": "https://github.com/ocaml/dune/commit/bfdfed338da4a28c90d21a6ed88e5cf4ed88bb95"
+        },
+        "date": 1794201878751,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 65.00311194571334,
             "unit": "seconds"
           }
         ]

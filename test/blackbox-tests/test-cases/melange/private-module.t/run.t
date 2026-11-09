@@ -1,17 +1,15 @@
-Without sandboxing, OCaml resolves this wrapper alias since 5.2.
+Without sandboxing, OCaml resolves this wrapper alias.
 
-  $ if ocamlc -H . -version > /dev/null 2>&1 &&
-  >    melc -H . --version > /dev/null 2>&1; then
-  >   mv dune dune.melange
-  >   cat > dune <<'EOF'
+  $ mv dune dune.melange
+  $ cat > dune <<'EOF'
   > (executable
   >  (name foo)
   >  (modules foo)
   >  (modes byte)
   >  (libraries lib))
   > EOF
-  >   dune build --sandbox none foo.bc && mv dune.melange dune
-  > fi
+  $ dune build --sandbox none foo.bc
+  $ mv dune.melange dune
 
 Melange currently fails to resolve the same wrapper alias.
 

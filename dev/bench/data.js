@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794238604876,
+  "lastUpdate": 1794242534682,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -675902,6 +675902,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8513475153200005,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "684fd1c0185efa6eb0f04b0423de8bcef9125bf5",
+          "message": "test: record TMPDIR defaults and override precedence (#16982)\n\nExtract and expand the temporary-directory environment coverage from\n#16930 into a test-only prerequisite.\n\nRecord the runtime value in both regular actions and `(cram ...)`\nactions for the default, an `env`-stanza override, and an action-level\n`setenv` override. The probe reads `TMPDIR` on Unix and `TEMP` on\nWindows; generated paths are normalized without rewriting the explicit\noverride markers.\n\nCurrent `main` replaces both kinds of override with Dune's managed\ndirectory in both contexts. The test records that behavior and checks\nthat a second unchanged build reuses regular and Cram results.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-10T00:28:03+08:00",
+          "tree_id": "42fb96ce0c7c28191a4cde18e6e0c388b94f89bc",
+          "url": "https://github.com/ocaml/dune/commit/684fd1c0185efa6eb0f04b0423de8bcef9125bf5"
+        },
+        "date": 1794242129338,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.9974399932933333,
             "unit": "seconds"
           }
         ]

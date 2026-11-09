@@ -14,14 +14,6 @@
  (applies_to ppx-generated-dependencies.t))
 
 (cram
- (applies_to merlin-private-alias.t)
- (enabled_if
-  (and
-   %{bin-available:melc}
-   (>= %{ocaml_version} 5.2)
-   %{read:../../utils/melange-supports-hidden-includes})))
-
-(cram
  (deps %{bin:melc_stdlib_prefix} %{bin:merlin_configurations})
  (enabled_if
   ; CR-soon Alizter: re-enable this test inside Nix

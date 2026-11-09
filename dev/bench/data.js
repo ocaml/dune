@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794238176747,
+  "lastUpdate": 1794238183114,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -485400,6 +485400,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 38.99763925182666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2a05d8347ff6fdf2cfd70133ecd776ee5b688196",
+          "message": "test(action-plugin): cover absolute reads across build layouts (#16979)\n\nCover generated absolute reads without forced sandboxing and compare\ngenerated and external inputs with an external build directory, reached\neither directly or through a symlink. Changing the generated input\nverifies that the symlinked case rebuilds rather than merely reuses\ncached output.\n\nRecord the current bug where an external absolute input becomes\nunavailable through the build-directory symlink, despite working through\nits physical path. This PR contains tests only and does not depend on\nthe unmerged path-handling fix.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-09T23:17:30+08:00",
+          "tree_id": "f5839d40e93e5a1dbaec6e171148570fd7331bab",
+          "url": "https://github.com/ocaml/dune/commit/2a05d8347ff6fdf2cfd70133ecd776ee5b688196"
+        },
+        "date": 1794238182187,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.34542843094666664,
             "unit": "seconds"
           }
         ]

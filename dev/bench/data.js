@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794182270563,
+  "lastUpdate": 1794182606047,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -484791,6 +484791,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5147263124266667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b10a3809c79a04465043951902c8652dfaceca47",
+          "message": "test(rules): cover section-root directory installs (#16966)\n\nCover a generated directory installed at `share_root` itself. Verify\nthat a package dependency materializes it and that the scoped view\nremains readable alongside ordinary installation staging after\n`@install`.",
+          "timestamp": "2026-11-08T23:44:07Z",
+          "tree_id": "f8435aa74a8ffb9c70c05fb952c8beea98c0acd9",
+          "url": "https://github.com/ocaml/dune/commit/b10a3809c79a04465043951902c8652dfaceca47"
+        },
+        "date": 1794182604689,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 65.45914644791333,
             "unit": "seconds"
           }
         ]

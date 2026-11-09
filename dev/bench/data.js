@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794200657030,
+  "lastUpdate": 1794200940121,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -485081,6 +485081,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.3801101292666667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1b26c498f29d74590f748219b1d6cf51137659cf",
+          "message": "test: declare ppxlib for the lint Cram fixture (#16975)\n\nDeclare `ppxlib` for the lint fixture so its nested PPX build gets the\nrequired library through the package environment instead of relying on\nambient visibility.",
+          "timestamp": "2026-11-09T04:40:28Z",
+          "tree_id": "1696518fbb5dd9ad7fab00741f981405ee77c270",
+          "url": "https://github.com/ocaml/dune/commit/1b26c498f29d74590f748219b1d6cf51137659cf"
+        },
+        "date": 1794200938190,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 58.91723008188666,
             "unit": "seconds"
           }
         ]

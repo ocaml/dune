@@ -37,6 +37,11 @@
   (package ppx_inline_test)))
 
 (cram
+ (applies_to lint.t)
+ (deps
+  (package ppxlib)))
+
+(cram
  (applies_to :whole_subtree)
  (shell bash)
  (deps

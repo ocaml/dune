@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794197805978,
+  "lastUpdate": 1794197813667,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -484878,6 +484878,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 65.79441326533333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cbe5bba56da28853ae1d719425f5a13e88cfde1d",
+          "message": "test(melange): declare compiler and PPX package dependencies (#16971)\n\nMaterialize the Melange package for nested test builds, not just the\n`melc` executable, and declare `ppxlib` for the fixtures that use it.\nThis makes standard/runtime libraries and PPX dependencies available\nthrough the package environment without changing test expectations.",
+          "timestamp": "2026-11-09T03:56:44Z",
+          "tree_id": "c9bbdd3c48b51c674f0fc9d7e27dd0605072e617",
+          "url": "https://github.com/ocaml/dune/commit/cbe5bba56da28853ae1d719425f5a13e88cfde1d"
+        },
+        "date": 1794197812538,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5605924140199999,
             "unit": "seconds"
           }
         ]

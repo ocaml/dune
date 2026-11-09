@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794205721019,
+  "lastUpdate": 1794205992932,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -485255,6 +485255,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.53148408108,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8aeacf3cea56ee8448f0a847b2fe74e966bf0507",
+          "message": "build: declare package dependencies for bootstrap metadata (#16970)\n\nGive the sandboxed `bootstrap-info` invocation explicit package\ndependencies so it can resolve csexp, pp, ppx_expect, and re without\nrelying on ambient library visibility. The self-hosting comparison is\nunchanged.",
+          "timestamp": "2026-11-09T06:17:19Z",
+          "tree_id": "560ec93f6df2a95c9e5fdaa44374412eb468c928",
+          "url": "https://github.com/ocaml/dune/commit/8aeacf3cea56ee8448f0a847b2fe74e966bf0507"
+        },
+        "date": 1794205991070,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 52.007924795380006,
             "unit": "seconds"
           }
         ]

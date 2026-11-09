@@ -1,6 +1,6 @@
+open Stdune
 open Core
 open Core.O
-open Stdune
 
 module In = struct
   (* Invariant: once [read] has returned [None], it always returns [None] *)

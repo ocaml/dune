@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794200971280,
+  "lastUpdate": 1794200978660,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -485168,6 +485168,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 60.99453224131333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "56a2d26427738193555701a3b5366dba424898b2",
+          "message": "test(dune-site): drop result and declare build-info dependency (#16976)\n\nDeclare `dune-build-info` as a test-only dependency for the dune-site\nCram fixtures. Remove the obsolete `result` compatibility dependency and\nunused `Result` open from the threaded-plugin fixtures instead of adding\nit to the test environment.",
+          "timestamp": "2026-11-09T04:40:52Z",
+          "tree_id": "c9bb23b199d3065a21c1a13ce1f1700d7c711080",
+          "url": "https://github.com/ocaml/dune/commit/56a2d26427738193555701a3b5366dba424898b2"
+        },
+        "date": 1794200977442,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4940082172733334,
             "unit": "seconds"
           }
         ]

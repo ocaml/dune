@@ -46,8 +46,10 @@ Replay the generated include paths. The alias cannot be resolved.
   > | [(if .[0] == "B" then "-I" else "-H" end), .[1]]
   > | @sh' merlin.json > includes
   $ ! xargs melc -color never --mel-stop-after-cmj -o replay.cmj \
-  >   consumer/consumer.ml < includes 2> errors
-  $ sed -n '/^Error:/p' errors
+  >   consumer/consumer.ml < includes
+  File "consumer/consumer.ml", line 1, characters 13-21:
+  1 | let answer = Bridge.P.answer
+                   ^^^^^^^^
   Error: The module Bridge.P is an alias for module Dep__Private, which is missing
 
 Adding the missing hidden path restores typing. Neither the dependency nor
@@ -59,12 +61,16 @@ its private compilation unit becomes directly available.
   $ echo 'let answer = Dep.Api.P.answer' > consumer/consumer.ml
   $ ! xargs melc -color never --mel-stop-after-cmj -o replay.cmj \
   >   -H "$PWD/_build/default/lib/.dep.objs/melange" \
-  >   consumer/consumer.ml < includes 2> errors
-  $ sed -n '/^Error:/p' errors
+  >   consumer/consumer.ml < includes
+  File "consumer/consumer.ml", line 1, characters 13-16:
+  1 | let answer = Dep.Api.P.answer
+                   ^^^
   Error: Unbound module Dep
   $ echo 'let answer = Dep__Private.answer' > consumer/consumer.ml
   $ ! xargs melc -color never --mel-stop-after-cmj -o replay.cmj \
   >   -H "$PWD/_build/default/lib/.dep.objs/melange" \
-  >   consumer/consumer.ml < includes 2> errors
-  $ sed -n '/^Error:/p' errors
+  >   consumer/consumer.ml < includes
+  File "consumer/consumer.ml", line 1, characters 13-25:
+  1 | let answer = Dep__Private.answer
+                   ^^^^^^^^^^^^
   Error: Unbound module Dep__Private

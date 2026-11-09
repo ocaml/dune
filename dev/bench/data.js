@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794200336257,
+  "lastUpdate": 1794200342465,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -485052,6 +485052,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 40.46310459031334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "221cf47abef01965eb47f381e27a45b774e8a8e7",
+          "message": "test: declare build-info dependencies for nested fixtures (#16974)\n\nGive the versioning, PPX, and promotion Cram fixtures explicit\n`dune-build-info` dependencies so their nested builds can resolve the\nlibrary without relying on an ambient installation. Existing expected\noutputs are unchanged.",
+          "timestamp": "2026-11-09T04:40:05Z",
+          "tree_id": "e8f2da2e9865b54d1ae119ef5aac0ecdf0bb78f8",
+          "url": "https://github.com/ocaml/dune/commit/221cf47abef01965eb47f381e27a45b774e8a8e7"
+        },
+        "date": 1794200341552,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.3801101292666667,
             "unit": "seconds"
           }
         ]

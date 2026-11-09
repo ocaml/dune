@@ -21,7 +21,9 @@ let sandbox_action dap =
   if Sys.file_exists "../choice" then failwith "undeclared dependency is visible";
   replace_file "../inputs/static.txt" "local";
   let* choice, repeated =
-    Lwt.both (read_file dap ~path:"../choice") (read_file dap ~path:"../choice")
+    Lwt.both
+      (read_file dap ~path:"../choice")
+      (read_file dap ~path:(Filename.concat (Sys.getcwd ()) "../choice"))
   in
   if choice <> repeated then failwith "inconsistent dependency contents";
   let* data = read_file dap ~path:choice in

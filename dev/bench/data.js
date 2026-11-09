@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794197813667,
+  "lastUpdate": 1794197866833,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -675032,6 +675032,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.9261670649533333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "78b57173e38842b942329a3185f204a56fbdadae",
+          "message": "test(jsoo): declare runtime package dependencies (#16973)\n\nDeclare `js_of_ocaml` as a package dependency of the JavaScript Cram\nsuite, in addition to locating its compiler executable. Nested builds\nneed the package's runtime libraries as well as the binary.",
+          "timestamp": "2026-11-09T03:58:14Z",
+          "tree_id": "f7c4bde72b75b8c8626fae6fd3979f881e68153a",
+          "url": "https://github.com/ocaml/dune/commit/78b57173e38842b942329a3185f204a56fbdadae"
+        },
+        "date": 1794197461248,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.85200458432,
             "unit": "seconds"
           }
         ]

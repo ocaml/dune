@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794198483165,
+  "lastUpdate": 1794198490850,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -484994,6 +484994,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 64.4944398547,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "145524882b9c7976146a67a2189b08a5dfaebefb",
+          "message": "test: declare packages used by PPX and inline-test fixtures (#16972)\n\nDeclare `ppxlib`, `ppx_inline_test`, and `cinaps` dependencies for the\nCram fixtures that use them, including the shared instrumentation setup.\nNested builds then receive the required libraries through their package\nenvironment rather than relying on ambient or transitive visibility.",
+          "timestamp": "2026-11-09T03:58:39Z",
+          "tree_id": "236235fc148623bea7315472e937d69890cd991e",
+          "url": "https://github.com/ocaml/dune/commit/145524882b9c7976146a67a2189b08a5dfaebefb"
+        },
+        "date": 1794198489797,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.49438703706666676,
             "unit": "seconds"
           }
         ]

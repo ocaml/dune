@@ -5,11 +5,11 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1792956975,
-        "narHash": "sha256-Bok+eMWdErQE6c8IXFVVLn7GNwzHHkC5tukwd/ESuGA=",
+        "lastModified": 1794194917,
+        "narHash": "sha256-m+5EoPwNNikPuXPYONXrrKiJL26KEEf7AxWrni/Kbb4=",
         "owner": "nix-ocaml",
         "repo": "nix-overlays",
-        "rev": "81f20c73bc7a76d1752d4366ad2282923adc94d6",
+        "rev": "db9c609b2a5eb6dbc35dc4ee55e4466f44f8ff9a",
         "type": "github"
       },
       "original": {
@@ -20,28 +20,28 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1792925778,
-        "narHash": "sha256-aCg6fAHZszDX68IsLPUm/NQ7ZVXMHk74bjHAIr8K5dM=",
+        "lastModified": 1794157196,
+        "narHash": "sha256-Ad+p0TzAFYZBdYL6W6335tl3Qq3iLRdMdu3Fx95N8N8=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "acc2ec71996e90e6e011fa14979b13cdc070ec79",
+        "rev": "4d6a01a11146f4691c0991682885ad9e4686e3ee",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "acc2ec71996e90e6e011fa14979b13cdc070ec79",
+        "rev": "4d6a01a11146f4691c0991682885ad9e4686e3ee",
         "type": "github"
       }
     },
     "ocaml-trunk": {
       "flake": false,
       "locked": {
-        "lastModified": 1792839935,
-        "narHash": "sha256-ra+oSwX1ZcJ/mUz9EYZYfp/Vb/fVQSgww/ybn/Jwx8M=",
+        "lastModified": 1794134331,
+        "narHash": "sha256-mKeuO173aJ9xBHg6AVkfFwZQKJc5WQxlDHJGM0OZFW0=",
         "owner": "ocaml",
         "repo": "ocaml",
-        "rev": "4a625fbdab9e29c95f4aed0b50b7402b537b9611",
+        "rev": "8e4e85c8767f5644779fb3aaca7f23a71915cbb4",
         "type": "github"
       },
       "original": {
@@ -54,11 +54,11 @@
     "revdeps-dune": {
       "flake": false,
       "locked": {
-        "lastModified": 1792895057,
-        "narHash": "sha256-nPObMlplCr/deB2emdPc1opWHexObfpaFeSsxpt3Hug=",
+        "lastModified": 1794181447,
+        "narHash": "sha256-tuc/RjY30dv7KYNb9CwRJcOIE3iIJB6+d7LTfrPM3oM=",
         "owner": "ocaml",
         "repo": "dune",
-        "rev": "b818b8b7340819bdf2e3e1de882da0374bbbcaa9",
+        "rev": "b10a3809c79a04465043951902c8652dfaceca47",
         "type": "github"
       },
       "original": {

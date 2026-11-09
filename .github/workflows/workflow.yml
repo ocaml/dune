@@ -201,8 +201,8 @@ jobs:
             cache-prefix: 4.14.x
             os: ubuntu-latest
           ## ubuntu (x86-32)
-          - ocaml-compiler: "ocaml-variants.4.14.2+options,ocaml-option-32bit"
-            cache-prefix: "ocaml-variants.4.14.2-ocaml-option-32bit"
+          - ocaml-compiler: "ocaml-variants.4.14.5+options,ocaml-option-32bit"
+            cache-prefix: "ocaml-variants.4.14.5-ocaml-option-32bit"
             os: ubuntu-latest
             apt_update: true
           ## macos (Apple Silicon)

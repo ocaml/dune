@@ -4,14 +4,6 @@
    (DUNE_SANDBOX symlink))))
 
 (cram
- (applies_to private-alias-transitive.t)
- (enabled_if
-  (and
-   %{bin-available:melc}
-   (>= %{ocaml_version} 5.2)
-   %{read:../../utils/melange-supports-hidden-includes})))
-
-(cram
  (applies_to :whole_subtree)
  (deps %{bin:node} %{bin:melc})
  (alias runtest-melange))

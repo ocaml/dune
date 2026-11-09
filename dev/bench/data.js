@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794205999797,
+  "lastUpdate": 1794206639520,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -675641,6 +675641,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.2262899600400003,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ca9bb3738572156ce0bd8209f570ba24ab3bd4f5",
+          "message": "fix(stdune): bootstrap with OxCaml ox15 (#16968)\n\nInherit the standard-library declarations for `Either`, `Result`, and\n`Seq` instead of restating constructor representations that changed in\nOxCaml `5.4.0-ox15`. Include `Either` in the shared imports to preserve\nunqualified constructor access and keep the shared aliases equal to the\nstandard-library types.\n\nFollow-up to #16589.",
+          "timestamp": "2026-11-09T06:32:42Z",
+          "tree_id": "6d879dfff8dc2288e0163b509419f013de4d7be6",
+          "url": "https://github.com/ocaml/dune/commit/ca9bb3738572156ce0bd8209f570ba24ab3bd4f5"
+        },
+        "date": 1794206318587,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.0841009297933333,
             "unit": "seconds"
           }
         ]

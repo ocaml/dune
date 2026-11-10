@@ -1,4 +1,4 @@
 (library
  (name lib)
- (modes melange)
+ (modes byte melange)
  (private_modules x))

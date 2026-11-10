@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794319888316,
+  "lastUpdate": 1794320478900,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -676163,6 +676163,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.3001035148333338,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "26d0bdded8ddea2ab1a59461f573e4928b90c0f1",
+          "message": "fix: track private CMIs in OCaml compilation dependencies (#16939)\n\nTrack private CMIs as compilation dependencies so wrapper aliases work in sandboxes and private interface changes rebuild consumers.\n\nUses the regression test from #16937. Fixes #16071.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-10T06:07:29-08:00",
+          "tree_id": "aa74c445164e2b93d822d9dc60df07c603e59ad5",
+          "url": "https://github.com/ocaml/dune/commit/26d0bdded8ddea2ab1a59461f573e4928b90c0f1"
+        },
+        "date": 1794320076245,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.84177306894,
             "unit": "seconds"
           }
         ]

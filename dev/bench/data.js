@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794321097516,
+  "lastUpdate": 1794321115412,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -676279,6 +676279,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 4.074890378206667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cb4508f505eec415cfbd0cd606f9e34675aef7fb",
+          "message": "test(melange): demonstrate private aliases in direct dependencies (#16931)\n\nDemonstrate that public aliases of private Melange modules fail to\ncompile, including in a fresh copy sandbox. Related to #16629.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\n---------\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-10T06:14:38-08:00",
+          "tree_id": "1a85bf5c4a5bddff767ae67bc0664422f86d85b3",
+          "url": "https://github.com/ocaml/dune/commit/cb4508f505eec415cfbd0cd606f9e34675aef7fb"
+        },
+        "date": 1794320597129,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 4.1072909434866665,
             "unit": "seconds"
           }
         ]

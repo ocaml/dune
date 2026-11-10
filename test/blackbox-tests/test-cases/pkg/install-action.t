@@ -39,8 +39,9 @@ Testing install actions
   ; variables = []
   }
 
-An install manifest takes precedence when the install action's scanner also
-finds the file, even if executable permissions suggest a different section.
+An install manifest should take precedence over the install action's scanner.
+Currently, executable permissions cause the scanner to classify the same file
+as libexec, so the cookie incorrectly records it in both lib and libexec.
 
   $ make_lockpkg overlap <<'EOF'
   > (version 1.0)

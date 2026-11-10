@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794328212124,
+  "lastUpdate": 1794328432282,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -486009,6 +486009,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5452291438,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "quentin@tarides.com",
+            "name": "mefyl",
+            "username": "mefyl"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8d48a155edd8828e8a4d18015b8159ddbadd5843",
+          "message": "Fix double error reporting in eager watch mode. (#16900)\n\n## Description\n\nEnrich `Memo` API to split the installation of an error handler and the\nrun/collection of errors, so that running multiple goals in parallel can\nstill share an error handler and eventually deduplicate them between\ngoals.\n\n## Related Issue and Motivation\n\nFixes #15609.\n\nThe root cause is pretty clear: we split the run of goals for several\ngood reasons, but in the process we lost deduplication of errors between\ngoals.\n\nI tried several approaches to make the diff as minimal as possible; the\nmost obvious & sensible one to me was to accumulate the errors in the\nhandler itself. The whole point of it is to centralize the errors of\nevery sub-computation, so deduplicating there seemed like a no brainer,\nbut it ended up being a headache:\n* It changes what version of the exception are reported. I think the\ncurrent implementation is timing dependent too, so maybe we can just\naccept it. A proper fix would be to not use a set of exceptions at all\nlevels, but a map that deduplicates but still keeps a deterministic\nversion of the stack. This would however mean comparing stacks whenever\nerrors arise, so maybe too impactful performance-wise.\n* It reports more error: in the current version, some errors are passed\nto the handler but are absent in the final report. AFAICT it's already a\nbug, since an early report will happen for an error that actually\ndisappears at the end, but relying on the handler for the final reports\nmakes it worse since the extra error is now also part of the final\nreport.\n\n<details>\n<summary>Scenario to trigger a phantom error in the error handler that\nis absent from the final report</summary>\n``` \n- Run 1: A depends on B. B returns 0 and A returns 1, no errors.\n- B is invalidated. Both functions have internal state, so on the next computation A no longer needs B, while B now depends on A.\n- Run 2, building A:\n  a. Memo tries to restore A from the cache. To do that, it first checks A's recorded dependency, B. B is out of date, so Memo recomputes it.\n  b. B's new computation calls A, which is still being restored. That's a cycle, and B fails with Cycle_error.\n  c. Because of the failure, B's error goes through report_and_collect_errors in compute, so the handler receives it.\n  d. Since its dependency changed, A is recomputed. It doesn't call B anymore and returns Ok 0.\n```\n</details>\n\nI don't mind digging into this approach, which I think is fundamentally\nbetter, but it's going to take some decision making and some adjacent\nbug fixing. This fix is a bit more grunty, but it does the deed in a\nreasonable, if not elegant way, I think.\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-11-10T17:20:46+01:00",
+          "tree_id": "43f7e4d93990f72f19ee3ca73da056dc7449c4cf",
+          "url": "https://github.com/ocaml/dune/commit/8d48a155edd8828e8a4d18015b8159ddbadd5843"
+        },
+        "date": 1794328430430,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 41.63455443890667,
             "unit": "seconds"
           }
         ]

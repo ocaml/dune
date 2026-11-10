@@ -1,0 +1,18 @@
+{
+  "opamRepository": {
+    "rev": "c2662be9bcad3875554acccff7bd1e3fe8cb57bc",
+    "narHash": "sha256-2zn4PKRw7vsSh7tp+/nBZFjGE6fWrYm9lgrIWmvfVS8="
+  },
+  "release": {
+    "version": "5.2.0minus39",
+    "tag": "5.2.0minus-39",
+    "variant": "5.2.0+ox",
+    "rev": "dd4e8507373d22fb295422eb6dd3d997c76c47cb",
+    "narHash": "sha256-IXgxNbNS5JlZeR3loZt2SRKrOI7hrOfC//mQHGafhxY="
+  },
+  "latest": {
+    "tag": "5.2.0minus-39",
+    "rev": "dd4e8507373d22fb295422eb6dd3d997c76c47cb",
+    "narHash": "sha256-IXgxNbNS5JlZeR3loZt2SRKrOI7hrOfC//mQHGafhxY="
+  }
+}

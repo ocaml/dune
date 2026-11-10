@@ -27,10 +27,10 @@ file in the package's source.
 
   $ build_pkg foo
 
-Make sure that the package's source directory ends up with the version
-of foo.txt from extra_sources:
+Even without build or install actions, overlays must not modify prepared inputs.
+
   $ cat _build/_private/default/.pkg/$($dune pkg print-digest foo)/source/foo.txt
-  from extra source
+  from source
   $ cat foo-source/foo.txt
   from source
 

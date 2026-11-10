@@ -89,12 +89,12 @@ module Action_expander : sig
     -> string Env_update.t Memo.t
 end
 
-module Install_action : sig
-  val installable_sections : Section.t list
-
-  val action
-    :  Path.Build.t Paths.t
-    -> [ `No_install_action | `Has_install_action ]
-    -> prefix_outside_build_dir:Path.Outside_build_dir.t option
-    -> Action.t
-end
+(** All source copies are already prepared files. Destinations are relative
+    to the supplied working directory, not persistent source targets. *)
+val execute
+  :  expander:Action_expander.Expander.t
+  -> write_paths:Path.Build.t Paths.t
+  -> source_files:(Path.t * Path.Local.t) list Action_builder.t
+  -> build:Action.Full.t Action_builder.With_targets.t list
+  -> install:Action.Full.t Action_builder.With_targets.t list
+  -> Action.Full.t Action_builder.With_targets.t

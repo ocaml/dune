@@ -1246,3 +1246,55 @@ module Install_action = struct
       }
   ;;
 end
+
+let execute ~expander ~write_paths ~source_files ~build ~install =
+  let copies =
+    let open Action_builder.O in
+    let* source_files = source_files in
+    let+ () = Action_builder.paths (List.map source_files ~f:fst) in
+    Action.progn
+      (Action.mkdir write_paths.Paths.source_dir
+       :: List.map source_files ~f:(fun (src, local) ->
+         let dst = Path.Build.append_local write_paths.source_dir local in
+         Action.progn
+           [ Action.mkdir (Path.Build.parent_exn dst)
+           ; Action.remove_tree dst
+           ; Action.copy src dst
+           ]))
+    |> Action.Full.make
+  in
+  let install_dirs =
+    match install with
+    | [] -> []
+    | _ ->
+      let paths = Paths.install_paths write_paths in
+      [ Install_action.installable_sections
+        |> List.map ~f:(fun section -> Action.mkdir (Install.Paths.get paths section))
+        |> Action.progn
+        |> Action.Full.make
+        |> Action_builder.With_targets.return
+      ]
+  in
+  let finish =
+    Install_action.action
+      write_paths
+      (match install with
+       | [] -> `No_install_action
+       | _ -> `Has_install_action)
+      ~prefix_outside_build_dir:
+        (Path.as_outside_build_dir expander.Action_expander.Expander.paths.prefix)
+    |> Action.Full.make
+    |> Action_builder.With_targets.return
+  in
+  Action_builder.progn
+    ((Action_builder.with_no_targets copies :: build)
+     @ install_dirs
+     @ install
+     @ [ finish ])
+  |> Action_builder.With_targets.map ~f:(fun action ->
+    Action.Full.add_env (Value_list_env.to_env expander.env) action
+    |> Action.Full.add_sandbox (Sandbox_mode.Set.singleton Sandbox_mode.copy)
+    |> Action.Full.disable_sandbox_policy)
+  |> Action_builder.With_targets.add_directories
+       ~directory_targets:[ write_paths.target_dir ]
+;;

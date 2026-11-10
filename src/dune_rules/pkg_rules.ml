@@ -900,12 +900,6 @@ end = struct
   ;;
 end
 
-module Install_action = Opam_build.Install_action
-
-let add_env env action =
-  Action_builder.With_targets.map action ~f:(Action.Full.add_env env)
-;;
-
 let rule ?loc { Action_builder.With_targets.build; targets } =
   (* TODO this ignores the workspace file *)
   Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
@@ -1030,119 +1024,48 @@ let dune_dep =
 ;;
 
 let build_rule context_name ~source_deps (pkg : Pkg.t) =
-  let+ build_action =
-    let+ copy_action, build_action, install_action =
-      let+ copy_action =
-        let+ copy_action =
-          let+ () = Memo.return () in
-          let open Action_builder.O in
-          [ Action_builder.with_no_targets
-            @@ (Action_builder.of_memo
-                  (Memo.of_thunk (fun () ->
-                     let deps, source_deps = files pkg.files_dir in
-                     Memo.return (source_deps, deps)))
-                |> Action_builder.dyn_deps
-                >>= fun source_deps ->
-                Path.Set.to_list_map source_deps ~f:(fun src ->
-                  let dst =
-                    let prefix = Path.build pkg.files_dir in
-                    let local_path = Path.drop_prefix_exn src ~prefix in
-                    Path.Build.append_local pkg.write_paths.source_dir local_path
-                  in
-                  Action.progn
-                    [ Action.mkdir (Path.Build.parent_exn dst); Action.copy src dst ])
-                |> Action.concurrent
-                |> Action.Full.make
-                |> Action_builder.return)
-          ]
-        in
-        copy_action
-        @ List.map pkg.info.extra_sources ~f:(fun (local, _) ->
-          (* If the package has extra sources, they will be
-             initially stored in the extra_sources directory for that
-             package. Prior to building, the contents of
-             extra_sources must be copied into the package's source
-             directory. *)
-          let src = Paths.extra_source pkg.paths local in
-          let dst = Path.Build.append_local pkg.write_paths.source_dir local in
-          Action.progn
-            [ (* If the package has no source directory (some
-                 low-level packages are exclusively made up of extra
-                 sources), the source directory is first created. *)
-              Action.mkdir pkg.write_paths.source_dir
-            ; (* It's possible for some extra sources to already be at
-                 the destination. If these files are write-protected
-                 then the copy action will fail if we don't first remove
-                 them. *)
-              Action.remove_tree dst
-            ; Action.copy src dst
-            ]
-          |> Action.Full.make
-          |> Action_builder.With_targets.return)
-      and+ build_action =
-        match Action_expander.build_command context_name pkg with
-        | None -> Memo.return []
-        | Some build_command -> build_command >>| List.singleton
-      and+ install_action =
-        match Action_expander.install_command context_name pkg with
-        | None -> Memo.return []
-        | Some install_action ->
-          let+ install_action = install_action in
-          let mkdir_install_dirs =
-            let install_paths = Paths.install_paths pkg.write_paths in
-            Install_action.installable_sections
-            |> List.rev_map ~f:(fun section ->
-              Install.Paths.get install_paths section |> Action.mkdir)
-            |> Action.progn
-            |> Action.Full.make
-            |> Action_builder.With_targets.return
-          in
-          [ mkdir_install_dirs; install_action ]
-      in
-      copy_action, build_action, install_action
+  let+ build =
+    match Action_expander.build_command context_name pkg with
+    | None -> Memo.return []
+    | Some command -> command >>| List.singleton
+  and+ install =
+    match Action_expander.install_command context_name pkg with
+    | None -> Memo.return []
+    | Some command -> command >>| List.singleton
+  in
+  let source_files =
+    let open Action_builder.O in
+    let+ files =
+      Action_builder.of_memo
+        (Memo.of_thunk (fun () ->
+           let deps, files = files pkg.files_dir in
+           Memo.return (files, deps)))
+      |> Action_builder.dyn_deps
     in
-    let install_file_action =
-      let prefix_outside_build_dir = Path.as_outside_build_dir pkg.paths.prefix in
-      Install_action.action
-        pkg.write_paths
-        (match Action_expander.install_command context_name pkg with
-         | None -> `No_install_action
-         | Some _ -> `Has_install_action)
-        ~prefix_outside_build_dir
-      |> Action.Full.make
-      |> Action_builder.return
-      |> Action_builder.with_no_targets
-    in
-    (* Action to print a "Building" message for the package if its
-       target directory is not yet created. *)
-    let progress_building =
-      Pkg_build_progress.progress_action pkg.info.name pkg.info.version `Building
-      |> Action.Full.make
-      |> Action_builder.return
-      |> Action_builder.with_no_targets
-    in
-    [ copy_action
-    ; [ progress_building ]
-    ; build_action
-    ; install_action
-    ; [ install_file_action ]
-    ]
-    |> List.concat
-    |> Action_builder.progn
+    Path.Set.to_list_map files ~f:(fun src ->
+      src, Path.drop_prefix_exn src ~prefix:(Path.build pkg.files_dir))
+    @ List.map pkg.info.extra_sources ~f:(fun (local, _) ->
+      Paths.extra_source pkg.paths local, local)
+  in
+  let progress =
+    Pkg_build_progress.progress_action pkg.info.name pkg.info.version `Building
+    |> Action.Full.make
+    |> Action_builder.With_targets.return
+  in
+  let action =
+    Opam_build.execute
+      ~expander:(Action_expander.expander context_name pkg)
+      ~write_paths:pkg.write_paths
+      ~source_files
+      ~build:(progress :: build)
+      ~install
+  in
+  let deps = Dep.Set.union source_deps (Pkg.package_deps pkg) in
+  let deps =
+    if pkg.depends_on_dune then Dep.Set.add deps (Lazy.force dune_dep) else deps
   in
   let open Action_builder.With_targets.O in
-  (let deps =
-     let deps = Dep.Set.union source_deps (Pkg.package_deps pkg) in
-     match pkg.depends_on_dune with
-     | false -> deps
-     | true -> Dep.Set.add deps (Lazy.force dune_dep)
-   in
-   Action_builder.deps deps |> Action_builder.with_no_targets)
-  (* TODO should we add env deps on these? *)
-  >>> add_env (Pkg.exported_env pkg) build_action
-  |> Action_builder.With_targets.map ~f:Action.Full.disable_sandbox_policy
-  |> Action_builder.With_targets.add_directories
-       ~directory_targets:[ pkg.write_paths.target_dir ]
+  Action_builder.with_no_targets (Action_builder.deps deps) >>> action
 ;;
 
 let gen_rules context_name (pkg : Pkg.t) =

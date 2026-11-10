@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794321466438,
+  "lastUpdate": 1794321474035,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -485806,6 +485806,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 64.20132443358,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "66defeefa51bca2127c8fe24f4d36c3e210a6331",
+          "message": "test(melange): demonstrate aliases into installed private libraries (#16934)\n\nDemonstrate that aliases into installed private libraries work in OCaml\nbut fail in Melange, while direct private references remain unavailable.\nRelated to #16629.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\n---------\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-10T06:17:37-08:00",
+          "tree_id": "25b6714d967b6d11da6bbd2a561ef941864bfcc7",
+          "url": "https://github.com/ocaml/dune/commit/66defeefa51bca2127c8fe24f4d36c3e210a6331"
+        },
+        "date": 1794321473061,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5173191267666667,
             "unit": "seconds"
           }
         ]

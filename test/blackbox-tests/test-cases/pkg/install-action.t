@@ -59,10 +59,7 @@ as libexec, so the cookie incorrectly records it in both lib and libexec.
          [ In_build_dir
              "_private/default/.pkg/overlap.1.0-$DIGEST/target/lib/overlap/payload"
          ])
-      ; (LIBEXEC,
-         [ In_build_dir
-             "_private/default/.pkg/overlap.1.0-$DIGEST/target/lib/overlap/payload"
-         ])
+      ; (LIBEXEC, [])
       ]
   ; variables = []
   }

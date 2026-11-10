@@ -841,7 +841,7 @@ module Install_action = struct
       }
 
     let name = "install-file-run"
-    let version = 1
+    let version = 4
     let runs_process = false
     let can_run_in_action_runner = false
 
@@ -1211,10 +1211,16 @@ module Install_action = struct
         in
         (* Combine the artifacts declared in the .install, and the ones we discovered
            by runing the install action *)
-        (* TODO we should make sure that overwrites aren't allowed *)
+        let declared =
+          Section.Map.values from_install_file |> List.concat |> Path.Set.of_list
+        in
+        let from_install_action =
+          Section.Map.map from_install_action ~f:(fun files ->
+            List.filter files ~f:(fun file -> not (Path.Set.mem declared file)))
+        in
         Section.Map.union from_install_action from_install_file ~f:(fun _ x y ->
           Some (x @ y))
-        |> Section.Map.map ~f:(List.sort ~compare:Path.compare)
+        |> Section.Map.map ~f:(List.sort_uniq ~compare:Path.compare)
       in
       let* cookies =
         let+ variables = Async.async (fun () -> read_variables config_file) in

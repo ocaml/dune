@@ -33,10 +33,14 @@ let
 
   extractQuoted =
     line:
+    if line == null then null else
     let
-      parts = builtins.match ''.*"([^"]+)".*'' line;
+      parts = builtins.match ''[^"]*"([^"\\]+)".*'' line;
     in
-    if parts == null then null else builtins.head parts;
+    if parts == null then
+      throw "unsupported quoted opam string: ${line}"
+    else
+      builtins.head parts;
 
   extractBlock =
     startMarker: lines:
@@ -49,13 +53,9 @@ let
           let
             line = builtins.head lines;
             rest = builtins.tail lines;
-            trimmed = lib.trimWith {
-              start = true;
-              end = false;
-            } line;
           in
           if state.inBlock then
-            if lib.hasPrefix "]" trimmed || lib.hasPrefix "}" trimmed then
+            if lib.hasPrefix "]" line || lib.hasPrefix "}" line then
               state.result
             else
               go (state // { result = state.result ++ [ line ]; }) rest
@@ -71,17 +71,21 @@ let
 
   readOpamLines =
     pkgName: version:
-    lib.splitString "\n" (builtins.readFile "${packagesDir}/${pkgName}/${version}/opam");
+    map lib.trim (
+      lib.splitString "\n"
+        (builtins.readFile "${packagesDir}/${pkgName}/${version}/opam")
+    );
 
   enterSubpath =
     pkgName: version:
     let
-      line = lib.findFirst (line: lib.hasPrefix "x-subpath:" line) null (
+      line = lib.findFirst (lib.hasPrefix "x-subpath:") null (
         readOpamLines pkgName version
       );
+      subpath = extractQuoted line;
     in
-    lib.optionalString (line != null) ''
-      sourceRoot="$sourceRoot/${extractQuoted line}"
+    lib.optionalString (subpath != null) ''
+      sourceRoot="$sourceRoot"/${lib.escapeShellArg subpath}
     '';
 
   getPatches =
@@ -98,11 +102,11 @@ let
     let
       urlBlock = extractBlock "url {" (readOpamLines pkgName version);
       urlLine = lib.findFirst (l: lib.hasInfix "https://" l || lib.hasInfix "http://" l) null urlBlock;
-      url = if urlLine != null then extractQuoted urlLine else null;
+      url = extractQuoted urlLine;
       sha256Line = lib.findFirst (l: lib.hasInfix "sha256=" l) null urlBlock;
       sha512Line = lib.findFirst (l: lib.hasInfix "sha512=" l) null urlBlock;
-      sha256raw = if sha256Line != null then extractQuoted sha256Line else null;
-      sha512raw = if sha512Line != null then extractQuoted sha512Line else null;
+      sha256raw = extractQuoted sha256Line;
+      sha512raw = extractQuoted sha512Line;
       hash =
         if sha256raw != null then "sha256:${lib.removePrefix "sha256=" sha256raw}"
         else if sha512raw != null then "sha512:${lib.removePrefix "sha512=" sha512raw}"
@@ -118,8 +122,7 @@ let
         let m = builtins.match ''.*"([a-zA-Z0-9_-]+)".*'' line;
         in if m != null then builtins.head m else null;
       isDepLine = l:
-        let trimmed = lib.trim l; in
-        trimmed != "" && trimmed != "[" && trimmed != "]"
+        l != "" && l != "[" && l != "]"
         && !(lib.hasInfix "with-test" l)
         && !(lib.hasInfix "with-doc" l)
         && !(lib.hasInfix "with-dev-setup" l);
@@ -201,7 +204,8 @@ let
         { doCheck = false; }
         // (lib.optionalAttrs (src != null) {
           inherit src;
-          postUnpack = (old.postUnpack or "") + enterSubpath opamName ver;
+          postUnpack =
+            (old.postUnpack or "") + "\n" + enterSubpath opamName ver;
         })
         // (lib.optionalAttrs (patches != [ ]) {
           patches = (old.patches or [ ]) ++ patches;

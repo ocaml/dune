@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794321133023,
+  "lastUpdate": 1794321203862,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -676337,6 +676337,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.85211053468,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3ac8dab21b9b23c945b89de55b136995f4b2edaa",
+          "message": "test(melange): demonstrate private aliases in transitive dependencies (#16932)\n\nDemonstrate missing private CMIs through hidden transitive Melange\ndependencies, while checking that direct dependency names remain hidden.\nRelated to #16629.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\n---------\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-10T06:15:12-08:00",
+          "tree_id": "678f17066499fae130fdcb76e3dd9540bb727f99",
+          "url": "https://github.com/ocaml/dune/commit/3ac8dab21b9b23c945b89de55b136995f4b2edaa"
+        },
+        "date": 1794320699703,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.618109094673333,
             "unit": "seconds"
           }
         ]

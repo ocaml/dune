@@ -56,6 +56,7 @@ type t =
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Section.t Site.Map.t
   ; allow_empty : bool
+  ; odoc : bool
   ; original_opam_file : original_opam_file option
   ; exclusive_dir : (Loc.t * Path.Source.t) option
   ; duplicate_dep_warnings : User_message.t list
@@ -85,6 +86,7 @@ let set_version_and_info t ~version ~info = { t with version; info }
 let exclusive_dir t = t.exclusive_dir
 let duplicate_dep_warnings t = t.duplicate_dep_warnings
 let enabled_if t = t.enabled_if
+let odoc t = t.odoc
 
 let encode
       (name : Name.t)
@@ -102,6 +104,7 @@ let encode
       ; deprecated_package_names
       ; sites
       ; allow_empty
+      ; odoc
       ; opam_file = _
       ; original_opam_file = _
       ; exclusive_dir
@@ -128,6 +131,7 @@ let encode
             (Name.Map.keys deprecated_package_names)
         ; field_l "sites" (pair Site.encode Section.encode) (Site.Map.to_list sites)
         ; field_b "allow_empty" allow_empty
+        ; field "odoc" bool ~default:true odoc
         ; field_o
             "dir"
             (fun (_, dir) ->
@@ -222,6 +226,7 @@ let decode =
            Section.to_string
            "Site location name"
        and+ allow_empty = field_b "allow_empty" ~check:(Syntax.since Stanza.syntax (3, 0))
+       and+ odoc = field "odoc" (Unreleased.since () >>> bool) ~default:true
        and+ lang_version = Syntax.get_exn Stanza.syntax in
        let allow_empty = lang_version < (3, 0) || allow_empty in
        let duplicate_dep_warnings =
@@ -250,6 +255,7 @@ let decode =
        ; deprecated_package_names
        ; sites
        ; allow_empty
+       ; odoc
        ; opam_file
        ; original_opam_file = None
        ; exclusive_dir
@@ -281,6 +287,7 @@ let to_dyn
       ; deprecated_package_names
       ; sites
       ; allow_empty
+      ; odoc
       ; opam_file = _
       ; original_opam_file = _
       ; exclusive_dir = _
@@ -303,6 +310,7 @@ let to_dyn
     ; "deprecated_package_names", Name.Map.to_dyn Loc.to_dyn_hum deprecated_package_names
     ; "sites", Site.Map.to_dyn Section.to_dyn sites
     ; "allow_empty", Bool allow_empty
+    ; "odoc", Bool odoc
     ; "enabled_if", (option Blang.to_dyn) enabled_if
     ]
 ;;
@@ -348,6 +356,7 @@ let create
   ; deprecated_package_names
   ; sites
   ; allow_empty
+  ; odoc = true
   ; opam_file = Name.file name ~dir
   ; original_opam_file
   ; exclusive_dir =

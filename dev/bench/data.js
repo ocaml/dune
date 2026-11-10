@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794335286048,
+  "lastUpdate": 1794335298157,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -676975,6 +676975,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8980367892599994,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "387170616afa061bc7f2cfae239d026a1a45aecf",
+          "message": "test(pkg): reproduce duplicate manifest and scanner install entries (#16991)\n\nAdd a regression case where the install scanner and a `.install`\nmanifest record the same destination under different sections. The\nexpected cookie captures the current duplicate `LIB`/`LIBEXEC` entries;\nthe precedence fix remains separate.",
+          "timestamp": "2026-11-10T18:16:56Z",
+          "tree_id": "060f2fa0aa1109f181859fe3b3f8a1cb8c081dc6",
+          "url": "https://github.com/ocaml/dune/commit/387170616afa061bc7f2cfae239d026a1a45aecf"
+        },
+        "date": 1794334974284,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.1224147597666665,
             "unit": "seconds"
           }
         ]

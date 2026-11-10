@@ -1,5 +1,4 @@
-[dune tools env] should also put the binaries installed by the packages of the
-lock directory in PATH.
+[dune tools env] should also put the binaries installed by packages dependencies in PATH.
 
   $ mkrepo
   $ mkpkg provider <<'EOF'

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794329731212,
+  "lastUpdate": 1794331051602,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -676859,6 +676859,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.573577815566667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7e8907cec64cb38705736e12fc855e8cbd1dc7bc",
+          "message": "refactor(nix): share OxCaml compiler pins with CI (#16985)\n\nMove the OxCaml compiler and opam-repository pins into shared JSON data\nso Nix shells and CI can consume the same configuration. Keep the\nexisting pins and release-tag consistency check, and expose separate\nrelease/latest compiler selections.\n\nSplit out of #16969.",
+          "timestamp": "2026-11-10T17:05:32Z",
+          "tree_id": "840a4917302864312f63da716ed70954882c300b",
+          "url": "https://github.com/ocaml/dune/commit/7e8907cec64cb38705736e12fc855e8cbd1dc7bc"
+        },
+        "date": 1794330728748,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.3396152059133333,
             "unit": "seconds"
           }
         ]

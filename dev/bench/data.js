@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794321203862,
+  "lastUpdate": 1794321445488,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -485719,6 +485719,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5131298056600001,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "598654eb3d7b3215d796e9724e23fdd0f5b8696c",
+          "message": "test(melange): compare private wrapper aliases with OCaml (#16933)\n\nDemonstrate the difference between OCaml and Melange when resolving a\nprivate module through its generated wrapper alias. Related to #16629.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\n---------\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-10T06:17:09-08:00",
+          "tree_id": "579d816bb548aa7c158846c58721db29f08ec8ef",
+          "url": "https://github.com/ocaml/dune/commit/598654eb3d7b3215d796e9724e23fdd0f5b8696c"
+        },
+        "date": 1794321442897,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 67.25327363965333,
             "unit": "seconds"
           }
         ]

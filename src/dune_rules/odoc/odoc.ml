@@ -686,6 +686,7 @@ end
 
 let setup_toplevel_index_rule sctx output =
   let* packages = Dune_load.packages () in
+  let packages = Package.Name.Map.filter packages ~f:Package.odoc in
   let index = Toplevel_index.of_packages packages output in
   let content = Toplevel_index.content output index in
   let ctx = Super_context.context sctx in
@@ -1161,6 +1162,7 @@ let setup_package_odoc_rules sctx ~pkg =
 
 let gen_project_rules sctx project =
   Dune_project.packages project
+  |> Dune_lang.Package_name.Map.filter ~f:Package.odoc
   |> Dune_lang.Package_name.Map.to_seq
   |> Memo.parallel_iter_seq ~f:(fun (_, (pkg : Package.t)) ->
     (* setup @doc to build the correct html for the package *)

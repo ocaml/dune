@@ -41,14 +41,12 @@ HTML documentation:
   $ list_indexes _html html
   _build/default/_doc/_html/bar/Bar/index.html
   _build/default/_doc/_html/bar/index.html
-  _build/default/_doc/_html/foo/Foo/index.html
-  _build/default/_doc/_html/foo/index.html
   _build/default/_doc/_html/index.html
   $ grep -o 'href="[a-z]*/index.html"' _build/default/_doc/_html/index.html
   href="bar/index.html"
-  href="foo/index.html"
 
-The documentation of bar links to the page of Foo.t:
+The documentation of bar still links to the page of Foo.t. That page is not
+generated, so the link is dangling:
 
   $ grep -o 'href="[^"]*foo[^"]*"' _build/default/_doc/_html/bar/Bar/index.html | sort -u
   href="../../foo/Foo/index.html#type-t"
@@ -57,15 +55,13 @@ JSON documentation:
 
   $ dune build @doc-json
   $ cat _build/default/_doc/_html/index.html.json
-  {"packages":[{"name":"bar","version":null,"link":"bar/index.html"},{"name":"foo","version":null,"link":"foo/index.html"}]}
+  {"packages":[{"name":"bar","version":null,"link":"bar/index.html"}]}
 
 Markdown documentation:
 
   $ dune build @doc-markdown
   $ list_indexes _markdown md
   _build/default/_doc/_markdown/bar/index.md
-  _build/default/_doc/_markdown/foo/index.md
   _build/default/_doc/_markdown/index.md
   $ grep -o '([a-z]*/index.md)' _build/default/_doc/_markdown/index.md
   (bar/index.md)
-  (foo/index.md)

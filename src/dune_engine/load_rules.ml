@@ -2,7 +2,6 @@ open Import
 open Memo.O
 module Gen_rules = Build_config.Gen_rules
 module Context_type = Build_config.Context_type
-module Build_only_sub_dirs = Gen_rules.Build_only_sub_dirs
 
 module Current_rule_loc = struct
   let t = ref (fun () -> Memo.return None)
@@ -482,14 +481,17 @@ end = struct
 
   module Normal = struct
     type t =
-      { build_dir_only_sub_dirs : Build_only_sub_dirs.t
+      { build_dir_only_sub_dirs : Subdir_set.t Path.Build.Map.t
       ; directory_targets : Loc.t Path.Build.Map.t
       ; rules : Rules.t Memo.Lazy.t
       }
 
     let combine_exn r { build_dir_only_sub_dirs; directory_targets; rules } =
       { build_dir_only_sub_dirs =
-          Build_only_sub_dirs.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
+          Path.Build.Map.union
+            r.build_dir_only_sub_dirs
+            build_dir_only_sub_dirs
+            ~f:(fun _ left right -> Some (Subdir_set.union left right))
       ; directory_targets = Path.Build.Map.union_exn r.directory_targets directory_targets
       ; rules =
           Memo.lazy_ ~name:"union-rules" (fun () ->
@@ -506,16 +508,6 @@ end = struct
         then
           Code_error.raise
             "[gen_rules] returned directory target in a directory that is not a \
-             descendant of the directory it was called for"
-            [ "dir", Path.Build.to_dyn dir; "example", Path.Build.to_dyn p ])
-    ;;
-
-    let check_all_sub_dirs_rule_dirs_are_descendant ~of_:dir build_dir_only_sub_dirs =
-      Path.Build.Map.iteri build_dir_only_sub_dirs ~f:(fun p _ ->
-        if not (Path.Build.is_descendant p ~of_:dir)
-        then
-          Code_error.raise
-            "[gen_rules] returned sub-directories in a directory that is not a \
              descendant of the directory it was called for"
             [ "dir", Path.Build.to_dyn dir; "example", Path.Build.to_dyn p ])
     ;;
@@ -555,7 +547,9 @@ end = struct
           { Gen_rules.Rules.build_dir_only_sub_dirs; directory_targets; rules }
       =
       check_all_directory_targets_are_descendant ~of_ directory_targets;
-      check_all_sub_dirs_rule_dirs_are_descendant ~of_ build_dir_only_sub_dirs;
+      let build_dir_only_sub_dirs =
+        Path.Build.Map.singleton of_ build_dir_only_sub_dirs
+      in
       let rules =
         Memo.lazy_ ~name:"check-rules-are-descendant" (fun () ->
           let+ rules = rules in

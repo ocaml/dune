@@ -14,8 +14,6 @@ include struct
   module Dune_dep = Dune_dep
 end
 
-module Variable = Opam_build.Variable
-
 module Package_universe = struct
   (* A type of group of packages that are co-installed. Multiple different
      versions of a package may be co-installed into the same universe.
@@ -175,6 +173,7 @@ module Paths = struct
   ;;
 end
 
+module Variable = Opam_build.Variable
 module Install_cookie = Opam_build.Install_cookie
 module Value_list_env = Opam_build.Value_list_env
 module Env_update = Opam_build.Env_update
@@ -425,7 +424,9 @@ module Action_expander = struct
     ; name = pkg.info.name
     ; artifacts
     ; context
+    ; path = Env_path.path (Global.env ())
     ; depends
+    ; files = Memo.return Package.Name.Map.empty
     ; depexts = pkg.depexts
     ; version = pkg.info.version
     ; env

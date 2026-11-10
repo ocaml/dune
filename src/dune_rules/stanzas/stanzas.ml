@@ -72,6 +72,7 @@ let stanzas : Stanza.Parser.t list =
     ; "library_parameter", with_redirect Parameter.decode
     ; "foreign_library", Foreign_library.decode_stanza Foreign_library.decode
     ; ("cram", Cram_stanza.(decode_stanza decode))
+    ; ("opam", Opam_stanza.(decode_stanza decode))
     ; ("executable", Executables.(decode_stanza single))
     ; ("executables", Executables.(decode_stanza multi))
     ; ("rule", Rule_conf.(decode_stanza Rule_conf.decode))
@@ -130,6 +131,7 @@ let stanza_package stanza =
      | Alias_conf.T { package = Some package; _ }
      | Rule_conf.T { package = Some package; _ }
      | Install_conf.T { package; _ }
+     | Opam_stanza.T { package; _ }
      | Plugin.T { package; _ }
      | Executables.T { install_conf = Some { package; _ }; _ }
      | Documentation.T { package; _ }

@@ -619,7 +619,15 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
               and+ project_rules =
                 match st_dir with
                 | None -> Memo.return Rules.empty
-                | Some st_dir -> gen_project_rules sctx st_dir
+                | Some st_dir ->
+                  let+ project_rules = gen_project_rules sctx st_dir
+                  and+ metadata_rules =
+                    Rules.collect_unit (fun () ->
+                      let* sctx = sctx in
+                      let project = Source_tree.Dir.project st_dir in
+                      Install_rules.gen_metadata_rules sctx project ~dir)
+                  in
+                  Rules.union project_rules metadata_rules
               and+ compile_commands_rules =
                 (* Generate compile_commands.json only for the merlin
                    context at the context root *)
@@ -745,19 +753,23 @@ let private_context ~dir components _ctx =
   | `Invalid_context -> Memo.return Gen_rules.Unknown_context
   | `Valid (_, ".binaries" :: rest) -> Memo.return (Bin_layout.gen_rules ~dir rest)
   | `Valid (ctx, ".packages" :: rest) -> Install_layout.gen_rules ctx ~dir rest
+  | `Valid (ctx, ".opam" :: rest) -> Opam_rules.gen_rules ctx ~dir rest
   | `Valid (ctx, components) ->
     let+ lock_rules = Lock_rules.setup_rules ~dir ~components
     and+ pkg_rules = Pkg_rules.setup_rules ctx ~dir ~components in
-    let layout_roots =
+    let private_roots =
       match components with
       | [] ->
         Gen_rules.make_empty
           ~dir
           (Subdir_set.of_list
-             [ Filename.of_string_exn ".packages"; Filename.of_string_exn ".binaries" ])
+             [ Filename.of_string_exn ".packages"
+             ; Filename.of_string_exn ".binaries"
+             ; Filename.of_string_exn ".opam"
+             ])
       | _ -> Gen_rules.no_rules
     in
-    Gen_rules.combine layout_roots (Gen_rules.combine lock_rules pkg_rules)
+    Gen_rules.combine private_roots (Gen_rules.combine lock_rules pkg_rules)
   | `Root ->
     let+ contexts = Per_context.list () in
     let build_dir_only_sub_dirs =

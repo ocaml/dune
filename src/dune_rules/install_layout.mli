@@ -10,6 +10,18 @@ val set_entry_resolver
     the set. *)
 val env : Context_name.t -> Package.Name.Set.t -> Env.t Action_builder.t
 
+(** Materialize outputs and return capabilities, without applying exports. *)
+val materialize
+  :  Context_name.t
+  -> Package.Name.Set.t
+  -> Opam_build.Dependency.t list Action_builder.t
+
+val apply_exported_env
+  :  context:Context_name.t
+  -> env:Env.t
+  -> Opam_build.Dependency.t list
+  -> Env.t Action_builder.t
+
 (** Engine dispatch for [_build/_private/<context>/.packages/<rest>]. Called
     from [Gen_rules]; the layout dir is owned by this module. Resolves to:
     - no rules for the [.packages/] root itself ([rest = []]),

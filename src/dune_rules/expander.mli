@@ -46,6 +46,7 @@ val set_scope
   -> t
 
 val set_artifacts : t -> artifacts_host:Artifacts.t Memo.t -> t
+val add_package_deps : t -> Package.Name.Set.t Action_builder.t -> t
 
 module Expanding_what : sig
   type t =

@@ -502,7 +502,65 @@ let to_dyn { path; kind; plain } =
 let get_static_sexp t = (Dir_map.root t.plain).sexps
 let kind t = t.kind
 let path t = t.path
-let sub_dir_status t = Source_dir_status.Spec.create (Dir_map.root t.plain).subdir_status
+
+let opam_dir =
+  let open Dune_lang.Decoder in
+  field
+    "dir"
+    (plain_string (fun ~loc name ->
+       match Filename.of_string name with
+       | Some name -> name
+       | None ->
+         User_error.raise
+           ~loc
+           [ Pp.text "The opam directory must be an immediate subdirectory name." ]))
+;;
+
+let sub_dir_status t =
+  let { Dir_map.Per_dir.sexps; subdir_status; files = _ } = Dir_map.root t.plain in
+  let opam_dirs =
+    let decode =
+      let open Dune_lang.Decoder in
+      fields
+        (let+ loc, dir = located opam_dir
+         and+ _ = leftover_fields in
+         dir, loc)
+    in
+    List.filter_map sexps ~f:(function
+      | Dune_lang.Ast.List (loc, Atom (_, name) :: fields)
+        when String.equal (Dune_lang.Atom.to_string name) "opam" ->
+        Some
+          (Dune_lang.Decoder.parse
+             (Dune_lang.Decoder.enter decode)
+             Univ_map.empty
+             (List (loc, fields)))
+      | _ -> None)
+  in
+  let subdir_status =
+    match opam_dirs with
+    | [] -> subdir_status
+    | (_, loc) :: _ ->
+      let dirs =
+        match Filename.Map.of_list opam_dirs with
+        | Ok dirs -> Filename.Map.keys dirs |> List.map ~f:Filename.to_string
+        | Error (dir, _, loc) ->
+          User_error.raise
+            ~loc
+            [ Pp.textf
+                "Directory %S is already used by another opam stanza."
+                (Filename.to_string dir)
+            ]
+      in
+      let predicate = Predicate_lang.Glob.of_string_list dirs in
+      let predicate =
+        match subdir_status.data_only with
+        | None -> predicate
+        | Some (_, existing) -> Predicate_lang.or_ [ existing; predicate ]
+      in
+      { subdir_status with data_only = Some (loc, predicate) }
+  in
+  Source_dir_status.Spec.create subdir_status
+;;
 
 let dirs_stanza_loc t =
   Source_dir_status.Map.find (Dir_map.root t.plain).subdir_status Normal
@@ -585,6 +643,10 @@ let ensure_dune_project_file_exists =
 ;;
 
 let load ~dir (status : Source_dir_status.t) project ~files ~parent =
+  let parent =
+    Option.bind parent ~f:(fun parent ->
+      Dir_map.descend parent.plain (Path.Source.basename dir))
+  in
   let file =
     if status = Data_only
     then None
@@ -595,10 +657,6 @@ let load ~dir (status : Source_dir_status.t) project ~files ~parent =
     else if Filename.Array.Set.mem files fname
     then Some fname
     else None
-  in
-  let parent =
-    Option.bind parent ~f:(fun parent ->
-      Dir_map.descend parent.plain (Path.Source.basename dir))
   in
   match parent, file with
   | None, None -> Memo.return None

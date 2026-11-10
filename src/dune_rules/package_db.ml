@@ -7,27 +7,32 @@ type any_package =
   | Local of Package.t
   | Installed of Dune_package.t
   | Build of unit Action_builder.t
+  | Opam of Opam_package.t
 
 let find_package ctx pkg =
-  let* packages = Dune_load.packages () in
-  match Package.Name.Map.find packages pkg with
-  | Some p -> Memo.return (Some (Local p))
+  let* opaque = Opam_package.find ctx pkg in
+  match opaque with
+  | Some opaque -> Memo.return (Some (Opam opaque))
   | None ->
-    Pkg_rules.lock_dir_active ctx
-    >>= (function
-     | true ->
-       Pkg_rules.find_package ctx pkg
-       >>| (function
-        | None -> None
-        | Some b -> Some (Build b))
-     | false ->
-       let* findlib = Findlib.create ctx in
-       Findlib.find_root_package findlib pkg
+    let* packages = Dune_load.packages () in
+    (match Package.Name.Map.find packages pkg with
+     | Some p -> Memo.return (Some (Local p))
+     | None ->
+       Pkg_rules.lock_dir_active ctx
        >>= (function
-        | Ok p -> Memo.return @@ Some (Installed p)
-        | Error (Invalid_dune_package user_message) ->
-          User_error.raise [ User_message.pp user_message ]
-        | Error Not_found -> Memo.return None))
+        | true ->
+          Pkg_rules.find_package ctx pkg
+          >>| (function
+           | None -> None
+           | Some b -> Some (Build b))
+        | false ->
+          let* findlib = Findlib.create ctx in
+          Findlib.find_root_package findlib pkg
+          >>= (function
+           | Ok p -> Memo.return @@ Some (Installed p)
+           | Error (Invalid_dune_package user_message) ->
+             User_error.raise [ User_message.pp user_message ]
+           | Error Not_found -> Memo.return None)))
 ;;
 
 let create ctx = Memo.return ctx
@@ -35,7 +40,7 @@ let create ctx = Memo.return ctx
 let section_of_any_package_site any_package pkg_name loc site =
   let sites =
     match any_package with
-    | Build _ ->
+    | Build _ | Opam _ ->
       (* TODO We should be able to extract this information after the package
          is built *)
       Site.Map.empty

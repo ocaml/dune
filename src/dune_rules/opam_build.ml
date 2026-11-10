@@ -89,6 +89,17 @@ module Paths = struct
     }
   ;;
 
+  let with_prefix t prefix =
+    let roots = lazy (install_roots ~target_dir:prefix ~relative:Path.relative) in
+    { t with
+      target_dir = prefix
+    ; prefix
+    ; install_roots = roots
+    ; install_paths =
+        lazy (install_paths (Lazy.force roots) t.name ~relative:Path.relative)
+    }
+  ;;
+
   let extra_source t extra_source = Path.append_local t.extra_sources extra_source
 
   let extra_source_build t extra_source =
@@ -166,6 +177,31 @@ module Install_cookie = struct
     Persistent.dump path { t with files = Section.Map.to_list t.files }
   ;;
 end
+
+module Dependency = struct
+  type t =
+    { paths : Path.t Paths.t
+    ; files : Path.t list Section.Map.t
+    ; variables : Variable.value Package_variable_name.Map.t
+    ; exported_env : String_with_vars.t Dune_lang.Action.Env_update.t list
+    ; export_paths : Path.t Paths.t
+    }
+
+  let binaries { paths; files; _ } =
+    let { Install.Roots.bin; _ } = Paths.install_roots paths in
+    Section.Map.Multi.find files Bin
+    |> List.filter ~f:(fun path -> Path.equal (Path.parent_exn path) bin)
+  ;;
+end
+
+let variables ~name ~version ~dev =
+  [ "name", Variable.S (Package.Name.to_string name)
+  ; "version", S (Package_version.to_string version)
+  ; "dev", B dev
+  ]
+  |> List.map ~f:(fun (key, value) -> Package_variable_name.of_string key, value)
+  |> Package_variable_name.Map.of_list_exn
+;;
 
 module Value_list_env = struct
   (* A representation of an environment where each variable can hold a
@@ -287,8 +323,10 @@ module Expander0 = struct
     ; depends :
         (Variable.value Package_variable_name.Map.t * Path.t Paths.t) Package.Name.Map.t
           Memo.t
+    ; files : Path.t list Section.Map.t Package.Name.Map.t Memo.t
     ; depexts : Depexts.t list
     ; context : Context_name.t
+    ; path : Path.t list
     ; version : Package_version.t
     ; env : Value.t list Env.Map.t
     }
@@ -326,7 +364,7 @@ module Substitute = struct
       }
 
     let name = "substitute"
-    let version = 4
+    let version = 5
     let runs_process = false
     let can_run_in_action_runner = false
     let bimap t f g = { t with src = f t.src; dst = g t.dst }
@@ -363,7 +401,7 @@ module Substitute = struct
         paths_repr
         Repr.(list (pair Filename.repr Path.repr))
         Repr.(list (pair variable_map_repr paths_repr))
-        Package_version.repr
+        Repr.(pair Package_version.repr (list Path.repr))
     ;;
 
     let encode { expander; depends; artifacts; src; dst } input output : Sexp.t =
@@ -374,7 +412,7 @@ module Substitute = struct
           ( paths expander.paths
           , Filename.Map.to_list artifacts
           , Package.Name.Map.to_list_map depends ~f:(fun _ (m, p) -> m, paths p)
-          , expander.version )
+          , (expander.version, expander.path) )
         |> Digest.to_string_raw
       in
       List [ Atom e; input src; output dst ]
@@ -556,7 +594,9 @@ module Action_expander = struct
           ; paths
           ; artifacts = _
           ; context
+          ; path
           ; depends
+          ; files
           ; version = _
           ; depexts = _
           }
@@ -570,11 +610,51 @@ module Action_expander = struct
       | Var Context_name ->
         Memo.return (Ok [ Value.String (Context_name.to_string context) ])
       | Var Make ->
-        let+ make =
-          let path = Env_path.path (Global.env ()) in
-          Make_prog.which loc context ~path
-        in
+        let+ make = Make_prog.which loc context ~path in
         Ok [ Value.Path make ]
+      | Macro ({ macro = Pkg; _ } as macro_invocation)
+        when List.length (Pform.Macro_invocation.Args.split macro_invocation) = 3 ->
+        let* files = files in
+        (match Pform.Macro_invocation.Args.split macro_invocation with
+         | [ package; section; file ] ->
+           let package = Package.Name.of_string package in
+           let section =
+             match Section.of_string section with
+             | Some section -> section
+             | None -> User_error.raise ~loc [ Pp.text "Unknown install section" ]
+           in
+           let file = Path.Local.of_string file in
+           let* depends = depends in
+           (match Package.Name.Map.find depends package with
+            | None ->
+              User_error.raise
+                ~loc
+                [ Pp.textf
+                    "Package %s is not a direct dependency"
+                    (Package.Name.to_string package)
+                ]
+            | Some (_, paths) ->
+              let path =
+                Path.append_local
+                  (Install.Paths.get (Paths.install_paths paths) section)
+                  file
+              in
+              let available =
+                Package.Name.Map.find files package
+                |> Option.value ~default:Section.Map.empty
+                |> fun files -> Section.Map.Multi.find files section
+              in
+              if not (List.mem available path ~equal:Path.equal)
+              then
+                User_error.raise
+                  ~loc
+                  [ Pp.textf
+                      "File %s is not installed by package %s"
+                      (Path.Local.to_string file)
+                      (Package.Name.to_string package)
+                  ];
+              Memo.return (Ok [ Value.Path path ]))
+         | _ -> Code_error.raise "Invalid installed-file invocation" [])
       | Macro ({ macro = Pkg | Pkg_self; _ } as macro_invocation) ->
         expand_pkg_macro ~loc paths depends macro_invocation
       | _ -> Expander0.isn't_allowed_in_this_position ~source
@@ -651,8 +731,7 @@ module Action_expander = struct
                 (match Filename.Map.find artifacts program with
                  | Some s -> Memo.return @@ Ok s
                  | None ->
-                   (let path = Global.env () |> Env_path.path in
-                    Which.which ~path program)
+                   Which.which ~path:t.path program
                    >>= (function
                     | Some p -> Memo.return (Ok p)
                     | None ->
@@ -809,6 +888,15 @@ module Action_expander = struct
   ;;
 end
 
+module Recipe = struct
+  type t =
+    { build : Dune_lang.Action.t option
+    ; install : Dune_lang.Action.t option
+    ; depexts : Depexts.t list
+    ; exported_env : String_with_vars.t Env_update.t list
+    }
+end
+
 module Install_action = struct
   (* The install action does the following:
 
@@ -841,7 +929,7 @@ module Install_action = struct
       }
 
     let name = "install-file-run"
-    let version = 1
+    let version = 4
     let runs_process = false
     let can_run_in_action_runner = false
 
@@ -1209,12 +1297,16 @@ module Install_action = struct
             in
             map
         in
-        (* Combine the artifacts declared in the .install, and the ones we discovered
-           by runing the install action *)
-        (* TODO we should make sure that overwrites aren't allowed *)
+        let declared =
+          Section.Map.values from_install_file |> List.concat |> Path.Set.of_list
+        in
+        let from_install_action =
+          Section.Map.map from_install_action ~f:(fun files ->
+            List.filter files ~f:(fun file -> not (Path.Set.mem declared file)))
+        in
         Section.Map.union from_install_action from_install_file ~f:(fun _ x y ->
           Some (x @ y))
-        |> Section.Map.map ~f:(List.sort ~compare:Path.compare)
+        |> Section.Map.map ~f:(List.sort_uniq ~compare:Path.compare)
       in
       let* cookies =
         let+ variables = Async.async (fun () -> read_variables config_file) in
@@ -1247,6 +1339,32 @@ module Install_action = struct
   ;;
 end
 
+module Copy_source = struct
+  module Spec = struct
+    type ('path, 'target) t = 'path * 'target
+
+    let name = "copy-package-source"
+    let version = 1
+    let is_useful_to_memoize = true
+    let runs_process = false
+    let can_run_in_action_runner = false
+    let bimap (src, dst) f g = f src, g dst
+    let encode (src, dst) input output = Sexp.List [ input src; output dst ]
+
+    let action (src, dst) ~ectx:_ ~eenv:_ =
+      Async.async (fun () ->
+        Io.copy_file
+          ~overwrite:true
+          ~chmod:(Permissions.add Permissions.write)
+          ~src
+          ~dst:(Path.build dst)
+          ())
+    ;;
+  end
+
+  include Action_ext.Make (Spec)
+end
+
 let execute ~expander ~write_paths ~source_files ~build ~install =
   let copies =
     let open Action_builder.O in
@@ -1259,7 +1377,7 @@ let execute ~expander ~write_paths ~source_files ~build ~install =
          Action.progn
            [ Action.mkdir (Path.Build.parent_exn dst)
            ; Action.remove_tree dst
-           ; Action.copy src dst
+           ; Copy_source.action (src, dst)
            ]))
     |> Action.Full.make
   in

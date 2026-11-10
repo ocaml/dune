@@ -39,6 +39,7 @@ type t =
        those packages are not included unless they are listed too. Applies to
        both [local_bins] and the lock directory. *)
     visible_packages : Package.Name.Selection.t
+  ; package_deps : Package.Name.Set.t
   }
 
 let force { local_bins; _ } =
@@ -56,7 +57,7 @@ let local_binaries { local_bins; _ } =
 let origin_is_visible t (origin : origin) =
   match t.visible_packages, origin.package with
   | Package.Name.Selection.Only visible, Some package ->
-    Package.Name.Set.mem visible package
+    Package.Name.Set.mem visible package || Package.Name.Set.mem t.package_deps package
   (* An origin with no owning package is always visible, similar to the rule
      visibility with dune build -p. *)
   | (Only _ | All), _ -> true
@@ -80,10 +81,43 @@ let analyze_binary t ~dir name =
       match lookup_name with
       | None -> Memo.return `None
       | Some lookup_name ->
-        Context.which_narrowed_to_packages
-          t.context
-          ~packages:t.visible_packages
-          lookup_name
+        let find_opaque packages =
+          Memo.List.find_map packages ~f:(fun package ->
+            let* opaque = Opam_package.find (Context.name t.context) package in
+            match opaque with
+            | None -> Memo.return None
+            | Some opaque ->
+              let+ dependency, _ =
+                Action_builder.evaluate_and_collect_facts (Opam_package.dependency opaque)
+              in
+              Opam_build.Dependency.binaries dependency
+              |> List.find ~f:(fun path ->
+                String.equal
+                  (Bin.strip_exe (Filename.to_string (Path.basename path)))
+                  (Filename.to_string lookup_name)))
+        in
+        let packages =
+          match t.visible_packages with
+          | Package.Name.Selection.All -> t.package_deps
+          | Only visible -> Package.Name.Set.union visible t.package_deps
+        in
+        let* opaque = find_opaque (Package.Name.Set.to_list packages) in
+        (match opaque with
+         | Some path -> Memo.return (Some path)
+         | None ->
+           let* path =
+             Context.which_narrowed_to_packages
+               t.context
+               ~packages:t.visible_packages
+               lookup_name
+           in
+           (match path, t.visible_packages with
+            | Some _, _ | None, Only _ -> Memo.return path
+            | None, All ->
+              let* opaque = Opam_package.all (Context.name t.context) in
+              Package.Name.Map.keys opaque
+              |> List.filter ~f:(fun name -> not (Package.Name.Set.mem packages name))
+              |> find_opaque))
         >>| (function
          | None -> `None
          | Some path -> `Resolved path)
@@ -184,6 +218,10 @@ let add_binaries t ~dir l =
 
 let set_visible_packages t ~visible_packages = { t with visible_packages }
 
+let add_package_deps t packages =
+  { t with package_deps = Package.Name.Set.union t.package_deps packages }
+;;
+
 let create =
   fun (context : Context.t)
     ~(local_bins : origin Appendable_list.t Filename.Map.t Memo.Lazy.t) ->
@@ -195,5 +233,9 @@ let create =
         , Origin (Appendable_list.to_list sources) ))
       |> Filename.Map.of_list_exn)
   in
-  { context; local_bins; visible_packages = Package.Name.Selection.All }
+  { context
+  ; local_bins
+  ; visible_packages = Package.Name.Selection.All
+  ; package_deps = Package.Name.Set.empty
+  }
 ;;

@@ -206,6 +206,25 @@ let packages () =
   packages
 ;;
 
+let package_closure names =
+  let+ packages = packages () in
+  let rec loop acc name =
+    if Package.Name.Set.mem acc name
+    then acc
+    else (
+      let acc = Package.Name.Set.add acc name in
+      match Package.Name.Map.find packages name with
+      | None -> acc
+      | Some pkg ->
+        List.fold_left
+          (Package.depends pkg @ Package.depopts pkg)
+          ~init:acc
+          ~f:(fun acc (dep : Package_dependency.t) -> loop acc dep.name))
+  in
+  Package.Name.Set.fold names ~init:Package.Name.Set.empty ~f:(fun name acc ->
+    loop acc name)
+;;
+
 let dune_files context =
   let* t = load () in
   t.dune_files context

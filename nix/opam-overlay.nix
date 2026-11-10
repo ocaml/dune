@@ -88,14 +88,62 @@ let
       sourceRoot="$sourceRoot"/${lib.escapeShellArg subpath}
     '';
 
-  getPatches =
-    pkgName: version:
+  getPatches = pkgName: version:
     let
-      filesDir = "${packagesDir}/${pkgName}/${version}/files";
-      files =
-        if builtins.pathExists filesDir then builtins.attrNames (builtins.readDir filesDir) else [ ];
+      contents = builtins.readFile "${packagesDir}/${pkgName}/${version}/opam";
+      quoted =
+        ''"""([^"\\]|\\.|"([^"\\]|\\.)|""([^"\\]|\\.))*"""''
+        + ''|"([^"\\]|\\.)*"'';
+      tokens = builtins.filter (token: !lib.hasPrefix "#" token) (
+        map builtins.head (builtins.filter builtins.isList (
+          builtins.split
+            ("(" + quoted + "|#[^\n]*|\\(\\*|[a-zA-Z0-9_+.-]+|[^[:space:]])")
+            contents
+        ))
+      );
+      find = depth: remaining:
+        if remaining == [] then null else
+        let
+          token = builtins.head remaining;
+          rest = builtins.tail remaining;
+          nextDepth =
+            if builtins.elem token [ "[" "{" ] then depth + 1
+            else if builtins.elem token [ "]" "}" ] then depth - 1
+            else depth;
+        in
+        if depth == 0 && token == "patches" && rest != []
+          && builtins.head rest == ":" then
+          builtins.tail rest
+        else
+          find nextDepth rest;
+      collect = depth: remaining:
+        if remaining == [] then throw "unterminated opam patches list" else
+        let
+          token = builtins.head remaining;
+          rest = builtins.tail remaining;
+        in
+        if token == "{" then collect (depth + 1) rest
+        else if token == "}" then
+          if depth == 0 then throw "unexpected } in opam patches"
+          else collect (depth - 1) rest
+        else if depth > 0 then collect depth rest
+        else if token == "]" then []
+        else [ (extractQuoted token) ] ++ collect 0 rest;
+      value = find 0 tokens;
+      names =
+        if value == null then []
+        else if value == [] then throw "missing opam patches value"
+        else if builtins.head value == "[" then
+          collect 0 (builtins.tail value)
+        else
+          [ (extractQuoted (builtins.head value)) ];
     in
-    map (f: "${filesDir}/${f}") (builtins.filter (f: lib.hasSuffix ".patch" f) files);
+    if builtins.elem "(*" tokens then
+      throw "block comments are unsupported in opam metadata"
+    else if builtins.elem "\"" tokens then
+      throw "unsupported quoted opam string"
+    else
+      map (name: "${packagesDir}/${pkgName}/${version}/files/${name}") names;
 
   getSource =
     pkgName: version:

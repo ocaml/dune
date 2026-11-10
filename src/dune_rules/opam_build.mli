@@ -1,4 +1,5 @@
-(** Shared action expansion, installation, and package output metadata. *)
+(** Opaque execution of a selected package recipe. Source preparation and
+    dependency selection belong to callers. *)
 
 open Import
 
@@ -26,6 +27,7 @@ module Paths : sig
 
   val of_root : Package.Name.t -> root:'a -> relative:('a -> string -> 'a) -> 'a t
   val map_path : 'a t -> f:('a -> 'b) -> 'b t
+  val with_prefix : Path.t t -> Path.t -> Path.t t
   val extra_source : Path.t t -> Path.Local.t -> Path.t
   val extra_source_build : Path.Build.t t -> Path.Local.t -> Path.Build.t
   val install_cookie : Path.t t -> Path.t
@@ -46,6 +48,24 @@ module Install_cookie : sig
 
   val load_exn : Path.t -> t
 end
+
+module Dependency : sig
+  type t =
+    { paths : Path.t Paths.t
+    ; files : Path.t list Section.Map.t
+    ; variables : Variable.value Package_variable_name.Map.t
+    ; exported_env : String_with_vars.t Dune_lang.Action.Env_update.t list
+    ; export_paths : Path.t Paths.t
+    }
+
+  val binaries : t -> Path.t list
+end
+
+val variables
+  :  name:Package.Name.t
+  -> version:Package_version.t
+  -> dev:bool
+  -> Variable.value Package_variable_name.Map.t
 
 module Value_list_env : sig
   type t = Value.t list Env.Map.t
@@ -72,8 +92,10 @@ module Action_expander : sig
       ; depends :
           (Variable.value Package_variable_name.Map.t * Path.t Paths.t) Package.Name.Map.t
             Memo.t
+      ; files : Path.t list Section.Map.t Package.Name.Map.t Memo.t
       ; depexts : Dune_pkg.Lock_dir.Depexts.t list
       ; context : Context_name.t
+      ; path : Path.t list
       ; version : Package_version.t
       ; env : Value_list_env.t
       }
@@ -87,6 +109,15 @@ module Action_expander : sig
     :  Expander.t
     -> String_with_vars.t Env_update.t
     -> string Env_update.t Memo.t
+end
+
+module Recipe : sig
+  type t =
+    { build : Dune_lang.Action.t option
+    ; install : Dune_lang.Action.t option
+    ; depexts : Dune_pkg.Lock_dir.Depexts.t list
+    ; exported_env : String_with_vars.t Env_update.t list
+    }
 end
 
 (** All source copies are already prepared files. Destinations are relative

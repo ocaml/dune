@@ -359,11 +359,19 @@ module Script = struct
   ;;
 end
 
+let check_static_opam_stanza stanza =
+  match Stanza.repr stanza with
+  | Opam_stanza.T { loc; _ } ->
+    User_error.raise ~loc [ Pp.text "Opam stanzas must be declared statically." ]
+  | _ -> ()
+;;
+
 let check_dynamic_stanza =
   (* CR-someday rgrinberg: unfortunately this needs to kept in sync with the rules
      manually *)
   let err = [ Pp.text "This stanza cannot be generated dynamically" ] in
   fun stanza ->
+    check_static_opam_stanza stanza;
     match Stanza.repr stanza with
     | Install_conf.T { section = loc, Section Bin; _ } ->
       User_error.raise ~loc [ Pp.text "binary section cannot be generated dynamically" ]
@@ -472,6 +480,7 @@ module Eval = struct
                   (Path.Source.to_string script.file))
               (fun () -> Script.eval_one ~context script)
           in
+          List.iter dune_file.static_stanzas ~f:check_static_opam_stanza;
           set_dynamic_stanzas dune_file ~eval:script.eval ~dynamic_includes)
       in
       let dune_syntax =

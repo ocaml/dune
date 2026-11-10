@@ -205,6 +205,9 @@ let package ~explicit loc pkg_name (context : Build_context.t) ~dune_version =
      Package_db.find_package package_db pkg_name)
   >>= function
   | Some (Build build) -> build
+  | Some (Opam opaque) ->
+    let+ (_ : Opam_build.Dependency.t) = Opam_package.dependency opaque in
+    ()
   | Some (Local _) ->
     (* The named/unnamed paths skip [Package _] before reaching here so that
        [combined_package_deps_builder] handles the whole package set at once.
@@ -278,7 +281,7 @@ let expand_package_set context package_names =
               Lib.DB.find lib_db (Deprecated_library_name.old_public_name redirect))
           in
           List.map libraries ~f:Lib.Local.to_lib @ redirected
-        | Some (Build _) ->
+        | Some (Opam _) | Some (Build _) ->
           (* We cannot know the libraries of a given dune pkg package so
              easily, however the dependency on that package already expands
              correctly to include the closure we are after. *)
@@ -421,6 +424,7 @@ and combined_package_deps_builder expander pkgs =
     List.filter_map classified ~f:(fun (_, _, found) ->
       match found with
       | Some (Package_db.Local pkg) -> Some (Package.name pkg)
+      | Some (Opam package) -> Some (Package.name package.stanza.package)
       | _ -> None)
     |> Package.Name.Set.of_list
   in
@@ -435,7 +439,10 @@ and combined_package_deps_builder expander pkgs =
     let* local_env =
       if Package.Name.Set.is_empty local_package_names
       then Action_builder.return Env.empty
-      else Install_layout.env context.name local_package_names
+      else
+        let* dependencies = Install_layout.materialize context.name local_package_names in
+        let* env = Install_layout.env context.name local_package_names in
+        Install_layout.apply_exported_env ~context:context.name ~env dependencies
     in
     if Package.Name.Set.is_empty lockdir_package_names
     then Action_builder.return local_env
@@ -452,7 +459,7 @@ and combined_package_deps_builder expander pkgs =
   let+ () =
     Action_builder.List.iter classified ~f:(fun (loc, pkg_name, found) ->
       match found with
-      | Some (Local _) -> Action_builder.return ()
+      | Some (Local _) | Some (Opam _) -> Action_builder.return ()
       | Some (Build build) -> build
       | Some (Installed _) ->
         let explicit =
@@ -588,7 +595,27 @@ and named_paths_builder ~expander l =
   builder, bindings, action_env
 ;;
 
+let add_package_deps expander deps =
+  let rec names deps =
+    Action_builder.List.concat_map deps ~f:(function
+      | Dep_conf.Package package ->
+        expand_package_name expander package >>| List.singleton
+      | Include file ->
+        let* deps = expand_include ~expander file in
+        names (Bindings.to_list deps)
+      | _ -> Action_builder.return [])
+  in
+  let packages =
+    let* names = names deps in
+    let* context = Action_builder.of_memo (Expander.host_context expander) in
+    Action_builder.of_memo
+      (expand_package_set (Context.name context) (Package.Name.Set.of_list names))
+  in
+  Expander.add_package_deps expander packages
+;;
+
 let named sandbox ~expander l =
+  let expander = add_package_deps expander (Bindings.to_list l) in
   let builder, bindings, action_env = named_paths_builder ~expander l in
   let builder =
     Action_builder.memoize

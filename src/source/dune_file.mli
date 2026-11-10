@@ -23,6 +23,9 @@ val kind : t -> kind
     returns [Some p] where [p] is path to the script *)
 val path : t -> Path.Source.t option
 
+(** The required literal child directory of an Opam stanza. *)
+val opam_dir : Filename.t Dune_lang.Decoder.fields_parser
+
 val sub_dir_status : t -> Source_dir_status.Spec.t
 
 (** The location of the (dirs ...) stanza if present *)

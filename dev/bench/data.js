@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794335627015,
+  "lastUpdate": 1794340153100,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -677120,6 +677120,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.1224147597666665,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b45237a71ba027ea2a24148c4f9a81406656cde7",
+          "message": "fix(nix): honor opam source subdirectories before patching (#16990)\n\nHonor opam's `x-subpath` when selecting the unpacked source root, before\npatches are applied, for both generated packages and overridden Nix\npackages. Share normalization and quoted-value parsing across source\nfields, preserve literal subpaths, and keep inherited unpack hooks\nseparate. Set `DUNE_ROOT=.` for generated packages so builds remain\nrooted in the selected source directory rather than a surrounding\nproject.\n\nSplit out of #16969.",
+          "timestamp": "2026-11-10T19:37:52Z",
+          "tree_id": "a651f6bd49efe67d0f0fdf27f45a9036dc105edf",
+          "url": "https://github.com/ocaml/dune/commit/b45237a71ba027ea2a24148c4f9a81406656cde7"
+        },
+        "date": 1794339830535,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.1538682627,
             "unit": "seconds"
           }
         ]

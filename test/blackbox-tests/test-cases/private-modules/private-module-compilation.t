@@ -16,15 +16,10 @@ Private wrapper aliases need the private module's CMI in the sandbox.
   > EOF
   $ echo 'let _ = Lib.Priv.value' > main.ml
 
-The alias resolves without sandboxing, but fails in a fresh copy sandbox:
+The alias resolves both without sandboxing and in a fresh copy sandbox:
 
   $ dune build --sandbox none --build-dir _build-none main.bc
   $ dune build --sandbox copy --cache=disabled --build-dir _build-copy main.bc
-  File "main.ml", line 1, characters 8-16:
-  1 | let _ = Lib.Priv.value
-              ^^^^^^^^
-  Error: The module Lib.Priv is an alias for module Lib__Priv, which is missing
-  [1]
 
 The private module's internal name remains unavailable:
 

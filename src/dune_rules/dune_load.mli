@@ -6,6 +6,14 @@
 open Import
 
 val dune_files : Context_name.t -> Dune_file.t list Memo.t
+
+(** Static stanzas owned by a package, including deprecated library names,
+    in traversal order. *)
+val stanzas_of_package
+  :  Context_name.t
+  -> Package.Name.t
+  -> (Path.Source.t * Stanza.t) list Memo.t
+
 val projects_by_root : unit -> Dune_project.t Path.Source.Map.t Memo.t
 val find_project : dir:Path.Build.t -> Dune_project.t Memo.t
 val stanzas_in_dir : Path.Build.t -> Dune_file.t option Memo.t

@@ -463,8 +463,6 @@ module DB = struct
         ; deprecated_library_names : Deprecated_library_name.t list
         }
 
-      let empty = { libraries = []; deprecated_library_names = [] }
-
       let of_list =
         let by_name x = Lib.Local.info x |> Lib_info.name in
         fun xs ->
@@ -507,89 +505,81 @@ module DB = struct
   end
 
   let lib_entries_of_package =
-    let make_map build_dir public_libs stanzas =
+    let package_entries build_dir public_libs stanzas =
       let+ libs =
-        Dune_file.Memo_fold.fold_static_stanzas stanzas ~init:[] ~f:(fun d stanza acc ->
+        Memo.List.fold_left stanzas ~init:[] ~f:(fun acc (src_dir, stanza) ->
           match Stanza.repr stanza with
           | Library.T ({ enabled_if; _ } as lib) ->
-            let src_dir = Dune_file.dir d in
             let lib_dir = Path.Build.append_source build_dir src_dir in
-            let* package_and_db =
+            let* db =
               match lib.visibility with
-              | Private None -> Memo.return None
-              | Private (Some package) ->
+              | Public _ -> Memo.return public_libs
+              | Private _ ->
                 let+ scope = find_by_dir lib_dir in
-                Some (package, libs scope)
-              | Public public ->
-                Memo.return (Some (Public_lib.package public, public_libs))
+                libs scope
             in
-            (match package_and_db with
-             | None -> Memo.return acc
-             | Some (package, db) ->
-               let* enabled =
-                 let* expander = Expander0.get ~dir:lib_dir in
-                 Expander0.eval_blang expander enabled_if
-               in
-               if not enabled
-               then Memo.return acc
-               else
-                 Lib.DB.find_lib_id db (Local (Library.to_lib_id ~src_dir lib))
-                 >>| (function
-                  | None -> acc
-                  | Some lib ->
-                    (Package.name package, Lib_entry.Library (Lib.Local.of_lib_exn lib))
-                    :: acc))
-          | Deprecated_library_name.T ({ old_name = old_public_name, _; _ } as d) ->
-            let package = Public_lib.package old_public_name in
-            let name = Package.name package in
-            Memo.return ((name, Lib_entry.Deprecated_library_name d) :: acc)
+            let* enabled =
+              let* expander = Expander0.get ~dir:lib_dir in
+              Expander0.eval_blang expander enabled_if
+            in
+            if enabled
+            then
+              Lib.DB.find_lib_id db (Local (Library.to_lib_id ~src_dir lib))
+              >>| function
+              | None -> acc
+              | Some lib -> Lib_entry.Library (Lib.Local.of_lib_exn lib) :: acc
+            else Memo.return acc
+          | Deprecated_library_name.T d ->
+            Memo.return (Lib_entry.Deprecated_library_name d :: acc)
           | _ -> Memo.return acc)
       in
-      Package.Name.Map.of_list_multi libs |> Package.Name.Map.map ~f:Lib_entry.Set.of_list
+      Lib_entry.Set.of_list libs
     in
-    let per_context =
-      Per_context.create_by_name ~name:"scope-db" (fun ctx ->
-        Memo.lazy_ ~name:"scope-db" (fun () ->
-          let* public_libs =
-            let* ctx = Context.DB.get ctx in
-            public_libs (Context.name ctx)
-          and* stanzas = Dune_load.dune_files ctx in
-          make_map (Context_name.build_dir ctx) public_libs stanzas)
-        |> Memo.Lazy.force)
-      |> Staged.unstage
+    let entries =
+      Memo.create
+        "package-library-entries"
+        ~input:
+          (module struct
+            type t = Context_name.t * Package.Name.t
+
+            let equal = Tuple.T2.equal Context_name.equal Package.Name.equal
+            let hash = Tuple.T2.hash Context_name.hash Package.Name.hash
+            let to_dyn = Tuple.T2.to_dyn Context_name.to_dyn Package.Name.to_dyn
+          end)
+        (fun (ctx, pkg_name) ->
+           let* public_libs = public_libs ctx
+           and* stanzas = Dune_load.stanzas_of_package ctx pkg_name in
+           package_entries (Context_name.build_dir ctx) public_libs stanzas)
     in
     fun (ctx : Context_name.t) pkg_name ->
-      let+ map = per_context ctx in
-      match Package.Name.Map.find map pkg_name with
-      | None -> Lib_entry.Set.empty
-      | Some libs ->
-        let _by_name =
-          Lib_entry.Set.fold libs ~init:Lib_name.Map.empty ~f:(fun entry2 by_name ->
-            let public_name = Lib_entry.name entry2 in
-            Lib_name.Map.update by_name public_name ~f:(function
-              | None -> Some entry2
-              | Some entry1 ->
-                let loc1 = Lib_entry.loc entry1
-                and loc2 = Lib_entry.loc entry2 in
-                let main_message =
-                  Pp.textf
-                    "Public library %s is defined twice:"
-                    (Lib_name.to_string public_name)
-                in
-                let compound =
-                  Compound_user_error.duplicate
-                    ~main_loc:loc2
-                    ~previous_loc:loc1
-                    main_message
-                in
-                User_error.raise
-                  ~compound
-                  ~loc:loc2
-                  [ main_message
-                  ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-                  ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-                  ]))
-        in
-        libs
+      let+ libs = Memo.exec entries (ctx, pkg_name) in
+      let _by_name =
+        Lib_entry.Set.fold libs ~init:Lib_name.Map.empty ~f:(fun entry2 by_name ->
+          let public_name = Lib_entry.name entry2 in
+          Lib_name.Map.update by_name public_name ~f:(function
+            | None -> Some entry2
+            | Some entry1 ->
+              let loc1 = Lib_entry.loc entry1
+              and loc2 = Lib_entry.loc entry2 in
+              let main_message =
+                Pp.textf
+                  "Public library %s is defined twice:"
+                  (Lib_name.to_string public_name)
+              in
+              let compound =
+                Compound_user_error.duplicate
+                  ~main_loc:loc2
+                  ~previous_loc:loc1
+                  main_message
+              in
+              User_error.raise
+                ~compound
+                ~loc:loc2
+                [ main_message
+                ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+                ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+                ]))
+      in
+      libs
   ;;
 end

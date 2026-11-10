@@ -130,18 +130,20 @@ let entries =
       match paths with
       | [] -> deps
       | _ ->
-        (* Literal-name selectors scan their list for every generated file. *)
-        if has_other_entries
-        then
-          List.fold_left paths ~init:deps ~f:(fun deps dst ->
-            Dep.Set.add deps (Dep.file (Path.build dst)))
-        else
-          File_selector.of_predicate_lang
-            ~dir:(Path.build dir)
-            ~only_generated_files:true
-            Predicate_lang.true_
-          |> Dep.file_selector
-          |> Dep.Set.add deps)
+        let predicate =
+          if has_other_entries
+          then
+            String.Set.of_list_map paths ~f:(fun path ->
+              Path.Build.basename path |> Filename.to_string)
+            |> Predicate_lang.Glob.of_string_set
+          else Predicate_lang.true_
+        in
+        File_selector.of_predicate_lang
+          ~dir:(Path.build dir)
+          ~only_generated_files:true
+          predicate
+        |> Dep.file_selector
+        |> Dep.Set.add deps)
   in
   let set_hash s = List.hash Package.Name.hash (Package.Name.Set.to_list s) in
   let memo =

@@ -211,6 +211,7 @@ module Glob = struct
     type t =
       | Glob of Proxy.t
       | Literal of string
+      | Literals of String.Array.Set.t
 
     let repr =
       let glob_repr =
@@ -220,24 +221,32 @@ module Glob = struct
         "glob-element"
         [ Repr.case "Glob" glob_repr ~proj:(function
             | Glob glob -> Some glob
-            | Literal _ -> None)
+            | Literal _ | Literals _ -> None)
         ; Repr.case "Literal" Repr.string ~proj:(function
             | Literal string -> Some string
-            | Glob _ -> None)
+            | Glob _ | Literals _ -> None)
+        ; Repr.case
+            "Literals"
+            (Repr.view Repr.(list string) ~to_:String.Array.Set.to_list)
+            ~proj:(function
+              | Literals strings -> Some strings
+              | Glob _ | Literal _ -> None)
         ]
     ;;
 
-    let to_dyn = function
+    let to_dyn t =
+      match t with
       | Literal s -> Dyn.variant "Literal" [ Dyn.string s ]
       | Glob g -> Dyn.variant "Glob" [ Glob.to_dyn (unproxy g) ]
+      | Literals _ -> Repr.to_dyn repr t
     ;;
 
-    let encode t =
-      Dune_sexp.atom_or_quoted_string
-      @@
-      match t with
-      | Literal s -> s
-      | Glob g -> Glob.to_string (unproxy g)
+    let encode = function
+      | Literal s -> Dune_sexp.atom_or_quoted_string s
+      | Glob g -> Dune_sexp.atom_or_quoted_string (Glob.to_string (unproxy g))
+      | Literals strings ->
+        let open Dune_sexp.Encoder in
+        constr "or" (list string) (String.Array.Set.to_list strings)
     ;;
 
     let compare x y =
@@ -246,12 +255,23 @@ module Glob = struct
       | Glob _, _ -> Lt
       | _, Glob _ -> Gt
       | Literal x, Literal y -> String.compare x y
+      | Literal _, Literals _ -> Lt
+      | Literals _, Literal _ -> Gt
+      | Literals x, Literals y ->
+        if x == y
+        then Eq
+        else
+          List.compare
+            (String.Array.Set.to_list x)
+            (String.Array.Set.to_list y)
+            ~compare:String.compare
     ;;
 
     let test t s =
       match t with
       | Literal s' -> String.equal s s'
       | Glob g -> Glob.test (unproxy g) s
+      | Literals strings -> String.Array.Set.mem strings s
     ;;
 
     let decode =
@@ -288,7 +308,7 @@ module Glob = struct
   let of_string_list s = Or (List.rev_map s ~f:(fun x -> Element (Element.Literal x)))
 
   let of_string_set s =
-    Or (String.Set.to_list_map ~f:(fun x -> Element (Element.Literal x)) s)
+    Element (Element.Literals (String.Set.to_list s |> String.Array.Set.of_sorted_list))
   ;;
 
   let compare x y = compare Element.compare x y

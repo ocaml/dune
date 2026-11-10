@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794242877372,
+  "lastUpdate": 1794319468219,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -675989,6 +675989,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.9974399932933333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f0f6a3d649be9b3d0af739300d497cd8b1795402",
+          "message": "test(ocaml): demonstrate private aliases missing sandbox dependencies (#16937)\n\nDemonstrate that private wrapper aliases compile without sandboxing but\nfail in a fresh copy sandbox because the private CMI is unavailable.\nFound while checking the Melange counterparts of #16629.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\n---------\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-10T05:55:32-08:00",
+          "tree_id": "3905a51006e43cb98b6ba5dbe389348a9706fc33",
+          "url": "https://github.com/ocaml/dune/commit/f0f6a3d649be9b3d0af739300d497cd8b1795402"
+        },
+        "date": 1794319239700,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.6614831222933333,
             "unit": "seconds"
           }
         ]

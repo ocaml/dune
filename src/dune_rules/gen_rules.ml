@@ -743,10 +743,21 @@ let private_context ~dir components _ctx =
   analyze_private_context_path components
   >>= function
   | `Invalid_context -> Memo.return Gen_rules.Unknown_context
+  | `Valid (_, ".binaries" :: rest) -> Memo.return (Bin_layout.gen_rules ~dir rest)
+  | `Valid (ctx, ".packages" :: rest) -> Install_layout.gen_rules ctx ~dir rest
   | `Valid (ctx, components) ->
     let+ lock_rules = Lock_rules.setup_rules ~dir ~components
     and+ pkg_rules = Pkg_rules.setup_rules ctx ~dir ~components in
-    Gen_rules.combine lock_rules pkg_rules
+    let layout_roots =
+      match components with
+      | [] ->
+        Gen_rules.make_empty
+          ~dir
+          (Subdir_set.of_list
+             [ Filename.of_string_exn ".packages"; Filename.of_string_exn ".binaries" ])
+      | _ -> Gen_rules.no_rules
+    in
+    Gen_rules.combine layout_roots (Gen_rules.combine lock_rules pkg_rules)
   | `Root ->
     let+ contexts = Per_context.list () in
     let build_dir_only_sub_dirs =
@@ -806,33 +817,10 @@ let gen_rules ctx ~dir components =
         Gen_rules.Build_only_sub_dirs.singleton ~dir context_dirs
       in
       Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
-    | _ctx :: ".binaries" :: rest -> Bin_layout.gen_rules ~dir rest |> Memo.return
-    | ctx :: ".packages" :: rest ->
-      Install_layout.gen_rules (Context_name.of_string ctx) ~dir rest
-    | ctx :: rest ->
+    | ctx :: _ ->
       let ctx = Context_name.of_string ctx in
       with_context ctx ~f:(fun sctx ->
         let+ subdirs, rules = Install_rules.symlink_rules sctx ~dir in
-        let subdirs =
-          match rest with
-          | [] ->
-            (* Here we retain the extra subdirectories that we dispatched
-               above. *)
-            Subdir_set.union
-              subdirs
-              (* CR-someday Alizter: Sharing these directory names with the
-                 dispatch cases above would avoid duplicate strings, but
-                 dispatch and retention could still get out of sync.
-
-                 It would be better to have a structured [Gen_rules] API where
-                 registering a generated child dispatcher automatically retains
-                 that child. *)
-              (Subdir_set.of_list
-                 [ Filename.of_string_exn ".binaries"
-                 ; Filename.of_string_exn ".packages"
-                 ])
-          | _ :: _ -> subdirs
-        in
         let directory_targets = Rules.directory_targets rules in
         Gen_rules.make
           ~build_dir_only_sub_dirs:(Gen_rules.Build_only_sub_dirs.singleton ~dir subdirs)

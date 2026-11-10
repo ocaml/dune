@@ -20,12 +20,12 @@ tracked dep of the rule.
 The action's PATH includes the .binaries dir:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/install/default/.binaries/$DIGEST
+  $PWD/_build/_private/default/.binaries/$DIGEST
 
 The rule depends on the build artifact and the .binaries symlink:
 
   $ dune rules --format=json _build/default/path-output \
   >   | jq_dune '.[] | ruleDepFilePaths' \
   >   | grep mybin | censor
+  "_build/_private/default/.binaries/$DIGEST/mybin"
   "_build/default/src/mybin.bc"
-  "_build/install/default/.binaries/$DIGEST/mybin"

@@ -24,7 +24,7 @@ mybin path is the un-sandboxed .binaries dir:
   $ dune build out --sandbox symlink 2>&1
   $ cat _build/default/out | censor
   $PWD/_build/.sandbox/$DIGEST1/default
-  $PWD/_build/install/default/.binaries/$DIGEST2/mybin
+  $PWD/_build/_private/default/.binaries/$DIGEST2/mybin
   hello from mybin
 
 The rule's deps include the build artifact and the .binaries
@@ -33,5 +33,5 @@ symlink. Both are paths under the un-sandboxed _build/:
   $ dune rules --format=json _build/default/out \
   >   | jq_dune '.[] | ruleDepFilePaths' \
   >   | grep mybin | censor
+  "_build/_private/default/.binaries/$DIGEST/mybin"
   "_build/default/src/mybin.bc"
-  "_build/install/default/.binaries/$DIGEST/mybin"

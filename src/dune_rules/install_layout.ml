@@ -41,7 +41,9 @@ let entry_resolver_fdecl
 let set_entry_resolver f = Fdecl.set entry_resolver_fdecl f
 
 let dir ~context ~key =
-  Path.Build.L.relative (Install.Context.dir ~context) [ ".packages"; key ]
+  Path.Build.L.relative
+    Private_context.t.build_dir
+    [ Context_name.to_string context; ".packages"; key ]
 ;;
 
 (* Resolve the package set's install entries against the layout root: filter

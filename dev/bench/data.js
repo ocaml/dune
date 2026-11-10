@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794329416210,
+  "lastUpdate": 1794329723191,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -486067,6 +486067,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.38812324393333336,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b6654d74d6213e906d1fc25dc6807747cf6fe328",
+          "message": "refactor(rules): move scoped layouts to _private (#16967)\n\nAvoid forcing context-wide install rules when loading dependency-scoped\npackage and binary layouts by moving their views from\n`_build/install/<context>` to `_build/_private/<context>`. Ordinary\ninstallation staging, layout keys, host selection, dependency tracking,\nand normal ancestor checks remain unchanged.",
+          "timestamp": "2026-11-10T16:35:09Z",
+          "tree_id": "d2f0a81fdc4564e7e8a82ec770749757507904be",
+          "url": "https://github.com/ocaml/dune/commit/b6654d74d6213e906d1fc25dc6807747cf6fe328"
+        },
+        "date": 1794329721250,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 58.24848828856667,
             "unit": "seconds"
           }
         ]

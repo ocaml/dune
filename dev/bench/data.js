@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794335574729,
+  "lastUpdate": 1794335619271,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -486241,6 +486241,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4835667024933334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5802d4c359c52f575605f792d10d1d765f1cfc86",
+          "message": "test(pkg): compare extra_sources copying with and without build actions (#16989)\n\nVerify that a build action reads the `extra_sources` version of a\nconflicting file while preserving both the workspace file and the\nprepared source file. Also check that the no-action case preserves the\nworkspace file, while retaining its existing expectation that the\nprepared source file is overwritten.",
+          "timestamp": "2026-11-10T18:14:01Z",
+          "tree_id": "e50380024dceeb7519159fe903b07cae73586831",
+          "url": "https://github.com/ocaml/dune/commit/5802d4c359c52f575605f792d10d1d765f1cfc86"
+        },
+        "date": 1794335616776,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 64.38818387945334,
             "unit": "seconds"
           }
         ]

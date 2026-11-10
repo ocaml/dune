@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794327403880,
+  "lastUpdate": 1794327738165,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -485951,6 +485951,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.49551317579333337,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "81922b0ede87bb71477db28e64ef1c59b1190e65",
+          "message": "fix(nix): restrict the Windows cross binary to one output (#16984)\n\nThe updated buildDunePackage declares out, dev, man, and doc outputs.\nOur custom cross installer only installs bin/dune.exe and skips fixup,\nso Nix rejects the otherwise successful build for missing outputs.\nDeclare only out for this binary-only derivation.\n\ncc @anmonteiro this seems to have broken in the recent flake update.",
+          "timestamp": "2026-11-10T16:02:32Z",
+          "tree_id": "1b5cbf83ed0e1ff27420ccf96504f3f769530362",
+          "url": "https://github.com/ocaml/dune/commit/81922b0ede87bb71477db28e64ef1c59b1190e65"
+        },
+        "date": 1794327736055,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 64.41939759837334,
             "unit": "seconds"
           }
         ]

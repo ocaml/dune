@@ -1067,10 +1067,12 @@ let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.
     in
     Rules.Produce.Alias.add_deps alias deps
   | Html | Json ->
-    let* libs =
+    let libs =
       Context.name ctx |> libs_of_pkg ~pkg:name >>| List.map ~f:(fun lib -> Lib lib)
     in
     let deps =
+      let open Action_builder.O in
+      let* libs = Action_builder.of_memo libs in
       Pkg name :: libs
       |> List.map ~f:(Dep.format_alias output ctx)
       |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)

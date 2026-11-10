@@ -65,6 +65,13 @@ With some consumer
   > EOF
 
   $ dune build
+  File "a/dune", lines 1-3, characters 0-44:
+  1 | (library
+  2 |  (name foo)
+  3 |  (public_name bar.foo))
+  Error: Library with name "bar.foo" is already defined in b/dune:1. Either
+  change one of the names, or enable them conditionally using the 'enabled_if'
+  field.
   File "b/dune", lines 1-3, characters 0-44:
   1 | (library
   2 |  (name bar)

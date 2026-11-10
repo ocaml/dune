@@ -1,44 +1,43 @@
-Test demonstrating private modules in wrapped library
-
-  $ mkdir mylib
-  $ cat > mylib/dune << EOF
-  > (library
-  >  (name mylib)
-  >  (private_modules secret))
-  > EOF
-
-  $ cat > mylib/secret.ml << EOF
-  > let hidden_value = "This should be private"
-  > let get_hidden () = hidden_value
-  > EOF
-
-  $ cat > mylib/public.ml << EOF
-  > let exposed_value = "This is public"
-  > let access_secret () = Secret.get_hidden ()
-  > EOF
-
-  $ cat > consumer.ml << EOF
-  > let () =
-  >   print_endline Mylib.Public.exposed_value;
-  >   (* Try to access private module through the library's main module *)
-  >   print_endline (Mylib.Secret.get_hidden ())
-  > EOF
-
-  $ cat > dune << EOF
-  > (executable
-  >  (name consumer)
-  >  (libraries mylib))
-  > EOF
+Private wrapper aliases need the private module's CMI in the sandbox.
 
   $ make_dune_project 3.0
-
-Build should fail because Secret is private:
-  $ dune build
-
-Now test that removing private_modules makes it work:
-  $ cat > mylib/dune << EOF
+  $ mkdir lib
+  $ cat > lib/dune <<EOF
   > (library
-  >  (name mylib))
+  >  (name lib)
+  >  (private_modules priv))
   > EOF
+  $ echo 'let value = 1' > lib/priv.ml
+  $ cat > dune <<EOF
+  > (executable
+  >  (name main)
+  >  (modes byte)
+  >  (libraries lib))
+  > EOF
+  $ echo 'let _ = Lib.Priv.value' > main.ml
 
-  $ dune build
+The alias resolves without sandboxing, but fails in a fresh copy sandbox:
+
+  $ dune build --sandbox none --build-dir _build-none main.bc
+  $ dune build --sandbox copy --cache=disabled --build-dir _build-copy main.bc
+  File "main.ml", line 1, characters 8-16:
+  1 | let _ = Lib.Priv.value
+              ^^^^^^^^
+  Error: The module Lib.Priv is an alias for module Lib__Priv, which is missing
+  [1]
+
+The private module's internal name remains unavailable:
+
+  $ echo 'let _ = Lib__Priv.value' > main.ml
+  $ dune build --sandbox copy --cache=disabled --build-dir _build-copy main.bc
+  File "main.ml", line 1, characters 8-17:
+  1 | let _ = Lib__Priv.value
+              ^^^^^^^^^
+  Error: Unbound module Lib__Priv
+  [1]
+
+Removing [private_modules] also makes the sandboxed build succeed:
+
+  $ echo '(library (name lib))' > lib/dune
+  $ echo 'let _ = Lib.Priv.value' > main.ml
+  $ dune build --sandbox copy --cache=disabled --build-dir _build-copy main.bc

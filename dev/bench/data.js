@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794340427325,
+  "lastUpdate": 1794353196404,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -677207,6 +677207,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.1538682627,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "18e9aef1401ee4427e2714f8c504ef5cc5fa2cbb",
+          "message": "fix(nix): apply opam patches in their declared order (#16994)\n\nApply opam patches in the order declared by the top-level `patches`\nfield rather than filename order. Handle singleton/list declarations,\nline comments, and quoted filenames without changing the other metadata\nreaders. Unsupported block comments and escaped patch names fail\nexplicitly; patch filters remain unevaluated.\n\nSplit out of #16969.",
+          "timestamp": "2026-11-10T23:12:24Z",
+          "tree_id": "e61be4898dd42e7e50f3cf931813f5611c3637fc",
+          "url": "https://github.com/ocaml/dune/commit/18e9aef1401ee4427e2714f8c504ef5cc5fa2cbb"
+        },
+        "date": 1794352789960,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 4.081507131833334,
             "unit": "seconds"
           }
         ]

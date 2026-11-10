@@ -440,9 +440,8 @@ and combined_package_deps_builder expander pkgs =
       if Package.Name.Set.is_empty local_package_names
       then Action_builder.return Env.empty
       else
-        let* dependencies = Install_layout.materialize context.name local_package_names in
-        let* env = Install_layout.env context.name local_package_names in
-        Install_layout.apply_exported_env ~context:context.name ~env dependencies
+        let* layout = Install_layout.materialize context.name local_package_names in
+        Install_layout.env layout ~base:Env.empty
     in
     if Package.Name.Set.is_empty lockdir_package_names
     then Action_builder.return local_env

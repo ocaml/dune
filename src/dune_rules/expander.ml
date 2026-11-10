@@ -875,10 +875,10 @@ let expand_pkg_macro ~loc { context; project; _ } macro_invocation =
       | Some (Local _) ->
         resolve_local_pkg_file ~loc ~context_name ~pkg_name ~section ~file
       | Some (Opam _) ->
-        let* dependencies =
+        let* layout =
           Install_layout.materialize context_name (Package.Name.Set.singleton pkg_name)
         in
-        let dependency = List.hd dependencies in
+        let dependency = Install_layout.dependencies layout |> List.hd in
         let path =
           Path.append_local
             (Install.Paths.get (Opam_build.Paths.install_paths dependency.paths) section)

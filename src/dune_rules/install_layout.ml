@@ -205,62 +205,68 @@ let deps context_name packages =
 
 let root context_name packages = dir ~context:context_name ~key:(Key.encode packages)
 
-let env context_name packages =
-  let open Action_builder.O in
-  let+ () = deps context_name packages in
-  let layout_root = root context_name packages in
-  let roots = Install.Roots.opam_from_prefix layout_root ~relative:Path.Build.relative in
-  Install.Roots.add_to_env roots Env.empty
-;;
+type t =
+  { context : Context_name.t
+  ; root : Path.Build.t
+  ; dependencies : Opam_build.Dependency.t list
+  }
+
+let dependencies { dependencies; _ } = dependencies
 
 let materialize context packages =
   let open Action_builder.O in
   let* () = deps context packages in
-  let prefix = Path.build (root context packages) in
-  Action_builder.List.map (Package.Name.Set.to_list packages) ~f:(fun name ->
-    let* opaque = Action_builder.of_memo (Opam_package.find context name) in
-    let* dependency =
-      match opaque with
-      | Some opaque -> Opam_package.dependency opaque
-      | None ->
-        let+ packages = Action_builder.of_memo (Dune_load.packages ()) in
-        let package = Package.Name.Map.find_exn packages name in
-        let version =
-          Package.version package
-          |> Option.value ~default:(Package_version.of_string "dev")
-        in
-        let paths =
-          Opam_build.Paths.of_root name ~root:prefix ~relative:Path.relative
-          |> fun paths -> Opam_build.Paths.with_prefix paths prefix
-        in
-        { Opam_build.Dependency.paths
-        ; variables = Opam_build.variables ~name ~version ~dev:false
-        ; files = Section.Map.empty
-        ; exported_env = []
-        ; export_paths = paths
-        }
-    in
-    let+ entries =
-      Action_builder.of_memo
-        (compute_entries
-           context
-           (root context packages)
-           (Package.Name.Set.singleton name))
-    in
-    let files =
-      Path.Build.Map.to_list entries
-      |> List.map ~f:(fun (dst, (entry : _ Install.Entry.Expanded.t)) ->
-        entry.section, Path.build dst)
-      |> Section.Map.of_list_multi
-    in
-    { dependency with
-      paths = Opam_build.Paths.with_prefix dependency.paths prefix
-    ; files
-    })
+  let root = root context packages in
+  let prefix = Path.build root in
+  let+ dependencies =
+    Action_builder.List.map (Package.Name.Set.to_list packages) ~f:(fun name ->
+      let* opaque = Action_builder.of_memo (Opam_package.find context name) in
+      let* dependency =
+        match opaque with
+        | Some opaque -> Opam_package.dependency opaque
+        | None ->
+          let+ packages = Action_builder.of_memo (Dune_load.packages ()) in
+          let package = Package.Name.Map.find_exn packages name in
+          let version =
+            Package.version package
+            |> Option.value ~default:(Package_version.of_string "dev")
+          in
+          let paths =
+            Opam_build.Paths.of_root name ~root:prefix ~relative:Path.relative
+            |> fun paths -> Opam_build.Paths.with_prefix paths prefix
+          in
+          { Opam_build.Dependency.paths
+          ; variables = Opam_build.variables ~name ~version ~dev:false
+          ; files = Section.Map.empty
+          ; exported_env = []
+          ; export_paths = paths
+          }
+      in
+      let+ entries =
+        Action_builder.of_memo
+          (compute_entries context root (Package.Name.Set.singleton name))
+      in
+      let files =
+        Path.Build.Map.to_list entries
+        |> List.map ~f:(fun (dst, (entry : _ Install.Entry.Expanded.t)) ->
+          entry.section, Path.build dst)
+        |> Section.Map.of_list_multi
+      in
+      { dependency with
+        paths = Opam_build.Paths.with_prefix dependency.paths prefix
+      ; files
+      })
+  in
+  { context; root; dependencies }
 ;;
 
-let apply_exported_env ~context ~env dependencies =
+let env { context; root; dependencies } ~base =
   let open Action_builder.O in
+  let roots = Install.Roots.opam_from_prefix root ~relative:Path.Build.relative in
+  let env =
+    Install.Roots.add_to_env roots Env.empty
+    |> Install.Roots.extend_env_concat_path_vars base
+  in
   let* context_value = Action_builder.of_memo (Context.DB.get context) in
   let depends =
     List.map dependencies ~f:(fun (dep : Opam_build.Dependency.t) ->
@@ -272,9 +278,6 @@ let apply_exported_env ~context ~env dependencies =
     ~init:env
     ~f:(fun env (dep : Opam_build.Dependency.t) ->
       let expander =
-        let depends =
-          Package.Name.Map.set depends dep.paths.name (dep.variables, dep.export_paths)
-        in
         let paths =
           Opam_build.Paths.map_path dep.export_paths ~f:(fun path ->
             Path.of_string (Path.to_absolute_filename path))

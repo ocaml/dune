@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794319687046,
+  "lastUpdate": 1794319881110,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -485603,6 +485603,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.39168460648,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ada0e7cded0d726e7915013ef072227091f8fe0b",
+          "message": "perf(melange): register all-alias dependencies once per context (#16980)\n\nRegister Melange's `@all` dependencies once per nonempty compilation\ncontext.\n\n019ffd87-afd6-7983-99f9-1a7139620b20\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-10T05:54:10-08:00",
+          "tree_id": "f34540df62fd62b56524b14c06f0edfbf74bd267",
+          "url": "https://github.com/ocaml/dune/commit/ada0e7cded0d726e7915013ef072227091f8fe0b"
+        },
+        "date": 1794319878175,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 52.97865523927334,
             "unit": "seconds"
           }
         ]

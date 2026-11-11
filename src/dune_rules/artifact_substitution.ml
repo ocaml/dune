@@ -70,6 +70,7 @@ module Conf = struct
     ; get_config_path : configpath -> Path.t option Memo.t
     ; sign_hook : (Path.t -> unit Fiber.t) option Memo.t
     ; hardcoded_ocaml_path : hardcoded_ocaml_path Memo.t
+    ; name : Context_name.t
     }
 
   let get_location t = t.get_location
@@ -134,11 +135,12 @@ module Conf = struct
       Hardcoded (install_dir :: default_ocamlpath)
     in
     let sign_hook = sign_hook_of_context context in
-    { get_vcs; get_location; get_config_path; hardcoded_ocaml_path; sign_hook }
+    { name; get_vcs; get_location; get_config_path; hardcoded_ocaml_path; sign_hook }
   ;;
 
   let of_install ~relocatable ~roots ~(context : Context.t) =
     let get_vcs = Source_tree.nearest_vcs in
+    let name = Context.name context in
     let hardcoded_ocaml_path =
       match relocatable with
       | Some prefix -> Memo.return @@ Relocatable prefix
@@ -157,11 +159,12 @@ module Conf = struct
         Some ocaml.lib_config.stdlib_dir
     in
     let sign_hook = sign_hook_of_context context in
-    { get_location; get_vcs; get_config_path; hardcoded_ocaml_path; sign_hook }
+    { name; get_location; get_vcs; get_config_path; hardcoded_ocaml_path; sign_hook }
   ;;
 
   let dummy =
-    { get_vcs = (fun _ -> Memo.return None)
+    { name = Context_name.default
+    ; get_vcs = (fun _ -> Memo.return None)
     ; get_location = (fun _ _ -> Path.root)
     ; get_config_path = (fun _ -> Memo.return None)
     ; hardcoded_ocaml_path = Memo.return @@ Hardcoded []
@@ -712,9 +715,10 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst 
      prefix ".#" is used because Dune ignores such files and so creating this
      file will not trigger a rebuild. *)
   let temp_file =
+    let context_name = Context_name.to_string (conf : Conf.t).name in
     let dst_dir = Path.parent_exn dst in
     let dst_name = Path.basename dst |> Filename.to_string in
-    Path.relative dst_dir (sprintf ".#%s.dune-temp" dst_name)
+    Path.relative dst_dir (sprintf ".#%s-%s.dune-temp" dst_name context_name)
   in
   let temp_file_was_renamed = ref false in
   Fiber.finalize

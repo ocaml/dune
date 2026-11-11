@@ -1,12 +1,13 @@
+Regression test against https://github.com/ocaml/dune/pull/16983
+
 `dune build -p` promotes the install file of every build context to the same
-path in the source tree. Since https://github.com/ocaml/dune/pull/15559 the
-promotions run concurrently and write results to the same temporary file,
-`.#<pkg>.install.dune-temp` befor effecting the promotion. This sets up a race
-condition between contexts, and in some interleaveings the build of one context
-will have written to the temp file before it is moved by the other, and then
-find the file missing when it tries to promote. This failure was caught in the
-melange-fest.0.2.0 in the 3.25.0~alpha1 revdeps run for the prerelease
-https://github.com/ocaml/opam-repository/pull/31082.
+path in the source tree. After https://github.com/ocaml/dune/pull/15559 the
+promotions from different contexts run concurrently and would write results
+to the same temporary file, `.#<pkg>.install.dune-temp` before effecting the
+promotion.  This set up a race condition between contexts, and in some
+interleavings the build of one context will have written to the temp file
+before it is moved by the other, and then finds the file missing when it tries to
+promote.
 
 Set up a workspace with two contexts:
 
@@ -16,15 +17,16 @@ Set up a workspace with two contexts:
   > (context (default (name one)))
   > (context (default (name another)))
   > EOF
+
+Define a rule that will install a file:
+
   $ cat > dune <<EOF
   > (install (section share) (files hello.txt))
   > EOF
   $ echo hi > hello.txt
 
-The race condition causes errors often, but not alwyas, so we run the build
-multiple times to ensure we get at least one fialure. We only emit the error
-line, because which either context can fail.
+The race condition would causes errors often, but not always, so we run the build
+multiple times to ensure we get at least one failure. This should always succeed
+without error:
 
-  $ for i in 1 2 3; do dune clean; dune build -p foo @install 2>&1; done | grep Error | head -n 1
-  Error: rename(.#foo.install.dune-temp): No such file or directory
-  [1]
+  $ for i in 1 2 3; do dune clean; dune build -p foo @install 2>&1; done

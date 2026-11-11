@@ -29,7 +29,39 @@
 (package
  (name dune)
  (synopsis "Fast, portable, and opinionated build system")
- ; The "depends" and "build" field are written in dune.opam.template
+ ; The "build" field is written in dune.opam.template
+ (depends
+  (ocaml
+   (and
+    (>= 4.14)
+    (or
+     (not :with-test)
+     (>= 5.5.0))))
+  base-unix
+  base-threads
+  (lwt (and :with-test (<> :os win32)))
+  (cinaps :with-test)
+  (core_bench (and :with-test (<> :os win32)))
+  (csexp (and :with-test (>= 1.3.0)))
+  (js_of_ocaml (and :with-test (>= 6.4) (<> :os win32)))
+  (js_of_ocaml-compiler (and :with-test (>= 6.4) (<> :os win32)))
+  (mdx (and :with-test (>= 2.3.0) (<> :os win32)))
+  (menhir (and :with-test (<> :os win32)))
+  (ocamlfind (and :with-test (<> :os win32)))
+  (odoc (and :with-test (>= 3.2.0) (<> :os win32)))
+  (ppx_bench (and :with-test (<> :os win32)))
+  (ppx_expect (and :with-test (>= v0.17) (<> :os win32)))
+  (ppx_optcomp :with-test)
+  (spawn :with-test)
+  (ppx_inline_test (and :with-test (<> :os win32)))
+  (ppxlib (and :with-test (>= 0.37.0) (<> :os win32)))
+  (ctypes (and :with-test (<> :os win32)))
+  (utop (and :with-test (>= 2.6.0) (<> :os win32)))
+  (melange (and :with-test (>= 7.0.0) (<> :os win32)))
+  (conf-pkg-config :with-test)
+  ; The rev store negotiation test launches a git daemon, which needs to be
+  ; installed on some distributions.
+  (conf-git-daemon :with-test))
  (conflicts
   (merlin (< 3.4.0))
   (ocaml-lsp-server (< 1.3.0))

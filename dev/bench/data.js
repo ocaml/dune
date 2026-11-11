@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794422724709,
+  "lastUpdate": 1794423059046,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -486415,6 +486415,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5473242310266667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "punchagan@muse-amuse.in",
+            "name": "Puneeth Chaganti",
+            "username": "punchagan"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": false,
+          "id": "04aaa5bff83cf466b45ab7dbcb9d4e52ea9adcf3",
+          "message": "test(odoc): capture library instantiation behavior (#16997)\n\nLibraries of packages are currently instantiated when generating the\nodoc package aliases during the rule generation for the project root.\nThis leads to cycles when a library's stanza like `enabled_if` reads a\nfile from the project root using `%{read:...}`, for instance.\n\nThis test captures one part of the reason for cycles reported in #14946.\nThe other part was fixed in #16518 but reverted in #16894.\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- ~[ ] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.~\n- ~[ ] Documentation added for any user-facing changes.~\n\nSigned-off-by: Puneeth Chaganti <punchagan@muse-amuse.in>",
+          "timestamp": "2026-11-11T23:55:03+08:00",
+          "tree_id": "7795c23210bc7d22f8820b9eaeea112ad8b7330b",
+          "url": "https://github.com/ocaml/dune/commit/04aaa5bff83cf466b45ab7dbcb9d4e52ea9adcf3"
+        },
+        "date": 1794423057430,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 65.03404398653333,
             "unit": "seconds"
           }
         ]

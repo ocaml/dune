@@ -57,7 +57,7 @@ relying on Dune's process environment.
   $ cd .. # back to the root
 
   $ cat > fake_repl.sh <<'EOF'
-  > #!/bin/bash
+  > #!/usr/bin/env bash
   > printf '%s\n' "$@"
   > EOF
   $ chmod +x fake_repl.sh

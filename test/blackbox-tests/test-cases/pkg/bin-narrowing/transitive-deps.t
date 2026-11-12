@@ -101,11 +101,6 @@ The package [other] was *not* built:
   "_build/_private/default/.pkg/direct.0.0.1-$DIGEST1/target"
   "_build/_private/default/.pkg/transitive.0.0.1-$DIGEST2/target"
 
-Only the bin directories of the declared dependencies are added to $PATH:
-
-  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/direct.0.0.1-$DIGEST/target/bin
-
 Narrowing shrinks the build-dependency set, not just the visibility and PATH
 shown above. Previously, expanding a %{bin:X}/%{bin-available:X} pform forced
 the install [cookie] of

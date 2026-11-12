@@ -53,6 +53,7 @@ depends: [
   "conf-diffutils" {with-test}
   "conf-jq" {with-test}
   "conf-pkg-config" {with-test}
+  "conf-which" {with-test}
   "conf-git-daemon" {with-test}
   "odoc" {with-doc}
 ]

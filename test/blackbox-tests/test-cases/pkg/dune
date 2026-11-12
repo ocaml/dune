@@ -72,7 +72,15 @@
 
 (cram
  (deps %{bin:which})
- (applies_to pkg-deps.t))
+ (applies_to
+  curl-not-installed.t
+  default-exported-env.t
+  different-dune-in-path.t
+  openbsd-tar.t
+  opam-source-conversion.t
+  pkg-deps.t
+  withenv-path.t
+  zip-extract-fail.t))
 
 (cram
  (deps %{bin:cmp} %{bin:ocamlfind})

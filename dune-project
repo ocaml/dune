@@ -62,6 +62,7 @@
   (conf-diffutils :with-test)
   (conf-jq :with-test)
   (conf-pkg-config :with-test)
+  (conf-which :with-test)
   ; The rev store negotiation test launches a git daemon, which needs to be
   ; installed on some distributions.
   (conf-git-daemon :with-test))

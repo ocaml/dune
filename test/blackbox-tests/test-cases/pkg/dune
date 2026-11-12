@@ -43,7 +43,7 @@
  (deps %{bin:strace}))
 
 (cram
- (applies_to relocatable-compiler-sandbox)
+ (applies_to relocatable-compiler-sandbox.t)
  (deps %{bin:menhir}))
 
 (cram

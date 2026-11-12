@@ -13,6 +13,7 @@ depends: [
   "dune" {>= "3.25"}
   "ocaml" {>= "4.14"}
   "ppx_expect" {with-test}
+  "stdune" {with-test & = version}
   "odoc" {with-doc}
 ]
 dev-repo: "git+https://github.com/ocaml/dune.git"

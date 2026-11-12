@@ -14,6 +14,7 @@ depends: [
   "ocaml" {>= "4.14"}
   "dyn" {= version}
   "ppx_expect" {with-test}
+  "stdune" {with-test & = version}
   "odoc" {with-doc}
 ]
 conflicts: [

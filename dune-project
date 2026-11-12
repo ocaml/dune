@@ -250,7 +250,8 @@ Among other things, dune-configurator allows one to:
  (depends
   (ocaml (>= 4.14))
   (dyn (= :version))
-  (ppx_expect :with-test))
+  (ppx_expect :with-test)
+  (stdune (and :with-test (= :version))))
  (maintenance_intent none)
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 
@@ -260,7 +261,8 @@ Among other things, dune-configurator allows one to:
  (synopsis "Chrome trace event generation library")
  (depends
   (ocaml (>= 4.14))
-  (ppx_expect :with-test))
+  (ppx_expect :with-test)
+  (stdune (and :with-test (= :version))))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 
 (package

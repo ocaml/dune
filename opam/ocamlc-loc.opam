@@ -13,6 +13,7 @@ depends: [
   "dune" {>= "3.25"}
   "ocaml" {>= "4.14"}
   "dyn" {= version}
+  "ppx_expect" {with-test}
   "odoc" {with-doc}
 ]
 conflicts: [

@@ -182,7 +182,8 @@ Among other things, dune-configurator allows one to:
   (csexp (>= 1.5.0))
   (lwt (>= 5.6.0))
   (stdune (= :version))
-  base-unix)
+  base-unix
+  (ppx_expect :with-test))
  (description "Specialization of dune-rpc to Lwt"))
 
 (package
@@ -192,7 +193,8 @@ Among other things, dune-configurator allows one to:
  (depends
   (ocaml (>= 4.14))
   (ordering (= :version))
-  (pp (>= 1.1.0)))
+  (pp (>= 1.1.0))
+  (ppx_expect :with-test))
  (maintenance_intent none)
  (description "Dynamic type"))
 
@@ -234,7 +236,8 @@ Among other things, dune-configurator allows one to:
   (fs-io (= :version))
   (ordering (= :version))
   (pp (>= 2.0.0))
-  (top-closure (= :version)))
+  (top-closure (= :version))
+  (ppx_expect :with-test))
  (maintenance_intent none)
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 
@@ -246,7 +249,8 @@ Among other things, dune-configurator allows one to:
   (ocaml-lsp-server (< 1.17.0)))
  (depends
   (ocaml (>= 4.14))
-  (dyn (= :version)))
+  (dyn (= :version))
+  (ppx_expect :with-test))
  (maintenance_intent none)
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 
@@ -255,7 +259,8 @@ Among other things, dune-configurator allows one to:
  (dir otherlibs/chrome-trace)
  (synopsis "Chrome trace event generation library")
  (depends
-  (ocaml (>= 4.14)))
+  (ocaml (>= 4.14))
+  (ppx_expect :with-test))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 
 (package
@@ -264,7 +269,8 @@ Among other things, dune-configurator allows one to:
  (synopsis "File System Operations")
  (depends
   base-unix
-  (ocaml (>= 4.14)))
+  (ocaml (>= 4.14))
+  (ppx_expect :with-test))
  (maintenance_intent none)
  (description "Misc. Collection of File System Operations"))
 

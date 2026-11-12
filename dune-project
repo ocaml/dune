@@ -97,7 +97,8 @@ for free.
   ; NOTE: The wider OCaml ecosystem can be deeply affected by changes to the dune
   ; lower bound. Increases should be announced in advance, and only occur at
   ; minor version bounds.
-  (ocaml (>= 4.14)))
+  (ocaml (>= 4.14))
+  (conf-git :with-test))
  (description "\
 The build-info library allows to access information about how the
 executable was built, such as the version of the project at which it

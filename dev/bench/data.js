@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794423067105,
+  "lastUpdate": 1794457510149,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -677381,6 +677381,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 4.031498275006666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "36c143be812cb2a0d07101e91f5a6f8b8ba667fd",
+          "message": "test(ocaml): preserve empty directory runtime parameters (#17001)\n\nCheck that an empty `OCAMLRUNPARAM` declared in a directory environment\nreaches compiler and ocamldep commands as an empty value, rather than\nbeing dropped.\n\nThis is test-only preparatory coverage for #16914; it does not change\nruntime defaults.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-12T12:11:01+08:00",
+          "tree_id": "09c71abb79d5a46ed909efaeab9b113eeafa120d",
+          "url": "https://github.com/ocaml/dune/commit/36c143be812cb2a0d07101e91f5a6f8b8ba667fd"
+        },
+        "date": 1794457097521,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.778627085666667,
             "unit": "seconds"
           }
         ]

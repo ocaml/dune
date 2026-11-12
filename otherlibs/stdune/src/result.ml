@@ -1,6 +1,4 @@
-type ('a, 'error) t = ('a, 'error) result =
-  | Ok of 'a
-  | Error of 'error
+include Stdlib.Result
 
 let ok x = Ok x
 let return = ok

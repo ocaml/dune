@@ -71,7 +71,15 @@ let garbage_collect () =
 ;;
 
 let files_in_cache_for_all_supported_versions () =
-  Version.File.all |> List.to_seq |> Seq.concat_map ~f:Layout.Versioned.list_file_entries
+  let legacy =
+    Version.File.all |> List.to_seq |> Seq.concat_map ~f:Layout.Legacy.list_file_entries
+  in
+  let current =
+    Version.File.all
+    |> List.to_seq
+    |> Seq.concat_map ~f:Layout.Versioned.list_file_entries
+  in
+  Seq.append current legacy
 ;;
 
 (* We call a cached file "unused" if there are currently no hard links to it
@@ -167,6 +175,8 @@ let clear () =
   rm_rf_all Version.Metadata.all Layout.Versioned.metadata_storage_dir;
   rm_rf_all Version.File.all Layout.Versioned.file_storage_dir;
   rm_rf (Lazy.force Layout.temp_dir);
+  rm_rf (Path.relative (Lazy.force Layout.legacy_cache_dir) "meta");
+  rm_rf (Path.relative (Lazy.force Layout.legacy_cache_dir) "files");
   (* Do not catch errors when deleting the root directory so that they are
      reported to the user. *)
   let build_cache_dir = Path.to_string (Lazy.force Layout.build_cache_dir) in

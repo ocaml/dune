@@ -34,6 +34,10 @@ let () =
   | _ :: "pdeathsig-default-child" :: ready_file :: marker_file :: _ ->
     pdeathsig_default_child ready_file marker_file
   | argv0 :: "print-args" :: args -> List.iter print_endline (argv0 :: args)
+  | _ :: "nice-exit-code" :: adjustment :: _ ->
+    (* Observe niceness only after the parent has returned from spawning. *)
+    ignore (input_char stdin);
+    exit (20 + Unix.nice (int_of_string adjustment))
   | _ ->
     (* On Windows, Sys.getenv in OCaml 5.5.1 treats empty values as missing.
        Inspect the environment block instead to test their propagation. *)

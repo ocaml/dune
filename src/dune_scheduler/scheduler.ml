@@ -27,11 +27,7 @@ let running_jobs_count (t : t) = Process_watcher.running_count t.process_watcher
 exception Build_cancelled
 
 let cancelled () = raise (Memo.Non_reproducible Build_cancelled)
-
-let check_cancelled = function
-  | Some cancel when Fiber.Cancel.fired cancel -> cancelled ()
-  | None | Some _ -> ()
-;;
+let check_cancelled cancel = if Fiber.Cancel.fired cancel then cancelled ()
 
 let check_point =
   let* () = Fiber.return () in
@@ -52,9 +48,61 @@ let with_job_slot ?cancellation ~job_slots f =
   let* () = Fiber.return () in
   let t = t () in
   Fiber.Throttle.run t.job_throttle ~size:job_slots ~f:(fun () ->
-    check_cancelled cancellation;
+    Option.iter cancellation ~f:check_cancelled;
     f ())
 ;;
+
+module Job_slot = struct
+  type t =
+    { slot : Fiber.Throttle.Slot.t
+    ; mutable requests : int
+    ; mutable closed : bool
+    }
+
+  let create ~job_slots =
+    { slot = Fiber.Throttle.Slot.create (t ()).job_throttle ~size:job_slots
+    ; requests = 0
+    ; closed = false
+    }
+  ;;
+
+  let rec acquire t =
+    let* () = Fiber.return () in
+    if t.closed || t.requests > 0
+    then Fiber.return ()
+    else
+      let* result = Fiber.Throttle.Slot.acquire t.slot in
+      if t.closed || t.requests > 0
+      then Fiber.Throttle.Slot.release t.slot
+      else (
+        match result with
+        | `Ok -> Fiber.return ()
+        | `Cancelled -> acquire t)
+  ;;
+
+  let with_ t ~f =
+    let* () = Fiber.return () in
+    if t.closed then cancelled ();
+    t.requests <- t.requests + 1;
+    let* () =
+      if t.requests = 1 then Fiber.Throttle.Slot.release t.slot else Fiber.return ()
+    in
+    Fiber.finalize f ~finally:(fun () ->
+      t.requests <- t.requests - 1;
+      if t.requests = 0 then acquire t else Fiber.return ())
+  ;;
+
+  let run t cancellation f =
+    Fiber.finalize
+      (fun () ->
+         let* () = acquire t in
+         check_cancelled cancellation;
+         f ())
+      ~finally:(fun () ->
+        t.closed <- true;
+        Fiber.Throttle.Slot.release t.slot)
+  ;;
+end
 
 let wait_for_process t ~is_process_group_leader pid =
   let ivar = Fiber.Ivar.create () in

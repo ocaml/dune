@@ -321,6 +321,20 @@ struct
     res
   ;;
 
+  let read_file_if_small fn ~max_size =
+    let start = Counter.Timer.start () in
+    Counter.incr Metrics.File_read.count;
+    let res =
+      try Fs_io.read_file_if_small (Path.to_string fn) ~max_size with
+      | exn -> Error exn
+    in
+    (match res with
+     | Ok (Some contents) -> Counter.add Metrics.File_read.bytes (String.length contents)
+     | Ok None | Error _ -> ());
+    Counter.Timer.stop Metrics.File_read.time start;
+    res
+  ;;
+
   let read_file_exn ?binary fn = read_file ?binary fn |> Result.ok_exn
   let lines_of_file fn = with_file_in fn ~f:input_lines ~binary:false
   let zero_strings_of_file fn = with_file_in fn ~f:input_zero_separated ~binary:true

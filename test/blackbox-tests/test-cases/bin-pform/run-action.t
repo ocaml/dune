@@ -19,7 +19,7 @@ entry it adds a .binaries dir to the action's PATH.
   $ dune build path-output
   hello from mybin
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/install/default/.binaries/$DIGEST
+  $PWD/_build/_private/default/.binaries/$DIGEST
 
 The rule's deps include the build artifact and the .binaries
 symlink:
@@ -27,8 +27,8 @@ symlink:
   $ dune rules --format=json _build/default/path-output \
   >   | jq_dune '.[] | ruleDepFilePaths' \
   >   | grep mybin | censor
+  "_build/_private/default/.binaries/$DIGEST/mybin"
   "_build/default/mybin.exe"
-  "_build/install/default/.binaries/$DIGEST/mybin"
 
 Building the same target again does not invalidate or rebuild the .binaries
 symlink:

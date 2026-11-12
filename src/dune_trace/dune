@@ -11,7 +11,7 @@
  (action
   (write-file
    ppx-optcomp-flags
-   "-cookie\nppx_optcomp.env=env ~ocaml_version:(Defined(4,14,0)) ~oxcaml:(Defined())")))
+   "-cookie\nppx_optcomp.env=env ~ocaml_version:(Defined(4,14,0)) ~oxcaml:(Defined())\n-inline-test-allow-let-test-module")))
 
 (rule
  (enabled_if
@@ -21,8 +21,11 @@
 
 (library
  (name dune_trace)
+ (inline_tests
+  (deps
+   (sandbox always)))
  (preprocess
-  (pps ppx_optcomp -- %{read-lines:ppx-optcomp-flags}))
+  (pps ppx_optcomp ppx_expect -- %{read-lines:ppx-optcomp-flags}))
  (foreign_stubs
   (language c)
   (names dune_trace_stubs))

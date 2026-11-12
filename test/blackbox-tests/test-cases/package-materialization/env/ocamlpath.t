@@ -10,4 +10,4 @@ Test that (deps (package ...)) adds the package's lib/ to OCAMLPATH.
   $ baseline=$OCAMLPATH
   $ dune build out
   $ env_added "$(cat _build/default/out)" "$baseline" | censor
-  $PWD/_build/install/default/.packages/$DIGEST/lib
+  $PWD/_build/_private/default/.packages/$DIGEST/lib

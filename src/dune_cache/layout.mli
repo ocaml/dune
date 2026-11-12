@@ -44,9 +44,18 @@ val file_path : file_digest:Digest.t -> Path.t Lazy.t
     needed when storing new artifacts in the cache. See [write_atomically]. *)
 val temp_dir : Path.t Lazy.t
 
+(** The legacy cache directory (pre-3.22), which stored files directly under
+    [Dune_util.cache_root_dir] without the [db/] subdirectory. *)
+val legacy_cache_dir : Path.t Lazy.t
+
 (** Support for all versions of the layout, used by the cache trimmer. The
     functions provided by the top module are obtained by a partial application
     of the corresponding function defined here to a suitable current version. *)
+module Legacy : sig
+  val file_storage_dir : Version.File.t -> Path.t Lazy.t
+  val list_file_entries : Version.File.t -> (Path.t * Digest.t) Seq.t
+end
+
 module Versioned : sig
   val metadata_storage_dir : Version.Metadata.t -> Path.t Lazy.t
 

@@ -13,6 +13,7 @@ let config =
 
 let spawn () =
   Spawn.spawn
+    ~nice:None
     ~prog:"/bin/sleep"
     ~argv0:"/bin/sleep"
     ~args:(Array.Immutable.of_list [ "10" ])

@@ -23,6 +23,7 @@ let with_git_daemon ~parent_dir ~port ~repo_dir ~unrelated_repo_dir ~f =
   let git_prog_str = Path.to_string git_prog in
   let daemon_pid =
     Spawn.spawn
+      ~nice:None
       ~prog:git_prog_str
       ~argv0:git_prog_str
       ~args:

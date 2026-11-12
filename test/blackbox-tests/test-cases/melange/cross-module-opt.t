@@ -11,6 +11,7 @@ module's interface.
   $ cat > dune <<'EOF'
   > (melange.emit
   >  (target dist_xopt)
+  >  (emit_stdlib false)
   >  (modules)
   >  (module_systems (commonjs js))
   >  (libraries repro)
@@ -18,6 +19,7 @@ module's interface.
   > 
   > (melange.emit
   >  (target dist_no_xopt)
+  >  (emit_stdlib false)
   >  (modules)
   >  (module_systems (commonjs js))
   >  (libraries repro)

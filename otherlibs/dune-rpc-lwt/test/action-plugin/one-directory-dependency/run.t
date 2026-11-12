@@ -36,3 +36,44 @@ directory to be build.
   some_file1
   some_file2
   some_file3
+
+This is a bug: materialized subdirectories are returned in the listing, but
+not tracked as dependencies. Adding another directory leaves a stale listing
+until an unrelated input changes.
+
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target listing)
+  >  (deps trigger)
+  >  (action (with-stdout-to listing (dynamic-run ./foo.exe))))
+  > EOF
+  $ echo first > trigger
+  $ mkdir some_dir/nested
+  $ echo payload > some_dir/nested/payload
+  $ dune build some_dir/nested/payload
+  $ dune build listing
+  $ cat _build/default/listing
+  dune
+  nested
+  some_file1
+  some_file2
+  some_file3
+  $ mkdir some_dir/another
+  $ echo payload > some_dir/another/payload
+  $ dune build some_dir/another/payload
+  $ dune build listing
+  $ cat _build/default/listing
+  dune
+  nested
+  some_file1
+  some_file2
+  some_file3
+  $ echo second > trigger
+  $ dune build listing
+  $ cat _build/default/listing
+  another
+  dune
+  nested
+  some_file1
+  some_file2
+  some_file3

@@ -39,3 +39,21 @@ by mistake.
   $ find $DUNE_CACHE_ROOT/db -type f | sort -u
   $TESTCASE_ROOT/dune-cache/db/extra/extra2
   $TESTCASE_ROOT/dune-cache/db/extra1
+
+Ensure that cache files are cleared regardless of directory.
+
+  $ export DUNE_CACHE_STORAGE_MODE=copy
+
+v. 3.21 places cache files in a path without the db/ prefix
+  $ mv $DUNE_CACHE_ROOT/db/extra $DUNE_CACHE_ROOT/meta
+  $ mv $DUNE_CACHE_ROOT/db/extra1 $DUNE_CACHE_ROOT/files
+
+  $ test -d $DUNE_CACHE_ROOT/db
+  $ test -d $DUNE_CACHE_ROOT/meta
+  $ test -f $DUNE_CACHE_ROOT/files
+
+Both layouts should be cleared by cache clear.
+  $ dune cache clear
+  $ ! test -d $DUNE_CACHE_ROOT/meta
+  $ ! test -f $DUNE_CACHE_ROOT/files
+  $ ! test -d $DUNE_CACHE_ROOT/db

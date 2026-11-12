@@ -17,15 +17,15 @@ exit, so it cannot be recorded before the plugin finishes.
   >  (target detached)
   >  (action (dynamic-run ./foo.exe detached)))
   > EOF
-  $ timeout 5 dune build -j 2 detached
+  $ timeout 5 dune build -j 1 detached
   ran
 
 Accepted requests are drained before the rule is cached, even if their client
 has disconnected. Their dependencies continue to invalidate the rule.
 
   $ printf second > control
-  $ timeout 5 dune build -j 2 detached
+  $ timeout 5 dune build -j 1 detached
   ran
   $ printf third > control
-  $ timeout 5 dune build -j 2 detached
+  $ timeout 5 dune build -j 1 detached
   ran

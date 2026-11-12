@@ -98,6 +98,7 @@ let run ?env ~prog ~argv () =
     let args = Array.Immutable.of_list argv in
     let env = Option.map env ~f:(fun env -> Env.of_unix (Array.of_list env)) in
     Spawn.spawn
+      ~nice:None
       ~prog
       ~argv0:prog
       ~args

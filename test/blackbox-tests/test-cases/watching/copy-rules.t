@@ -94,6 +94,61 @@ invalidate that result, first for source copies and then for new local rules.
   $ cat _build/default/child/result
   source
 
+Virtual children must receive updated inherited stanzas when their parent is
+reloaded, even though their source path has not changed.
+
+  $ cat > dune <<EOF
+  > (subdir generated
+  >  (rule (target result) (action (write-file result "first\n"))))
+  > EOF
+  $ build generated/result
+  Success
+  $ cat _build/default/generated/result
+  first
+  $ cat > dune <<EOF
+  > (subdir generated
+  >  (rule (target result) (action (write-file result "second\n"))))
+  > EOF
+  $ build generated/result
+  Success
+  $ cat _build/default/generated/result
+  second
+
+The same path can become physical, inherit a different status, and become
+virtual again without retaining the previous node's inputs.
+
+  $ mkdir generated
+  $ echo physical > generated/input
+  $ cat > generated/dune <<EOF
+  > (rule (target result) (deps input) (action (copy input result)))
+  > EOF
+  $ echo '(alias (name idle))' > dune
+  $ build generated/result
+  Success
+  $ cat _build/default/generated/result
+  physical
+  $ echo '(data_only_dirs generated)' > dune
+  $ build generated/result
+  Failure
+  [1]
+  $ build generated/input
+  Success
+  $ echo '(alias (name idle))' > dune
+  $ build generated/result
+  Success
+  $ cat _build/default/generated/result
+  physical
+  $ rm generated/dune generated/input
+  $ rmdir generated
+  $ cat > dune <<EOF
+  > (subdir generated
+  >  (rule (target result) (action (write-file result "virtual again\n"))))
+  > EOF
+  $ build generated/result
+  Success
+  $ cat _build/default/generated/result
+  virtual again
+
 We're done.
 
   $ stop_dune_quiet

@@ -1,12 +1,26 @@
 open Import
 
+[%%if ocaml_version >= (5, 5, 0)]
+
+let set_small_heap_limit () =
+  try Gc.Tweak.set "small_heap_limit" (16 * 1024 * 1024) with
+  | Invalid_argument _ -> ()
+;;
+
+[%%else]
+
+let set_small_heap_limit () = ()
+
+[%%endif]
+
 let () =
   if
     Option.is_none (Sys.getenv_opt "OCAMLRUNPARAM")
     && Option.is_none (Sys.getenv_opt "CAMLRUNPARAM")
   then (
     let control = Gc.get () in
-    Gc.set { control with space_overhead = 500 })
+    Gc.set { control with space_overhead = 500 };
+    set_small_heap_limit ())
 ;;
 
 let all : _ Cmdliner.Cmd.t list =

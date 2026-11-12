@@ -178,7 +178,7 @@ let%expect_test "map_reduce_seq" =
   [%expect
     {|
     1st run: a+ b+ c+ d+ e+ a- b- c- d- e-
-    2nd run: a+ a- b+ b- c+ c- d+ d- e+ e-
+    2nd run: a+ b+ c+ d+ e+ a- b- c- d- e-
 
     Metrics for 2nd run:
 
@@ -212,7 +212,7 @@ let%expect_test "map_reduce_seq keeps Memo frames and waits for failing branches
                "Memo.Error.E { exn = \"Failure(\\\"b\\\")\"; stack = [ (\"b\", ()); (\"top\", ()) ] }"
            ; backtrace = ""
            }
-    cached dependencies: Seq [ Singleton (Some "a", ()); Singleton (Some "b", ()) ]
+    cached dependencies: Par [ Singleton (Some "a", ()); Singleton (Some "b", ()) ]
     |}]
 ;;
 

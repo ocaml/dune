@@ -32,8 +32,8 @@ jobs:
       fail-fast: false
       matrix:
         ocaml-compiler:
-          - "4.14" # The oldest supported compiler version
-          - "5"    # The latest available compiler version
+          - "4.14.x" # The oldest supported compiler version
+          - "5"      # The latest available compiler version
 
     steps:
       - uses: actions/checkout@v7

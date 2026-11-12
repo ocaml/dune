@@ -1,0 +1,4 @@
+(cram
+ (applies_to preprocessors.t)
+ (deps
+  (package ppxlib)))

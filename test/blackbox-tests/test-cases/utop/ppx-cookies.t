@@ -1,64 +1,68 @@
-Custom toplevels and UTop preserve string-valued cookies when running PPX
-rewriters at runtime.
+Custom toplevels and UTop pass string-valued cookies to their runtime PPX
+commands.
 
+The driver reports cookie arguments only for runtime invocations and copies
+the compiler's input unchanged. Building the toplevel itself stays quiet.
+Debug information is unrelated to cookie passing and slows fixture linking.
+
+  $ export OCAMLPARAM="${OCAMLPARAM:-_},g=0"
   $ make_dune_project 3.25
   $ cat >dune <<'EOF'
   > (library
   >  (name cookie_ppx)
   >  (modules cookie_ppx)
-  >  (libraries ppxlib)
-  >  (kind (ppx_rewriter (cookies (message "hello")))))
+  >  (kind (ppx_rewriter (cookies (message "hello"))))
+  >  (ppx.driver
+  >   (main Cookie_ppx.main)
+  >   (flags ())))
   > (toplevel
   >  (name tt)
   >  (preprocess (pps cookie_ppx)))
   > EOF
   $ cat >cookie_ppx.ml <<'EOF'
-  > open Ppxlib
-  > let message = ref "missing"
-  > let compilation_mode = ref "absent"
-  > let () =
-  >   Driver.Cookies.add_handler (fun cookies ->
-  >     message := Option.value ~default:"missing"
-  >       (Driver.Cookies.get cookies "message" Ast_pattern.(estring __));
-  >     compilation_mode := Option.value ~default:"absent"
-  >       (Driver.Cookies.get cookies "compilation-mode"
-  >          Ast_pattern.(estring __)))
-  > let extension name value =
-  >   Extension.declare name Expression Ast_pattern.__ (fun ~loc ~path:_ _ ->
-  >     Ast_builder.Default.estring ~loc !value)
-  > let () = Driver.register_transformation "message"
-  >   ~rules:
-  >     [ Context_free.Rule.extension (extension "message" message)
-  >     ; Context_free.Rule.extension
-  >         (extension "compilation_mode" compilation_mode)
+  > let main () =
+  >   let runtime = ref false in
+  >   let cookies = ref [] in
+  >   let input_file = ref "" in
+  >   let output_file = ref "" in
+  >   let positional = ref [] in
+  >   Arg.parse
+  >     [ "--as-ppx", Arg.Set runtime, ""
+  >     ; "--cookie", Arg.String (fun s -> cookies := s :: !cookies), ""
+  >     ; "--impl", Arg.Set_string input_file, ""
+  >     ; "-o", Arg.Set_string output_file, ""
   >     ]
+  >     (fun s -> positional := s :: !positional) "";
+  >   (match List.rev !positional with
+  >    | [] -> ()
+  >    | [src; dst] -> input_file := src; output_file := dst
+  >    | _ -> failwith "unexpected PPX arguments");
+  >   if !runtime then
+  >     List.iter print_endline (List.sort String.compare !cookies);
+  >   let ic = open_in_bin !input_file in
+  >   let contents = really_input_string ic (in_channel_length ic) in
+  >   close_in ic;
+  >   let oc = open_out_bin !output_file in
+  >   output_string oc contents;
+  >   close_out oc
   > EOF
-  $ cat >init.ml <<'EOF'
-  > print_endline [%message]
-  > EOF
+  $ echo '()' >init.ml
 
-Both toplevels preserve the cookie's string value.
+Both toplevels preserve the cookie's string value. Dune does not supply the
+compilation-mode cookie before language version 3.26.
 
   $ dune exec ./tt.exe -- init.ml
-  hello
+  message="hello"
   $ dune utop . -- init.ml
-  hello
-
-Dune does not supply the compilation-mode cookie before language version 3.26.
-
-  $ cat >init.ml <<'EOF'
-  > print_endline [%compilation_mode]
-  > EOF
-  $ dune exec ./tt.exe -- init.ml
-  absent
-  $ dune utop . -- init.ml
-  absent
+  message="hello"
 
 Changing the language version supplies the cookie to both runtime PPX commands,
 without declaring it in the PPX library.
 
   $ make_dune_project 3.26
   $ dune exec ./tt.exe -- init.ml
-  ocaml
+  compilation-mode="ocaml"
+  message="hello"
   $ dune utop . -- init.ml
-  ocaml
+  compilation-mode="ocaml"
+  message="hello"

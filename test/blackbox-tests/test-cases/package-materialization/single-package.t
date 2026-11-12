@@ -1,5 +1,5 @@
 (deps (package foo)) resolves to precise file-level deps in a materialized
-install layout under _build/install/<context>/.packages/<digest>/.
+install layout under _build/_private/<context>/.packages/<digest>/.
 
   $ cat >dune-project <<EOF
   > (lang dune 3.24)
@@ -54,13 +54,13 @@ layout:
 Single package dep only includes that package:
 
   $ dune rules --format=json _build/default/out1 | jq_dune '.[] | ruleDepFilePaths' | censor | grep dune-package | sort
-  "_build/install/default/.packages/$DIGEST/lib/foo/dune-package"
+  "_build/_private/default/.packages/$DIGEST/lib/foo/dune-package"
 
 Two packages coalesce into a single layout directory:
 
   $ dune rules --format=json _build/default/out2 | jq_dune '.[] | ruleDepFilePaths' | censor | grep dune-package | sort
-  "_build/install/default/.packages/$DIGEST/lib/bar/dune-package"
-  "_build/install/default/.packages/$DIGEST/lib/foo/dune-package"
+  "_build/_private/default/.packages/$DIGEST/lib/bar/dune-package"
+  "_build/_private/default/.packages/$DIGEST/lib/foo/dune-package"
 
 Order of package deps does not matter. Same deps regardless of order:
 
@@ -71,4 +71,4 @@ Order of package deps does not matter. Same deps regardless of order:
 Different package set produces a different layout directory:
 
   $ dune rules --format=json _build/default/out3 | jq_dune '.[] | ruleDepFilePaths' | censor | grep dune-package | sort
-  "_build/install/default/.packages/$DIGEST/lib/bar/dune-package"
+  "_build/_private/default/.packages/$DIGEST/lib/bar/dune-package"

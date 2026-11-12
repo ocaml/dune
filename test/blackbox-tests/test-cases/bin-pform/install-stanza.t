@@ -30,5 +30,5 @@ The .binaries symlink uses the install name:
 
   $ dune rules --format=json _build/default/out \
   >   | jq_dune '.[] | ruleDepFilePaths' | censor
+  "_build/_private/default/.binaries/$DIGEST/renamed"
   "_build/default/script.sh"
-  "_build/install/default/.binaries/$DIGEST/renamed"

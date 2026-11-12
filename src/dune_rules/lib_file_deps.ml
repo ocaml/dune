@@ -2,8 +2,8 @@ open Import
 open Memo.O
 
 (* This file builds dep specs for library files (cmi/cmx/cmj/header). Per-module
-   tight deps apply only to local unwrapped libraries; wrapped libraries take a
-   directory glob over their public cmi dir. [ocamldep -modules] outputs only
+   tight deps apply only to local unwrapped libraries; wrapped libraries take
+   directory globs over their cmi dirs. [ocamldep -modules] outputs only
    top-level module names — for a consumer using [Foo.Bar.x] the output is
    [Foo], not [Foo.Bar] — so the filter cannot distinguish [Foo.Bar] from
    [Foo.Baz] consumers and a glob is the tightest sound dep. *)
@@ -49,9 +49,15 @@ end
 
 let deps_of_lib (lib : Lib.t) ~groups =
   let obj_dir = Lib.info lib |> Lib_info.obj_dir in
-  List.map groups ~f:(fun g ->
+  List.concat_map groups ~f:(fun g ->
     let dir = Group.obj_dir g obj_dir in
-    Group.to_glob g |> File_selector.of_glob ~dir |> Dep.file_selector)
+    let dirs =
+      match g with
+      | Ocaml Cmi -> dir :: Obj_dir.all_cmis obj_dir
+      | Ocaml Cmx | Melange _ | Header -> [ dir ]
+    in
+    List.map dirs ~f:(fun dir ->
+      Group.to_glob g |> File_selector.of_glob ~dir |> Dep.file_selector))
   |> Dep.Set.of_list
 ;;
 

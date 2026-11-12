@@ -47,6 +47,7 @@ a string literal, without introducing module dependencies.
   >  (libraries $1_shared))
   > (melange.emit
   >  (target out)
+  >  (emit_stdlib false)
   >  (modules main)
   >  (libraries $1_shared))
   > EOF
@@ -72,6 +73,7 @@ A melange.emit stanza can also preprocess its own modules with the cookie.
   $ cat >emit/dune <<'EOF'
   > (melange.emit
   >  (target out)
+  >  (emit_stdlib false)
   >  (preprocess (pps cookie_ppx)))
   > EOF
   $ echo 'let () = print_endline [%cookie_message]' >emit/main.ml

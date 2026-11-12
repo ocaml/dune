@@ -69,7 +69,9 @@ end = struct
 end
 
 let layout_dir ~context key =
-  Path.Build.L.relative (Install.Context.dir ~context) [ ".binaries"; key ]
+  Path.Build.L.relative
+    Private_context.t.build_dir
+    [ Context_name.to_string context; ".binaries"; key ]
 ;;
 
 let create context ~artifacts ~dir bin_names =

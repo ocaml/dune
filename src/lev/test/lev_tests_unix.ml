@@ -18,7 +18,7 @@ let%expect_test "child" =
   in
   let pid =
     let args = Array.Immutable.of_list [ "-c"; "exit 42" ] in
-    Spawn.spawn ~prog ~argv0:"sh" ~args ~stdin ~stdout ~stderr () |> Pid.to_int
+    Spawn.spawn ~nice:None ~prog ~argv0:"sh" ~args ~stdin ~stdout ~stderr () |> Pid.to_int
   in
   let child =
     match Child.create with

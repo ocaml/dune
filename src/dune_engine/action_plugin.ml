@@ -58,6 +58,7 @@ module Server = struct
     { build_deps : Dep.Set.t -> unit Fiber.t
     ; rule_loc : Loc.t
     ; root : Path.t
+    ; job_slot : Scheduler.Job_slot.t
     ; mutable initialized : bool
     ; mutable pending : unit Fiber.Ivar.t list
     ; mutable errors : string list
@@ -81,10 +82,18 @@ module Server = struct
   ;;
 
   let with_active ~(ectx : context) f =
-    let { Action.Ext.Exec.build_deps; rule_loc; root; _ } = ectx in
+    let { Action.Ext.Exec.build_deps; rule_loc; root; metadata; _ } = ectx in
+    let { Process_metadata.job_slots; _ } = metadata in
     let action_id = Action_id.gen () in
     let active_action =
-      { build_deps; rule_loc; root; initialized = false; pending = []; errors = [] }
+      { build_deps
+      ; rule_loc
+      ; root
+      ; job_slot = Scheduler.Job_slot.create ~job_slots
+      ; initialized = false
+      ; pending = []
+      ; errors = []
+      }
     in
     Action_id.Table.add_exn active action_id active_action;
     let open Fiber.O in
@@ -121,15 +130,16 @@ module Server = struct
         let completed = Fiber.Ivar.create () in
         active.pending <- completed :: active.pending;
         Fiber.finalize
-          (fun () ->
-             Fiber.collect_errors (fun () -> active.build_deps deps_to_build)
-             >>| function
-             | Error errors ->
-               let message = build_error_message errors in
-               active.errors <- message :: active.errors;
-               Some message
-             | Ok () -> None)
           ~finally:(fun () -> Fiber.Ivar.fill completed ())
+          (fun () ->
+             Scheduler.Job_slot.with_ active.job_slot ~f:(fun () ->
+               Fiber.collect_errors (fun () -> active.build_deps deps_to_build)
+               >>| function
+               | Ok () -> None
+               | Error errors ->
+                 let message = build_error_message errors in
+                 active.errors <- message :: active.errors;
+                 Some message))
   ;;
 
   let initialize _session action_id =
@@ -162,7 +172,8 @@ let exec ~(ectx : context) ~(eenv : env) prog args =
            ~value:(Action_id.to_string action_id)
     in
     let+ (_ : (unit, int) result) =
-      Process.run
+      Process.run_with_job_slot
+        ~job_slot:active_action.job_slot
         ~display:!Clflags.display
         (Accept eenv.exit_codes)
         ~dir:eenv.working_dir

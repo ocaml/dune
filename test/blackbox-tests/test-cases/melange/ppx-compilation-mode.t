@@ -74,6 +74,7 @@ The generated references must also be found during dependency analysis.
   >  (libraries $1_shared))
   > (melange.emit
   >  (target out)
+  >  (emit_stdlib false)
   >  (modules main)
   >  (libraries $1_shared))
   > EOF
@@ -133,6 +134,7 @@ The cookie is also supplied when preprocessing a melange.emit stanza directly.
   $ cat >emit/dune <<'EOF'
   > (melange.emit
   >  (target out)
+  >  (emit_stdlib false)
   >  (preprocess (pps mode_ppx)))
   > EOF
   $ dune build @emit/melange
@@ -251,8 +253,8 @@ A conflicting library request is rejected when Dune supplies the cookie.
   >  (libraries ppxlib))
   > EOF
   $ dune build @emit/melange
-  File "emit/dune", line 3, characters 13-27:
-  3 |  (preprocess (pps mode_ppx)))
+  File "emit/dune", line 4, characters 13-27:
+  4 |  (preprocess (pps mode_ppx)))
                    ^^^^^^^^^^^^^^
   Error: dune and mode_ppx have inconsistent requests for cookie
   "compilation-mode"; dune requests "melange" and mode_ppx requests "absent"

@@ -718,6 +718,7 @@ module Dune_config = struct
                 let fdw = Fd.unsafe_of_unix_file_descr fdw in
                 (match
                    Stdune.Spawn.spawn
+                     ~nice:None
                      ~prog
                      ~argv0:prog
                      ~args:(Stdune.Array.Immutable.of_list args)

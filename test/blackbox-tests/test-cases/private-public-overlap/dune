@@ -1,0 +1,4 @@
+(cram
+ (applies_to private-runtime-deps.t private-rewriter.t)
+ (deps
+  (package ppxlib)))

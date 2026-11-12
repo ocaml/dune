@@ -1,11 +1,10 @@
 (library
  (name vcs_tests)
+ ;; Repeated Mercurial process startups make this test too slow.
+ (modules
+  (:standard \ vcs_hg_tests))
  (inline_tests
-  (deps
-   ;; TODO split this into two tests: one for git and one for hg. The hg test
-   ;; should live under a different alias
-   ;; %{bin:hg}
-   %{bin:git}))
+  (deps %{bin:git}))
  (libraries
   dune_tests_common
   stdune

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794458472519,
+  "lastUpdate": 1794458479815,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -486560,6 +486560,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.760468698000004,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "punchagan@muse-amuse.in",
+            "name": "Puneeth Chaganti",
+            "username": "punchagan"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "66987b2d01eb21fb23e6416ac143d7c83d8e996f",
+          "message": "fix(odoc): avoid instantiating libs when generating rules (#16998)\n\n## Description\n\nPreviously, the libs were instantiated and resolved whenever the rules\nfor root were generated. This change defers the library discovery and\ninstantiation to only when an odoc alias is requested. This fixes cycles\nthat are caused when a library depends on a file at the project root in\na read pform, for instance.\n\n## Related Issue and Motivation\n\nThis partially fixes the cycles described in #14946. The other part was\nfixed in #16518 but reverted in #16894.\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [ ] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [ ] Documentation added for any user-facing changes.\n\nSigned-off-by: Puneeth Chaganti <punchagan@muse-amuse.in>",
+          "timestamp": "2026-11-12T12:19:45+08:00",
+          "tree_id": "15d33b5469ab23588bda9ae80357aefdcbd76e97",
+          "url": "https://github.com/ocaml/dune/commit/66987b2d01eb21fb23e6416ac143d7c83d8e996f"
+        },
+        "date": 1794458478585,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.48178561288666666,
             "unit": "seconds"
           }
         ]

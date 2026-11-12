@@ -89,6 +89,17 @@ let catch_fs_errors f =
   | exception exn -> Error (Error.of_exn exn)
 ;;
 
+let stat path =
+  let path = Path.to_string path in
+  match Stat.stat path with
+  | stats -> Ok stats
+  | exception Unix.Unix_error (ENOENT, _, _) ->
+    (match Unix.lstat path with
+     | { st_kind = S_LNK; _ } -> Error Error.Broken_symlink
+     | _ -> Error Error.No_such_file
+     | exception Unix.Unix_error (ENOENT, _, _) -> Error Error.No_such_file)
+;;
+
 let error_of_path_digest_error ~file_kind = function
   | Digest.Path_digest_error.Unexpected_kind -> Error.Unexpected_kind file_kind
   | Unix_error (ENOENT, _, _) -> No_such_file

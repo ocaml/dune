@@ -103,7 +103,8 @@ no stability guarantee.
  (depends
   (ocaml (>= 4.14))
   base-unix
-  (csexp (>= 1.5.0)))
+  (csexp (>= 1.5.0))
+  (conf-pkg-config :with-test))
  (description "\
 dune-configurator is a small library that helps writing OCaml scripts that
 test features available on the system, in order to generate config.h

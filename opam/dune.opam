@@ -49,6 +49,7 @@ depends: [
   "ctypes" {with-test & os != "win32"}
   "utop" {with-test & >= "2.6.0" & os != "win32"}
   "melange" {with-test & >= "7.0.0" & os != "win32"}
+  "conf-jq" {with-test}
   "conf-pkg-config" {with-test}
   "conf-git-daemon" {with-test}
   "odoc" {with-doc}

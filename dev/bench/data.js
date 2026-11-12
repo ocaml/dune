@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794492471627,
+  "lastUpdate": 1794496402449,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -677816,6 +677816,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 4.08017816144,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "quentin@tarides.com",
+            "name": "mefyl",
+            "username": "mefyl"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "99d4de20d82835b8fdf22c3defeb99da650c82d7",
+          "message": "Make all tools available in the PATH via `dune tools env`. (#16901)\n\n## Description\n\nMake `dune tools env` add all executable installed by dependencies in\nthe PATH.\n\n## Related Issue and Motivation\n\nFixes #16191, see details there.\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-11-12T16:03:52+01:00",
+          "tree_id": "0ebd666c4b02a0a7e08f206a931caf028cd32d26",
+          "url": "https://github.com/ocaml/dune/commit/99d4de20d82835b8fdf22c3defeb99da650c82d7"
+        },
+        "date": 1794496167819,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.6681753090533333,
             "unit": "seconds"
           }
         ]

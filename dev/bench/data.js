@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794492120969,
+  "lastUpdate": 1794492463706,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -486705,6 +486705,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4260225419866667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c82299e7467c58badf3816d3dab52a5522cabdf6",
+          "message": "test(melange): preserve support for compilers without hidden includes (#16940)\n\nTest that public APIs backed by private modules still build when Melange\nrejects `-H`. Compatibility coverage for #16941.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-12T05:47:28-08:00",
+          "tree_id": "1ec00b1418ff9a90b9954ca57d881555e35d4bf8",
+          "url": "https://github.com/ocaml/dune/commit/c82299e7467c58badf3816d3dab52a5522cabdf6"
+        },
+        "date": 1794492462296,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 66.25988397575333,
             "unit": "seconds"
           }
         ]

@@ -9,7 +9,7 @@ library.
   > (package (name my_pkg))
   > EOF
 
-  $ mkdir foo bar
+  $ mkdir foo bar baz priv
   $ cat > foo/dune <<EOF
   > (library (public_name my_pkg.foo) (name foo))
   > EOF
@@ -28,11 +28,39 @@ library.
   > 
   >     Module path reference: {!/my_pkg.foo/Foo.x}.
   > 
-  >     Page path reference: {!/my_pkg/guide}. *)
+  >     Page path reference: {!/my_pkg/guide}.
+  > 
+  >     Current package reference: {!//guide}.
+  > 
+  >     Reference to a library that is not a dependency: {!/my_pkg.baz/Baz.z}. *)
   > val y : int
   > EOF
   $ cat > bar/bar.ml <<EOF
   > let y = Foo.x
+  > EOF
+
+A library of the package that bar does not depend on:
+
+  $ cat > baz/dune <<EOF
+  > (library (public_name my_pkg.baz) (name baz))
+  > EOF
+  $ cat > baz/baz.mli <<EOF
+  > val z : int
+  > EOF
+  $ cat > baz/baz.ml <<EOF
+  > let z = 2
+  > EOF
+
+A private library of the package:
+
+  $ cat > priv/dune <<EOF
+  > (library (name priv) (package my_pkg))
+  > EOF
+  $ cat > priv/priv.mli <<EOF
+  > val p : int
+  > EOF
+  $ cat > priv/priv.ml <<EOF
+  > let p = 3
   > EOF
 
   $ cat > dune <<EOF
@@ -46,6 +74,8 @@ library.
   > Page path reference: {!/my_pkg/guide}.
   > 
   > Module path reference: {!/my_pkg.bar/Bar}.
+  > 
+  > Private library reference: {!/priv/Priv}.
   > EOF
   $ cat > guide.mld <<EOF
   > {0 Guide}
@@ -54,15 +84,18 @@ library.
 Dune does not pass -P and -L to odoc, so path references fail to resolve:
 
   $ dune build @doc 2>&1 | grep Warning | sort
+  Warning: Failed to resolve reference //guide Path '//guide' not found
   Warning: Failed to resolve reference /my_pkg.bar/Bar Path '/my_pkg.bar/Bar' not found
+  Warning: Failed to resolve reference /my_pkg.baz/Baz.z Path '/my_pkg.baz/Baz' not found
   Warning: Failed to resolve reference /my_pkg.foo/Foo.x Path '/my_pkg.foo/Foo' not found
   Warning: Failed to resolve reference /my_pkg/guide Path '/my_pkg/guide' not found
   Warning: Failed to resolve reference /my_pkg/guide Path '/my_pkg/guide' not found
+  Warning: Failed to resolve reference /priv/Priv Path '/priv/Priv' not found
 
 Flat references are rendered as links, path references as plain code:
 
   $ grep -o '<p>.*</p>' \
   >   _build/default/_doc/_html/my_pkg/Bar/index.html \
   >   _build/default/_doc/_html/my_pkg/index.html
-  _build/default/_doc/_html/my_pkg/Bar/index.html:<p>Flat reference: <a href="../Foo/index.html#val-x"><code>Foo.x</code></a>.</p><p>Module path reference: <code>/my_pkg.foo/Foo.x</code>.</p><p>Page path reference: <code>/my_pkg/guide</code>.</p>
-  _build/default/_doc/_html/my_pkg/index.html:<p>Flat page reference: <a href="guide.html"><code>guide</code></a>.</p><p>Page path reference: <code>/my_pkg/guide</code>.</p><p>Module path reference: <code>/my_pkg.bar/Bar</code>.</p>
+  _build/default/_doc/_html/my_pkg/Bar/index.html:<p>Flat reference: <a href="../Foo/index.html#val-x"><code>Foo.x</code></a>.</p><p>Module path reference: <code>/my_pkg.foo/Foo.x</code>.</p><p>Page path reference: <code>/my_pkg/guide</code>.</p><p>Current package reference: <code>//guide</code>.</p><p>Reference to a library that is not a dependency: <code>/my_pkg.baz/Baz.z</code>.</p>
+  _build/default/_doc/_html/my_pkg/index.html:<p>Flat page reference: <a href="guide.html"><code>guide</code></a>.</p><p>Page path reference: <code>/my_pkg/guide</code>.</p><p>Module path reference: <code>/my_pkg.bar/Bar</code>.</p><p>Private library reference: <code>/priv/Priv</code>.</p>

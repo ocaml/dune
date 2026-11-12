@@ -1,6 +1,6 @@
 %{bin:...} in a cross-compilation context. The pform expands via the
 host context's artifacts, and the action's PATH gets the .binaries
-dir and the install bin dir, both under the host context.
+view from that host context's private namespace.
 
   $ make_dune_project_with_package 3.24 mypkg
 
@@ -27,4 +27,4 @@ dir and the install bin dir, both under the host context.
   $ dune build _build/target/path-output
 
   $ env_added "$(cat _build/target/path-output)" "$PATH" | censor
-  $PWD/_build/install/host/.binaries/$DIGEST
+  $PWD/_build/_private/host/.binaries/$DIGEST

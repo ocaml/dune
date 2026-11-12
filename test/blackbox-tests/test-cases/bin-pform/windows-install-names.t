@@ -45,6 +45,6 @@ On native Windows, both entries are callable by their lookup names:
 The layout uses the installed filenames, including [.exe] only for the
 executable:
 
-  $ ls _build/install/default/.binaries/*
+  $ ls _build/_private/default/.binaries/*
   launcher.exe
   tool.cmd

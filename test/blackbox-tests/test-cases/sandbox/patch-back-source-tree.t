@@ -335,6 +335,8 @@ Generated files inside directory targets remain build targets and are omitted
 from promotion output. Unrelated source-tree changes made by the same action are
 still reported.
 
+CR: The directory output's contents are currently offered for promotion too.
+
   $ rm -rf out sub dune
   $ make_dune_project 3.24
   $ cat >dune<<EOF
@@ -355,4 +357,23 @@ still reported.
   +++ _build/default/sub/out
   @@ -0,0 +1 @@
   +surprise
+  [1]
+
+Empty glob dependencies belong to the initial snapshot
+------------------------------------------------------
+
+Record their directories and parents even though no dependency files are copied.
+
+  $ mkdir -p initially-empty/nested
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (alias snapshot-empty)
+  >  (deps
+  >   (glob_files initially-empty/nested/*.txt)
+  >   (sandbox patch_back_source_tree))
+  >  (action (bash "rmdir initially-empty/nested initially-empty")))
+  > EOF
+  $ dune build @snapshot-empty 2>&1 | grep '^Error:'
+  Error: Directory initially-empty should be deleted
+  Error: Directory initially-empty/nested should be deleted
   [1]

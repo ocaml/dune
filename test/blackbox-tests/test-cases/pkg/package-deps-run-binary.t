@@ -1,7 +1,8 @@
 A single action that both declares [(deps (package X))] and resolves a program
 installed by that same package [X] (via [(run ...)] or [%{bin:...}]) should run
-correctly under the default sandbox.
+correctly under both default and copy sandboxing.
 
+  $ export DUNE_CACHE=disabled
   $ make_lockdir
 
   $ make_lockpkg provider <<'EOF'
@@ -27,19 +28,27 @@ correctly under the default sandbox.
   >   (with-stdout-to out (run mybin))))
   > EOF
 
-This should print "from provider", but fails instead:
+With default sandboxing, the overlapping package-directory and executable
+dependencies are both available to the action.
 
-  $ dune build @all 2>&1 | censor
-  Error:
-  symlink(_build/.sandbox/$DIGEST1/_private/default/.pkg/provider.0.0.1-$DIGEST2/target): File exists
-  -> required by _build/default/out
-  -> required by alias all
-  [1]
+  $ dune build @all
   $ cat _build/default/out
-  cat: _build/default/out: No such file or directory
-  [1]
+  from provider
 
-Removing [(deps (package provider))] fixes the problem
+Copy mode must provide the same inputs without copying the executable twice.
+Prefer no sandbox for internal rules, then copy for user rules that require
+sandboxing. Remove the existing output to force the action to run again.
+
+  $ cat > copy-config <<'EOF'
+  > (lang dune 3.25)
+  > (sandboxing_preference none copy)
+  > EOF
+  $ rm _build/default/out
+  $ dune build @all --config-file copy-config
+  $ cat _build/default/out
+  from provider
+
+Without [(deps (package provider))], both sandbox modes should succeed.
 
   $ cat >dune <<'EOF'
   > (rule
@@ -47,7 +56,11 @@ Removing [(deps (package provider))] fixes the problem
   >   (with-stdout-to out (run mybin))))
   > EOF
 
-  $ dune build @all 2>&1 | censor
-  
+  $ dune build @all
+  $ cat _build/default/out
+  from provider
+
+  $ rm _build/default/out
+  $ dune build @all --config-file copy-config
   $ cat _build/default/out
   from provider

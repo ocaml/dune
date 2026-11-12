@@ -27,6 +27,10 @@ module type S = sig
   val read_file : ?binary:bool -> path -> (string, exn) result
   val read_file_exn : ?binary:bool -> path -> string
 
+  (** Binary descriptor-based read. Returns [None] if the file exceeds
+      [max_size] or [Sys.max_string_length], or ends before its reported size. *)
+  val read_file_if_small : path -> max_size:int -> (string option, exn) result
+
   val write_file
     :  ?binary:bool
     -> ?perm:Permissions.Mode.t
@@ -45,8 +49,12 @@ module type S = sig
     -> string list
     -> unit
 
+  (** [copy_file ~overwrite ?chmod ~src ~dst ()] copies [src] to [dst]. When
+      [overwrite] is [false], it fails if [dst] already exists, otherwise allowing
+      overwrites. [chmod] optionally adjusts the permissions. *)
   val copy_file
-    :  ?chmod:(Permissions.Mode.t -> Permissions.Mode.t)
+    :  overwrite:bool
+    -> ?chmod:(Permissions.Mode.t -> Permissions.Mode.t)
     -> src:path
     -> dst:path
     -> unit

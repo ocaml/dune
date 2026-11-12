@@ -34,8 +34,22 @@ let () =
   | _ :: "pdeathsig-default-child" :: ready_file :: marker_file :: _ ->
     pdeathsig_default_child ready_file marker_file
   | argv0 :: "print-args" :: args -> List.iter print_endline (argv0 :: args)
+  | _ :: "nice-exit-code" :: adjustment :: _ ->
+    (* Observe niceness only after the parent has returned from spawning. *)
+    ignore (input_char stdin);
+    exit (20 + Unix.nice (int_of_string adjustment))
   | _ ->
-    (match Sys.getenv "FOO" with
-     | exception _ -> print_endline "None"
-     | str -> Printf.printf "Some %S\n" str)
+    (* On Windows, Sys.getenv in OCaml 5.5.1 treats empty values as missing.
+       Inspect the environment block instead to test their propagation. *)
+    let foo =
+      Unix.environment ()
+      |> Array.to_list
+      |> List.find_map (fun binding ->
+        if String.starts_with ~prefix:"FOO=" binding
+        then Some (String.sub binding 4 (String.length binding - 4))
+        else None)
+    in
+    (match foo with
+     | None -> print_endline "None"
+     | Some str -> Printf.printf "Some %S\n" str)
 ;;

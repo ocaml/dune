@@ -37,6 +37,7 @@ exception Non_reproducible = Exec.Non_reproducible
 
 open Node
 module Error = Node.Error
+module Exn_set = Node.Exn_set
 module Cycle_error = Node.Cycle_error
 
 let () =
@@ -221,13 +222,24 @@ let is_top_level =
   not is_set
 ;;
 
+let run_and_collect_errors t =
+  let+ res = Exec.report_and_collect_errors t in
+  match res with
+  | Ok ok -> Ok ok
+  | Error ({ exns; reproducible = _ } : Collect_errors_monoid.t) -> Error exns
+;;
+
+let with_error_handler f ~handle_error_no_raise =
+  Error_handler.with_error_handler handle_error_no_raise f
+;;
+
 let run_with_error_handler t ~handle_error_no_raise =
-  Error_handler.with_error_handler handle_error_no_raise (fun () ->
-    let* res = Exec.report_and_collect_errors t in
-    match res with
-    | Ok ok -> Fiber.return ok
-    | Error ({ exns; reproducible = _ } : Collect_errors_monoid.t) ->
-      Fiber.reraise_all (Exn_set.to_list exns))
+  with_error_handler ~handle_error_no_raise
+  @@ fun () ->
+  run_and_collect_errors t
+  >>= function
+  | Ok ok -> Fiber.return ok
+  | Error exns -> Fiber.reraise_all (Exn_set.to_list exns)
 ;;
 
 let run t =
@@ -329,52 +341,6 @@ module Lazy = struct
 end
 
 let lazy_ = Lazy.create
-
-module Poly (Function : sig
-    type 'a input
-    type 'a output
-
-    val name : string
-    val id : 'a input -> 'a Type_eq.Id.t
-    val to_dyn : _ input -> Dyn.t
-    val eval : 'a input -> 'a output Fiber.t
-  end) =
-struct
-  open Function
-
-  module Key = struct
-    type t = T : _ input -> t
-
-    let to_dyn (T t) = to_dyn t
-    let hash (T t) = Type_eq.Id.hash (id t)
-    let equal (T x) (T y) = Type_eq.Id.equal (id x) (id y)
-  end
-
-  module Value = struct
-    type t = T : ('a Type_eq.Id.t * 'a output) -> t
-
-    let get (type a) ~(input_with_matching_id : a input) value : a output =
-      match value with
-      | T (id_v, res) ->
-        (match Type_eq.Id.same id_v (id input_with_matching_id) with
-         | None ->
-           Code_error.raise
-             "Type_eq.Id.t mismatch in Memo.Poly: the likely reason is that the provided \
-              Function.id returns different ids for the same input."
-             [ "Function.name", Dyn.String name ]
-         | Some Type_eq.T -> res)
-    ;;
-  end
-
-  let memo =
-    create
-      name
-      ~input:(module Key)
-      (function Key.T input -> eval input >>| fun v -> Value.T (id input, v))
-  ;;
-
-  let eval x = exec memo (Key.T x) >>| Value.get ~input_with_matching_id:x
-end
 
 let reset invalidation =
   (* We rely on [invalidation] to list the actual reasons for the reset, which

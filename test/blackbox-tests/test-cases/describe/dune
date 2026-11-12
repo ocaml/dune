@@ -1,0 +1,4 @@
+(cram
+ (applies_to describe.t describe-workspace-pp.t)
+ (deps
+  (package ppxlib)))

@@ -456,3 +456,26 @@ Generated interfaces with the same basename in another directory are omitted.
   authored/value.mli: ocaml true intf authored/value.ml
   generated/value.ml: ocaml true impl -
   generated/value.mli: ocaml true intf generated/value.ml
+
+Copying one input to different modules in the same mode is ambiguous. Typed
+lookup omits the result; legacy lookup deterministically selects one.
+
+  $ mkdir branched
+  $ cat > branched/dune-project <<EOF
+  > (lang dune 3.16)
+  > EOF
+  $ cat > branched/dune <<EOF
+  > (library (name branched) (modules left right))
+  > (rule (action (copy# input.txt left.ml)))
+  > (rule (action (copy# input.txt right.ml)))
+  > EOF
+  $ printf 'let value = 1\n' > branched/input.txt
+  $ DUNE_SANDBOX=none dune build --root branched left.ml
+  $ DUNE_SANDBOX=none dune build --root branched right.ml
+  $ DUNE_SANDBOX=none dune build --root branched @check
+  $ (cd branched && merlin_configurations \
+  >   _build/default/.merlin-conf/lib-branched input.txt)
+  input.txt: none
+  $ query_ocaml_merlin_pp "$PWD/branched/input.txt" --root branched \
+  >   | grep -Eo '\(UNIT_NAME [^)]*\)'
+  (UNIT_NAME branched__Left)

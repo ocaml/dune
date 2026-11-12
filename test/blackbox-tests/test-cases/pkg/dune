@@ -31,6 +31,11 @@
  (applies_to autolock-with-watch-server.t))
 
 (cram
+ (enabled_if
+  (<> "macosx" %{ocaml-config:system}))
+ (applies_to local-source-editor-temp-file-watch.t))
+
+(cram
  (applies_to sites-plugin.t)
  (deps
   (package dune-site)

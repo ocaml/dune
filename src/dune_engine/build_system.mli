@@ -8,11 +8,7 @@ val build_file : Path.t -> unit Memo.t
 (** Build a directory. *)
 val build_dir : Path.t -> unit Memo.t
 
-(** Build a file and read its contents with [f]. The execution of [f] is not memoized, so
-    call sites should be careful to avoid duplicating [f]'s work. *)
-val with_file : Path.t -> f:(Path.t -> 'a) -> 'a Memo.t
-
-(** Build a file and read its contents. Like [with_file ~f:Io.read_file] but memoized. *)
+(** Build a file and memoize its contents. *)
 val read_file : Path.t -> string Memo.t
 
 (** Return [true] if a file or directory exists or is buildable. *)
@@ -48,13 +44,7 @@ val dep_on_alias_definition : Rules.Dir_rules.Alias_spec.item -> unit Action_bui
 
 (** {2 Running the build system} *)
 
-val run
-  :  ?restart_started_at:Time.t
-  -> ?build:Process.Build.t
-  -> (unit -> 'a Memo.t)
-  -> ('a, [ `Already_reported ]) Result.t Fiber.t
-
-(** A variant of [run] that raises an [Already_reported] exception on error. *)
+(** Run the build system, raising [Already_reported] on error. *)
 val run_exn : (unit -> 'a Memo.t) -> 'a Fiber.t
 
 module Request : sig
@@ -74,6 +64,8 @@ module Request : sig
   (** Prevent this request from completing goals that have not already
       completed. *)
   val cancel_completion : t -> unit
+
+  val number_of_goals : t -> int
 end
 
 val run_build_requests

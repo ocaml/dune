@@ -58,8 +58,9 @@ end = struct
     ; known : string list
     }
 
-  let leftover_fields t fields = { unparsed = Name.Map.empty; known = t.known @ fields }
-  let junk_unparsed t = { t with unparsed = Name.Map.empty }
+  let empty = { unparsed = Name.Map.empty; known = [] }
+  let leftover_fields _ _ = empty
+  let junk_unparsed _ = empty
 
   let of_values sexps =
     let unparsed =
@@ -83,10 +84,17 @@ end = struct
   ;;
 
   let consume state name =
-    { unparsed = Name.Map.remove state.unparsed name; known = name :: state.known }
+    let unparsed = Name.Map.remove state.unparsed name in
+    if Name.Map.is_empty unparsed
+    then empty
+    else { unparsed; known = name :: state.known }
   ;;
 
-  let add_known state name = { state with known = name :: state.known }
+  let add_known state name =
+    if Name.Map.is_empty state.unparsed
+    then state
+    else { state with known = name :: state.known }
+  ;;
 
   let unparsed_ast =
     let rec loop acc = function

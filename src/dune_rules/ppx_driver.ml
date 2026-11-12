@@ -253,7 +253,7 @@ let build_ppx_driver =
     ()
 ;;
 
-let get_cookies ~loc ~expander ~lib_name libs =
+let get_cookies ~loc ~expander ~lib_name ~compilation_mode ~dune_version libs =
   let expander, library_name_cookie =
     match lib_name with
     | None -> expander, None
@@ -263,7 +263,18 @@ let get_cookies ~loc ~expander ~lib_name libs =
         Pform.Map.singleton (Var Library_name) [ Value.String library_name ]
       in
       ( Expander.add_bindings expander ~bindings
-      , Some ("library-name", (library_name, Lib_name.of_local (loc, lib_name))) )
+      , Some ("library-name", (library_name, library_name)) )
+  in
+  let compilation_mode_cookie =
+    if dune_version >= (3, 26)
+    then (
+      let value =
+        match compilation_mode with
+        | Compilation_mode.Ocaml -> "ocaml"
+        | Melange -> "melange"
+      in
+      Some ("compilation-mode", (value, "dune")))
+    else None
   in
   let cookies =
     List.concat_map libs ~f:(fun t ->
@@ -277,17 +288,13 @@ let get_cookies ~loc ~expander ~lib_name libs =
   let+ cookies =
     Memo.List.map cookies ~f:(fun (lib_name, { Lib_kind.Ppx_args.Cookie.name; value }) ->
       let+ value = Expander.No_deps.expand_str expander value in
-      name, (value, lib_name))
+      name, (value, Lib_name.to_string lib_name))
   in
-  (match library_name_cookie with
-   | None -> cookies
-   | Some cookie -> cookie :: cookies)
+  List.filter_opt [ library_name_cookie; compilation_mode_cookie ] @ cookies
   |> String.Map.of_list_reducei ~f:(fun name ((val1, lib1) as res) (val2, lib2) ->
     if String.equal val1 val2
     then res
-    else (
-      let lib1 = Lib_name.to_string lib1 in
-      let lib2 = Lib_name.to_string lib2 in
+    else
       User_error.raise
         ~loc
         [ Pp.textf
@@ -300,7 +307,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
             val1
             lib2
             val2
-        ]))
+        ])
   |> String.Map.to_list_map ~f:(fun name (value, _) ->
     [ "--cookie"; sprintf "%s=%S" name value ])
   |> List.concat
@@ -308,6 +315,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
 
 let ppx_driver_and_flags_internal
       context
+      ~for_:compilation_mode
       ~dune_version
       ~loc
       ~expander
@@ -326,19 +334,37 @@ let ppx_driver_and_flags_internal
            ~f:(List.map ~f:(Value.to_string ~dir:(Path.build @@ Expander.dir expander)))
   and+ cookies =
     let* libs = Resolve.Memo.read (Lib.closure libs ~linking:true ~for_) in
-    Action_builder.of_memo (get_cookies ~loc ~lib_name ~expander libs)
+    Action_builder.of_memo
+      (get_cookies ~loc ~lib_name ~expander ~compilation_mode ~dune_version libs)
   and+ ppx_driver_exe = Action_builder.of_memo @@ Ppx_exe.ppx_driver_exe context libs in
   ppx_driver_exe, flags @ cookies
 ;;
 
 let resolve_pps scope pps = Resolve.Memo.read (Lib.DB.resolve_pps (Scope.libs scope) pps)
 
-let ppx_driver_and_flags ctx ~lib_name ~expander ~scope ~loc ~flags pps =
+let ppx_driver_and_flags
+      ctx
+      ~for_:compilation_mode
+      ~lib_name
+      ~expander
+      ~scope
+      ~loc
+      ~flags
+      pps
+  =
   let open Action_builder.O in
   let* libs = resolve_pps scope pps in
   let+ exe, flags =
     let dune_version = Scope.project scope |> Dune_project.dune_version in
-    ppx_driver_and_flags_internal ctx ~loc ~expander ~dune_version ~lib_name ~flags libs
+    ppx_driver_and_flags_internal
+      ctx
+      ~for_:compilation_mode
+      ~loc
+      ~expander
+      ~dune_version
+      ~lib_name
+      ~flags
+      libs
   and+ driver =
     let* libs = Resolve.Memo.read (Lib.closure libs ~linking:true ~for_) in
     Action_builder.of_memo (Driver.select libs ~loc:(User_file (loc, pps)))
@@ -347,11 +373,19 @@ let ppx_driver_and_flags ctx ~lib_name ~expander ~scope ~loc ~flags pps =
   exe, driver, flags
 ;;
 
-let get_ppx_driver ctx ~loc ~expander ~scope ~lib_name ~flags pps =
+let get_ppx_driver ctx ~for_ ~loc ~expander ~scope ~lib_name ~flags pps =
   let open Action_builder.O in
   let* libs = resolve_pps scope pps in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
-  ppx_driver_and_flags_internal ctx ~loc ~expander ~dune_version ~lib_name ~flags libs
+  ppx_driver_and_flags_internal
+    ctx
+    ~for_
+    ~loc
+    ~expander
+    ~dune_version
+    ~lib_name
+    ~flags
+    libs
 ;;
 
 let ppx_exe ctx ~scope pp = Ppx_exe.get_ppx_exe ctx ~scope [ Loc.none, pp ]

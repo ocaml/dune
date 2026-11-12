@@ -62,11 +62,12 @@ let default_build_command =
   [ "dune" "install" "-p" name "--create-install-files" name ]
 ]
 |}))
-  and from_3_0 ~with_subst ~with_sites =
+  and from_3 ~with_subst ~with_sites ~include_install_alias ~runtest =
     let subst = if with_subst then {|  [ "dune" "subst" ] {dev} |} else "" in
     let promote_install_files =
       if with_sites then {|  "--promote-install-files=false" |} else ""
     in
+    let install_alias = if include_install_alias then {|      "@install"|} else "" in
     let install =
       if with_sites
       then {| [ "dune" "install" "-p" name "--create-install-files" name ] |}
@@ -81,35 +82,7 @@ let default_build_command =
 [
   %s
   [ "dune" "build" "-p" name "-j" jobs %s
-      "@install"
-      "@runtest" {with-test}
-      "@doc" {with-doc}
-  ]
-  %s
-]
-|}
-               subst
-               promote_install_files
-               install)))
-  and from_3_23 ~with_subst ~with_sites ~runtest =
-    let subst = if with_subst then {|  [ "dune" "subst" ] {dev} |} else "" in
-    let promote_install_files =
-      if with_sites then {|  "--promote-install-files=false" |} else ""
-    in
-    let install =
-      if with_sites
-      then {| [ "dune" "install" "-p" name "--create-install-files" name ] |}
-      else ""
-    in
-    lazy
-      (Opam_file.parse_value
-         (Lexbuf.from_string
-            ~fname:"<internal>"
-            (Printf.sprintf
-               {|
-[
-  %s
-  [ "dune" "build" "-p" name "-j" jobs %s
+%s
       "%s" {with-test}
       "@doc" {with-doc}
   ]
@@ -118,6 +91,7 @@ let default_build_command =
 |}
                subst
                promote_install_files
+               install_alias
                runtest
                install)))
   in
@@ -135,14 +109,16 @@ let default_build_command =
        else if version < (3, 0)
        then from_2_9
        else if version < (3, 23)
-       then from_3_0 ~with_subst ~with_sites
+       then from_3 ~with_subst ~with_sites ~include_install_alias:true ~runtest:"@runtest"
        else (
          match Package.exclusive_dir package with
-         | None -> from_3_0 ~with_subst ~with_sites
+         | None ->
+           from_3 ~with_subst ~with_sites ~include_install_alias:true ~runtest:"@runtest"
          | Some (_loc, dir) ->
-           from_3_23
+           from_3
              ~with_subst
              ~with_sites
+             ~include_install_alias:false
              ~runtest:("@runtest/" ^ Path.Source.to_string dir)))
 ;;
 
@@ -527,12 +503,12 @@ module Gen_rules = Build_config.Gen_rules
 
 let gen_rules sctx ~dir ~nearest_src_dir ~src_dir =
   match nearest_src_dir with
-  | None -> None
+  | None -> Gen_rules.no_rules
   | Some nearest_src_dir ->
     let project = Source_tree.Dir.project nearest_src_dir in
     let project_root = Dune_project.root project in
     (match Path.Source.is_descendant src_dir ~of_:project_root with
-     | false -> None
+     | false -> Gen_rules.no_rules
      | true ->
        let project_root = Dune_project.root project in
        let project_rules = Path.Source.equal project_root src_dir in
@@ -545,7 +521,7 @@ let gen_rules sctx ~dir ~nearest_src_dir ~src_dir =
          | `Relative_to_project -> false
        in
        if (not inside_generated_opam_directory) && not project_rules
-       then None
+       then Gen_rules.no_rules
        else (
          let allowed_subdirs =
            match opam_file_location with
@@ -564,5 +540,10 @@ let gen_rules sctx ~dir ~nearest_src_dir ~src_dir =
              in
              ())
          in
-         Some (Gen_rules.rules_for ~allowed_subdirs ~dir rules)))
+         Gen_rules.make
+           ~build_dir_only_sub_dirs:
+             (Gen_rules.Build_only_sub_dirs.singleton
+                ~dir
+                (Subdir_set.of_set allowed_subdirs))
+           rules))
 ;;

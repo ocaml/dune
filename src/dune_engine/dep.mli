@@ -19,7 +19,6 @@ module Map : sig
 
   include Map.S with type key := t
 
-  val has_universe : _ t -> bool
   val parallel_map : 'a t -> f:(dep -> 'a -> 'b Memo.t) -> 'b t Memo.t
 end
 
@@ -92,7 +91,6 @@ module Facts : sig
   val empty : t
   val union : t -> t -> t
   val union_all : t list -> t
-  val record_facts : Set.t -> f:(dep -> Fact.t Memo.t) -> t Memo.t
 
   (** Return all file paths, expanding aliases if [expand_aliases = true]. *)
   val paths : t -> expand_aliases:bool -> Path.Set.t

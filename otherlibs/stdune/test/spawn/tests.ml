@@ -2,6 +2,11 @@ open Stdune
 
 let no_args = Array.Immutable.of_list []
 
+(* On Windows, ppx_expect redirects CRT descriptors without updating the
+   native handles in Unix.stdout and Unix.stderr. Obtain fresh handles
+   after redirection. *)
+let output_fd oc = Unix.descr_of_out_channel oc |> Fd.unsafe_of_unix_file_descr
+
 let show_raise f =
   try ignore (f ()) with
   | exn ->
@@ -16,7 +21,15 @@ let show_raise f =
 ;;
 
 let%expect_test "non-existing program" =
-  show_raise (fun () -> Spawn.spawn () ~prog:"/doesnt-exist" ~argv0:"blah" ~args:no_args);
+  show_raise (fun () ->
+    Spawn.spawn
+      ()
+      ~nice:None
+      ~prog:"/doesnt-exist"
+      ~argv0:"blah"
+      ~args:no_args
+      ~stdout:(output_fd stdout)
+      ~stderr:(output_fd stderr));
   [%expect
     {|
     raised Unix.Unix_error _
@@ -27,9 +40,12 @@ let%expect_test "non-existing dir" =
   show_raise (fun () ->
     Spawn.spawn
       ()
+      ~nice:None
       ~prog:"/bin/true"
       ~argv0:"true"
       ~args:no_args
+      ~stdout:(output_fd stdout)
+      ~stderr:(output_fd stderr)
       ~cwd:(Spawn.Working_dir.path "/doesnt-exist"));
   [%expect
     {|
@@ -49,6 +65,60 @@ let wait pid =
 let list_files = Filename.concat (Sys.getcwd ()) "exe/list_files.exe"
 let print_env = Filename.concat (Sys.getcwd ()) "exe/print_env.exe"
 
+let%expect_test "niceness validation" =
+  List.iter [ -1; 0; 5; 19; 20 ] ~f:(fun adjustment ->
+    let valid = Option.is_some (Spawn.Nice.of_int adjustment) in
+    Printf.printf "%d: %b\n" adjustment valid);
+  [%expect
+    {|
+    -1: false
+    0: true
+    5: true
+    19: true
+    20: false
+    |}]
+;;
+
+let%expect_test "niceness matches the native adjustment" =
+  (match Platform.OS.value with
+   | Windows -> ()
+   | _ ->
+     let inherited = Unix.nice 0 in
+     let probe nice adjustment =
+       let args =
+         Array.Immutable.of_list [ "nice-exit-code"; Int.to_string adjustment ]
+       in
+       let input, output = Spawn.safe_pipe () in
+       Exn.protect
+         ~finally:(fun () ->
+           Fd.close input;
+           Fd.close output)
+         ~f:(fun () ->
+           let pid =
+             Spawn.spawn ~nice ~stdin:input ~prog:print_env ~argv0:"print_env" ~args ()
+           in
+           Fd.close input;
+           let (_ : int) =
+             Unix.write_substring (Fd.unsafe_to_unix_file_descr output) "." 0 1
+           in
+           Fd.close output;
+           match Proc.wait (Pid pid) [] with
+           | Some { status = WEXITED code; _ } -> code
+           | Some _ | None -> Code_error.raise "niceness probe failed" [])
+     in
+     List.iter [ 0; 5; 19 ] ~f:(fun adjustment ->
+       let expected = probe None adjustment in
+       let actual = probe (Spawn.Nice.of_int adjustment) 0 in
+       if expected <> actual
+       then
+         Code_error.raise
+           "spawn niceness differs from the native adjustment"
+           [ "expected", Dyn.int expected; "actual", Dyn.int actual ];
+       if Unix.nice 0 <> inherited
+       then Code_error.raise "spawn changed the parent's niceness" []));
+  [%expect {||}]
+;;
+
 let with_sub f =
   Temp.with_temp_dir
     ~parent_dir:(Path.of_string (Sys.getcwd ()))
@@ -65,7 +135,15 @@ let with_sub f =
 
 let%expect_test "array arguments" =
   let args = Array.Immutable.of_list [ "print-args"; "one"; "two" ] in
-  wait (Spawn.spawn () ~prog:print_env ~argv0:"custom-argv0" ~args);
+  wait
+    (Spawn.spawn
+       ()
+       ~prog:print_env
+       ~nice:None
+       ~argv0:"custom-argv0"
+       ~args
+       ~stdout:(output_fd stdout)
+       ~stderr:(output_fd stderr));
   [%expect
     {|
     custom-argv0
@@ -82,6 +160,9 @@ let%expect_test "cwd:Path" =
          ~prog:list_files
          ~argv0:"list_files.exe"
          ~args:no_args
+         ~stdout:(output_fd stdout)
+         ~stderr:(output_fd stderr)
+         ~nice:None
          ~cwd:(Spawn.Working_dir.path (Path.to_string sub))));
   [%expect
     {|
@@ -104,6 +185,7 @@ let%expect_test "cwd:Fd" =
            ~prog:list_files
            ~argv0:"list_files.exe"
            ~args:no_args
+           ~nice:None
            ~cwd:(Spawn.Working_dir.fd fd));
       Fd.close fd);
   [%expect
@@ -120,6 +202,7 @@ let%expect_test "cwd:Fd (invalid)" =
     else
       Spawn.spawn
         ()
+        ~nice:None
         ~prog:"/bin/pwd"
         ~argv0:"pwd"
         ~args:no_args
@@ -162,6 +245,17 @@ module Program_lookup = struct
   ;;
 end
 
+let%expect_test "niceness with short-lived children" =
+  if not Sys.win32
+  then (
+    let prog = Program_lookup.find_prog "true" in
+    let nice = Spawn.Nice.of_int 5 in
+    for _ = 1 to 10 do
+      wait (Spawn.spawn ~nice ~prog ~argv0:"true" ~args:no_args ())
+    done);
+  [%expect {||}]
+;;
+
 let%expect_test "inheriting stdout with close-on-exec set" =
   (* CR-soon jdimino for jdimino: the test itself seems to pass, however there
      seem to be another issue related to ppx_expect and Windows. *)
@@ -172,7 +266,7 @@ let%expect_test "inheriting stdout with close-on-exec set" =
     let shell, arg = if Sys.win32 then "cmd", "/c" else "sh", "-c" in
     let prog = Program_lookup.find_prog shell in
     let args = Array.Immutable.of_list [ arg; {|echo "hello world"|} ] in
-    wait (Spawn.spawn () ~prog ~argv0:shell ~args));
+    wait (Spawn.spawn () ~nice:None ~prog ~argv0:shell ~args));
   [%expect {| hello world |}]
 ;;
 
@@ -183,6 +277,7 @@ let%expect_test "prog relative to cwd" =
     wait
       (Spawn.spawn
          ()
+         ~nice:None
          ~prog:"./hello.exe"
          ~argv0:"hello"
          ~args:no_args
@@ -201,9 +296,12 @@ let%expect_test "env" =
       (Spawn.spawn
          ()
          ~env
+         ~nice:None
          ~prog:"./print_env.exe"
          ~argv0:"print_env"
          ~args:no_args
+         ~stdout:(output_fd stdout)
+         ~stderr:(output_fd stderr)
          ~cwd:(Spawn.Working_dir.path "exe"))
   in
   tst (Some "foo");
@@ -217,11 +315,14 @@ let%expect_test "env" =
 let%expect_test "pgid tests" =
   wait
     (Spawn.spawn
+       ~nice:None
        ~setpgid:Spawn.Pgid.new_process_group
        ()
        ~prog:"pgid_test/checkpgid.exe"
        ~argv0:"checkpgid.exe"
-       ~args:no_args);
+       ~args:no_args
+       ~stdout:(output_fd stdout)
+       ~stderr:(output_fd stderr));
   [%expect {||}]
 ;;
 
@@ -309,6 +410,7 @@ let%expect_test "pdeathsig defaults to kill" =
        ~f:(fun ~marker_file -> wait_for_no_file marker_file)
        ~spawn:(fun args ->
          Spawn.spawn
+           ~nice:None
            ()
            ~prog:print_env
            ~argv0:"print_env"
@@ -325,6 +427,7 @@ let%expect_test "pdeathsig explicit signal" =
        ~f:(fun ~marker_file -> wait_for_file marker_file)
        ~spawn:(fun args ->
          Spawn.spawn
+           ~nice:None
            ~pdeathsig:Usr1
            ()
            ~prog:print_env
@@ -340,7 +443,7 @@ let%expect_test "sigprocmask" =
     let run ?sigprocmask expected_signal =
       let prog = Program_lookup.find_prog "sleep" in
       let args = Array.Immutable.of_list [ "60" ] in
-      let pid = Spawn.spawn ?sigprocmask ~prog ~argv0:"sleep" ~args () in
+      let pid = Spawn.spawn ~nice:None ?sigprocmask ~prog ~argv0:"sleep" ~args () in
       let pid_int = Pid.to_int pid in
       Unix.kill pid_int Sys.sigusr1;
       Unix.kill pid_int Sys.sigkill;

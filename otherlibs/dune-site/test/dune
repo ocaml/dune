@@ -2,6 +2,7 @@
  (applies_to :whole_subtree)
  (deps
   (package dune)
+  (package dune-build-info)
   (package dune-site)
   (package dune-private-libs)))
 

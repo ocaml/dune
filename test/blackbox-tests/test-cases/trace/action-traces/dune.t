@@ -14,7 +14,8 @@ Dune itself produces action traces
 
   $ dune trace cat | jq_dune '
   >   select(.name == "init")
-  > | { args: .args | keys, keys: keys, argv: .args.argv | .[1:] }
+  > | { args: .args | del(.gc_tweaks) | keys
+  >   , keys: keys, argv: .args.argv | .[1:] }
   > '
   {
     "args": [

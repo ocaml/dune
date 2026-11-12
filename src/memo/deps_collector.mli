@@ -30,3 +30,7 @@ type run_thread = { run : 'a 'b. f:('b -> 'a Fiber.t) -> 'b -> 'a Fiber.t } [@@u
     when there is no active collector, in which case dependencies are collected
     sequentially. *)
 val run_parallel : num_threads:int -> (run_thread option -> 'a Fiber.t) -> 'a Fiber.t
+
+(** Like [run_parallel], but discover branches as [run] is called, without requiring
+    their count in advance. *)
+val run_parallel_dynamic : (run_thread option -> 'a Fiber.t) -> 'a Fiber.t

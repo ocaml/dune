@@ -23,6 +23,6 @@ Both rules show the same .binaries digest in PATH (no $DIGEST1 /
 $DIGEST2):
 
   $ env_added "$(cat _build/default/out1)" "$PATH" | censor
-  $PWD/_build/install/default/.binaries/$DIGEST
+  $PWD/_build/_private/default/.binaries/$DIGEST
   $ env_added "$(cat _build/default/out2)" "$PATH" | censor
-  $PWD/_build/install/default/.binaries/$DIGEST
+  $PWD/_build/_private/default/.binaries/$DIGEST

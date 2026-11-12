@@ -20,6 +20,7 @@ Here we look at the raw artifacts for our implementation and verify it matches
 the alias:
 
   $ ls _build/default/impl/.foo_impl.objs/byte/*.cmi
+  _build/default/impl/.foo_impl.objs/byte/foo.cmi
   _build/default/impl/.foo_impl.objs/byte/foo__Bar.cmi
   _build/default/impl/.foo_impl.objs/byte/foo__foo_impl__.cmi
   _build/default/impl/.foo_impl.objs/byte/foo__foo_impl__Priv.cmi

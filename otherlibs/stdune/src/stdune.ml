@@ -49,6 +49,7 @@ module Bool = Bool
 module Sexp = Sexp
 module Path = Path
 module Fpath = Fpath
+module Tree_traversal = Tree_traversal
 module Univ_map = Univ_map
 module Loc = Loc
 module Env = Env
@@ -130,6 +131,8 @@ module type Applicative = Applicative_intf.S
 module type Monad = Monad_intf.S
 module type Monoid = Monoid_intf.S
 
+include Either
+
 external reraise : exn -> _ = "%reraise"
 
 let compare _ _ = `Use_Poly_compare
@@ -137,13 +140,8 @@ let compare _ _ = `Use_Poly_compare
 (* The following types are re-exported here so that they are always available in
    scope *)
 
-type ('a, 'error) result = ('a, 'error) Result.t =
-  | Ok of 'a
-  | Error of 'error
-
-type ('a, 'b) either = ('a, 'b) Either.t =
-  | Left of 'a
-  | Right of 'b
+type ('a, 'error) result = ('a, 'error) Result.t
+type ('a, 'b) either = ('a, 'b) Either.t
 
 type ordering = Ordering.t =
   | Lt

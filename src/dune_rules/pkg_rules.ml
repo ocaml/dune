@@ -666,7 +666,7 @@ module Substitute = struct
     let runs_process = false
     let can_run_in_action_runner = false
     let bimap t f g = { t with src = f t.src; dst = g t.dst }
-    let is_useful_to ~memoize = memoize
+    let is_useful_to_memoize = true
 
     let variable_value_repr =
       Repr.variant
@@ -1744,7 +1744,7 @@ module Install_action = struct
       }
     ;;
 
-    let is_useful_to ~memoize = memoize
+    let is_useful_to_memoize = true
 
     let encode
           { install_file
@@ -1972,7 +1972,7 @@ module Install_action = struct
                 Filename.concat (Path.to_absolute_filename base) link
                 |> Path.External.of_string)
          in
-         Io.portable_hardlink ~src ~dst);
+         Io.portable_hardlink ~overwrite:true ~src ~dst);
         maybe_set_executable entry.section dst;
         Some (entry.section, dst)
     ;;
@@ -1998,6 +1998,7 @@ module Install_action = struct
              (* CR-someday rgrinberg: pass chmod:true here? *)
              Fpath.unlink_exn path;
              Io.portable_hardlink
+               ~overwrite:true
                ~src:(Path.of_string resolved)
                ~dst:(Path.of_string path)
            | _ -> ());
@@ -2435,11 +2436,13 @@ let setup_pkg_install_alias =
           in
           Rules.Produce.Alias.add_deps alias deps)
       in
-      Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
-      |> Gen_rules.rules_here
+      Gen_rules.make
+        ~build_dir_only_sub_dirs:
+          (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty)
+        rule
 ;;
 
-let setup_package_rules db ~package_universe ~dir ~pkg_digest : Gen_rules.result Memo.t =
+let setup_package_rules db ~package_universe ~dir ~pkg_digest : Gen_rules.t Memo.t =
   let* pkg = Resolve.resolve db Loc.none pkg_digest package_universe in
   let paths = Paths.make pkg.pkg_digest package_universe ~relative:Path.Build.relative in
   let+ directory_targets =
@@ -2488,9 +2491,9 @@ let setup_rules ~components ~dir ctx =
        let* db = DB.of_ctx ctx ~allow_sharing:true in
        setup_package_rules db ~package_universe:(Dependencies ctx) ~dir ~pkg_digest)
   | _, ".pkg" :: _ :: _ ->
-    Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
+    Memo.return (Gen_rules.Redirect_to_parent Gen_rules.Rules.empty)
   | true, ".dev-tool" :: _ :: _ :: _ ->
-    Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
+    Memo.return (Gen_rules.Redirect_to_parent Gen_rules.Rules.empty)
   | is_default, [] ->
     let sub_dirs =
       Filename.pkg_dir_basename
@@ -2500,7 +2503,7 @@ let setup_rules ~components ~dir ctx =
       Gen_rules.Build_only_sub_dirs.singleton ~dir @@ Subdir_set.of_list sub_dirs
     in
     Memo.return @@ Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
-  | _ -> Memo.return @@ Gen_rules.rules_here Gen_rules.Rules.empty
+  | _ -> Memo.return Gen_rules.no_rules
 ;;
 
 let resolve_pkg_dep context (loc, package_name) =
@@ -2560,23 +2563,51 @@ let all_deps universe =
 
 let all_project_deps context = all_deps (Dependencies context)
 
-let which context =
-  let artifacts_and_deps =
-    Memo.lazy_
-      ~name:"lock-directory-binaries"
-      ~human_readable_description:(fun () ->
-        Pp.textf
-          "Loading all binaries in the lock directory for %S"
-          (Context_name.to_string context))
-      (fun () ->
-         let+ { binaries; dep_info = _ } =
-           all_project_deps context >>= Action_expander.Artifacts_and_deps.of_closure
-         in
-         binaries)
-  in
-  Staged.stage (fun program ->
-    let+ artifacts = Memo.Lazy.force artifacts_and_deps in
-    Filename.Map.find artifacts program)
+let project_deps ~(packages : Package.Name.Selection.t) context =
+  let+ all_project_deps = all_project_deps context in
+  match packages with
+  | All -> all_project_deps
+  | Only packages ->
+    List.filter all_project_deps ~f:(fun (pkg : Pkg.t) ->
+      Package.Name.Set.mem packages pkg.info.name)
+;;
+
+let describe_packages : Package.Name.Selection.t -> string = function
+  | All -> "all packages"
+  | Only packages ->
+    Package.Name.Set.to_list packages
+    |> List.map ~f:Package.Name.to_string
+    |> String.concat ~sep:", "
+;;
+
+module Context_and_packages = struct
+  type t = Context_name.t * Package.Name.Selection.t
+
+  let to_dyn = Tuple.T2.to_dyn Context_name.to_dyn Package.Name.Selection.to_dyn
+  let equal = Tuple.T2.equal Context_name.equal Package.Name.Selection.equal
+  let hash = Tuple.T2.hash Context_name.hash Package.Name.Selection.hash
+end
+
+let lock_dir_binaries =
+  Memo.create
+    "lock-directory-binaries"
+    ~input:(module Context_and_packages)
+    ~human_readable_description:(fun (context, packages) ->
+      Some
+        (Pp.textf
+           "Loading the binaries of %s in the lock directory for %S"
+           (describe_packages packages)
+           (Context_name.to_string context)))
+    (fun (context, packages) ->
+       let+ { binaries; dep_info = _ } =
+         project_deps ~packages context >>= Action_expander.Artifacts_and_deps.of_closure
+       in
+       binaries)
+;;
+
+let which ~packages context program =
+  let+ binaries = Memo.exec lock_dir_binaries (context, packages) in
+  Filename.Map.find binaries program
 ;;
 
 let ocamlpath universe =
@@ -2614,6 +2645,38 @@ let exported_env context =
   let env = Pkg.build_env_of_deps all_project_deps in
   let vars = Env.Map.map env ~f:Value_list_env.string_of_env_values in
   Env.extend Env.empty ~vars
+;;
+
+let lock_dir_package_env =
+  Memo.create
+    "lock-directory-package-env"
+    ~input:(module Context_and_packages)
+    ~human_readable_description:(fun (context, packages) ->
+      Some
+        (Pp.textf
+           "lock directory environment of %s for context %S"
+           (describe_packages packages)
+           (Context_name.to_string context)))
+    (fun (context, packages) ->
+       lock_dir_active context
+       >>= function
+       | false -> Memo.return Env.empty
+       | true ->
+         let+ deps = project_deps ~packages context in
+         let vars =
+           Pkg.build_env_of_deps deps
+           |> Env.Map.map ~f:Value_list_env.string_of_env_values
+         in
+         Env.extend Env.empty ~vars)
+;;
+
+let env_for_packages ~(packages : Package.Name.Selection.t) context =
+  Memo.exec lock_dir_package_env (context, packages)
+;;
+
+let bin_paths_for_packages ~packages context =
+  let+ env = env_for_packages ~packages context in
+  Env_path.path env
 ;;
 
 let find_package ctx pkg =

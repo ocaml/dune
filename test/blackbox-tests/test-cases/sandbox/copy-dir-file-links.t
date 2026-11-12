@@ -47,27 +47,21 @@ Hardlink mode also produces a regular file with the expected contents.
   $ dune_cmd stat kind _build/default/copied/file
   regular file
 
-Symlink mode currently rejects the sandbox link to the same regular input.
+Symlink mode copies the sandbox link into a regular file too.
 
   $ dune build copied --sandbox symlink
-  File "dune", lines 9-12, characters 0-104:
-   9 | (rule
-  10 |  (target (dir copied))
-  11 |  (deps tree/file (sandbox always))
-  12 |  (action (no-infer (copy tree copied))))
-  Error: Symlink file is not allowed here
-  [1]
+  $ cat _build/default/copied/file
+  contents
+  $ dune_cmd stat kind _build/default/copied/file
+  regular file
 
-Symlink mode rejects an original input symlink inside the copied directory.
+An original input symlink is also copied into a regular file.
 
   $ dune build copied-link --sandbox symlink
-  File "dune", lines 13-16, characters 0-114:
-  13 | (rule
-  14 |  (target (dir copied-link))
-  15 |  (deps tree/link (sandbox always))
-  16 |  (action (no-infer (copy tree copied-link))))
-  Error: Symlink link is not allowed here
-  [1]
+  $ cat _build/default/copied-link/link
+  contents
+  $ dune_cmd stat kind _build/default/copied-link/link
+  regular file
 
 Copy and hardlink modes resolve the original input link during population.
 
@@ -84,49 +78,65 @@ Copy and hardlink modes resolve the original input link during population.
   regular file
 
 The action-created link uses the target text of a symlink-sandbox input, but
-lives at another path and points to the local file. It is rejected in every mode.
+lives at another path and points to the local file. It is resolved normally
+in every mode, without interpreting the link text as a sandbox input.
 
   $ dune build copied-local --sandbox symlink
-  File "dune", lines 17-26, characters 0-301:
-  17 | (rule
-  18 |  (target (dir copied-local))
-  19 |  (deps tree/file (sandbox always))
-  20 |  (action
-  21 |   (no-infer
-  22 |    (progn
-  23 |     (system "mkdir -p a/b/c/tree default/tree")
-  24 |     (system "echo local > default/tree/file")
-  25 |     (system "ln -s ../../../../default/tree/file a/b/c/tree/alias")
-  26 |     (copy a/b/c/tree copied-local)))))
-  Error: Symlink alias is not allowed here
-  [1]
+  $ cat _build/default/copied-local/alias
+  local
+  $ dune_cmd stat kind _build/default/copied-local/alias
+  regular file
 
   $ dune build copied-local --sandbox copy
-  File "dune", lines 17-26, characters 0-301:
-  17 | (rule
-  18 |  (target (dir copied-local))
-  19 |  (deps tree/file (sandbox always))
-  20 |  (action
-  21 |   (no-infer
-  22 |    (progn
-  23 |     (system "mkdir -p a/b/c/tree default/tree")
-  24 |     (system "echo local > default/tree/file")
-  25 |     (system "ln -s ../../../../default/tree/file a/b/c/tree/alias")
-  26 |     (copy a/b/c/tree copied-local)))))
-  Error: Symlink alias is not allowed here
-  [1]
+  $ cat _build/default/copied-local/alias
+  local
+  $ dune_cmd stat kind _build/default/copied-local/alias
+  regular file
 
   $ dune build copied-local --sandbox hardlink
-  File "dune", lines 17-26, characters 0-301:
-  17 | (rule
-  18 |  (target (dir copied-local))
-  19 |  (deps tree/file (sandbox always))
-  20 |  (action
-  21 |   (no-infer
-  22 |    (progn
-  23 |     (system "mkdir -p a/b/c/tree default/tree")
-  24 |     (system "echo local > default/tree/file")
-  25 |     (system "ln -s ../../../../default/tree/file a/b/c/tree/alias")
-  26 |     (copy a/b/c/tree copied-local)))))
-  Error: Symlink alias is not allowed here
+  $ cat _build/default/copied-local/alias
+  local
+  $ dune_cmd stat kind _build/default/copied-local/alias
+  regular file
+
+An action-created directory link points outside the copied tree. Its contents
+are copied into a real directory.
+
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target (dir copied-directory))
+  >  (deps (sandbox always))
+  >  (action
+  >   (no-infer
+  >    (progn
+  >     (system "mkdir -p input real && echo nested > real/file")
+  >     (system "ln -s ../real input/alias")
+  >     (copy input copied-directory)))))
+  > EOF
+
+  $ dune build copied-directory --sandbox symlink
+  $ cat _build/default/copied-directory/alias/file
+  nested
+  $ dune_cmd stat kind _build/default/copied-directory/alias
+  directory
+  $ dune_cmd stat kind _build/default/copied-directory/alias/file
+  regular file
+
+A cyclic directory link still fails with the filesystem's symlink limit,
+rather than hanging.
+
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target (dir copied-cycle))
+  >  (deps (sandbox always))
+  >  (action
+  >   (no-infer
+  >    (progn
+  >     (system "mkdir input && ln -s . input/loop")
+  >     (copy input copied-cycle)))))
+  > EOF
+
+  $ dune build copied-cycle --sandbox symlink > cycle.log 2>&1
   [1]
+  $ grep -o 'Too many levels of symbolic links' cycle.log
+  Too many levels of symbolic links

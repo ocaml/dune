@@ -7,6 +7,10 @@
  (enabled_if
   (<> %{profile} dune-bootstrap))
  (root_module root)
+ (preprocess
+  (per_module
+   ((pps ppx_optcomp)
+    main)))
  (libraries
   memo
   ocaml

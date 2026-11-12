@@ -10,4 +10,4 @@ Test that (deps (package ...)) adds lib/toplevel/ to OCAMLTOP_INCLUDE_PATH.
   $ baseline=$OCAMLTOP_INCLUDE_PATH
   $ dune build out
   $ env_added "$(cat _build/default/out)" "$baseline" | censor
-  $PWD/_build/install/default/.packages/$DIGEST/lib/toplevel
+  $PWD/_build/_private/default/.packages/$DIGEST/lib/toplevel

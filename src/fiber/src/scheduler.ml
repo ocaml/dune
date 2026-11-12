@@ -158,6 +158,10 @@ and exec : type a. context -> a continuation -> a -> Jobs.t -> step' =
       finally
       (Finalize_finally_complete (x, k))
       jobs
+  | Finalize_now_complete (finally, k) ->
+    (match finalize_now_result x finally with
+     | Ok x -> exec ctx k x jobs
+     | Error errors -> reraise_all ctx (Appendable_list.to_list errors) jobs)
   | Finalize_finally_complete (body_result, k) ->
     (match finalize_result body_result x with
      | Ok x -> exec ctx k x jobs
@@ -254,6 +258,14 @@ and exec_effect ctx eff jobs =
       f
       (Finalize_body_complete (finally, k))
       jobs
+  | Run_finalize_now (f, finally, k) ->
+    map_reduce_errors
+      ctx
+      (module Exns)
+      collect_error
+      f
+      (Finalize_now_complete (finally, k))
+      jobs
   | Run_finally (finally, body_result, k) ->
     map_reduce_errors
       ctx
@@ -334,6 +346,14 @@ and exec_fiber : type a. context -> a t -> a continuation -> Jobs.t -> step' =
       collect_error
       f
       (Finalize_body_complete (finally, k))
+      jobs
+  | Finalize_now_t (f, finally) ->
+    map_reduce_errors
+      ctx
+      (module Exns)
+      collect_error
+      f
+      (Finalize_now_complete (finally, k))
       jobs
   | Suspend_t f ->
     let k = { ctx; run = k } in

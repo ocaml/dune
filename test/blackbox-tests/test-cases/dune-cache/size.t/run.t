@@ -41,3 +41,14 @@ the cache in bytes directly without any units.
 
   $ dune cache size --machine-readable
   12
+
+Size should also reflect the size of legacy (pre v. 3.22) caches, if path exists
+
+  $ dune cache size --machine-readable
+  12
+
+  $ legacy="$DUNE_CACHE_ROOT/files/v4/00"
+  $ mkdir -p "$legacy"
+  $ printf artifact > "$legacy/00000000000000000000000000000000"
+  $ dune cache size --machine-readable
+  20

@@ -92,7 +92,7 @@ may start in a different directory while sharing the same action ID.
   launch
   $ dune build helper-output > helper.log 2>&1; echo $?
   1
-  $ cat _build/default/helper-output
+  $ test ! -e _build/default/helper-output
 
 The same cold read must work in sandboxes, without prebuilding the input or
 assuming the sandbox has the same root as the canonical build tree.
@@ -122,17 +122,24 @@ physical cwd and Dune's spelling of the root still refer to the same tree.
   second
   
 
-A batch can declare generated inputs using absolute paths before a subprocess
-reads them.
+Absolute paths can name generated files. Batched declarations allow ordinary
+subprocess I/O without copying whole files into the plugin's heap.
 
   $ cat >> dune <<'EOF'
+  > (rule (target plain-abs-input) (action (write-file plain-abs-input absolute)))
+  > (rule
+  >  (target plain-abs-output)
+  >  (action (with-stdout-to plain-abs-output
+  >   (dynamic-run ./foo.exe absolute plain-abs-input))))
   > (rule (target first) (action (write-file first first)))
   > (rule (target second) (action (write-file second second)))
   > (rule
   >  (target batched)
   >  (action (with-stdout-to batched (dynamic-run ./foo.exe batch first second))))
   > EOF
-  $ dune build -j 1 batched
+  $ dune build -j 1 plain-abs-output batched
+  $ cat _build/default/plain-abs-output
+  absolute
   $ cat _build/default/batched; echo
   firstsecond
 
@@ -220,4 +227,31 @@ Absolute inputs outside the workspace are tracked too.
   $ dune build external-output
   $ cat _build/default/external-output
   changed
+
+The build directory may also live outside the source workspace. Generated and
+external absolute inputs remain readable when using its physical path.
+
+  $ external_build=$(mktemp -d)
+  $ dune build --build-dir="$external_build" abs-output external-output
+  $ cat "$external_build/default/abs-output"
+  second
+  $ cat "$external_build/default/external-output"
+  changed
+
+Generated absolute inputs also rebuild when the external build directory is
+reached through a symlink.
+
+  $ ln -s "$external_build" _build-external-link
+  $ printf third > abs-control
+  $ dune build --build-dir=_build-external-link abs-output
+  $ cat _build-external-link/default/abs-output
+  third
+
+This is a bug: the same symlinked build directory breaks external absolute
+inputs, even though they work with the physical build-directory path.
+
+  $ dune build --build-dir=_build-external-link external-output > linked-external.log 2>&1
+  [1]
+  $ grep -q '^File unavailable:' linked-external.log
+  $ test ! -e _build-external-link/default/external-output
   $ rm "$external_input"

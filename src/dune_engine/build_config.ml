@@ -10,13 +10,7 @@ module Gen_rules = struct
   module Build_only_sub_dirs = struct
     type t = Subdir_set.t Path.Build.Map.t
 
-    let iter_dirs_containing_sub_dirs t ~f =
-      Path.Build.Map.iteri t ~f:(fun dir _ -> f dir)
-    ;;
-
-    let empty = Path.Build.Map.empty
     let singleton ~dir sub_dirs = Path.Build.Map.singleton dir sub_dirs
-    let find t dir = Path.Build.Map.find t dir |> Option.value ~default:Subdir_set.empty
     let union a b = Path.Build.Map.union a b ~f:(fun _ a b -> Some (Subdir_set.union a b))
   end
 
@@ -62,25 +56,33 @@ module Gen_rules = struct
     ;;
   end
 
-  module Gen_rules_result = struct
-    type t =
-      | Rules of Rules.t
-      | Unknown_context
-      | Redirect_to_parent of Rules.t
+  type t =
+    | Rules of Rules.t
+    | Unknown_context
+    | Redirect_to_parent of Rules.t
 
-    let redirect_to_parent rules = Redirect_to_parent rules
-    let rules_here rules = Rules rules
-    let unknown_context = Unknown_context
-    let no_rules = rules_here Rules.empty
-  end
+  let no_rules = Rules Rules.empty
 
-  module type Rule_generator = sig
-    val gen_rules
-      :  Context_name.t
-      -> dir:Path.Build.t
-      -> string list
-      -> Gen_rules_result.t Memo.t
-  end
+  let make ?build_dir_only_sub_dirs ?directory_targets rules =
+    Rules (Rules.create ?build_dir_only_sub_dirs ?directory_targets rules)
+  ;;
+
+  let make_empty ~dir subdirs =
+    Rules
+      { Rules.empty with
+        build_dir_only_sub_dirs = Build_only_sub_dirs.singleton ~dir subdirs
+      }
+  ;;
+
+  let combine x y =
+    match x, y with
+    | Unknown_context, _ | _, Unknown_context -> Unknown_context
+    | Rules x, Rules y -> Rules (Rules.combine_exn x y)
+    | Rules x, Redirect_to_parent y
+    | Redirect_to_parent x, Rules y
+    | Redirect_to_parent x, Redirect_to_parent y ->
+      Redirect_to_parent (Rules.combine_exn x y)
+  ;;
 end
 
 module type Source_tree = sig
@@ -95,8 +97,9 @@ module type Source_tree = sig
 end
 
 type t =
-  { contexts : (Build_context.t * Context_type.t) Context_name.Map.t Memo.Lazy.t
-  ; rule_generator : (module Gen_rules.Rule_generator)
+  { contexts : Context_type.t Context_name.Map.t Memo.Lazy.t
+  ; rule_generator :
+      Context_name.t -> dir:Path.Build.t -> string list -> Gen_rules.t Memo.t
   ; sandboxing_preference : Sandbox_mode.t list
   ; promote_source :
       chmod:(Permissions.Mode.t -> Permissions.Mode.t)
@@ -122,14 +125,6 @@ let set
       ~execution_parameters
       ~source_tree
   =
-  let contexts =
-    Memo.lazy_ ~name:"Build_config.set" (fun () ->
-      let open Memo.O in
-      let+ contexts = Memo.Lazy.force contexts in
-      Context_name.Map.of_list_map_exn
-        contexts
-        ~f:(fun ((ctx : Build_context.t), ctx_type) -> ctx.name, (ctx, ctx_type)))
-  in
   Fdecl.set
     t
     { contexts

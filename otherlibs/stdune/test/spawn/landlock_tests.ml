@@ -58,6 +58,7 @@ let run_landlock_probe dir =
         let landlock = Spawn.Landlock.allow_writes_to_directories allowed_dirs in
         wait
           (Spawn.spawn
+             ~nice:None
              ~landlock
              ~prog:landlock_probe
              ~argv0:"landlock_probe.exe"
@@ -87,6 +88,7 @@ let%expect_test "landlock rules follow file descriptors across renames" =
         Unix.mkdir original 0o700;
         wait
           (Spawn.spawn
+             ~nice:None
              ~landlock
              ~prog:landlock_probe
              ~argv0:"landlock_probe.exe"
@@ -129,6 +131,7 @@ let%expect_test "extend a policy with multiple writable directories" =
           in
           wait
             (Spawn.spawn
+               ~nice:None
                ~landlock
                ~prog:landlock_probe
                ~argv0:"landlock_probe.exe"
@@ -184,6 +187,7 @@ let%expect_test "write access rights" =
         let landlock = Spawn.Landlock.allow_writes_to_directories allowed_fds in
         wait
           (Spawn.spawn
+             ~nice:None
              ~landlock
              ~prog:landlock_probe
              ~argv0:"landlock_probe.exe"

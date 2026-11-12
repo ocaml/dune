@@ -194,9 +194,7 @@ let%expect_test "reraise_all" =
   test
     (backtrace_result unit)
     (Fiber.collect_errors (fun () ->
-       Fiber.finalize fail ~finally:(fun () ->
-         print_endline "finally";
-         Fiber.return ())));
+       Fiber.finalize_now fail ~finally:(fun () -> print_endline "finally")));
   [%expect
     {|
     finally
@@ -443,6 +441,150 @@ let%expect_test "finalize does not run the finalizer while the body is stalled" 
   [%expect {| [PASS] Never raised as expected |}]
 ;;
 
+let%expect_test "finalize_now is lazy and reusable" =
+  let runs = ref 0 in
+  let fiber =
+    Fiber.finalize_now
+      (fun () ->
+         incr runs;
+         printfn "body: %d" !runs;
+         Fiber.return !runs)
+      ~finally:(fun () -> printfn "finally: %d" !runs)
+  in
+  printfn "before: %d" !runs;
+  test int fiber;
+  test int fiber;
+  [%expect
+    {|
+    before: 0
+    body: 1
+    finally: 1
+    1
+    body: 2
+    finally: 2
+    2 |}]
+;;
+
+let%expect_test "finalize_now combines body and finalizer errors" =
+  List.iter [ false; true ] ~f:(fun yield ->
+    printfn "yield=%b" yield;
+    List.iter [ false; true ] ~f:(fun body_fails ->
+      List.iter [ false; true ] ~f:(fun finalizer_fails ->
+        test
+          (backtrace_result int)
+          (Fiber.collect_errors (fun () ->
+             Fiber.finalize_now
+               (fun () ->
+                  if (not yield) && body_fails then failwith "body";
+                  let* () = if yield then Scheduler.yield () else Fiber.return () in
+                  if body_fails then failwith "body" else Fiber.return 42)
+               ~finally:(fun () -> if finalizer_fails then failwith "finalizer"))))));
+  [%expect
+    {|
+    yield=false
+    Ok 42
+    Error [ { exn = "Failure(\"finalizer\")"; backtrace = "" } ]
+    Error [ { exn = "Failure(\"body\")"; backtrace = "" } ]
+    Error
+      [ { exn = "Failure(\"body\")"; backtrace = "" }
+      ; { exn = "Failure(\"finalizer\")"; backtrace = "" }
+      ]
+    yield=true
+    Ok 42
+    Error [ { exn = "Failure(\"finalizer\")"; backtrace = "" } ]
+    Error [ { exn = "Failure(\"body\")"; backtrace = "" } ]
+    Error
+      [ { exn = "Failure(\"body\")"; backtrace = "" }
+      ; { exn = "Failure(\"finalizer\")"; backtrace = "" }
+      ] |}]
+;;
+
+let%expect_test "finalize_now waits for concurrent children and nests" =
+  test
+    (backtrace_result unit)
+    (Fiber.collect_errors (fun () ->
+       Fiber.fork_and_join_unit
+         (fun () ->
+            Fiber.finalize_now
+              (fun () ->
+                 Fiber.finalize_now
+                   (fun () ->
+                      Fiber.fork_and_join_unit
+                        (fun () -> failwith "body")
+                        (fun () ->
+                           let+ () = Scheduler.yield () in
+                           print_endline "child finished"))
+                   ~finally:(fun () -> failwith "inner"))
+              ~finally:(fun () -> failwith "outer"))
+         (fun () -> Fiber.return ())));
+  [%expect
+    {|
+    child finished
+    Error
+      [ { exn = "Failure(\"body\")"; backtrace = "" }
+      ; { exn = "Failure(\"inner\")"; backtrace = "" }
+      ; { exn = "Failure(\"outer\")"; backtrace = "" }
+      ] |}]
+;;
+
+let%expect_test "finalize_now does not finalize a stalled body" =
+  List.iter [ false; true ] ~f:(fun fail ->
+    test
+      ~expect_never:true
+      (backtrace_result unit)
+      (Fiber.collect_errors (fun () ->
+         Fiber.finalize_now
+           (fun () ->
+              Fiber.fork_and_join_unit never_fiber (fun () ->
+                if fail then raise Exit else Fiber.return ()))
+           ~finally:(fun () -> print_endline "unexpected finalizer"))));
+  [%expect
+    {|
+    [PASS] Never raised as expected
+    [PASS] Never raised as expected |}]
+;;
+
+let%expect_test "finalize_now restores the error handler and variable scope" =
+  let var = Fiber.Var.create "default" in
+  test
+    (backtrace_result unit)
+    (Fiber.Var.set var "outer" (fun () ->
+       Fiber.collect_errors (fun () ->
+         Fiber.with_error_handler
+           (fun () ->
+              Fiber.finalize_now
+                (fun () -> Fiber.Var.set var "inner" (fun () -> raise Exit))
+                ~finally:(fun () -> failwith "finalizer"))
+           ~on_error:(fun exn ->
+             let* value = Fiber.Var.get var in
+             print_endline value;
+             Exn_with_backtrace.reraise exn))));
+  [%expect
+    {|
+    outer
+    outer
+    Error
+      [ { exn = "Stdlib.Exit"; backtrace = "" }
+      ; { exn = "Failure(\"finalizer\")"; backtrace = "" }
+      ] |}]
+;;
+
+let%expect_test "finalize_now does not catch continuation errors" =
+  test
+    (backtrace_result unit)
+    (Fiber.collect_errors (fun () ->
+       let* () =
+         Fiber.finalize_now
+           (fun () -> Fiber.return ())
+           ~finally:(fun () -> print_endline "finally")
+       in
+       failwith "continuation"));
+  [%expect
+    {|
+    finally
+    Error [ { exn = "Failure(\"continuation\")"; backtrace = "" } ] |}]
+;;
+
 let%expect_test "nested finalize" =
   let fiber =
     Fiber.finalize
@@ -490,8 +632,8 @@ let%expect_test "context switch and raise inside finalize" =
 
 let%expect_test "sequential_iter error handling" =
   let fiber =
-    Fiber.finalize
-      ~finally:(fun () -> Fiber.return (print_endline "finally"))
+    Fiber.finalize_now
+      ~finally:(fun () -> print_endline "finally")
       (fun () ->
          map_reduce_errors_unit
            (fun () ->
@@ -512,8 +654,8 @@ let%expect_test "sequential_iter error handling" =
 
 let%expect_test "sequential_iter" =
   let fiber =
-    Fiber.finalize
-      ~finally:(fun () -> Fiber.return (print_endline "finally"))
+    Fiber.finalize_now
+      ~finally:(fun () -> print_endline "finally")
       (fun () ->
          Fiber.sequential_iter [ 1; 2; 3 ] ~f:(fun x ->
            Fiber.return (Printf.printf "count: %d\n" x)))
@@ -682,130 +824,4 @@ let%expect_test "all_concurrently_unit" =
     print: 1
     successfully caught error
     multi element list |}]
-;;
-
-let%expect_test "Lazy.force_all_unit handles empty and completed inputs" =
-  Common.test unit (Fiber.Lazy.force_all_unit []);
-  Common.test unit (Fiber.Lazy.force_all_unit [ Fiber.Lazy.unit; Fiber.Lazy.of_value () ]);
-  [%expect
-    {|
-    ()
-    () |}]
-;;
-
-let%expect_test "Lazy.force_all_unit starts every pending computation" =
-  let gate = Fiber.Ivar.create () in
-  let started = ref 0 in
-  let make () =
-    Fiber.Lazy.create (fun () ->
-      incr started;
-      Fiber.Ivar.read gate)
-  in
-  let a = make () in
-  let b = make () in
-  let force () =
-    let+ () = Fiber.Lazy.force_all_unit [ a; b ] in
-    print_endline "all forced"
-  in
-  let release () =
-    let* () = Scheduler.yield () in
-    printfn "started before release: %d" !started;
-    Fiber.Ivar.fill gate ()
-  in
-  Scheduler.run (Fiber.fork_and_join_unit force release);
-  printfn "values: %b %b" (Fiber.Lazy.is_value a) (Fiber.Lazy.is_value b);
-  [%expect
-    {|
-    started before release: 2
-    all forced
-    values: true true |}]
-;;
-
-let%expect_test "Lazy.force_all_unit joins a computation already being forced" =
-  let runs = ref 0 in
-  let lazy_fiber =
-    Fiber.Lazy.create (fun () ->
-      incr runs;
-      Scheduler.yield ())
-  in
-  Scheduler.run
-    (Fiber.fork_and_join_unit
-       (fun () -> Fiber.Lazy.force lazy_fiber)
-       (fun () -> Fiber.Lazy.force_all_unit [ lazy_fiber ]));
-  printfn "runs: %d" !runs;
-  printfn "is value: %b" (Fiber.Lazy.is_value lazy_fiber);
-  [%expect
-    {|
-    runs: 1
-    is value: true |}]
-;;
-
-let%expect_test "Lazy.force_all_unit collects all failures" =
-  let make name =
-    Fiber.Lazy.create (fun () ->
-      let* () = Scheduler.yield () in
-      failwith name)
-  in
-  let a = make "a" in
-  let b = make "b" in
-  let run () =
-    match
-      Scheduler.run (Fiber.collect_errors (fun () -> Fiber.Lazy.force_all_unit [ a; b ]))
-    with
-    | Ok () -> print_endline "unexpected success"
-    | Error errors ->
-      let errors =
-        List.map errors ~f:(fun { Exn_with_backtrace.exn; _ } ->
-          match exn with
-          | Failure message -> message
-          | exn -> Printexc.to_string exn)
-        |> List.sort ~compare:String.compare
-      in
-      printfn "errors: %s" (String.concat ~sep:"," errors)
-  in
-  run ();
-  run ();
-  printfn "values: %b %b" (Fiber.Lazy.is_value a) (Fiber.Lazy.is_value b);
-  [%expect
-    {|
-    errors: a,b
-    errors: a,b
-    values: false false |}]
-;;
-
-let%expect_test "Mutex serializes fibers and releases after errors" =
-  let mutex = Fiber.Mutex.create () in
-  let inside = ref false in
-  let max_inside = ref 0 in
-  let inside_count = ref 0 in
-  let critical_section () =
-    Fiber.Mutex.with_lock mutex ~f:(fun () ->
-      if !inside then print_endline "overlap";
-      inside := true;
-      incr inside_count;
-      max_inside := max !max_inside !inside_count;
-      let* () = Scheduler.yield () in
-      decr inside_count;
-      inside := false;
-      Fiber.return ())
-  in
-  Scheduler.run (Fiber.parallel_iter [ (); (); () ] ~f:critical_section);
-  printfn "max inside: %d" !max_inside;
-  let result =
-    Scheduler.run
-      (Fiber.collect_errors (fun () ->
-         Fiber.Mutex.with_lock mutex ~f:(fun () -> raise Exit)))
-  in
-  (match result with
-   | Error [ { exn = Exit; _ } ] -> print_endline "caught Exit"
-   | Ok () | Error _ -> print_endline "unexpected result");
-  Scheduler.run
-    (Fiber.Mutex.with_lock mutex ~f:(fun () ->
-       print_endline "reacquired";
-       Fiber.return ()));
-  [%expect
-    {|
-    max inside: 1
-    caught Exit
-    reacquired |}]
 ;;

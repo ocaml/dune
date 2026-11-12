@@ -23,6 +23,17 @@ val local_package_dependencies
   -> dune_version:Package_version.t
   -> (Package_name.t list, Resolve_opam_formula.unsatisfied_formula) result
 
+(** Like [local_package_dependencies], but also returns the package's optional
+    dependencies that are present in [packages]. These are the dependencies that
+    the solver actually selected for the package. *)
+val local_package_dependencies_with_depopts
+  :  Local_package.For_solver.t
+  -> env:OpamFilter.env
+  -> with_test:bool
+  -> packages:Package_version.t Package_name.Map.t
+  -> dune_version:Package_version.t
+  -> (Package_name.t list, Resolve_opam_formula.unsatisfied_formula) result
+
 (** Convert a selected opam package into one lock-directory package branch per
     solver environment. Each solver environment is paired with the packages
     selected on that platform. The caller can discard unreachable branches

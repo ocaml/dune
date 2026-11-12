@@ -1,12 +1,9 @@
 let sprintf = Printf.sprintf
 
-type ('a, 'error) result = ('a, 'error) Result.t =
-  | Ok of 'a
-  | Error of 'error
+include Either
 
-type ('a, 'b) either = ('a, 'b) Either.t =
-  | Left of 'a
-  | Right of 'b
+type ('a, 'error) result = ('a, 'error) Result.t
+type ('a, 'b) either = ('a, 'b) Either.t
 
 type ordering = Ordering.t =
   | Lt

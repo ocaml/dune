@@ -63,24 +63,50 @@ module Sandbox = struct
   ;;
 end
 
-let limit_output output ~n =
-  let message = "TRUNCATED BY DUNE" in
-  let noutput = String.length output in
-  if noutput <= n
-  then output
-  else (
-    match
-      ( String.index_from output (n / 2) '\n'
-      , String.rindex_from output (noutput - 1 - (n / 2)) '\n' )
-    with
-    | Some i1, Some i2 when i1 < i2 ->
-      String.concat
-        ~sep:""
-        [ String.take output (i1 + 1); "..."; message; "..."; String.drop output i2 ]
-    | _ ->
-      let message = "\n..." ^ message ^ "...\n" in
-      let output = String.take output (n - String.length message |> max 0) in
-      output ^ message)
+let read_output path ~n =
+  match Stdune.Io.read_file_if_small path ~max_size:n |> Result.ok_exn with
+  | Some contents -> contents
+  | None ->
+    Stdune.Io.with_file_in path ~f:(fun ic ->
+      let length = Stdlib.LargeFile.in_channel_length ic in
+      let read pos length =
+        Stdlib.LargeFile.seek_in ic pos;
+        really_input_string ic (Int64.to_int length)
+      in
+      if Int64.compare length (Int64.of_int n) <= 0
+      then read 0L length
+      else (
+        let rec index_from pos char =
+          if Int64.compare pos length >= 0
+          then None
+          else (
+            let count = Int64.min 4096L (Int64.sub length pos) in
+            match String.index (read pos count) char with
+            | None -> index_from (Int64.add pos count) char
+            | Some index -> Some (Int64.add pos (Int64.of_int index)))
+        in
+        let rec rindex_from pos char =
+          if Int64.compare pos 0L < 0
+          then None
+          else (
+            let stop = Int64.succ pos in
+            let start = Int64.max 0L (Int64.sub stop 4096L) in
+            match String.rindex (read start (Int64.sub stop start)) char with
+            | None -> rindex_from (Int64.pred start) char
+            | Some index -> Some (Int64.add start (Int64.of_int index)))
+        in
+        let message = "...TRUNCATED BY DUNE..." in
+        match
+          let half = Int64.of_int (n / 2) in
+          index_from half '\n', rindex_from (Int64.sub (Int64.pred length) half) '\n'
+        with
+        | Some first, Some last when Int64.compare first last < 0 ->
+          String.concat
+            ~sep:""
+            [ read 0L (Int64.succ first); message; read last (Int64.sub length last) ]
+        | _ ->
+          let message = "\n" ^ message ^ "\n" in
+          read 0L (Int64.of_int (max 0 (n - String.length message))) ^ message))
 ;;
 
 module Failure_mode = struct
@@ -307,9 +333,7 @@ module Build = struct
   let with_ t f =
     let previous = !current in
     current := Some t;
-    Fiber.finalize f ~finally:(fun () ->
-      current := previous;
-      Fiber.return ())
+    Fiber.finalize_now f ~finally:(fun () -> current := previous)
   ;;
 
   let cancel_current () =
@@ -794,7 +818,7 @@ module Result = struct
       | No_capture -> ""
       | Read s -> s
       | File p ->
-        let contents = Stdune.Io.read_file_exn p |> limit_output ~n:t.limit in
+        let contents = read_output p ~n:t.limit in
         Temp.destroy File p;
         t.state <- Read contents;
         contents
@@ -818,6 +842,100 @@ module Result = struct
         | Some p -> File p
       in
       { state; on_success; limit; unexpected_output = false }
+    ;;
+
+    let%expect_test "captured output truncation" =
+      let path = Temp.create File ~prefix:"dune" ~suffix:"output" in
+      Exn.protect
+        ~finally:(fun () -> Temp.destroy File path)
+        ~f:(fun () ->
+          let read contents n =
+            Stdune.Io.write_file_exn path contents;
+            get (make (Some path) ~on_success:Print ~limit:n)
+          in
+          Printf.printf "empty: %S\n" (read "" 0);
+          Printf.printf "under limit: %S\n" (read "short\n" 100);
+          Printf.printf "at limit: %S\n" (read "short\n" 6);
+          Printf.printf "over limit: %S\n" (read "short\n" 5);
+          Printf.printf "zero limit: %S\n" (read "short\n" 0);
+          Printf.printf "single line: %S\n" (read (String.make 100 'x') 30);
+          let lines =
+            List.init 100 ~f:(fun i -> sprintf "%02d\n" i) |> String.concat ~sep:""
+          in
+          Printf.printf "lines:\n%s" (read lines 40);
+          Printf.printf
+            "long lines: %S\n"
+            (read (String.make 100 'x' ^ "\n" ^ String.make 100 'y') 30);
+          let overlapping =
+            List.init 20 ~f:(fun i -> sprintf "%02d\n" i) |> String.concat ~sep:""
+          in
+          Printf.printf "overlapping windows:\n%s" (read overlapping 40);
+          [%expect
+            {|
+            empty: ""
+            under limit: "short\n"
+            at limit: "short\n"
+            over limit: "\n...TRUNCATED BY DUNE...\n"
+            zero limit: "\n...TRUNCATED BY DUNE...\n"
+            single line: "xxxxx\n...TRUNCATED BY DUNE...\n"
+            lines:
+            00
+            01
+            02
+            03
+            04
+            05
+            06
+            ...TRUNCATED BY DUNE...
+            93
+            94
+            95
+            96
+            97
+            98
+            99
+            long lines: "xxxxx\n...TRUNCATED BY DUNE...\n"
+            overlapping windows:
+            00
+            01
+            02
+            03
+            04
+            05
+            06
+            ...TRUNCATED BY DUNE...
+            13
+            14
+            15
+            16
+            17
+            18
+            19
+            |}])
+    ;;
+
+    let%expect_test "truncation with long lines around the cut points" =
+      let path = Temp.create File ~prefix:"dune" ~suffix:"output" in
+      Exn.protect
+        ~finally:(fun () -> Temp.destroy File path)
+        ~f:(fun () ->
+          let contents =
+            "header\n"
+            ^ String.make 40 'x'
+            ^ "\nmiddle\n"
+            ^ String.make 40 'y'
+            ^ "\ntail\n"
+          in
+          Stdune.Io.write_file_exn path contents;
+          print_string (get (make (Some path) ~on_success:Print ~limit:30));
+          [%expect
+            {|
+            header
+            xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            ...TRUNCATED BY DUNE...
+            yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+            tail
+            |}])
     ;;
 
     let check_unexpected_output_and_swallow_on_success t =
@@ -985,6 +1103,18 @@ let await ?cancellation ~timeout { response_file; pid; is_process_group_leader; 
   process_info, termination_reason
 ;;
 
+let actions_nice =
+  Config.make
+    ~name:"actions_nice"
+    ~of_string:(function
+      | "none" -> Ok None
+      | value ->
+        (match Option.bind (Int.of_string value) ~f:Spawn.Nice.of_int with
+         | Some nice -> Ok (Some nice)
+         | None -> Error "expected \"none\" or an integer between 0 and 19"))
+    ~default:(Spawn.Nice.of_int 5)
+;;
+
 let spawn
       ?dir
       ?(env = Env.initial)
@@ -1050,8 +1180,15 @@ let spawn
       | Some dir -> Spawn.Working_dir.path (Path.to_string dir)
     in
     let landlock = Option.bind sandbox ~f:Sandbox.to_landlock in
+    let { Process_metadata.purpose; _ } = metadata in
+    let nice =
+      match purpose with
+      | Internal_job -> None
+      | Build_job _ -> Config.get actions_nice
+    in
     Spawn.spawn
       ()
+      ~nice
       ~prog:prog_str
       ~argv0:prog_str
       ~args
@@ -1206,7 +1343,7 @@ let exec_locally
     ; stderr
     }
   in
-  Fiber.finalize
+  Fiber.finalize_now
     (fun () ->
        let t =
          spawn
@@ -1238,12 +1375,11 @@ let exec_locally
        ; times
        ; trace_args = []
        })
-    ~finally:(fun () ->
-      Io.release stdin;
-      Fiber.return ())
+    ~finally:(fun () -> Io.release stdin)
 ;;
 
 let run_internal
+      ~job_slot
       ?dir
       ~(display : Display.t)
       ?(stdout_to = Io.stdout)
@@ -1267,7 +1403,13 @@ let run_internal
   let cancellation =
     Option.map build ~f:(fun { Build.cancellation; _ } -> cancellation)
   in
-  Scheduler.with_job_slot ?cancellation ~job_slots:metadata.job_slots (fun () ->
+  let with_job_slot =
+    match job_slot, cancellation with
+    | None, _ -> Scheduler.with_job_slot ?cancellation ~job_slots:metadata.job_slots
+    | Some slot, Some cancellation -> Scheduler.Job_slot.run slot cancellation
+    | Some _, None -> Code_error.raise "Dynamic action outside a build" []
+  in
+  with_job_slot (fun () ->
     let queued = Time.diff (Time.now ()) start in
     let dir =
       match dir with
@@ -1314,7 +1456,9 @@ let run_internal
     let env = Option.value env ~default:Env.initial in
     let env =
       let { Process_metadata.purpose; _ } = metadata in
-      Dtemp.add_to_env env ~purpose
+      match purpose with
+      | Internal_job -> Dtemp.add_to_env env ~purpose
+      | Build_job _ -> env
     in
     let local () =
       let t =
@@ -1521,6 +1665,7 @@ let run
   =
   let+ run, _ =
     run_internal
+      ~job_slot:None
       ?dir
       ~display
       ?stdout_to
@@ -1530,6 +1675,36 @@ let run
       ?metadata
       ?build
       ?sandbox
+      fail_mode
+      prog
+      (Array.Immutable.of_list args)
+  in
+  Failure_mode.map_result fail_mode run ~f:ignore
+;;
+
+let run_with_job_slot
+      ~job_slot
+      ~dir
+      ~display
+      ~stdout_to
+      ~stderr_to
+      ~stdin_from
+      ~env
+      ~metadata
+      fail_mode
+      prog
+      args
+  =
+  let+ run, _ =
+    run_internal
+      ~job_slot:(Some job_slot)
+      ~dir
+      ~display
+      ~stdout_to
+      ~stderr_to
+      ~stdin_from
+      ~env
+      ~metadata
       fail_mode
       prog
       (Array.Immutable.of_list args)
@@ -1553,6 +1728,7 @@ let run_with_array_args
   =
   let+ run, _ =
     run_internal
+      ~job_slot:None
       ?dir
       ~display
       ?stdout_to
@@ -1584,6 +1760,7 @@ let run_with_times
   =
   let+ code, times =
     run_internal
+      ~job_slot:None
       ?dir
       ~display
       ?stdout_to
@@ -1616,6 +1793,7 @@ let run_capture_gen
   let fn = Temp.create File ~prefix:"dune" ~suffix:"output" in
   let+ run, _ =
     run_internal
+      ~job_slot:None
       ?dir
       ~display
       ~stdout_to:(Io.file fn Io.Out)
@@ -1704,6 +1882,7 @@ let run_inherit_std_in_out =
   in
   fun ?dir ?env prog args ->
     run_internal
+      ~job_slot:None
       ?dir
       ?env
       ~display:Display.Quiet

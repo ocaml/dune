@@ -9,6 +9,7 @@
 (library
  (name dune_unit_tests)
  (libraries
+  configurator
   ocaml_config
   dune_tests_common
   stdune

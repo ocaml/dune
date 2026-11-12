@@ -168,3 +168,137 @@ An interface-only module has an unambiguous fallback and no counterpart.
   alterexe.pp.amli: ocaml true intf -
   alterexe.pp: ocaml true intf -
   alterexe: ocaml true intf -
+
+Compound dialect suffixes sharing their final extension retain their readers
+and distinguish source kinds in the filename fallback, even after dialect
+preprocessing replaces the compilation sources' dialect with OCaml.
+
+  $ mkdir compound
+  $ cat > compound/dune-project <<EOF
+  > (lang dune 3.16)
+  > (dialect
+  >  (name compound)
+  >  (implementation
+  >   (extension impl.ml)
+  >   (preprocess (run cat %{input-file}))
+  >   (merlin_reader implementation))
+  >  (interface
+  >   (extension intf.ml)
+  >   (preprocess (run cat %{input-file}))
+  >   (merlin_reader interface)))
+  > EOF
+  $ echo '(library (name sample))' > compound/dune
+  $ touch compound/sample.impl.ml compound/sample.intf.ml
+  $ dune build --root compound @check
+  $ (cd compound && merlin_configurations \
+  >   _build/default/.merlin-conf/lib-sample \
+  >   sample.impl.ml sample.intf.ml sample.pp.impl.ml sample.pp.intf.ml \
+  >   sample.unknown sample)
+  sample.impl.ml: ocaml true impl sample.intf.ml
+  sample.intf.ml: ocaml true intf sample.impl.ml
+  sample.pp.impl.ml: ocaml true impl sample.intf.ml
+  sample.pp.intf.ml: ocaml true intf sample.impl.ml
+  sample.unknown: none
+  sample: none
+
+  $ for file in sample.impl.ml sample.intf.ml \
+  >   sample.pp.impl.ml sample.pp.intf.ml; do
+  >   printf '%s: ' "$file"
+  >   query_ocaml_merlin_pp "$PWD/compound/$file" --root compound \
+  >     | grep -Eo '\(READER \([^)]*\)\)' || echo no-reader
+  > done
+  sample.impl.ml: (READER (implementation))
+  sample.intf.ml: (READER (interface))
+  sample.pp.impl.ml: (READER (implementation))
+  sample.pp.intf.ml: (READER (interface))
+
+If preprocessing changes the complete suffix, the final extension can still
+identify a unique source kind.
+
+  $ mv compound/sample.intf.ml compound/sample.intf.mli
+  $ sed 's/extension intf\.ml/extension intf.mli/' \
+  >   compound/dune-project > compound/dune-project.new
+  $ mv compound/dune-project.new compound/dune-project
+  $ dune build --root compound @check
+  $ (cd compound && merlin_configurations \
+  >   _build/default/.merlin-conf/lib-sample \
+  >   sample.pp.ml sample.impl.pp.ml sample.intf.pp.mli)
+  sample.pp.ml: ocaml true impl sample.intf.mli
+  sample.impl.pp.ml: ocaml true impl sample.intf.mli
+  sample.intf.pp.mli: ocaml true intf sample.impl.ml
+
+When one declared suffix ends with the other, the longest match determines the
+source kind and reader.
+
+  $ mkdir overlap
+  $ cat > overlap/dune-project <<EOF
+  > (lang dune 3.16)
+  > (dialect
+  >  (name overlap)
+  >  (implementation
+  >   (extension alt)
+  >   (merlin_reader implementation))
+  >  (interface
+  >   (extension long.alt)
+  >   (merlin_reader interface)))
+  > EOF
+  $ echo '(library (name sample))' > overlap/dune
+  $ touch overlap/sample.alt overlap/sample.long.alt
+  $ dune build --root overlap @check
+  $ (cd overlap && merlin_configurations \
+  >   _build/default/.merlin-conf/lib-sample \
+  >   sample.pp.alt sample.pp.long.alt)
+  sample.pp.alt: ocaml true impl sample.long.alt
+  sample.pp.long.alt: ocaml true intf sample.alt
+  $ for file in sample.alt sample.long.alt sample.pp.alt sample.pp.long.alt; do
+  >   printf '%s: ' "$file"
+  >   query_ocaml_merlin_pp "$PWD/overlap/$file" --root overlap \
+  >     | grep -Eo '\(READER \([^)]*\)\)'
+  > done
+  sample.alt: (READER (implementation))
+  sample.long.alt: (READER (interface))
+  sample.pp.alt: (READER (implementation))
+  sample.pp.long.alt: (READER (interface))
+
+Preprocessing inserts `.pp` before the final extension. The generated files
+retain their source kinds and select the corresponding readers.
+
+  $ cat > overlap/dune <<EOF
+  > (library
+  >  (name sample)
+  >  (preprocess (action (run cat %{input-file}))))
+  > EOF
+  $ echo 'let value = 1' > overlap/sample.alt
+  $ echo 'val value : int' > overlap/sample.long.alt
+  $ dune build --root overlap @check
+  $ cat overlap/_build/default/sample.long.pp.alt
+  val value : int
+  $ (cd overlap && merlin_configurations \
+  >   _build/default/.merlin-conf/lib-sample \
+  >   sample.alt sample.long.alt sample.pp.alt sample.long.pp.alt)
+  sample.alt: ocaml true impl sample.long.alt
+  sample.long.alt: ocaml true intf sample.alt
+  sample.pp.alt: ocaml true impl sample.long.alt
+  sample.long.pp.alt: ocaml true intf sample.alt
+  $ for file in sample.pp.alt sample.long.pp.alt; do
+  >   printf '%s: ' "$file"
+  >   query_ocaml_merlin_pp "$PWD/overlap/_build/default/$file" --root overlap \
+  >     | grep -Eo '\(READER \([^)]*\)\)'
+  > done
+  sample.pp.alt: (READER (implementation))
+  sample.long.pp.alt: (READER (interface))
+
+A literal `.pp` in a dialect suffix must not be discarded. The typed lookup
+omits a fallback that could mean either source kind.
+
+  $ echo '(library (name sample))' > overlap/dune
+  $ mv overlap/sample.long.alt overlap/sample.pp.alt
+  $ sed 's/extension long\.alt/extension pp.alt/' \
+  >   overlap/dune-project > overlap/dune-project.new
+  $ mv overlap/dune-project.new overlap/dune-project
+  $ dune build --root overlap @check
+  $ (cd overlap && merlin_configurations \
+  >   _build/default/.merlin-conf/lib-sample \
+  >   sample.pp.alt sample.extra.pp.alt)
+  sample.pp.alt: ocaml true intf sample.alt
+  sample.extra.pp.alt: none

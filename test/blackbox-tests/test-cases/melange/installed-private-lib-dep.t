@@ -61,4 +61,3 @@ Melange (installed) library depends on private library
 Build the app that depends on `foo`, which in turn depends on a private lib
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build @melange --root app
-

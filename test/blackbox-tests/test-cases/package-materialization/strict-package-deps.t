@@ -50,6 +50,6 @@ closure. It controls validation in install_rules, not the install layout.
 All three packages reached through library dependencies appear:
 
   $ dune rules --format=json _build/default/out | jq_dune '.[] | ruleDepFilePaths' | censor | grep dune-package | sort
-  "_build/install/default/.packages/$DIGEST/lib/bar/dune-package"
-  "_build/install/default/.packages/$DIGEST/lib/baz/dune-package"
-  "_build/install/default/.packages/$DIGEST/lib/foo/dune-package"
+  "_build/_private/default/.packages/$DIGEST/lib/bar/dune-package"
+  "_build/_private/default/.packages/$DIGEST/lib/baz/dune-package"
+  "_build/_private/default/.packages/$DIGEST/lib/foo/dune-package"

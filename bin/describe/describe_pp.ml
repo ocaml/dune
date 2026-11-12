@@ -20,13 +20,13 @@ let dialect_and_ml_kind file =
 
 let execute_pp_action ~sctx file pp_file dump_file =
   let open Memo.O in
+  let dir = pp_file |> Path.parent_exn |> Path.as_in_build_dir_exn in
   let* expander =
     let bindings =
       Dune_lang.Pform.Map.singleton
         (Var Input_file)
         [ Dune_lang.Value.Path (Path.build (pp_file |> Path.as_in_build_dir_exn)) ]
     in
-    let dir = pp_file |> Path.parent_exn |> Path.as_in_build_dir_exn in
     Super_context.expander sctx ~dir >>| Dune_rules.Expander.add_bindings ~bindings
   in
   let context = Dune_rules.Expander.context expander in
@@ -58,7 +58,7 @@ let execute_pp_action ~sctx file pp_file dump_file =
       in
       Action_builder.evaluate_and_collect_facts build
     in
-    let+ env = Dune_rules.Super_context.context_env sctx
+    let+ env = Dune_rules.Super_context.context_env_by_dir ~dir sctx
     and+ execution_parameters = Dune_engine.Execution_parameters.default in
     let targets =
       let unvalidated = Targets.File.create dump_file in
@@ -70,7 +70,6 @@ let execute_pp_action ~sctx file pp_file dump_file =
     in
     { Dune_engine.Action_exec.targets = Some targets
     ; root = Path.build build_dir
-    ; context = Some (Dune_engine.Build_context.create ~name:context)
     ; env
     ; rule_loc = Loc.none
     ; execution_parameters
@@ -81,9 +80,12 @@ let execute_pp_action ~sctx file pp_file dump_file =
   in
   let ok =
     let open Fiber.O in
-    let build_deps deps = Build_system.build_deps deps |> Memo.run in
+    let build_deps deps =
+      let+ (_ : Dep.Facts.t) = Build_system.build_deps deps |> Memo.run in
+      ()
+    in
     let* result = Dune_engine.Action_exec.exec input ~build_deps in
-    Dune_engine.Action_exec.Exec_result.ok_exn result >>| ignore
+    Dune_engine.Action_exec.Exec_result.ok_exn result
   in
   Memo.of_non_reproducible_fiber ok
 ;;

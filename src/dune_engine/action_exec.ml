@@ -3,59 +3,12 @@ open Stdune.Action_types
 open Action_intf.Exec
 
 module Exec_result = struct
-  module Error = struct
-    type t =
-      | User of User_message.t
-      | Code of Code_error.t
-      | Sys of string
-      | Unix of Unix.error * string * string
-      | Nonreproducible_build_cancelled
-
-    (* We can't capture raw backtraces since they are not marshallable.
-       We can convert those to marshallable backtrace slots, but we can't convert them
-       back to re-raise exceptions with preserved backtraces. *)
-    let of_exn (e : exn) =
-      match e with
-      | User_error.E msg -> User msg
-      | Code_error.E err -> Code err
-      | Sys_error msg -> Sys msg
-      | Unix.Unix_error (err, call, args) -> Unix (err, call, args)
-      | Memo.Non_reproducible Scheduler.Run.Build_cancelled ->
-        Nonreproducible_build_cancelled
-      | Memo.Cycle_error.E _ as e ->
-        (* [Memo.Cycle_error.t] is hard to serialize and can only be raised during action
-           execution with the dynamic dependencies plugin, which is not production-ready yet.
-           For now, we just re-reraise it.
-        *)
-        reraise e
-      | e ->
-        Code
-          { message = "unable to serialize exception"
-          ; data = [ "exn", Exn.to_dyn e ]
-          ; loc = None
-          }
-    ;;
-
-    let to_exn (t : t) =
-      match t with
-      | User msg -> User_error.E msg
-      | Code err -> Code_error.E err
-      | Sys msg -> Sys_error msg
-      | Unix (err, call, args) -> Unix.Unix_error (err, call, args)
-      | Nonreproducible_build_cancelled ->
-        Memo.Non_reproducible Scheduler.Run.Build_cancelled
-    ;;
-  end
-
-  type ok = { dynamic_deps_stages : (Dep.Set.t * Dep.Facts.t) list }
-  type t = (ok, Error.t list) Result.t
+  type t = (unit, Exn_with_backtrace.t list) Result.t
 
   let ok_exn (t : t) =
     match t with
     | Ok t -> Fiber.return t
-    | Error errs ->
-      Fiber.reraise_all
-        (List.map errs ~f:(fun e -> Exn_with_backtrace.capture (Error.to_exn e)))
+    | Error errs -> Fiber.reraise_all errs
   ;;
 end
 
@@ -148,7 +101,7 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
     let dst = Path.build dst in
     let copy_file ~src ~dst =
       Path.parent dst |> Option.iter ~f:Path.mkdir_p;
-      Io.copy_file ~src ~dst ()
+      Io.copy_file ~overwrite:true ~src ~dst ()
     in
     let mkdir ~src:_ ~dst = Path.mkdir_p dst in
     let on_unsupported ~src kind =
@@ -165,18 +118,18 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
 
            [Copy] stays file-oriented by default. We only use recursive copying
            when [dst] is a directory target. *)
-      match ectx.targets with
-      | Some { dirs; _ } when Filename.Set.mem dirs (Path.basename dst) ->
-        Tree_copy.copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ()
+      match ectx.metadata.purpose with
+      | Build_job (Some { dirs; _ }) when Filename.Set.mem dirs (Path.basename dst) ->
+        Tree_traversal.traverse ~src ~dst ~on_file:copy_file ~mkdir ~on_unsupported ()
       | _ -> copy_file ~src ~dst
     in
     Fiber.return ()
   | Symlink (src, dst) when Sys.win32 -> exec (Copy (src, dst)) ~ectx ~eenv
   | Symlink (src, dst) ->
-    Io.portable_symlink ~src ~dst:(Path.build dst);
+    Io.portable_symlink ~overwrite:true ~src ~dst:(Path.build dst);
     Fiber.return ()
   | Hardlink (src, dst) ->
-    Io.portable_hardlink ~src ~dst:(Path.build dst);
+    Io.portable_hardlink ~overwrite:true ~src ~dst:(Path.build dst);
     Fiber.return ()
   | System command ->
     let prog, arg =
@@ -306,7 +259,6 @@ and exec_pipe outputs ts ~ectx ~eenv : unit Fiber.t =
 type input =
   { targets : Targets.Validated.t option (* Some Jane Street actions use [None] *)
   ; root : Path.t
-  ; context : Build_context.t option
   ; env : Env.t
   ; rule_loc : Loc.t
   ; execution_parameters : Execution_parameters.t
@@ -350,7 +302,6 @@ let eval_job_slots job_slots ~ectx ~(eenv : env) =
 let exec
       { targets
       ; root
-      ; context
       ; env
       ; rule_loc
       ; execution_parameters
@@ -360,16 +311,12 @@ let exec
       }
       ~build_deps
   =
-  let dynamic_deps_stages = ref [] in
+  let env = Dtemp.add_to_env env ~purpose:(Process_metadata.Build_job targets) in
   let ectx =
     let metadata =
       Process_metadata.create ~purpose:(Process_metadata.Build_job targets) ()
     in
-    let build_deps deps =
-      let+ facts = build_deps deps in
-      dynamic_deps_stages := (deps, facts) :: !dynamic_deps_stages
-    in
-    { targets; root; metadata; context; sandbox; rule_loc; build_deps }
+    { root; metadata; sandbox; rule_loc; build_deps }
   and eenv =
     let env =
       match
@@ -424,9 +371,4 @@ let exec
       }
     in
     exec t ~ectx ~eenv)
-  >>| function
-  | Ok () -> Ok { Exec_result.dynamic_deps_stages = List.rev !dynamic_deps_stages }
-  | Error exns ->
-    Error
-      (List.map exns ~f:(fun (e : Exn_with_backtrace.t) -> Exec_result.Error.of_exn e.exn))
 ;;

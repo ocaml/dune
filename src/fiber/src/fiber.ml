@@ -32,7 +32,7 @@ end
 module Temp = Stdune.Temp.Monad (struct
     type nonrec 'a t = 'a t
 
-    let protect ~f ~finally = finalize f ~finally:(fun () -> finally () |> return)
+    let protect ~f ~finally = finalize_now f ~finally
   end)
 
 module Cache = Cache

@@ -250,7 +250,7 @@ let rec eval : type a m. a t -> m eval_mode -> (a * m) Memo.t =
      | Lazy -> Memo.return (res, deps)
      | Eager ->
        let open Memo.O in
-       let+ facts = Dep.Facts.record_facts deps ~f in
+       let+ facts = Dep.Map.parallel_map deps ~f:(fun dep () -> f dep) in
        res, facts)
   | Record_success memo ->
     (match mode with

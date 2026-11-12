@@ -4,6 +4,7 @@ open Import
 
 val make
   :  Super_context.t
+  -> for_:Compilation_mode.t
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> lint:Preprocess.Without_instrumentation.t Preprocess.Per_module.t

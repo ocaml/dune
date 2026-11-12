@@ -1,0 +1,4 @@
+(cram
+ (applies_to file-descriptor-limit.t unreadable-source.t)
+ (enabled_if
+  (= %{os_type} Unix)))

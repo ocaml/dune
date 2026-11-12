@@ -67,16 +67,12 @@ end = struct
   ;;
 
   let done_status ~complete ~remaining ~failed state =
-    Pp.textf
-      "Done: %d%% (%d/%d, %d left%s) (jobs: %d)"
-      (if complete + remaining = 0 then 0 else complete * 100 / (complete + remaining))
-      complete
-      (complete + remaining)
-      remaining
-      (match failed with
-       | 0 -> ""
-       | failed -> sprintf ", %d failed" failed)
-      (Job_id_map.cardinal state.jobs)
+    Pp.text
+      (Util.progress_status
+         ~complete
+         ~remaining
+         ~failed
+         ~running_jobs:(Job_id_map.cardinal state.jobs))
   ;;
 
   let waiting_for_file_system_changes message =
@@ -95,7 +91,7 @@ end = struct
          (fun () ->
            match (state.progress : Progress.t) with
            | Waiting -> Pp.verbatim "Initializing..."
-           | In_progress { complete; remaining; failed } ->
+           | In_progress { complete; remaining; failed; _ } ->
              done_status ~complete ~remaining ~failed state
            | Interrupted -> Pp.verbatim "Restarting current build..."
            | Success ->

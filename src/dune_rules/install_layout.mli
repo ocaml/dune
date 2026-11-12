@@ -10,7 +10,7 @@ val set_entry_resolver
     the set. *)
 val env : Context_name.t -> Package.Name.Set.t -> Env.t Action_builder.t
 
-(** Engine dispatch for [_build/install/<context>/.packages/<rest>]. Called
+(** Engine dispatch for [_build/_private/<context>/.packages/<rest>]. Called
     from [Gen_rules]; the layout dir is owned by this module. Resolves to:
     - no rules for the [.packages/] root itself ([rest = []]),
     - the symlink rules for one package set when [rest = [ key ]],
@@ -20,7 +20,7 @@ val gen_rules
   :  Context_name.t
   -> dir:Path.Build.t
   -> string list
-  -> Build_config.Gen_rules.result Memo.t
+  -> Build_config.Gen_rules.t Memo.t
 
 module For_rocq_only : sig
   (** Do not use! Escape hatch reserved for the Rocq rule generator. See the

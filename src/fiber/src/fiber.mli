@@ -233,6 +233,11 @@ val collect_errors : (unit -> 'a t) -> ('a, Exn_with_backtrace.t list) Result.t 
     fails or succeeds. *)
 val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
 
+(** Like [finalize], but [finally] runs synchronously without returning a fiber.
+    Exceptions from [f] and [finally] are both passed to the current error handler,
+    with exceptions from [f] first. *)
+val finalize_now : (unit -> 'a t) -> finally:(unit -> unit) -> 'a t
+
 (** [reraise_all exns] re-raises all [exns] to the current error handler *)
 val reraise_all : Exn_with_backtrace.t list -> 'a t
 
@@ -360,6 +365,22 @@ module Throttle : sig
 
   (** Change the capacity. *)
   val resize : t -> int -> unit fiber
+
+  module Slot : sig
+    type throttle := t
+    type t
+
+    val create : throttle -> size:int -> t
+
+    (** Acquire a reservation of [size] slots, capped at the throttle's capacity
+        when created. Return [`Ok] on success, or [`Cancelled] if [release]
+        cancels the queued acquisition. Acquiring an already held reservation
+        is a no-op. *)
+    val acquire : t -> [ `Ok | `Cancelled ] fiber
+
+    (** Release a held reservation or cancel a queued acquisition. Idempotent. *)
+    val release : t -> unit fiber
+  end
 
   (** Execute a fiber taking [size] slots. A job can start whenever the occupied
       slots are below the throttle's capacity, even if its size takes the total

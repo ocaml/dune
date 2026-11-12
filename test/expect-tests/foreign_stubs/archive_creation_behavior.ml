@@ -55,6 +55,7 @@ let spawn_and_capture ?env ~prog ~argv ~cwd () =
           ~f:(fun () ->
             let env = Option.map env ~f:(fun env -> Env.of_unix (Array.of_list env)) in
             Spawn.spawn
+              ~nice:None
               ~prog
               ~argv0:prog
               ~args:(Array.Immutable.of_list argv)

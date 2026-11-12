@@ -28,3 +28,22 @@ Test the (dialect ...) stanza inside the `dune-project` file.
   > ' | sort
   fake ocamlformat is running: "--impl" "./fmt.ml"
   fake ocamlformat is running: "--impl" "./main.ml"
+
+Omitting the implementation kind is rejected before Dune 3.9.
+
+  $ rm dune-project
+  $ cat > dune-project <<'EOF'
+  > (lang dune 3.8)
+  > (dialect
+  >  (name mlfi)
+  >  (interface (extension mfi)))
+  > EOF
+  $ dune build
+  File "dune-project", lines 2-4, characters 0-51:
+  2 | (dialect
+  3 |  (name mlfi)
+  4 |  (interface (extension mfi)))
+  Error: omitting (implementation) in dialects is only available since version
+  3.9 of the dune language. Please update your dune-project file to have (lang
+  dune 3.9).
+  [1]

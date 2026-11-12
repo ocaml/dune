@@ -3,6 +3,8 @@ Cram
 
 .. describe:: (cram ...)
 
+   .. versionadded:: 2.7
+
    Configure Cram tests in the current directory (and subdirectories).
 
    A single test may be configured by more than one ``cram`` stanza. In such
@@ -13,7 +15,7 @@ Cram
 
    .. describe:: (deps <dep-spec>)
 
-      Specify the dependencies of the test.
+      Specify the dependencies of the test. Defaults to no dependencies.
 
       When testing binaries, it's important to to specify a dependency on the
       binary for two reasons:
@@ -59,6 +61,9 @@ Cram
       explicitly via its own alias (e.g., ``dune build @foo.t`` for ``foo.t``
       starting with Dune 3.25).
 
+      The default is ``true``. If several stanzas apply, all their conditions
+      must hold.
+
       .. seealso:: :doc:`/reference/boolean-language`, :doc:`/concepts/variables`
 
    .. describe:: (alias <name>)
@@ -67,25 +72,37 @@ Cram
       every test ``foo.t`` is attached to the :doc:`/reference/aliases/runtest`
       alias and gets its own alias to make it convenient to run individually.
       Starting with Dune 3.25, this alias is ``@foo.t``; in earlier versions it
-      is ``@foo``.
+      is ``@foo``. By default, no additional alias is added.
 
    .. describe:: (locks <lock-names>)
 
+      .. versionadded:: 2.9
+
       Specify that the tests must be run while holding the following locks.
+      Defaults to no locks.
 
       .. seealso:: :doc:`/concepts/locks`
 
    .. describe:: (package <name>)
 
-      Attach the tests selected by this stanza to the specified package.
+      .. versionadded:: 2.8
 
-   .. describe:: (runtest_alias <true|false>)
+      Attach the tests selected by this stanza to the specified package.
+      This association is used by ``-p`` and ``--only-packages`` to filter
+      tests. By default, no explicit association is added.
+
+   .. describe:: (runtest_alias <blang>)
 
       .. versionadded:: 3.12
 
       When set to ``false``, do not add the tests to the ``runtest`` alias.
       The default is to add every Cram test to ``runtest``, but this is not
       always desired.
+
+      Since language version 3.24, this field accepts a
+      :doc:`Boolean expression </reference/boolean-language>`; earlier
+      versions accept only ``true`` or ``false``. Other aliases are unaffected.
+      At most one applicable stanza may set this field.
 
    .. describe:: (timeout <float>)
 
@@ -98,8 +115,7 @@ Cram
       or take unexpectedly long.
 
       The timeout is a floating-point number (e.g., `1.5` for 1.5 seconds).
-      Zero or negative values cause immediate failure when running the cram
-      test.
+      The timeout must be nonnegative. By default, there is no time limit.
 
       If multiple ``cram`` stanzas apply to the same test, the **lowest** of
       all specified timeouts is used.
@@ -121,7 +137,7 @@ Cram
       .. versionadded:: 3.21
 
       Determines how conflict markers inserted by version control systems are
-      inserted. The default behavior is to ``ignore`` them. Setting ``error``
+      handled. The default behavior is to ``ignore`` them. Setting ``error``
       will make the test runner reject such conflicts and refuse to run the
       test.
 
@@ -135,6 +151,9 @@ Cram
       in this field. The order of evaluation for these scripts is deterministic
       but is left undefined, so it is not recommended that these scripts have
       side effects.
+
+      Defaults to no setup scripts. Relative paths are resolved from the
+      stanza's directory.
 
    .. describe:: (shell <sh|bash>)
 

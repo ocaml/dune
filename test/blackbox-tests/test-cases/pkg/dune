@@ -47,6 +47,10 @@
  (deps %{bin:menhir}))
 
 (cram
+ (applies_to doc-new-with-locked-lib.t)
+ (deps %{bin:odoc}))
+
+(cram
  (deps %{bin:awk} %{bin:cmp})
  (applies_to git-repo.t))
 

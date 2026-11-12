@@ -134,3 +134,12 @@ environment.
   ocamlc.opt MANPATH=/compiler-env-manpath
   ocamldep.opt MANPATH=/compiler-env-manpath
   ocamlopt.opt MANPATH=/compiler-env-manpath
+
+An empty directory-level OCAMLRUNPARAM is preserved.
+
+  $ sed -i.bak \
+  >   's/OCAMLRUNPARAM Xsmall_heap_limit=4194304/OCAMLRUNPARAM ""/' dune
+  $ build stanza_empty
+  ocamlc.opt OCAMLRUNPARAM= CAMLRUNPARAM=unset
+  ocamldep.opt OCAMLRUNPARAM= CAMLRUNPARAM=unset
+  ocamlopt.opt OCAMLRUNPARAM= CAMLRUNPARAM=unset

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794527903315,
+  "lastUpdate": 1794527909585,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -487024,6 +487024,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 51.40750310559334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a0288ef977a2d2a03b4ff2b4aaca48041aaec6a1",
+          "message": "agents: remove CLAUDE.md redirect (#17011)\n\nClaude now supports `AGENTS.md` directly. Remove the `CLAUDE.md`\nredirect so it no longer prevents Claude from reading other `AGENTS.md`\nfiles.",
+          "timestamp": "2026-11-12T23:39:09Z",
+          "tree_id": "4f8ef28e8f1be98acba672443683c754a8913b41",
+          "url": "https://github.com/ocaml/dune/commit/a0288ef977a2d2a03b4ff2b4aaca48041aaec6a1"
+        },
+        "date": 1794527908834,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4448770430066667,
             "unit": "seconds"
           }
         ]

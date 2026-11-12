@@ -15,7 +15,10 @@ on:
         default: false
 
 concurrency:
-  group: "${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+  group: >-
+    ${{ github.workflow }} @
+    ${{ github.event.pull_request.head.label || github.head_ref || github.ref }} @
+    ${{ github.run_attempt == 1 && 'initial' || github.run_id }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:

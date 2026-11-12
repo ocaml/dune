@@ -22,6 +22,3 @@ depend on itself.
 Building a target of the root only loads the rules of the root:
 
   $ dune build ./config
-  Error: Dependency cycle between:
-     %{read:../config} at lib/dune:4
-  [1]

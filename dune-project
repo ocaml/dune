@@ -174,6 +174,7 @@ Among other things, dune-configurator allows one to:
   re
   (stdune (= :version))
   (pp (>= 1.1.0))
+  base-unix
   (ppx_expect :with-test))
  (description "Library to connect and control a running dune instance"))
 

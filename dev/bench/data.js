@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794458779623,
+  "lastUpdate": 1794458785684,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -486618,6 +486618,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 39.96093387344667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "87cc24094cb4a3a423e9a052667f2965246cdf69",
+          "message": "fix(cram): isolate temporary directories per test (#16930)\n\nBuilds on the temporary-directory defaults and override matrix in\n#16982.\n\nFix the shared `TMPDIR` behavior demonstrated in #16925 without adding\nshell exports. Initialize Dune's managed temporary directory when\ninterpreting a build action, before action-level `setenv` nodes.\nBuild-job process spawning preserves that final environment; internal\njobs retain their separate Dune temporary directory. Directory\n`env-vars` behavior is unchanged.\n\nCram keeps its scripts, captured output, and metadata in its own scratch\ndirectory and exposes an initially empty `tmp/` child to setup scripts\nand test commands. The paths are assigned at execution time, not\nembedded in generated shell commands or rule digests. Invalidate cached\nrules and Cram actions for the changed behavior.\n\nUpdate the preparatory matrix's expected values for regular-action\n`setenv` and Cram's private directory. Remove the older standalone\noverride test, while retaining isolation, empty-directory, setup-script,\nand runner-file separation coverage.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-12T12:34:09+08:00",
+          "tree_id": "ba2f361c1e382cdccbe60593d8f3bbd1266a9c1d",
+          "url": "https://github.com/ocaml/dune/commit/87cc24094cb4a3a423e9a052667f2965246cdf69"
+        },
+        "date": 1794458784804,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.37396155574,
             "unit": "seconds"
           }
         ]

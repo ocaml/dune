@@ -17,6 +17,7 @@ depends: [
   "base-unix"
   "ppx_expect" {with-test}
   "conf-jq" {with-test}
+  "conf-timeout" {with-test}
   "odoc" {with-doc}
 ]
 dev-repo: "git+https://github.com/ocaml/dune.git"

@@ -186,7 +186,8 @@ Among other things, dune-configurator allows one to:
   (stdune (= :version))
   base-unix
   (ppx_expect :with-test)
-  (conf-jq :with-test))
+  (conf-jq :with-test)
+  (conf-timeout :with-test))
  (description "Specialization of dune-rpc to Lwt"))
 
 (package

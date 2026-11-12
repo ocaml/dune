@@ -31,6 +31,23 @@ We should only see the result of building "bar"
   $ build_pkg bar
   building bar
 
+Loading package rules must not resolve or expand unrelated packages, reject
+missing sources, or build dependencies needed by their exported environment.
+
+  $ make_lockpkg not-needed <<EOF
+  > (version dev)
+  > (build (run false))
+  > EOF
+  $ make_lockpkg unused <<EOF
+  > (version dev)
+  > (depends not-needed)
+  > (source (copy "$PWD/missing-source"))
+  > (exported_env (= UNUSED %{pkg:not-needed:version}))
+  > (build (run missing-program))
+  > EOF
+  $ build_pkg bar
+  $ test ! -e "$(get_build_pkg_dir not-needed)/target"
+
 Package build commands are not restricted by the shared-cache Landlock policy.
 
   $ export DUNE_CACHE_ROOT=$PWD/cache-root

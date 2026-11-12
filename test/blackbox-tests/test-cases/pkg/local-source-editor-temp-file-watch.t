@@ -1,6 +1,7 @@
-The watch server must not keep a stale listing of a package sourced from a
-local directory when an editor temporary file, whose events are ignored by the
-file watcher, is created and then deleted in that directory.
+The watch server must not keep a stale listing of a package sourced from a local
+directory. When an editor temporary file exists at pin time and is deleted
+later, the watch server believes it to still exist because the fs watcher
+skips temporary files.
 
   $ mkdir -p dep/lib
   $ echo "let x = 1" > dep/lib/a.ml

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794478144399,
+  "lastUpdate": 1794478386380,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -486647,6 +486647,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.37396155574,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "quentin@tarides.com",
+            "name": "mefyl",
+            "username": "mefyl"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9e2f3632a8e8a9bcd8b3f29d2ec3490a70e41744",
+          "message": "Reproduce stale listing of local package source in watch mode. (#16902)\n\n## Description\n\nReproduce bug of #16903 \n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-11-12T10:56:50+01:00",
+          "tree_id": "d62bad72b331322d8ca3327a606b8ea86f945171",
+          "url": "https://github.com/ocaml/dune/commit/9e2f3632a8e8a9bcd8b3f29d2ec3490a70e41744"
+        },
+        "date": 1794478384425,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 46.295917401026664,
             "unit": "seconds"
           }
         ]

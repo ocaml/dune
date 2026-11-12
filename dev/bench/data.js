@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794512109175,
+  "lastUpdate": 1794512434270,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -486937,6 +486937,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4644215894466666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "17ab73c6199ac17b9fb1eecb75c48dbd9dd02f65",
+          "message": "test(rocq): use a portable shebang in package-ocamlpath.t (#17010)\n\nUse `#!/usr/bin/env bash` for the fake REPL helper so the Rocq OCAMLPATH\ntest can run on systems such as NixOS without `/bin/bash`.",
+          "timestamp": "2026-11-12T19:17:12Z",
+          "tree_id": "9ef1088534bfc18dccc53dad9ca5edf37606fbfd",
+          "url": "https://github.com/ocaml/dune/commit/17ab73c6199ac17b9fb1eecb75c48dbd9dd02f65"
+        },
+        "date": 1794512432703,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 63.04261329202666,
             "unit": "seconds"
           }
         ]

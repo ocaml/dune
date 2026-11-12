@@ -5,16 +5,30 @@ Running with one job avoids any reliance on scheduling or timing.
   $ make_dune_project 3.25
   $ cat > dune <<'EOF'
   > (cram
+  >  (setup_scripts setup.sh))
+  > (cram
   >  (applies_to producer.t)
   >  (alias produced))
   > (cram
-  >  (applies_to consumer.t)
+  >  (applies_to consumer.t bash.t directory.t)
   >  (deps (alias produced)))
+  > (cram
+  >  (applies_to bash.t)
+  >  (shell bash))
+  > EOF
+  $ cat > setup.sh <<'EOF'
+  > test -d "$TMPDIR" || exit 1
+  > test -z "$(ls -A "$TMPDIR")" || exit 1
+  > echo ready > "$TMPDIR/setup-marker"
   > EOF
   $ cat > producer.t <<'EOF'
   >   $ echo 'written by producer.t' > "$TMPDIR/cram-isolation-marker"
   > EOF
   $ cat > consumer.t <<'EOF'
+  >   $ cat "$TMPDIR/setup-marker"
+  >   ready
+  >   $ echo "$TMPDIR"
+  >   $TMPDIR
   >   $ if test -e "$TMPDIR/cram-isolation-marker"; then
   >   >   cat "$TMPDIR/cram-isolation-marker"
   >   > else
@@ -23,20 +37,13 @@ Running with one job avoids any reliance on scheduling or timing.
   >   isolated
   > EOF
 
-The consumer unexpectedly sees the producer's marker, despite being a different
-Cram test. This records the current isolation bug.
+Cover both shells and directory tests. Each consumer has an existing, writable
+TMPDIR before setup scripts run, and none can see the producer's marker.
 
+  $ cp consumer.t bash.t
+  $ mkdir directory.t
+  $ cp consumer.t directory.t/run.t
   $ dune runtest -j 1 --cache=disabled
-  File "consumer.t", line 1, characters 0-0:
-  --- consumer.t
-  +++ consumer.t.corrected
-  @@ -3,4 +3,4 @@
-     > else
-     >   echo isolated
-     > fi
-  -  isolated
-  +  written by producer.t
-  [1]
 
 The runner's internal files are separate from the directory exposed to a test.
 Reusing its filenames in TMPDIR must not corrupt scripts, output, or metadata.

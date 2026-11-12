@@ -1456,7 +1456,9 @@ let run_internal
     let env = Option.value env ~default:Env.initial in
     let env =
       let { Process_metadata.purpose; _ } = metadata in
-      Dtemp.add_to_env env ~purpose
+      match purpose with
+      | Internal_job -> Dtemp.add_to_env env ~purpose
+      | Build_job _ -> env
     in
     let local () =
       let t =

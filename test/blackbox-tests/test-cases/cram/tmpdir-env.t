@@ -57,8 +57,9 @@ The cram action allows the same setenv wrapper to be tested in both contexts.
   >    (setenv TEMP action-override (cram observe.t)))))
   > EOF
 
-An inherited directory is replaced by Dune's managed directory. Currently both
-forms of explicit override are also replaced, in regular and Cram actions alike.
+Dune replaces inherited and env-stanza values with its managed directory.
+An action-level setenv overrides that default in regular actions. Cram actions
+supply their own private directory regardless of the enclosing environment.
 Normalize generated directory names, but leave override values unchanged.
 
   $ inherited="$TMPDIR/tmpdir-env-matrix"
@@ -75,11 +76,11 @@ Normalize generated directory names, but leave override values unchanged.
   >   done
   > done
   default regular: $DUNE_ACTION_TMPDIR
-  default cram: $DUNE_ACTION_TMPDIR
+  default cram: $DUNE_ACTION_TMPDIR/dune_cram_TEMP_.observe.t/tmp
   env regular: $DUNE_ACTION_TMPDIR
-  env cram: $DUNE_ACTION_TMPDIR
-  setenv regular: $DUNE_ACTION_TMPDIR
-  setenv cram: $DUNE_ACTION_TMPDIR
+  env cram: $DUNE_ACTION_TMPDIR/dune_cram_TEMP_.observe.t/tmp
+  setenv regular: action-override
+  setenv cram: $DUNE_ACTION_TMPDIR/dune_cram_TEMP_.observe.t/tmp
 
 A second invocation must reuse both regular and Cram results rather than having
 new temporary paths invalidate the rules. Compiler configuration probes may run.

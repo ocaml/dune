@@ -55,6 +55,14 @@
  (applies_to git-repo.t))
 
 (cram
+ (deps %{bin:cmp})
+ (applies_to build-single-package.t bin-runtime-deps.t))
+
+(cram
+ (deps %{bin:diff})
+ (applies_to dependency-hash.t))
+
+(cram
  (deps ../../utils/fakegit.sh)
  (applies_to opam-source-conversion.t))
 

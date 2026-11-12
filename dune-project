@@ -59,6 +59,7 @@
   (utop (and :with-test (>= 2.6.0) (<> :os win32)))
   (melange (and :with-test (>= 7.0.0) (<> :os win32)))
   (conf-bash :with-test)
+  (conf-diffutils :with-test)
   (conf-jq :with-test)
   (conf-pkg-config :with-test)
   ; The rev store negotiation test launches a git daemon, which needs to be

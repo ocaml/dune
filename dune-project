@@ -157,7 +157,8 @@ Among other things, dune-configurator allows one to:
  (synopsis "Embed locations information inside executable and libraries")
  (depends
   (dune-private-libs (= :version))
-  (dune-build-info :with-test))
+  (dune-build-info :with-test)
+  (base-threads :with-test))
  (description ""))
 
 (package
@@ -243,6 +244,7 @@ Among other things, dune-configurator allows one to:
   (ordering (= :version))
   (pp (>= 2.0.0))
   (top-closure (= :version))
+  base-threads
   (ppx_expect :with-test))
  (maintenance_intent none)
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))

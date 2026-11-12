@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794505306146,
+  "lastUpdate": 1794505570056,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -486821,6 +486821,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.38412228008666666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2bd1cd3cf2accb5b7c2ad0b4f3261f275739bfa9",
+          "message": "test(digest-cache): cover missing files and symlink errors (#17007)\n\nExtend the `dune internal digest-db check` cram test to verify distinct\nerrors for cached paths that become missing files, broken symbolic\nlinks, or symbolic-link cycles.\n\nThis characterizes existing behavior without changing the\nimplementation.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-13T01:30:30+08:00",
+          "tree_id": "79ce267714dc9b2114b7741305d948fca525abdc",
+          "url": "https://github.com/ocaml/dune/commit/2bd1cd3cf2accb5b7c2ad0b4f3261f275739bfa9"
+        },
+        "date": 1794505568118,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 50.42875668169333,
             "unit": "seconds"
           }
         ]

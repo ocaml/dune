@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794510685350,
+  "lastUpdate": 1794510692326,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -486908,6 +486908,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 55.30704978709333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "35412ff68794e5a3146ff0cb5d45c5ca7dd8ec52",
+          "message": "Enable Merlin's PPX cache (#16460)\n\nHello!\n\nThis PR enables the PPX cache in Merlin, that was implemented in\nhttps://github.com/ocaml/merlin/pull/1584 by @pitag-ha, and tweaked in\nhttps://github.com/ocaml/merlin/pull/2127 for handling of dependencies.\n\nThe Merlin PPX cache is enabled when the `USE_PPX_CACHE` Merlin\ndirective is present. To have it work in presence of dependencies, those\nneed to be advertised with `PPX_DEPS <path/to/dependency>`.\n\n(Higher-hanging fruits for improving Merlin+PPX performances are\ndescribed in https://github.com/ocaml/merlin/pull/1584 and can be\nimplemented later.)\n\nShould not be merged before https://github.com/ocaml/merlin/pull/2127 is\nmerged!\n\nCC @voodoos",
+          "timestamp": "2026-11-12T18:52:10Z",
+          "tree_id": "b97b3afa0f48f2018f4286c0e6ca57e60f63f685",
+          "url": "https://github.com/ocaml/dune/commit/35412ff68794e5a3146ff0cb5d45c5ca7dd8ec52"
+        },
+        "date": 1794510691418,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4644215894466666,
             "unit": "seconds"
           }
         ]

@@ -1,38 +1,78 @@
-A lock-dir package depends on a workspace library and its build
-action inspects [OCAMLPATH].
+A locked opaque recipe must receive workspace package variables and installed
+artifacts through the same materialiser as other recipe dependencies.
 
   $ make_workspace_lib_package
 
-The lock dir contains one package "consumer" whose build action
-writes [OCAMLPATH] to a file and installs it. The intent is that the
-file should later be inspectable to confirm the workspace install
-layout was prepended.
+The recipe checks metadata and section paths, compiles against the workspace
+library, and records the result. Merely adding an OCAMLPATH entry is not enough:
+the library files must be materialised and tracked as dependencies.
 
   $ make_lockdir
   $ make_lockpkg consumer <<EOF
   > (version 0.0.1)
   > (depends workspace-lib)
   > (build
-  >  (system "echo \$OCAMLPATH > ocamlpath.txt"))
+  >  (system "set -eu; test '%{pkg:workspace-lib:name}' = workspace-lib; test '%{pkg:workspace-lib:version}' = dev; test '%{pkg:workspace-lib:installed}' = true; test -f '%{pkg:workspace-lib:lib}/workspace_lib.cma'; echo 'let () = print_endline Workspace_lib.greeting' > main.ml; ocamlc -I '%{pkg:workspace-lib:lib}' workspace_lib.cma main.ml -o main.exe; ./main.exe > result"))
   > (install
-  >  (system "mkdir -p %{lib}/consumer && cp ocamlpath.txt %{lib}/consumer/"))
+  >  (system "mkdir -p %{pkg-self:share}; cp result %{pkg-self:share}/result"))
   > EOF
 
 A rule depends on the lock-dir package:
 
   $ write_lockdir_consumer_rule
 
-Lock-dir validation does not currently recognise workspace packages as
-valid dependency targets, so the consumer's build action never runs:
+  $ dune build out
+  $ result="$(get_build_pkg_dir consumer)/target/share/consumer/result"
+  $ cat "$result"
+  Hello from workspace-lib!
 
-  $ dune build out 2>&1
-  File "_build/_private/default/.lock/dune.lock/consumer.pkg", line 2,
-  characters 9-22:
-  The package "consumer" depends on the package "workspace-lib", but
-  "workspace-lib" does not appear in the lockdir
-  _build/_private/default/.lock/dune.lock.
-  Error: At least one package dependency is itself not present as a package in
-  the lockdir _build/_private/default/.lock/dune.lock.
-  Hint: This could indicate that the lockdir is corrupted. Delete it and then
-  regenerate it by running: 'dune pkg lock'
-  [1]
+Workspace edits invalidate the locked consumer without relocking.
+
+  $ echo 'let greeting = "updated library"' > src/workspace_lib.ml
+  $ dune build out
+  $ cat "$result"
+  updated library
+
+The workspace provider can itself depend on another locked package. The shared
+layout must contain the transitive library needed to link the opaque consumer,
+without making that library's variables a direct recipe dependency.
+
+  $ cat > dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name workspace-lib) (depends leaf))
+  > EOF
+  $ echo '(library (name workspace_lib) (public_name workspace-lib) (modes byte) (libraries leaf))' > src/dune
+  $ echo 'let greeting = Leaf.greeting' > src/workspace_lib.ml
+  $ mkdir _leaf
+  $ cat > _leaf/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name leaf))
+  > EOF
+  $ echo '(library (public_name leaf) (modes byte))' > _leaf/dune
+  $ echo 'let greeting = "native leaf"' > _leaf/leaf.ml
+  $ make_lockpkg leaf <<EOF
+  > (version 1.0)
+  > (source (copy $PWD/_leaf))
+  > (build (run false))
+  > EOF
+  $ make_lockpkg consumer <<'EOF'
+  > (version 0.0.1)
+  > (depends workspace-lib)
+  > (build
+  >  (system "set -eu; echo 'let () = print_endline Workspace_lib.greeting' > main.ml; ocamlc -I '%{pkg:workspace-lib:lib}/../leaf' -I '%{pkg:workspace-lib:lib}' leaf.cma workspace_lib.cma main.ml -o main.exe; ./main.exe > result"))
+  > (install (system "mkdir -p %{pkg-self:share}; cp result %{pkg-self:share}/result"))
+  > EOF
+  $ dune build out
+  $ cat "$result"
+  native leaf
+
+Builder choice does not change the crossing: make the leaf an opaque package.
+
+  $ make_lockpkg leaf <<'EOF'
+  > (version 1.0)
+  > (build
+  >  (system "set -eu; echo 'let greeting = \"opaque leaf\"' > leaf.ml; ocamlc -c leaf.ml; ocamlc -a leaf.cmo -o leaf.cma; echo 'archive(byte) = \"leaf.cma\"' > META; echo 'lib: [ \"leaf.cma\" \"leaf.cmi\" \"META\" ]' > leaf.install"))
+  > EOF
+  $ dune build out
+  $ cat "$result"
+  opaque leaf

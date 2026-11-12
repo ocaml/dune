@@ -22,16 +22,16 @@ This works as expected
   $ build_pkg bar
   content
 
-  $ ls _build/_private/default/.pkg/bar.*/source | sort
+  $ ls _build/_fetch/url/*/dir | sort
   link_a
   link_b
   link_c
   real_dir
 
 Links are transformed into directories
-  $ dune_cmd stat kind _build/_private/default/.pkg/bar.*/source/link_a
+  $ dune_cmd stat kind _build/_fetch/url/*/dir/link_a
   directory
 
 And their contents are accessible
-  $ ls _build/_private/default/.pkg/bar.*/source/link_b
+  $ ls _build/_fetch/url/*/dir/link_b
   file.txt

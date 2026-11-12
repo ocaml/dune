@@ -31,6 +31,19 @@ val eval_pred : File_selector.t -> Filename_set.t Memo.t
 (** Same as [eval_pred] with [Predicate.true_] as predicate. *)
 val files_of : dir:Path.t -> Filename_set.t Memo.t
 
+(** Build [dir], which must be a directory target or one of its descendants, and
+    return its immediate file and subdirectory names. Return [None] when [dir]
+    itself was not produced. *)
+val directory_target_contents_opt
+  :  dir:Path.Build.t
+  -> (Filename.Array.Set.t * Filename.Array.Set.t) option Memo.t
+
+(** Build [dir], which must be a directory target or one of its descendants, and
+    return its immediate file and subdirectory names. *)
+val directory_target_contents
+  :  dir:Path.Build.t
+  -> (Filename.Array.Set.t * Filename.Array.Set.t) Memo.t
+
 (** Execute an action and capture its stdout. The execution is cached. *)
 val execute_action_stdout : Rule.Anonymous_action.t -> string Memo.t
 

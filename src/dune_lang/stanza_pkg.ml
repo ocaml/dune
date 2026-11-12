@@ -13,7 +13,7 @@ let listing packages =
       "%-*s (because of %s)"
       longest_pkg
       (Package.Name.to_string name)
-      (Path.Source.to_string (Package.opam_file pkg)))
+      (Source_path.to_string (Package.opam_file pkg)))
 ;;
 
 let default (project : Dune_project.t) stanza =
@@ -70,7 +70,7 @@ let resolve (project : Dune_project.t) mask (loc, name) =
                (Package.Name.opam_fn name |> Filename.to_string)
            ; Pp.textf
                "Root of the project as discovered by dune: %s"
-               (Path.Source.to_string_maybe_quoted (Dune_project.root project))
+               (Source_path.to_string_maybe_quoted (Dune_project.root project))
            ])
     else
       Error

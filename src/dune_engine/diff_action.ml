@@ -12,8 +12,7 @@ type kind =
   | Directory
 
 type file_diff =
-  { source_file : Path.Source.t
-  ; file1 : Path.t
+  { file1 : Path.t
   ; file2 : Path.t
   }
 
@@ -23,11 +22,11 @@ type change =
 
 type promotion =
   | Promote_file of
-      { source_file : Path.Source.t
+      { source_file : Path.t
       ; correction_file : Path.Build.t
       }
-  | Delete of [ `File | `Directory ] * Path.Source.t
-  | Create_directory of Path.Source.t
+  | Delete of [ `File | `Directory ] * Path.t
+  | Create_directory of Path.t
 
 type plan =
   { changes : change list
@@ -67,27 +66,31 @@ let source_root file =
   Path.as_in_build_dir_exn file |> Path.Build.drop_build_context_maybe_sandboxed_exn
 ;;
 
-let promotion source_file =
+let promotion_annotation source_file =
   { User_message.Diff_annot.in_source = source_file
   ; in_build = Diff_promotion.File.in_staging_area source_file
   }
 ;;
 
-let run_change loc ~patch_back ~sandbox (mode : Diff.Mode.t) = function
+let run_change loc ~promotion ~patch_back ~sandbox (mode : Diff.Mode.t) = function
   | Message messages -> User_error.raise ~loc messages
-  | File_diff { source_file; file1; file2 } ->
+  | File_diff { file1; file2 } ->
+    let promotion =
+      Execution_parameters.Promotion.destination promotion file1
+      |> Option.map ~f:promotion_annotation
+    in
     (match mode with
      | Text ->
        Print_diff.print
          ~sandbox
          ~patch_back
-         (promotion source_file)
+         promotion
          file1
          file2
          ~skip_trailing_cr:Sys.win32
      | Binary ->
        User_error.raise
-         ~promotion:(promotion source_file)
+         ?promotion
          ~loc
          [ Pp.textf
              "Files %s and %s differ."
@@ -96,12 +99,14 @@ let run_change loc ~patch_back ~sandbox (mode : Diff.Mode.t) = function
          ])
 ;;
 
-let register_promotions how promotions =
+let register_promotions how ~promotion promotions =
   List.iter promotions ~f:(function
     | Promote_file { source_file; correction_file } ->
-      Diff_promotion.register_intermediate how ~source_file ~correction_file
-    | Delete (what, source_file) -> Diff_promotion.register_delete what source_file
-    | Create_directory source_dir -> Diff_promotion.register_create_directory source_dir)
+      Diff_promotion.register_intermediate how ~promotion ~source_file ~correction_file
+    | Delete (what, source_file) ->
+      Diff_promotion.register_delete what ~promotion source_file
+    | Create_directory source_dir ->
+      Diff_promotion.register_create_directory ~promotion source_dir)
 ;;
 
 let kind_of_path ~loc path =
@@ -147,32 +152,30 @@ type tree_diff =
   }
 
 let plan_tree_diff ({ mode; source_root; _ } as t) =
-  let source_file rel = Path.Source.append_local source_root rel in
   let source_path rel = Path.append_local t.source_root_path rel in
   let target_path rel = Path.build (Path.Build.append_local t.target_dir rel) in
   let kind_of_source rel = kind_of_path ~loc:t.loc (source_path rel) in
   let kind_of_target rel = kind_of_path ~loc:t.loc (target_path rel) in
   let list_target_directory rel = list_directory ~loc:t.loc (target_path rel) in
-  let path_name rel = Path.Source.to_string_maybe_quoted (source_file rel) in
+  let path_name rel =
+    Path.Source.append_local source_root rel |> Path.Source.to_string_maybe_quoted
+  in
   let add_message plan message = add_change plan (Message [ message ]) in
   let add_promote_file plan rel =
     add_promotion
       plan
       (Promote_file
-         { source_file = source_file rel
+         { source_file = source_path rel
          ; correction_file = Path.Build.append_local t.target_dir rel
          })
   in
   let add_file_diff plan rel =
-    let source_file = source_file rel in
     let plan = add_promote_file plan rel in
-    let change =
-      File_diff { source_file; file1 = source_path rel; file2 = target_path rel }
-    in
+    let change = File_diff { file1 = source_path rel; file2 = target_path rel } in
     add_change plan change
   in
   let add_delete plan what rel =
-    let plan = add_promotion plan (Delete (what, source_file rel)) in
+    let plan = add_promotion plan (Delete (what, source_path rel)) in
     let what_text =
       match what with
       | `File -> "File"
@@ -181,7 +184,7 @@ let plan_tree_diff ({ mode; source_root; _ } as t) =
     add_message plan (Pp.textf "%s %s should be deleted" what_text (path_name rel))
   in
   let add_create_directory ~announce plan rel =
-    let plan = add_promotion plan (Create_directory (source_file rel)) in
+    let plan = add_promotion plan (Create_directory (source_path rel)) in
     if announce
     then add_message plan (Pp.textf "Directory %s should be created" (path_name rel))
     else plan
@@ -295,6 +298,7 @@ let plan_diff loc { Diff.optional; file1; file2; mode; directory_diffs } =
 
 let exec_plan
       loc
+      ~promotion
       ~patch_back
       ~sandbox
       { Diff.optional; mode; file1; file2; _ }
@@ -305,24 +309,29 @@ let exec_plan
     if optional then remove_intermediate_target file2;
     Fiber.return ()
   | changes ->
+    let can_promote =
+      Execution_parameters.Promotion.destination promotion file1 |> Option.is_some
+    in
     let in_source_or_target = in_source_or_target file1 in
     let target_is_copied_from_source_tree =
       is_copied_from_source_tree (Path.build file2)
     in
     Fiber.finalize_now
       (fun () ->
-         Fiber.parallel_iter changes ~f:(run_change loc ~patch_back ~sandbox mode))
+         Fiber.parallel_iter
+           changes
+           ~f:(run_change loc ~promotion ~patch_back ~sandbox mode))
       ~finally:(fun () ->
         match optional with
         | false ->
-          if in_source_or_target && not target_is_copied_from_source_tree
-          then register_promotions `Copy promotions
+          if can_promote && in_source_or_target && not target_is_copied_from_source_tree
+          then register_promotions `Copy ~promotion promotions
         | true ->
-          if in_source_or_target
-          then register_promotions `Move promotions
+          if can_promote && in_source_or_target
+          then register_promotions `Move ~promotion promotions
           else remove_intermediate_target file2)
 ;;
 
-let exec ~sandbox loc ~patch_back diff =
-  exec_plan loc ~patch_back ~sandbox diff (plan_diff loc diff)
+let exec ~promotion ~sandbox loc ~patch_back diff =
+  exec_plan loc ~promotion ~patch_back ~sandbox diff (plan_diff loc diff)
 ;;

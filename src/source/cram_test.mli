@@ -2,10 +2,10 @@ open Import
 
 (** [t] represents the source file associated to a cram test. *)
 type t =
-  | File of Path.Source.t
+  | File of Source_path.t
   | Dir of
-      { file : Path.Source.t
-      ; dir : Path.Source.t
+      { file : Source_path.t
+      ; dir : Source_path.t
       }
 
 val to_dyn : t -> Dyn.t
@@ -31,9 +31,9 @@ val name : t -> dune_version:Dune_lang.Syntax.Version.t -> Name.t
 
 (** The [path] associated to a cram test. If this is a file test, then it will
     be the file. If this is a directory test, then it will be the directory. *)
-val path : t -> Path.Source.t
+val path : t -> Source_path.t
 
 (** The [script] of a cram test. If this is a file test, then it will be the
     file. If this is a directory test, then it will be the "run.t" file inside
     that directory. *)
-val script : t -> Path.Source.t
+val script : t -> Source_path.t

@@ -56,3 +56,5 @@ val create
     lock directory. Programs found on the ambient [PATH] and binaries bound by
     [(env (binaries ...))] are unaffected. *)
 val set_visible_packages : t -> visible_packages:Package.Name.Selection.t -> t
+
+val add_package_deps : t -> Package.Name.Set.t -> t

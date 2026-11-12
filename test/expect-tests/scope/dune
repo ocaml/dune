@@ -1,0 +1,21 @@
+(library
+ (name scope_tests)
+ (inline_tests)
+ (libraries
+  dune_config_file
+  dune_engine
+  dune_lang
+  dune_rules
+  dune_scheduler
+  dune_tests_common
+  source
+  stdune
+  fiber
+  memo
+  unix
+  ppx_expect.config
+  ppx_expect.config_types
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

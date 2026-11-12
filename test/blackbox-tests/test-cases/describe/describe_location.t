@@ -40,15 +40,16 @@ Test that executables from dependencies are located correctly:
   > EOF
 
   $ cat > dune-project << EOF
-  > (lang dune 3.20)
+  > (lang dune 3.24)
   > 
   > (package
   >  (name foo)
+  >  (dir .)
   >  (depends bar))
   > EOF
 
   $ dune describe location bar 2>&1 | censor
-  _build/_private/default/.pkg/bar.0.1-$DIGEST/target/bin/bar
+  _build/default/.lockfile/pkg/bar/.opam/bar/target/bin/bar
 
 Test that executables from PATH are located correctly:
   $ mkdir bin

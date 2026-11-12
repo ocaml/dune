@@ -72,7 +72,7 @@ module L : sig
     -> deps:('a -> 'a list Resolve.Memo.t)
     -> ('a list, 'a list) Result.t Resolve.Memo.t
 
-  val project_root : t list -> Path.Source.t option
+  val scope_dir : t list -> Path.Build.t option
 end
 
 (** {1 Compilation contexts} *)
@@ -140,6 +140,14 @@ module DB : sig
 
   val with_parent : t -> parent:t option -> t
 
+  (** Check transitive libraries from these producer roots in their owning
+      package's scope, without forcing unrelated providers in the consumer's
+      scope. Libraries outside those roots retain the ordinary overlap checks. *)
+  val with_package_scopes
+    :  t
+    -> package_scopes:(Path.t * t) Package.Name.Map.t Lazy.t
+    -> t
+
   (** Create a library database from a specified list of library paths. A
       library path is a path to a "lib" directory such as those found in the
       OCAMLPATH variable or the "path" field of findlib.conf. *)
@@ -151,7 +159,9 @@ module DB : sig
     type db := t
     type t
 
+    val of_findlib : (Dune_package.Entry.t, Findlib.Unavailable_reason.t) result -> t
     val not_found : t
+    val invalid : User_message.t -> t
     val found : Lib_info.external_ -> t
     val to_dyn : t Dyn.builder
     val redirect_by_name : db -> Loc.t * Lib_name.t -> t

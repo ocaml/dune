@@ -39,13 +39,23 @@ val promote_files_registered_in_last_run
   -> Files_to_promote.t
   -> Path.Source.t list
 
-(** Register an intermediate file to promote. The build path may point to the
-    sandbox and the file will be moved to the staging area. *)
+(** Register an intermediate file only if the promotion policy permits its
+    destination. The correction may be sandboxed and will be moved to the
+    staging area. *)
 val register_intermediate
   :  [ `Copy | `Move ]
-  -> source_file:Path.Source.t
+  -> promotion:Execution_parameters.Promotion.t
+  -> source_file:Path.t
   -> correction_file:Path.Build.t
   -> unit
 
-val register_delete : [ `File | `Directory ] -> Path.Source.t -> unit
-val register_create_directory : Path.Source.t -> unit
+val register_delete
+  :  [ `File | `Directory ]
+  -> promotion:Execution_parameters.Promotion.t
+  -> Path.t
+  -> unit
+
+val register_create_directory
+  :  promotion:Execution_parameters.Promotion.t
+  -> Path.t
+  -> unit

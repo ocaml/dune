@@ -20,7 +20,7 @@ Case 1: relative direct parent
 This fails correctly
   $ build_pkg bar 2>&1 | censor | tail -3
   Error: Unable to resolve symlink
-  _build/_private/default/.pkg/bar.0.0.1-$DIGEST/source/mydir/link_to_parent,
+  _build/_fetch/url/$DIGEST/dir/mydir/link_to_parent,
   it is part of a cycle.
   [1]
 
@@ -33,6 +33,6 @@ Case 2: relative parent outside the source directory
 This fails correctly
   $ build_pkg bar 2>&1 | censor | tail -3
   Error: Unable to resolve symlink
-  _build/_private/default/.pkg/bar.0.0.1-$DIGEST/source/mydir/link_to_parent,
+  _build/_fetch/url/$DIGEST/dir/mydir/link_to_parent,
   it is part of a cycle.
   [1]

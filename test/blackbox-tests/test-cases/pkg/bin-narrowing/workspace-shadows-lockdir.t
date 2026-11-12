@@ -103,7 +103,7 @@ to the lockdir binary:
 The lockdir [provider]'s bin directory is on $PATH:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target/bin
+  $PWD/_build/default/.lockfile/pkg/provider/.opam/provider/target/bin
 
 Without declaring [provider], the lockdir package is narrowed out and the
 lookup fails to resolve:

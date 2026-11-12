@@ -308,6 +308,15 @@ let is_dynamic t =
   exists t ~leaf:(fun _ -> false) ~extension:(fun (module A) -> A.Spec.is_dynamic)
 ;;
 
+let may_register_promotions t =
+  exists
+    t
+    ~leaf:(function
+      | Diff _ -> true
+      | _ -> false)
+    ~extension:(fun _ -> true)
+;;
+
 let runs_process t =
   exists
     t

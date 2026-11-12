@@ -2479,51 +2479,8 @@ let solve_lock_dir
           in
           let lock_dir =
             let open Result.O in
-            let* pkgs_by_name = pkgs_by_name
-            and* ocaml = ocaml in
-            let+ () =
-              Package_name.Map.values pkgs_by_name
-              |> Result.List.map
-                   ~f:(fun { Lock_dir.Pkg.depends; info = { name; _ }; _ } ->
-                     (* A repository package must not evade validation by
-                        depending on a workspace package only on a
-                        non-primary platform, so validate the dependency
-                        choices for every platform where the package is
-                        selected. *)
-                     let platform_envs = solver_envs_for_package name in
-                     Result.List.map platform_envs ~f:(fun (platform_env, _) ->
-                       match
-                         Lock_dir.Conditional_choice.choose_for_platform
-                           depends
-                           ~platform:platform_env
-                       with
-                       | None -> Ok ()
-                       | Some depends ->
-                         Result.List.map
-                           depends
-                           ~f:(fun { Lock_dir.Dependency.name = dep_name; loc } ->
-                             match
-                               (not (is_dune dep_name))
-                               && Package_name.Map.mem local_packages dep_name
-                             with
-                             | false -> Ok ()
-                             | true ->
-                               Error
-                                 (User_error.make
-                                    ~loc
-                                    [ Pp.textf
-                                        "Dune does not support packages outside the \
-                                         workspace depending on packages in the \
-                                         workspace. The package %S is not in the \
-                                         workspace but it depends on the package %S \
-                                         which is in the workspace."
-                                        (Package_name.to_string name)
-                                        (Package_name.to_string dep_name)
-                                    ]))
-                         |> Result.map ~f:(fun (_ : unit list) -> ()))
-                     |> Result.map ~f:(fun (_ : unit list) -> ()))
-              |> Result.map ~f:(fun (_ : unit list) -> ())
-            in
+            let+ pkgs_by_name = pkgs_by_name
+            and+ ocaml = ocaml in
             let expanded_solver_variable_bindings =
               let stats = Solver_stats.Updater.snapshot stats_updater in
               Solver_stats.Expanded_variable_bindings.of_variable_set

@@ -27,55 +27,54 @@ module In_melange_target_dir = struct
 end
 
 include Alias_builder.Alias_rec (struct
-    module Map_reduce = Source_tree.Dir.Make_map_reduce (Action_builder) (Alias_status)
+    module Map_reduce =
+      Source_tree.Rules.Dir.Make_map_reduce (Action_builder) (Alias_status)
 
     let traverse dir ~f =
       let open Action_builder.O in
-      let ctx_name, src_dir = Path.Build.extract_build_context_exn dir in
-      let f =
-        let build_dir =
-          Context_name.build_dir (Context_name.of_string (Filename.to_string ctx_name))
-        in
-        fun dir ->
-          let build_path =
-            Path.Build.append_source build_dir (Source_tree.Dir.path dir)
-          in
-          let* { Alias_build_info.alias_status = found_in_source
-               ; allowed_build_only_subdirs = _
-               }
-            =
-            f ~path:build_path
-          and* stanzas_in_dir =
-            Action_builder.of_memo (Dune_load.stanzas_in_dir build_path)
-          in
-          match stanzas_in_dir with
-          | None -> Action_builder.return found_in_source
-          | Some stanzas ->
-            let+ in_melange_target_dirs =
-              let* melange_target_dirs =
-                Dune_file.find_stanzas stanzas Melange_stanzas.Emit.key
-                |> Action_builder.of_memo
-                >>| List.map ~f:(fun mel ->
-                  Melange_stanzas.Emit.target_dir ~dir:build_path mel)
-              in
-              Action_builder.List.map
-                melange_target_dirs
-                ~f:(In_melange_target_dir.dep_on_alias_rec ~f)
-            in
-            List.fold_left
-              in_melange_target_dirs
-              ~init:found_in_source
-              ~f:Alias_status.combine
-      in
-      Source_tree.find_dir src_dir
+      Dune_load.source_tree_dir ~dir
       |> Action_builder.of_memo
       >>= function
       | None -> Action_builder.return Alias_builder.Alias_status.Not_defined
-      | Some src_dir ->
+      | Some source_dir ->
+        let root = Source_tree.Rules.Dir.source_path source_dir in
         Map_reduce.map_reduce
-          src_dir
+          source_dir
           ~traverse:Source_dir_status.Set.normal_only
           ~trace_event_name:"Alias builder"
-          ~f
+          ~f:(fun source_dir ->
+            let relative =
+              Source_path.descendant
+                (Source_tree.Rules.Dir.source_path source_dir)
+                ~of_:root
+              |> Option.value_exn
+            in
+            let build_path = Path.Build.append_local dir relative in
+            let* { Alias_build_info.alias_status = found_in_source
+                 ; allowed_build_only_subdirs = _
+                 }
+              =
+              f ~path:build_path
+            and* stanzas_in_dir =
+              Action_builder.of_memo (Dune_load.stanzas_in_dir build_path)
+            in
+            match stanzas_in_dir with
+            | None -> Action_builder.return found_in_source
+            | Some stanzas ->
+              let+ in_melange_target_dirs =
+                let* melange_target_dirs =
+                  Dune_file.find_stanzas stanzas Melange_stanzas.Emit.key
+                  |> Action_builder.of_memo
+                  >>| List.map ~f:(fun mel ->
+                    Melange_stanzas.Emit.target_dir ~dir:build_path mel)
+                in
+                Action_builder.List.map
+                  melange_target_dirs
+                  ~f:(In_melange_target_dir.dep_on_alias_rec ~f)
+              in
+              List.fold_left
+                in_melange_target_dirs
+                ~init:found_in_source
+                ~f:Alias_status.combine)
     ;;
   end)

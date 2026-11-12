@@ -115,6 +115,38 @@ module For_solver = struct
     in
     Dependency_formula.remove_packages formula local_deps_names
   ;;
+
+  let solver_metadata t =
+    to_opam_file t
+    |> OpamFile.OPAM.with_build []
+    |> OpamFile.OPAM.with_install []
+    |> OpamFile.OPAM.write_to_string
+  ;;
+
+  let dependency_hash local_packages ~referenced_packages =
+    let baseline =
+      non_local_dependencies local_packages |> Dependency_hash.of_dependency_formula
+    in
+    match baseline with
+    | None -> None
+    | Some baseline ->
+      let referenced =
+        List.filter local_packages ~f:(fun pkg ->
+          Package_name.Set.mem referenced_packages pkg.name)
+        |> List.sort ~compare:(fun a b -> Package_name.compare a.name b.name)
+      in
+      (match referenced with
+       | [] -> Some baseline
+       | _ ->
+         Sexp.List
+           [ Atom "mixed-package-inputs"
+           ; Atom (Dependency_hash.to_string baseline)
+           ; List (List.map referenced ~f:(fun pkg -> Sexp.Atom (solver_metadata pkg)))
+           ]
+         |> Sexp.to_string
+         |> Md5.string
+         |> Option.some)
+  ;;
 end
 
 let for_solver
@@ -165,7 +197,9 @@ let of_package (t : Dune_lang.Package.t) =
     ; command_source = Assume_defaults
     }
   | Some { file; contents } ->
-    let opam_file = Opam_file.opam_file_of_string_exn ~contents (Path.source file) in
+    let opam_file =
+      Opam_file.opam_file_of_string_exn ~contents (Dune_lang.Source_path.to_path file)
+    in
     let command_source =
       Opam_file
         { build = opam_file |> OpamFile.OPAM.build
@@ -193,7 +227,7 @@ let of_package (t : Dune_lang.Package.t) =
           let version =
             Package_version.of_opam_package_version (OpamPackage.version pkg)
           in
-          let loc = Loc.in_file (Path.source file) in
+          let loc = Loc.in_file (Dune_lang.Source_path.to_path file) in
           name, { loc; version; url = loc, url; name; origin = Opam_file })
         |> Package_name.Map.of_list
       with

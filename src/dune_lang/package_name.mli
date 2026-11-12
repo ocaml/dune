@@ -29,6 +29,7 @@ module Opam_compatible : sig
 
 val is_opam_compatible : t -> bool
 val file : t -> dir:Path.Source.t -> Path.Source.t
+val source_file : t -> dir:Source_path.t -> Source_path.t
 val decode_opam_compatible : t Decoder.t
 val opam_fn : t -> Filename.t
 val of_opam_file_basename : Filename.t -> t option

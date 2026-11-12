@@ -33,25 +33,30 @@ let artifacts_host t ~dir =
   t.get_node dir >>= Env_node.artifacts
 ;;
 
-let scope_host ~scope (context : Context.t) =
-  match Context.for_host context with
-  | None -> scope
-  | Some host ->
-    let* dir =
-      let* scope = scope in
-      let+ host = host in
-      set_context host (Scope.root scope)
-    in
-    Scope.DB.find_by_dir dir
-;;
-
 let expander_for_artifacts t ~dir =
   let external_env = t.get_node dir >>= Env_node.external_env in
   let scope = Scope.DB.find_by_dir dir in
-  let scope_host = scope_host ~scope t.context in
-  let+ project = Dune_load.find_project ~dir in
+  let scope_host =
+    match Context.for_host t.context with
+    | None -> scope
+    | Some host ->
+      let* host = host in
+      Scope.DB.find_by_dir (set_context host dir)
+  in
+  let* loaded_project = Dune_load.find_loaded_project ~dir in
+  let+ source_tree_dir = Loaded_project.source_tree_dir loaded_project dir
+  and+ source_tree_root = Dune_load.source_tree_root ~dir >>| Option.value_exn in
+  let project = Loaded_project.project loaded_project in
+  let source_dir = Loaded_project.source_path loaded_project dir |> Option.value_exn in
   Expander.extend_env t.root_expander ~env:external_env
-  |> Expander.set_scope ~dir ~project ~scope ~scope_host
+  |> Expander.set_scope
+       ~dir
+       ~source_dir
+       ~source_tree_dir
+       ~source_tree_root
+       ~project
+       ~scope
+       ~scope_host
 ;;
 
 let expander t ~dir = t.get_expander dir
@@ -72,8 +77,8 @@ let get_env_stanza ~dir =
 let get_impl t dir =
   let inherit_from =
     Memo.lazy_ ~name:"inherited-environment-node" (fun () ->
-      let* scope_root = Dune_load.find_project ~dir >>| Dune_project.root in
-      if Path.Source.equal (Path.Build.drop_build_context_exn dir) scope_root
+      let* project = Dune_load.find_loaded_project ~dir in
+      if Path.Build.equal dir (Loaded_project.output_root project)
       then Memo.Lazy.force t.default_env
       else (
         match Path.Build.parent dir with
@@ -300,27 +305,26 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
   in
   let artifacts = Artifacts_db.get context in
   let+ root_expander =
-    let public_libs = Scope.DB.public_libs context_name in
-    let artifacts_host, public_libs_host, host_build_dir =
+    let artifacts_host, host_build_dir =
       match Context.for_host context with
-      | None -> artifacts, public_libs, Memo.return (Context.build_dir context)
-      | Some host ->
-        let artifacts = host >>= Artifacts_db.get in
-        let public_libs = host >>| Context.name >>= Scope.DB.public_libs in
-        artifacts, public_libs, host >>| Context.build_dir
+      | None -> artifacts, Memo.return (Context.build_dir context)
+      | Some host -> host >>= Artifacts_db.get, host >>| Context.build_dir
     in
     let scope = Scope.DB.find_by_dir (Context.build_dir context) in
     let scope_host = host_build_dir >>= Scope.DB.find_by_dir in
-    let+ project = Dune_load.find_project ~dir:(Context.build_dir context) in
+    let+ loaded_project =
+      Dune_load.find_loaded_project ~dir:(Context.build_dir context)
+    in
     Expander.make_root
-      ~project
+      ~project:(Loaded_project.project loaded_project)
+      ~source_dir:(Loaded_project.source_root loaded_project)
+      ~source_tree_dir:(Some (Loaded_project.source_tree_root loaded_project))
+      ~source_tree_root:(Loaded_project.source_tree_root loaded_project)
       ~scope
       ~scope_host
       ~context
       ~env
-      ~public_libs
       ~artifacts_host
-      ~public_libs_host
   in
   (* Env node that represents the environment configured for the workspace. It
      is used as default at the root of every project in the workspace. *)

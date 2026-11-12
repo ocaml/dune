@@ -17,6 +17,13 @@ module Make (Monad : sig
       val map : 'a list -> f:('a -> 'b t) -> 'b list t
     end
   end) : sig
+  val subst_contents
+    :  (Variable.t -> OpamVariable.variable_contents option Monad.t)
+    -> Package_name.t
+    -> src:Path.t
+    -> string
+    -> string Monad.t
+
   val subst
     :  (Variable.t -> OpamVariable.variable_contents option Monad.t)
     -> Package_name.t

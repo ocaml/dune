@@ -70,3 +70,133 @@ early@10
 late@10
   |}]
 ;;
+
+let%expect_test "collected user errors stay silent, remain reusable and invalidate" =
+  let broken = Memo.Var.create ~name:"broken-input" true in
+  let source =
+    Memo.lazy_ ~name:"prepared-input" ~cutoff:Int.equal (fun () ->
+      let open Memo.O in
+      let+ broken = Memo.Var.read broken in
+      if broken then User_error.raise [ Pp.text "broken input" ];
+      42)
+  in
+  let collected =
+    Memo.lazy_ ~name:"collected-input" (fun () ->
+      Memo.collect_user_errors (Memo.Lazy.force source))
+  in
+  let run computation =
+    Scheduler.run
+      (Fiber.collect_errors (fun () ->
+         Memo.run_with_error_handler
+           (fun () -> computation)
+           ~handle_error_no_raise:(fun _ ->
+             print_endline "reported";
+             Fiber.return ())))
+  in
+  let show () =
+    match run (Memo.Lazy.force collected) with
+    | Ok (Ok value) -> Printf.printf "value: %d\n" value
+    | Ok (Error messages) -> Printf.printf "collected: %d\n" (List.length messages)
+    | Error errors -> Printf.printf "unexpected: %d\n" (List.length errors)
+  in
+  show ();
+  show ();
+  [%expect
+    {|
+    collected: 1
+    collected: 1
+  |}];
+  (match run (Memo.Lazy.force source) with
+   | Error errors -> Printf.printf "raised: %d\n" (List.length errors)
+   | Ok _ -> print_endline "unexpected success");
+  [%expect
+    {|
+    reported
+    raised: 1
+  |}];
+  Memo.reset (Memo.Var.set broken false);
+  show ();
+  [%expect {| value: 42 |}];
+  Memo.reset (Memo.Var.set broken true);
+  show ();
+  [%expect {| collected: 1 |}]
+;;
+
+let%expect_test "shared errors can be collected and demanded concurrently" =
+  List.iter [ true; false ] ~f:(fun collect_first ->
+    let reported = ref 0 in
+    let captured = ref 0 in
+    let source =
+      Memo.lazy_ ~name:"shared-error" (fun () ->
+        User_error.raise [ Pp.text "shared failure" ])
+    in
+    let result =
+      Scheduler.run
+        (Fiber.collect_errors (fun () ->
+           Memo.run_with_error_handler
+             (fun () ->
+                Memo.parallel_iter [ collect_first; not collect_first ] ~f:(fun collect ->
+                  if collect
+                  then
+                    let open Memo.O in
+                    let+ result = Memo.collect_user_errors (Memo.Lazy.force source) in
+                    match result with
+                    | Ok () -> ()
+                    | Error messages -> captured := List.length messages
+                  else Memo.Lazy.force source))
+             ~handle_error_no_raise:(fun _ ->
+               incr reported;
+               Fiber.return ())))
+    in
+    let raised =
+      match result with
+      | Ok () -> 0
+      | Error errors -> List.length errors
+    in
+    Printf.printf "captured: %d, reported: %d, raised: %d\n" !captured !reported raised);
+  [%expect
+    {|
+    captured: 1, reported: 1, raised: 1
+    captured: 1, reported: 1, raised: 1
+  |}]
+;;
+
+let%expect_test "collecting user errors does not swallow internal errors" =
+  let source = Memo.lazy_ ~name:"internal-error" (fun () -> Code_error.raise "bug" []) in
+  let result =
+    Scheduler.run
+      (Fiber.collect_errors (fun () ->
+         Memo.run_with_error_handler
+           (fun () -> Memo.collect_user_errors (Memo.Lazy.force source))
+           ~handle_error_no_raise:(fun _ ->
+             print_endline "reported";
+             Fiber.return ())))
+  in
+  (match result with
+   | Error errors -> Printf.printf "raised: %d\n" (List.length errors)
+   | Ok _ -> print_endline "unexpected success");
+  [%expect
+    {|
+    reported
+    raised: 1
+  |}]
+;;
+
+let%expect_test "non-user cancellation is not collected" =
+  let source =
+    Memo.lazy_ ~name:"cancelled" (fun () -> raise (Memo.Non_reproducible Exit))
+  in
+  let result =
+    Scheduler.run
+      (Fiber.collect_errors (fun () ->
+         Memo.run (Memo.collect_user_errors (Memo.Lazy.force source))))
+  in
+  (match result with
+   | Error [ { Exn_with_backtrace.exn = Memo.Error.E error; _ } ] ->
+     (match Memo.Error.get error with
+      | Exit -> print_endline "cancelled"
+      | _ -> print_endline "unexpected error")
+   | Error _ -> print_endline "unexpected errors"
+   | Ok _ -> print_endline "unexpected success");
+  [%expect {| cancelled |}]
+;;

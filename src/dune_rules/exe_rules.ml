@@ -339,6 +339,8 @@ let executables_rules
   let+ merlin =
     let+ requires_hidden = Compilation_context.requires_hidden cctx in
     Merlin.make
+      ~scope
+      ~expander
       ~requires_compile
       ~requires_hidden
       ~stdlib_dir:lib_config.stdlib_dir
@@ -357,6 +359,7 @@ let executables_rules
 ;;
 
 let compile_info ~scope (exes : Executables.t) =
+  let* scope = Scope.DB.for_package scope exes.package in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let libs = Scope.libs scope in
   let+ pps = Lib.DB.pps_for_preprocessing libs exes.buildable.preprocess.config in
@@ -373,6 +376,8 @@ let compile_info ~scope (exes : Executables.t) =
 
 let rules ~sctx ~dir_contents ~scope ~expander (exes : Executables.t) =
   let dir = Dir_contents.dir dir_contents in
+  let* scope = Scope.DB.for_package scope exes.package in
+  let expander = Expander.for_package expander exes.package in
   let* compile_info = compile_info ~scope exes in
   let f () =
     executables_rules

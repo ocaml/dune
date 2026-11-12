@@ -12,14 +12,13 @@ Test missing entries in the .install file
 This should give us a proper error that myfile wasn't generated
 
   $ lockfile "myfile"
-  $ build_pkg test 2>&1 | dune_cmd subst '_build.*_private' '$ROOT/_private' | censor
+  $ build_pkg test 2>&1 | censor
   Error: entry
-  $ROOT/_private/default/.pkg/test.0.0.1-$DIGEST/source/myfile
+  _build/.sandbox/$DIGEST/default/.lockfile/pkg/test/.opam/test/source/myfile
   in
-  $ROOT/_private/default/.pkg/test.0.0.1-$DIGEST/source/test.install
+  _build/.sandbox/$DIGEST/default/.lockfile/pkg/test/.opam/test/source/test.install
   does not exist
-  -> required by
-     $ROOT/_private/default/.pkg/test.0.0.1-$DIGEST/target
+  -> required by _build/default/.lockfile/pkg/test/.opam/test/target
   [1]
 
 This on the other hand shouldn't error because myfile is optional

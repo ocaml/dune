@@ -2,30 +2,33 @@ open Import
 open Memo.O
 
 module Map_reduce =
-  Source_tree.Dir.Make_map_reduce
+  Source_tree.Rules.Dir.Make_map_reduce
     (Memo)
     (Monoid.Product (Monoid.Union (Path.Set)) (Monoid.Union (Path.Set)))
 
-let files_with_filter dir ~filter =
-  let* () = Memo.return () in
-  let prefix_with, dir =
-    match (dir : Path.t) with
-    | In_source_tree dir -> Path.root, dir
-    | otherwise -> Path.extract_build_context_dir_exn otherwise
+let files_with_filter path ~filter =
+  let* source_dir =
+    match Path.as_in_source_tree path with
+    | Some dir -> Source_tree.find_dir dir >>| Option.map ~f:Source_tree.Rules.Dir.source
+    | None -> Dune_load.source_tree_dir ~dir:(Path.as_in_build_dir_exn path)
   in
-  Source_tree.find_dir dir
-  >>= function
+  match source_dir with
   | None -> Memo.return (Dep.Set.empty, Path.Set.empty)
-  | Some dir ->
+  | Some source_dir ->
+    let root = Source_tree.Rules.Dir.source_path source_dir in
     let+ files, empty_directories =
       Map_reduce.map_reduce
-        dir
+        source_dir
         ~traverse:Source_dir_status.Set.all
         ~trace_event_name:"Source deps"
         ~f:(fun dir ->
-          let path = Path.append_source prefix_with @@ Source_tree.Dir.path dir in
+          let relative =
+            Source_path.descendant (Source_tree.Rules.Dir.source_path dir) ~of_:root
+            |> Option.value_exn
+          in
+          let path = Path.append_local path relative in
           let files =
-            Source_tree.Dir.filenames dir
+            Source_tree.Rules.Dir.filenames dir
             |> Filename.Array.Set.to_list
             |> Path.Set.of_list_map ~f:(fun fn -> Path.relative_fname path fn)
             |> Path.Set.filter ~f:filter

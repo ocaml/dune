@@ -4,6 +4,7 @@ open Memo.O
 let available_exes ~dir (exes : Executables.t) =
   let* compile_info =
     let* scope = Scope.DB.find_by_dir dir in
+    let* scope = Scope.DB.for_package scope exes.package in
     let dune_version =
       let project = Scope.project scope in
       Dune_project.dune_version project
@@ -28,10 +29,10 @@ let available_exes ~dir (exes : Executables.t) =
   Resolve.is_ok available
 ;;
 
-let get_installed_binaries ~(context : Context.t) stanzas =
+let get_installed_binaries stanzas =
   let merge _ x y = Some (Appendable_list.( @ ) x y) in
   Memo.List.map stanzas ~f:(fun d ->
-    let dir = Path.Build.append_source (Context.build_dir context) (Dune_file.dir d) in
+    let dir = Dune_file.output_dir d in
     let* expander = Expander0.get ~dir in
     let expand_value sw =
       Expander0.expand expander ~mode:Single sw
@@ -51,7 +52,13 @@ let get_installed_binaries ~(context : Context.t) stanzas =
     let eval_blang = Expander0.eval_blang expander in
     let binaries_from_install ~enabled_if ~package files =
       let* unexpanded_file_bindings =
-        Install_entry.File.to_file_bindings_unexpanded files ~expand:expand_value ~dir
+        let* source_tree_root = Dune_load.source_tree_root ~dir >>| Option.value_exn in
+        Install_entry.File.to_file_bindings_unexpanded
+          files
+          ~expand:expand_value
+          ~dir
+          ~source_dir:(Dune_file.source_dir d)
+          ~source_tree_root
       in
       Memo.List.map unexpanded_file_bindings ~f:(fun fb ->
         let+ p =
@@ -109,7 +116,7 @@ let all =
     let artifacts =
       let local_bins =
         Memo.lazy_ ~name:"get_installed_binaries" (fun () ->
-          Context.name context |> Dune_load.dune_files >>= get_installed_binaries ~context)
+          Context.name context |> Dune_load.dune_files >>= get_installed_binaries)
       in
       Artifacts.create context ~local_bins |> Memo.return
     in

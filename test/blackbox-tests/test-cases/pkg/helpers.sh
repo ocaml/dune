@@ -11,7 +11,7 @@ export DUNE_CONFIG__SYS_OCAML_VERSION=5.4.0+fake
 
 dune="dune"
 
-pkg_root="_build/_private/default/.pkg"
+pkg_root="_build/default/.lockfile/pkg"
 
 default_lock_dir="dune.lock"
 source_lock_dir="${default_lock_dir}"
@@ -22,18 +22,10 @@ default_repo_path() {
   echo "file://$(pwd)/mock-opam-repository"
 }
 
-# Prints the directory containing the package target and source dirs within the
-# _build directory.
+# Prints the opaque recipe's working and install directory within the mount.
 get_build_pkg_dir() {
   local package_name=$1
-  local digest
-  digest=$($dune pkg print-digest "$package_name")
-  local status=$?
-  if [ "$status" -eq "0" ]; then
-    echo "$pkg_root/$digest"
-  else
-    return 1
-  fi
+  echo "$pkg_root/$package_name/.opam/$package_name"
 }
 
 build_pkg() {

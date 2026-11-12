@@ -375,7 +375,7 @@ let instantiate_jsoo ~sctx lib s_config =
   let build_dir = Context.build_dir ctx in
   let lib = Lib.Parameterised.for_instance ~build_dir ~ext_lib:None lib in
   let obj_dir = Lib_info.obj_dir (Lib.info lib) |> Obj_dir.as_local_exn in
-  Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
+  Memo.parallel_iter (Jsoo_rules.Config.modes config) ~f:(fun mode ->
     build_jsoo ~sctx ~obj_dir ~dir:build_dir ~lib ~mode ~config:(Some config))
 ;;
 
@@ -429,9 +429,10 @@ let has_rules fn =
 ;;
 
 let find_scope ~sctx encoded_scope =
-  let project_root = Parameterised_name.Scope.decode encoded_scope in
-  let context = Super_context.context sctx in
-  Scope.DB.find_by_project_root context project_root
+  let scope_dir = Parameterised_name.Scope.decode encoded_scope in
+  match scope_dir with
+  | None -> Super_context.context sctx |> Context.build_dir |> Scope.DB.find_by_dir
+  | Some dir -> Scope.DB.find_by_dir dir
 ;;
 
 let gen_rules ~sctx ~dir rest =

@@ -98,6 +98,12 @@ val run_with_error_handler
   -> handle_error_no_raise:(Exn_with_backtrace.t -> unit Fiber.t)
   -> 'a Fiber.t
 
+(** Collect user errors without reporting them. Dependencies are retained, so
+    changes to failing inputs invalidate the result. The reporting boundary is
+    re-entered on each build run, including when validating cached dependencies.
+    Other exceptions, including internal errors and cancellation, still propagate. *)
+val collect_user_errors : 'a t -> ('a, User_message.t list) result t
+
 (** [of_reproducible_fiber fiber] injects a fiber into the build monad. The
     given fiber must be "reproducible", i.e. executing it multiple times should
     always yield the same result. It is up to the caller to ensure that this

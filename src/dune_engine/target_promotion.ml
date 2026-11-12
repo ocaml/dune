@@ -98,7 +98,12 @@ let promote_target_if_not_up_to_date
    file promotions. Another approach is to make restarts really cheap, so that
    we don't care any more, for example, by introducing reverse dependencies in
    Memo (and/or by having smarter cancellations). *)
-let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promote_source =
+let promote_into_workspace
+      ~promotion
+      ~(targets : _ Targets.Produced.t)
+      ~(promote : Rule.Promote.t)
+      ~promote_source
+  =
   (* Select targets taking into account the (promote (only <glob>)) field. *)
   let selected_for_promotion : Path.Local.t -> bool =
     match promote.only with
@@ -169,64 +174,103 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
        | Ok () -> ()
        | Error unix_error -> directory_target_error ~unix_error ~dst_dir [])
   in
-  (* Here we know that the promotion directory exists but we may need to create
-     additional subdirectories for [targets.dirs]. *)
-  Targets.Produced.iter_dirs targets ~f:(fun dir ->
-    create_directory_if_needed ~dir:(Path.Build.append_local targets.root dir));
-  let promote_until_clean =
-    match promote.lifetime with
-    | Until_clean -> true
-    | Unlimited -> false
+  let permitted target =
+    let destination = relocate (Path.Build.append_local targets.root target) in
+    Execution_parameters.Promotion.destination promotion (Path.source destination)
+    |> Option.is_some
   in
-  let* () =
-    Fiber.sequential_iter_seq
-      (Targets.Produced.all_files_seq targets)
-      ~f:(fun (src, src_digest) ->
-        match selected_for_promotion src with
-        | false -> Fiber.return ()
-        | true ->
-          let src = Path.Build.append_local targets.root src in
-          let dst = relocate src in
-          promote_target_if_not_up_to_date
-            ~src
-            ~src_digest
-            ~dst
-            ~promote_source
-            ~promote_until_clean)
-  in
-  (* There can be some files or directories left over from earlier builds, so we
+  if
+    not
+      (Seq.fold_left
+         (Targets.Produced.all_files_seq targets)
+         ~init:true
+         ~f:(fun allowed (path, _) ->
+           allowed && ((not (selected_for_promotion path)) || permitted path))
+       && Seq.fold_left
+            (Targets.Produced.all_dirs_seq targets)
+            ~init:true
+            ~f:(fun allowed path -> allowed && permitted path))
+  then Fiber.return ()
+  else (
+    Targets.Produced.iter_dirs targets ~f:(fun dir ->
+      create_directory_if_needed ~dir:(Path.Build.append_local targets.root dir));
+    let promote_until_clean =
+      match promote.lifetime with
+      | Until_clean -> true
+      | Unlimited -> false
+    in
+    let* () =
+      Fiber.sequential_iter_seq
+        (Targets.Produced.all_files_seq targets)
+        ~f:(fun (src, src_digest) ->
+          match selected_for_promotion src with
+          | false -> Fiber.return ()
+          | true ->
+            let src = Path.Build.append_local targets.root src in
+            let dst = relocate src in
+            promote_target_if_not_up_to_date
+              ~src
+              ~src_digest
+              ~dst
+              ~promote_source
+              ~promote_until_clean)
+    in
+    (* There can be some files or directories left over from earlier builds, so we
      need to remove them from [targets]. *)
-  let remove_stale_files_and_subdirectories ~dir =
-    (* CR-someday rleshchinskiy: This can probably be made more efficient by relocating
+    let remove_stale_files_and_subdirectories ~dir =
+      (* CR-someday rleshchinskiy: This can probably be made more efficient by relocating
        root once. *)
-    let build_dir = Path.Build.append_local targets.root dir in
-    let dst_dir = relocate build_dir in
-    (* We use a tracked version to subscribe to the correct directory listing.
+      let build_dir = Path.Build.append_local targets.root dir in
+      let dst_dir = relocate build_dir in
+      (* We use a tracked version to subscribe to the correct directory listing.
        In this way, if a user manually creates a file inside a directory target,
        this function will rerun and remove it. *)
-    Memo.run (Fs_memo.dir_contents ~force_update:true (In_source_dir dst_dir))
-    >>|
-    let dst_dir = Path.source dst_dir in
-    function
-    | Error unix_error -> directory_target_error ~unix_error ~dst_dir []
-    | Ok dir_contents ->
-      Fs_memo.Dir_contents.iter dir_contents ~f:(fun file_name kind ->
-        match kind with
-        | S_REG ->
-          if
-            not
-              (Targets.Produced.mem
-                 targets
-                 (Path.Build.relative_fname build_dir file_name))
-          then
-            Fpath.unlink_no_err (Path.to_string (Path.relative_fname dst_dir file_name))
-        | S_DIR ->
-          let src_dir = Path.Build.relative_fname build_dir file_name in
-          if not (Targets.Produced.mem_dir targets src_dir)
-          then Path.rm_rf (Path.relative_fname dst_dir file_name)
-        | _kind ->
-          Fpath.unlink_no_err (Path.to_string (Path.relative_fname dst_dir file_name)))
-  in
-  Fiber.sequential_iter_seq (Targets.Produced.all_dirs_seq targets) ~f:(fun dir ->
-    remove_stale_files_and_subdirectories ~dir)
+      Memo.run (Fs_memo.dir_contents ~force_update:true (In_source_dir dst_dir))
+      >>|
+      let dst_dir = Path.source dst_dir in
+      function
+      | Error unix_error -> directory_target_error ~unix_error ~dst_dir []
+      | Ok dir_contents ->
+        Fs_memo.Dir_contents.iter dir_contents ~f:(fun file_name kind ->
+          match kind with
+          | S_REG ->
+            if
+              not
+                (Targets.Produced.mem
+                   targets
+                   (Path.Build.relative_fname build_dir file_name))
+            then
+              Fpath.unlink_no_err (Path.to_string (Path.relative_fname dst_dir file_name))
+          | S_DIR ->
+            let src_dir = Path.Build.relative_fname build_dir file_name in
+            if not (Targets.Produced.mem_dir targets src_dir)
+            then Path.rm_rf (Path.relative_fname dst_dir file_name)
+          | _kind ->
+            Fpath.unlink_no_err (Path.to_string (Path.relative_fname dst_dir file_name)))
+    in
+    Fiber.sequential_iter_seq (Targets.Produced.all_dirs_seq targets) ~f:(fun dir ->
+      remove_stale_files_and_subdirectories ~dir))
+;;
+
+let promote
+      ~promotion
+      ~(targets : _ Targets.Produced.t)
+      ~(promote : Rule.Promote.t)
+      ~promote_source
+  =
+  match
+    Execution_parameters.Promotion.destination promotion (Path.build targets.root)
+  with
+  | None -> Fiber.return ()
+  | Some source_root ->
+    let destination =
+      match promote.into with
+      | None -> source_root
+      | Some { loc; dir } -> Path.Source.relative source_root dir ~error_loc:loc
+    in
+    (match
+       Execution_parameters.Promotion.destination promotion (Path.source destination)
+     with
+     | None -> Fiber.return ()
+     | Some _ -> promote_into_workspace ~promotion ~targets ~promote ~promote_source)
 ;;

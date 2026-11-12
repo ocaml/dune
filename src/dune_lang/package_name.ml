@@ -81,6 +81,7 @@ let opam_fn (t : t) =
 
 let is_opam_compatible s = Option.is_some (Opam_compatible.of_string_opt (to_string s))
 let file t ~dir = Path.Source.relative_fname dir (opam_fn t)
+let source_file t ~dir = Source_path.relative_fname dir (opam_fn t)
 
 let decode_opam_compatible =
   Decoder.map ~f:Opam_compatible.to_package_name Opam_compatible.decode

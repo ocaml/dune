@@ -261,6 +261,33 @@ let run t =
   | false -> t
 ;;
 
+let collect_user_errors computation =
+  (* Re-enter the reporting boundary before restoring dependencies: restoration
+     can itself recompute failing nodes with cutoff predicates. *)
+  let* (_ : Run.t) = current_run () in
+  let* result =
+    Error_handler.without_reporting (fun () ->
+      Fiber.collect_errors (fun () -> computation))
+  in
+  match result with
+  | Ok value -> Fiber.return (Ok value)
+  | Error errors ->
+    let messages =
+      List.map errors ~f:(fun { Exn_with_backtrace.exn; _ } ->
+        let exn =
+          match exn with
+          | Error.E error -> Error.get error
+          | exn -> exn
+        in
+        match exn with
+        | User_error.E message -> Some message
+        | _ -> None)
+    in
+    if List.for_all messages ~f:Option.is_some
+    then Fiber.return (Error (List.filter_opt messages))
+    else Fiber.reraise_all errors
+;;
+
 module With_implicit_output = struct
   type ('i, 'o) t = 'i -> 'o Fiber.t
 

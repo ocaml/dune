@@ -34,17 +34,20 @@ val selected_dependencies_of_local_package
   -> with_test:bool
   -> Package_name.t list
 
-val dependency_digest
-  :  Local_package.t Package_name.Map.t
-  -> Local_package.Dependency_hash.t option
+(** Reject duplicate definitions across the workspace and the lock directory. *)
+val check_package_names : Lock_dir.t -> local_packages:Loc.t Package_name.Map.t -> unit
 
-(** Verifies if the dependencies described in the project file are still
-    synchronized with the dependencies selected in the lock directroy. If it is
-    not the case, it returns the hash of the new dependency set. *)
-val up_to_date
-  :  Local_package.t Package_name.Map.t
-  -> dependency_hash:Local_package.Dependency_hash.t option
-  -> [ `Valid | `Invalid ]
+(** Resolve workspace dependencies against supplied package versions. *)
+val resolve_local_dependencies
+  :  Local_package.t
+  -> env:Solver_env.t
+  -> with_test:bool
+  -> packages:Package_version.t Package_name.Map.t
+  -> (Package_name.t list, User_message.Style.t Pp.t list) result
+
+(** Check requirements and any supplied workspace metadata referenced by the
+    lockdir. Hand-written lockdirs without a dependency hash remain accepted. *)
+val up_to_date : Local_package.t Package_name.Map.t -> Lock_dir.t -> [ `Valid | `Invalid ]
 
 (** Returns the dependencies of the specified package within the package
     universe *)

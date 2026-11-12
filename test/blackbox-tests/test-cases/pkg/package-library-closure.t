@@ -3,15 +3,18 @@ not just the requested package's install cookie.
 
 Library dependencies: a -> b; b.unrelated -> d.
 Lock package dependencies: provider -> b-provider, c; b-provider -> d.
-The provider names differ from the library namespaces. Package-granular
-closure should include the contents of b-provider, c, and d.
+The provider names differ from the library namespaces. Although a's library
+closure contains only a and b, the managed package dependency includes all
+three packages: b-provider's opaque installation directory and the native
+installed files of c and d.
 
 The final case requests a workspace package and checks that its library
 closure identifies the differently named managed provider b-provider.
 
-Keep the package sources outside the workspace so they are built through the
-lock directory, not treated as workspace libraries. Use bytecode so changing
-b's implementation does not change a's compiled archive through inlining.
+Keep the sources outside the workspace. The name-mismatched providers remain
+opaque; c and d load natively but retain their managed-package dependency
+semantics. Use bytecode so changing b's implementation does not change a's
+compiled archive through inlining.
 
   $ make_dune_project 3.24
   $ make_lockdir
@@ -133,27 +136,27 @@ Check that all the libraries and package data were installed.
 
   $ a_target="$(get_build_pkg_dir provider)/target"
   $ b_target="$(get_build_pkg_dir b-provider)/target"
-  $ c_target="$(get_build_pkg_dir c)/target"
-  $ d_target="$(get_build_pkg_dir d)/target"
   $ b_lib="$b_target/lib/b"
-  $ c_lib="$c_target/lib/c"
-  $ d_lib="$d_target/lib/d"
+  $ c_archive="lib/c/c.cma"
+  $ d_archive="lib/d/d.cma"
   $ test -f "$b_lib/b.cmi"
   $ test -f "$b_lib/b.cma"
   $ test -f "$b_lib/dune-package"
   $ test -f "$b_lib/unrelated/unrelated.cmi"
   $ test -f "$b_lib/unrelated/unrelated.cma"
-  $ test -f "$c_lib/c.cmi"
-  $ test -f "$c_lib/c.cma"
-  $ test -f "$d_lib/d.cma"
+  $ test -f _build/default/.lockfile/pkg/c/.c.objs/byte/c.cmi
+  $ test -f _build/default/.lockfile/pkg/c/c.cma
+  $ test -f _build/default/.lockfile/pkg/d/d.cma
   $ test -f "$b_target/share/b-provider/payload"
 
-The requested package and its lock package dependencies are tracked through
-their whole installation directories.
+The opaque providers are tracked through their whole installation directories,
+including b-provider's unrelated library and data file. Native c and d are
+tracked through their installed files, not opaque directory targets. Neither
+the requested opaque package's cookie nor its files need separate dependencies.
 
   $ dune rules --format=json main.exe >rules.json
   $ jq_dune --arg a "$a_target" --arg b "$b_target" \
-  > --arg c "$c_target" --arg d "$d_target" '
+  > --arg c "$c_archive" --arg d "$d_archive" '
   >   rulesMatchingTarget("main.exe") | {
   >     requested_package: ruleHasDepFile($a),
   >     required_package: ruleHasDepFile($b),
@@ -207,7 +210,7 @@ does not invoke ocamlfind, so the missing META cannot break the action itself.
   $ test ! -e "$a_target/lib/a/META"
   $ dune rules --format=json package-result | jq_dune \
   > --arg a "$a_target" --arg b "$b_target" \
-  > --arg c "$c_target" --arg d "$d_target" '
+  > --arg c "$c_archive" --arg d "$d_archive" '
   >   rulesMatchingTarget("package-result") | {
   >     requested_package: ruleHasDepFile($a),
   >     requested_metadata: ruleHasDepFile($a + "/lib/a/dune-package"),
@@ -226,7 +229,7 @@ does not invoke ocamlfind, so the missing META cannot break the action itself.
 Request workspace package a explicitly. Its library depends on installed
 library b, whose owning lock package is b-provider, not b. The local package is
 materialised and b-provider's installation directory becomes a direct
-dependency, along with the installation directory of its dependency d.
+dependency, along with the installed files of its native dependency d.
 Package c is not in this closure.
 
   $ echo '(package (name a))' >>dune-project
@@ -249,7 +252,7 @@ Package c is not in this closure.
   $ _build/default/main.exe
   110
   $ dune rules --format=json main.exe | jq_dune \
-  > --arg b "$b_target" --arg c "$c_target" --arg d "$d_target" '
+  > --arg b "$b_target" --arg c "$c_archive" --arg d "$d_archive" '
   >   rulesMatchingTarget("main.exe") | {
   >     required_package: ruleHasDepFile($b),
   >     required_cookie: ruleHasDepFile($b + "/cookie"),

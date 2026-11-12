@@ -7,7 +7,7 @@ module Info : sig
   type t =
     | From_dune_file of Loc.t
     | Internal
-    | Source_file_copy of Path.Source.t
+    | Source_file_copy of Path.t
 
   val of_loc_opt : Loc.t option -> t
   val loc : t -> dir:Path.Build.t -> Loc.t
@@ -77,6 +77,7 @@ val make
   -> t
 
 val set_action : t -> Action.Full.t Action_builder.t -> t
+val set_mode : t -> Mode.t -> t
 val loc : t -> Loc.t
 
 module Anonymous_action : sig

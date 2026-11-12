@@ -14,6 +14,19 @@ is used when generating OPAM files (see :doc:`generate_opam_files`).
 
       This must be specified.
 
+   .. describe:: (dir <path>)
+
+      .. versionadded:: 3.21
+
+      Assign this package its own directory, relative to the project root.
+      Stanzas belonging to the package must be in that directory or its
+      descendants.
+
+      Dune generates ``META.<name>`` and ``<name>.dune-package`` in this
+      directory and looks for ``META.<name>.template`` there. Without this
+      field, these files are located at the project root. The locations of
+      ``.opam`` and ``.install`` files are unchanged.
+
    .. describe:: (synopsis <string>)
 
       A short package description.

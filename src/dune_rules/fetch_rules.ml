@@ -35,6 +35,16 @@ type kind =
   | `Directory
   ]
 
+let target (source : Source.t) kind =
+  let _, url = source.url in
+  let url_or_checksum =
+    match source.checksum with
+    | Some (_, checksum) -> `Checksum checksum
+    | None -> `Url url
+  in
+  make_target ~kind url_or_checksum
+;;
+
 let resolve_url =
   (* Before we fetch any git repo, we make sure to convert the URL to fetch the
      git object directly. The object is used to compute the fetch action digest
@@ -149,14 +159,11 @@ let extract_checksums_and_urls (lockdir : Dune_pkg.Lock_dir.t) =
            | Some source -> source :: sources
          in
          List.fold_left sources ~init:acc ~f:(fun (checksums, urls) (source : Source.t) ->
-           match Source.kind source with
-           | `Directory_or_archive _ -> checksums, urls
-           | `Fetch ->
-             let url = source.url in
-             (match source.checksum with
-              | Some ((_, checksum) as checksum_with_loc) ->
-                Checksum.Map.set checksums checksum (url, checksum_with_loc), urls
-              | None -> checksums, Digest.Map.set urls (digest_of_url (snd url)) url)))
+           let url = source.url in
+           match source.checksum with
+           | Some ((_, checksum) as checksum_with_loc) ->
+             Checksum.Map.set checksums checksum (url, checksum_with_loc), urls
+           | None -> checksums, Digest.Map.set urls (digest_of_url (snd url)) url))
 ;;
 
 let find_checksum, find_url =
@@ -213,7 +220,58 @@ let find_checksum, find_url =
   find_checksum, find_url
 ;;
 
+let local_source_contents ~loc src =
+  let rec scan local =
+    let dir = Path.Outside_build_dir.append_local src local in
+    let* contents = Fs_memo.dir_contents dir in
+    match contents with
+    | Error error ->
+      User_error.raise
+        ~loc
+        [ Pp.textf "Unable to read %s" (Path.Outside_build_dir.to_string_maybe_quoted dir)
+        ; Unix_error.Detailed.pp error
+        ]
+    | Ok contents ->
+      let* children =
+        Fs_memo.Dir_contents.to_list contents
+        |> Memo.List.map ~f:(fun (name, kind) ->
+          let relative = Path.Local.relative_fname local name in
+          match (kind : Unix.file_kind), Filename.to_string name with
+          | S_DIR, (".hg" | ".git" | "_darcs" | "_opam" | "_build" | "_esy") ->
+            Memo.return ([], [])
+          | S_DIR, _ -> scan relative
+          | _, name ->
+            let path =
+              Path.Outside_build_dir.append_local src relative |> Path.outside_build_dir
+            in
+            if String.starts_with ~prefix:".#" name || Path.is_broken_symlink path
+            then Memo.return ([], [])
+            else Memo.return ([ relative ], []))
+      in
+      let files, dirs = List.unzip children in
+      Memo.return (List.concat files, local :: List.concat dirs)
+  in
+  scan Path.Local.root
+;;
+
+let copy_local_directory ~loc ~src ~dst =
+  let open Action_builder.O in
+  let* files, dirs = Action_builder.of_memo (local_source_contents ~loc src) in
+  let copies =
+    List.map files ~f:(fun local ->
+      let src = Path.Outside_build_dir.append_local src local |> Path.outside_build_dir in
+      src, Path.Build.append_local dst local)
+  in
+  let+ () = Action_builder.paths (List.map copies ~f:fst) in
+  Action.progn
+    (List.map dirs ~f:(fun local -> Action.mkdir (Path.Build.append_local dst local))
+     @ List.map copies ~f:(fun (src, dst) -> Action.copy src dst))
+  |> Action.Full.make ~can_go_in_shared_cache:true
+;;
+
 let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
+  let source = { Source.url = loc_url, url; checksum } in
+  let* source_kind = Lock_dir.source_kind source in
   let loc_url = Dune_pkg.Lock_dir.loc_in_source_tree loc_url in
   let checksum_or_url =
     match checksum with
@@ -243,11 +301,30 @@ let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
         Action_builder.of_memo (resolve_url url)
       in
       fun ~target ~kind ->
-        Action_builder.with_no_targets
-          (let open Action_builder.O in
-           let+ url = url in
-           action ~url:(loc_url, url) ~checksum ~target ~kind
-           |> Action.Full.make ~can_go_in_shared_cache:true)
+        match source_kind, kind with
+        | `Local (`Directory, source_root), `Directory ->
+          copy_local_directory ~loc:loc_url ~src:source_root ~dst:target
+          |> Action_builder.with_no_targets
+        | `Local (`File, source), `File ->
+          let source = Path.outside_build_dir source in
+          Action_builder.with_no_targets
+            (let open Action_builder.O in
+             Action_builder.path source
+             >>> Action_builder.return
+                   (Action.Full.make
+                      ~can_go_in_shared_cache:true
+                      (Action.Copy (source, target))))
+        | `Local (`Directory, _), `File | `Local (`File, _), `Directory | `Fetch, _ ->
+          Action_builder.with_no_targets
+            (let open Action_builder.O in
+             let* () =
+               match source_kind with
+               | `Local (_, source) -> Action_builder.path (Path.outside_build_dir source)
+               | `Fetch -> Action_builder.return ()
+             in
+             let+ url = url in
+             action ~url:(loc_url, url) ~checksum ~target ~kind
+             |> Action.Full.make ~can_go_in_shared_cache:true)
     in
     let dir_rule =
       let target = make_target ~kind:`Directory in
@@ -263,7 +340,7 @@ let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
     and+ () = rule file_rule in
     ()
   in
-  Gen_rules.make rules ~directory_targets
+  Gen_rules.make rules ~directory_targets |> Memo.return
 ;;
 
 let gen_rules ~dir ~components =
@@ -276,10 +353,10 @@ let gen_rules ~dir ~components =
   | [ ("url" | "checksum") ] -> Gen_rules.make_empty ~dir Subdir_set.all |> Memo.return
   | [ "checksum"; checksum ] ->
     let checksum = Dune_pkg.Checksum.parse_string_exn (Loc.none, checksum) in
-    let+ url, checksum = find_checksum checksum in
+    let* url, checksum = find_checksum checksum in
     gen_rules_for_checksum_or_url url (Some checksum)
   | [ "url"; digest ] ->
-    let+ url =
+    let* url =
       match Digest.from_hex digest with
       | Some s -> find_url s
       | None -> User_error.raise [ Pp.textf "invalid digest %s" digest ]

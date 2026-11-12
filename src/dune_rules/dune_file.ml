@@ -2,16 +2,18 @@ open Import
 open Memo.O
 
 type t =
-  { dir : Path.Source.t
-  ; project : Dune_project.t
+  { loaded_dir : Loaded_dir.t
   ; stanzas : Stanza.t list Memo.Lazy.t
   ; static_stanzas : Stanza.t list
   }
 
-let dir t = t.dir
+let loaded_dir t = t.loaded_dir
+let source_dir t = Loaded_dir.source_dir t.loaded_dir
+let output_dir t = Loaded_dir.output_dir t.loaded_dir
+let dir = source_dir
 let stanzas t = Memo.Lazy.force t.stanzas
 let static_stanzas t = t.static_stanzas
-let project t = t.project
+let project t = Loaded_project.project (Loaded_dir.project t.loaded_dir)
 
 module Mask = struct
   type 'a t =
@@ -45,17 +47,14 @@ module Mask = struct
         | _ -> Drop)
   ;;
 
-  let of_only_packages_mask mask =
-    match Only_packages.enumerate mask with
-    | `All -> True
-    | `Set visible_pkgs ->
+  let of_packages = function
+    | None -> True
+    | Some visible_pkgs ->
       Fun
         (fun stanza ->
           match Stanzas.stanza_package stanza with
           | None -> true
-          | Some package ->
-            let name = Package.Id.name package in
-            Package.Name.Set.mem visible_pkgs name)
+          | Some package -> Package.Name.Set.mem visible_pkgs (Package.Id.name package))
   ;;
 
   let is_promoted_rule =
@@ -98,28 +97,38 @@ let rec parse_file_includes ~stanza_parser ~context sexps =
 ;;
 
 type eval =
-  { project : Dune_project.t
-  ; dir : Path.Source.t
+  { loaded_project : Loaded_project.t
+  ; project : Dune_project.t
+  ; source_dir : Source_tree.Rules.Dir.t
   ; mask : Stanza.t Mask.t
   }
 
+let eval_source_path eval = Source_tree.Rules.Dir.source_path eval.source_dir
+
 let parse_stanzas ~file ~(eval : eval) sexps =
-  let warnings = Warning_emit.Bag.create () in
+  let warnings =
+    Warning_emit.Context.project
+      eval.project
+      ~vendored:(Loaded_project.vendored_warnings eval.loaded_project)
+    |> Warning_emit.Bag.create
+  in
   let* stanzas =
-    let context =
-      Include_stanza.in_src_file
-      @@
-      match file with
-      | Some f -> f
-      | None ->
-        (* TODO this is wrong *)
-        Path.Source.relative_fname eval.dir Source.Dune_file.fname
+    let file =
+      Option.value
+        file
+        ~default:
+          (Source_tree.Rules.Dir.file
+             eval.source_dir
+             (Path.Local.relative_fname Path.Local.root Source.Dune_file.fname))
     in
     let stanza_parser =
-      Dune_project.stanza_parser ~dir:eval.dir eval.project
+      Dune_project.stanza_parser ~dir:(eval_source_path eval) eval.project
       |> Warning_emit.Bag.set warnings
     in
-    parse_file_includes ~stanza_parser ~context sexps
+    parse_file_includes
+      ~stanza_parser
+      ~context:(Source_tree.Rules.File.include_context file)
+      sexps
   in
   let rec loop stanzas dynamic_includes env = function
     | [] -> List.rev stanzas, dynamic_includes
@@ -145,25 +154,25 @@ let parse_stanzas ~file ~(eval : eval) sexps =
   stanzas, dynamic_includes
 ;;
 
+type parsed =
+  { source_dir : Source_path.t
+  ; static_stanzas : Stanza.t list
+  }
+
 let parse sexps ~file ~(eval : eval) =
   let+ stanzas, dynamic_includes = parse_stanzas sexps ~file ~eval in
-  ( { dir = eval.dir
-    ; project = eval.project
-    ; static_stanzas = stanzas
-    ; stanzas = Memo.Lazy.of_val stanzas
-    }
-  , dynamic_includes )
+  { source_dir = eval_source_path eval; static_stanzas = stanzas }, dynamic_includes
 ;;
 
 module Make_fold (M : Monad.S) = struct
   open M.O
 
-  let rec fold_static_stanzas l ~init ~f =
+  let rec fold_static_stanzas (l : t list) ~init ~f =
     match l with
     | [] -> M.return init
     | t :: l -> inner_fold t t.static_stanzas l ~init ~f
 
-  and inner_fold t inner_list l ~init ~f =
+  and inner_fold (t : t) inner_list l ~init ~f =
     match inner_list with
     | [] -> fold_static_stanzas l ~init ~f
     | x :: inner_list ->
@@ -178,7 +187,7 @@ module Id_fold = Make_fold (Monad.Id)
 let fold_static_stanzas t ~init ~f = Id_fold.fold_static_stanzas t ~init ~f
 let to_dyn = Dyn.opaque
 
-let find_stanzas t key =
+let find_stanzas (t : t) key =
   let+ stanzas = Memo.Lazy.force t.stanzas in
   (* CR-someday rgrinberg: save a map to represent the stanzas to make this fast. *)
   List.filter_map stanzas ~f:(Stanza.Key.get key)
@@ -189,7 +198,8 @@ module Jbuild_plugin : sig
     :  Context_name.t
     -> Ocaml_config.t
     -> exec_dir:Path.t
-    -> plugin:Path.Outside_build_dir.t
+    -> plugin:Path.t
+    -> plugin_contents:string
     -> wrapper:Path.Build.t
     -> target:Path.Build.t
     -> unit Memo.t
@@ -265,7 +275,7 @@ end = struct
       "module Jbuild_plugin : sig\n%s\nend = struct\n%s\nend\n# 1 %S\n%s"
       Assets.jbuild_plugin_mli
       (replace_in_template vars)
-      (Path.Outside_build_dir.to_string plugin)
+      (Path.to_string plugin)
       plugin_contents
   ;;
 
@@ -290,11 +300,19 @@ end = struct
           ])
   ;;
 
-  let create_plugin_wrapper context ocaml_config ~exec_dir ~plugin ~wrapper ~target =
-    let+ plugin_contents = Fs_memo.file_contents plugin in
+  let create_plugin_wrapper
+        context
+        ocaml_config
+        ~exec_dir
+        ~plugin
+        ~plugin_contents
+        ~wrapper
+        ~target
+    =
     Io.with_file_out (Path.build wrapper) ~f:(fun oc ->
       write oc ~context ~ocaml_config ~target ~exec_dir ~plugin ~plugin_contents);
-    check_no_requires (Path.outside_build_dir plugin) plugin_contents
+    check_no_requires plugin plugin_contents;
+    Memo.return ()
   ;;
 end
 
@@ -302,7 +320,8 @@ module Script = struct
   open Memo.O
 
   type t =
-    { file : Path.Source.t
+    { file : Source_tree.Rules.File.t
+    ; contents : string
     ; eval : eval
     ; from_parent : Dune_lang.Ast.t list
     }
@@ -311,11 +330,12 @@ module Script = struct
      directory *)
   let generated_dune_files_dir = Path.Build.relative Path.Build.root ".dune"
 
-  let eval_one ~context { file; from_parent; eval } =
+  let eval_one ~context { file; contents; from_parent; eval } =
+    let source_path = Source_tree.Rules.File.source_path file in
     let generated_dune_file =
-      Path.Build.append_source
-        (Path.Build.relative generated_dune_files_dir (Context_name.to_string context))
-        file
+      Loaded_project.output_path eval.loaded_project source_path
+      |> Option.value_exn
+      |> Path.Build.append generated_dune_files_dir
     in
     let wrapper =
       Path.Build.extend_basename
@@ -323,14 +343,17 @@ module Script = struct
         ~suffix:(Filename.Extension.to_filename Filename.Extension.ml)
     in
     generated_dune_file |> Path.build |> Path.parent |> Option.iter ~f:Path.mkdir_p;
+    let plugin = Source_tree.Rules.File.path file in
+    let* exec_dir = Source_tree.Rules.Dir.materialize eval.source_dir in
     let* context = Context.DB.get context in
     let* ocaml = Context.ocaml context in
     let* () =
       Jbuild_plugin.create_plugin_wrapper
         (Context.name context)
         ocaml.ocaml_config
-        ~exec_dir:(Path.source eval.dir)
-        ~plugin:(In_source_dir file)
+        ~exec_dir
+        ~plugin
+        ~plugin_contents:contents
         ~wrapper
         ~target:generated_dune_file
     in
@@ -340,16 +363,16 @@ module Script = struct
       let args =
         [ "-I"; "+compiler-libs"; Path.to_absolute_filename (Path.build wrapper) ]
       in
-      Process.run Strict ~display:Quiet ~dir:(Path.source eval.dir) ~env ocaml args
+      Process.run Strict ~display:Quiet ~dir:exec_dir ~env ocaml args
       |> Memo.of_reproducible_fiber
     in
     if not (Fpath.exists (Path.to_string (Path.build generated_dune_file)))
     then
       User_error.raise
-        ~loc:(Loc.in_file (Path.source file))
+        ~loc:(Loc.in_file plugin)
         [ Pp.textf
             "%s failed to produce a valid dune file."
-            (Path.Source.to_string_maybe_quoted file)
+            (Source_tree.Rules.File.diagnostic_name file |> String.maybe_quoted)
         ; Pp.textf "Did you forgot to call [Jbuild_plugin.V*.send]?"
         ];
     Path.build generated_dune_file
@@ -359,11 +382,19 @@ module Script = struct
   ;;
 end
 
+let check_static_opam_stanza stanza =
+  match Stanza.repr stanza with
+  | Opam_stanza.T { loc; _ } ->
+    User_error.raise ~loc [ Pp.text "Opam stanzas must be declared statically." ]
+  | _ -> ()
+;;
+
 let check_dynamic_stanza =
   (* CR-someday rgrinberg: unfortunately this needs to kept in sync with the rules
      manually *)
   let err = [ Pp.text "This stanza cannot be generated dynamically" ] in
   fun stanza ->
+    check_static_opam_stanza stanza;
     match Stanza.repr stanza with
     | Install_conf.T { section = loc, Section Bin; _ } ->
       User_error.raise ~loc [ Pp.text "binary section cannot be generated dynamically" ]
@@ -379,27 +410,27 @@ let check_dynamic_stanza =
 
 module Eval = struct
   type script =
-    | Literal of eval * t * (Loc.t * string) list
+    | Literal of eval * parsed * (Loc.t * string) list
     | Script of Script.t
 
   open Memo.O
 
-  let context_independent ~eval dune_file =
-    let file = Source.Dune_file.path dune_file in
+  let context_independent ~(eval : eval) dune_file =
+    let file =
+      Source.Dune_file.filename dune_file
+      |> Option.map ~f:(fun name ->
+        Source_tree.Rules.Dir.file
+          eval.source_dir
+          (Path.Local.relative_fname Path.Local.root name))
+    in
     let static = Source.Dune_file.get_static_sexp dune_file in
     match Source.Dune_file.kind dune_file with
     | Plain ->
       let+ dune_file, dynamic_includes = parse static ~file ~eval in
       Literal (eval, dune_file, dynamic_includes)
-    | Ocaml_script ->
+    | Ocaml_script contents ->
       Memo.return
-        (Script
-           { eval
-           ; file =
-               (* we can't introduce ocaml syntax with [(sudir ..)] *)
-               Option.value_exn file
-           ; from_parent = static
-           })
+        (Script { eval; file = Option.value_exn file; contents; from_parent = static })
   ;;
 
   let rec collect_dynamic_includes (eval : eval) include_context origin dynamic_includes =
@@ -412,7 +443,7 @@ module Eval = struct
              |> Path.build
              |> Path.drop_optional_build_context
              |> Path.to_string_maybe_quoted)
-            (Path.Source.to_string_maybe_quoted eval.dir))
+            (Source_path.to_string_maybe_quoted (eval_source_path eval)))
         (fun () ->
            let* ast, include_context =
              Include_stanza.load_sexps ~context:include_context (loc, include_file)
@@ -424,7 +455,7 @@ module Eval = struct
            List.rev_append stanzas dynamic))
   ;;
 
-  let set_dynamic_stanzas t ~context ~eval ~dynamic_includes =
+  let set_dynamic_stanzas t ~(eval : eval) ~dynamic_includes =
     let stanzas =
       match dynamic_includes with
       | [] -> Memo.Lazy.of_val t.static_stanzas
@@ -432,10 +463,11 @@ module Eval = struct
         Memo.lazy_ ~name:"dynamic-includes"
         @@ fun () ->
         let+ stanzas =
+          let source_file =
+            Source_path.relative_fname (eval_source_path eval) Source.Dune_file.fname
+          in
           let origin =
-            Path.Build.append_source
-              (Context_name.build_dir context)
-              (Path.Source.relative_fname eval.dir Source.Dune_file.fname)
+            Loaded_project.output_path eval.loaded_project source_file |> Option.value_exn
           in
           let include_context = Include_stanza.in_build_file origin in
           collect_dynamic_includes eval include_context origin dynamic_includes
@@ -443,25 +475,34 @@ module Eval = struct
         List.iter stanzas ~f:check_dynamic_stanza;
         t.static_stanzas @ stanzas
     in
-    { t with stanzas }
+    { loaded_dir = Loaded_dir.create ~project:eval.loaded_project ~source_dir:t.source_dir
+    ; stanzas
+    ; static_stanzas = t.static_stanzas
+    }
   ;;
 
-  let eval dune_files mask =
-    let mask = Mask.of_only_packages_mask mask in
+  let eval dune_files =
     (* CR-someday rgrinberg: all this evaluation complexity is to share
        some work in multi context builds. Is it worth it? *)
     let+ dune_syntax, ocaml_syntax =
       Appendable_list.to_list_rev dune_files
-      |> Memo.parallel_map ~f:(fun (dir, project, dune_file) ->
-        let mask = Mask.combine mask (Mask.ignore_promote project) in
-        let eval = { dir; project; mask } in
+      |> Memo.parallel_map ~f:(fun (loaded_project, dir, dune_file) ->
+        let project = Loaded_project.project loaded_project in
+        let mask =
+          Mask.combine
+            (Mask.ignore_promote project)
+            (Mask.of_packages (Loaded_project.stanza_mask loaded_project))
+        in
+        let eval = { loaded_project; source_dir = dir; project; mask } in
         context_independent ~eval dune_file)
       >>| List.partition_map ~f:(function
         | Literal (eval, t, dynamic_includes) -> Left (eval, t, dynamic_includes)
         | Script s -> Right s)
     in
-    fun context ->
-      let set_dynamic_stanzas = set_dynamic_stanzas ~context in
+    fun context_name ->
+      let set_dynamic_stanzas (t : parsed) ~(eval : eval) ~dynamic_includes =
+        set_dynamic_stanzas t ~eval ~dynamic_includes
+      in
       let+ ocaml_syntax =
         Memo.parallel_map ocaml_syntax ~f:(fun script ->
           let+ dune_file, dynamic_includes =
@@ -469,9 +510,10 @@ module Eval = struct
               ~human_readable_description:(fun () ->
                 Pp.textf
                   "- evaluating dune file %S in OCaml syntax"
-                  (Path.Source.to_string script.file))
-              (fun () -> Script.eval_one ~context script)
+                  (Source_tree.Rules.File.diagnostic_name script.file))
+              (fun () -> Script.eval_one ~context:context_name script)
           in
+          List.iter dune_file.static_stanzas ~f:check_static_opam_stanza;
           set_dynamic_stanzas dune_file ~eval:script.eval ~dynamic_includes)
       in
       let dune_syntax =

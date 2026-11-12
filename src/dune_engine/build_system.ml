@@ -287,6 +287,26 @@ let compute_rule_digest ~targets ~facts ~action ~sandbox_mode ~execution_paramet
       |> Execution_parameters.set_sandbox_actions false
       |> Execution_parameters.set_use_sandbox_policy false
   in
+  let execution_parameters =
+    (* Target promotion runs after cache restoration. Only correction
+       registration is part of action execution. *)
+    let registers_promotions =
+      Action.may_register_promotions action
+      || (match corrections with
+          | Some Produce -> true
+          | Some Ignore | None -> false)
+      ||
+      match (sandbox_mode : Sandbox_mode.t) with
+      | Some Patch_back_source_tree -> true
+      | _ -> false
+    in
+    if registers_promotions
+    then execution_parameters
+    else
+      Execution_parameters.set_promotion
+        Execution_parameters.Promotion.disabled
+        execution_parameters
+  in
   let digest =
     let d = Digest.Manual.create () in
     Digest.Manual.int d rule_digest_version;
@@ -540,7 +560,11 @@ and execute_action_for_rule
             | Normal_rule -> Path.Build.Set.empty
             | Anonymous_action { stamp_file; _ } -> Path.Build.Set.singleton stamp_file
           in
-          Sandbox.move_targets_to_build_dir sandbox ~skip_files ~targets
+          Sandbox.move_targets_to_build_dir
+            sandbox
+            ~promotion:(Execution_parameters.promotion execution_parameters)
+            ~skip_files
+            ~targets
         in
         match Targets.Produced.of_validated targets with
         | Ok produced_targets ->
@@ -604,6 +628,18 @@ and execute_rule_action
       ~facts
       ~execution_parameters
   =
+  let* contexts = Memo.Lazy.force (Build_config.get ()).contexts in
+  let workspace_sources =
+    Context_name.Map.filter_map contexts ~f:(fun context_type ->
+      match (context_type : Build_config.Context_type.t) with
+      | Empty -> None
+      | With_sources { build_only_sub_dirs } -> Some build_only_sub_dirs)
+  in
+  let execution_parameters =
+    Execution_parameters.set_promotion
+      (Execution_parameters.Promotion.for_rule ~workspace_sources ~dir:targets.root)
+      execution_parameters
+  in
   let { Action.Full.action = action_ast; props } = action in
   let wrap_fiber f =
     Memo.of_reproducible_fiber
@@ -758,6 +794,7 @@ and execute_rule_action
         -> Fiber.return ()
       | Promote promote, (Some Automatically | None) ->
         Target_promotion.promote
+          ~promotion:(Execution_parameters.promotion execution_parameters)
           ~targets:produced_targets
           ~promote
           ~promote_source:config.promote_source
@@ -1100,6 +1137,31 @@ let files_of ~dir =
       | None -> Filename.Array.Set.empty
     in
     Filename_set.create ~dir filenames
+;;
+
+let directory_target_contents_opt ~dir =
+  Load_rules.load_dir ~dir:(Path.build dir)
+  >>= function
+  | Build_under_directory_target { directory_target_ancestor } ->
+    let+ produced = build_directory_targets (Path.build directory_target_ancestor) in
+    (match Targets.Produced.find_any produced dir with
+     | Some (Right { files; subdirs }) ->
+       Some (Filename.Array.Map.keys files, Filename.Array.Map.keys subdirs)
+     | Some (Left _) | None -> None)
+  | Source _ | External _ | Build _ ->
+    Code_error.raise
+      "Build_system.directory_target_contents: path is not under a directory target"
+      [ "dir", Path.Build.to_dyn dir ]
+;;
+
+let directory_target_contents ~dir =
+  directory_target_contents_opt ~dir
+  >>| function
+  | Some contents -> contents
+  | None ->
+    Code_error.raise
+      "Build_system.directory_target_contents: path is not a produced directory"
+      [ "dir", Path.Build.to_dyn dir ]
 ;;
 
 let caused_by_cancellation (exn : Exn_with_backtrace.t) =

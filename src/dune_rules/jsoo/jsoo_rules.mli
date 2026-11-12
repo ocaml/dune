@@ -6,6 +6,7 @@ module Config : sig
   type t
 
   val of_string : string -> t
+  val modes : t -> Js_of_ocaml.Mode.t list
 end
 
 module Version : sig

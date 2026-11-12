@@ -8,21 +8,16 @@ type build_system =
   }
 
 let implicit_default_alias dir =
-  match Path.Build.drop_build_context dir with
-  | None -> Memo.return None
-  | Some src_dir ->
-    let open Memo.O in
-    Source_tree.find_dir src_dir
-    >>| (function
-     | None -> None
-     | Some src_dir ->
-       let default_alias =
-         let dune_version =
-           Source_tree.Dir.project src_dir |> Dune_project.dune_version
-         in
-         if dune_version >= (2, 0) then Alias0.all else Alias0.install
-       in
-       Some (Action_builder.ignore (Alias_rec.dep_on_alias_rec default_alias dir)))
+  let open Memo.O in
+  let+ source_dir = Dune_load.source_tree_dir ~dir in
+  Option.map source_dir ~f:(fun source_dir ->
+    let default_alias =
+      let dune_version =
+        Source_tree.Rules.Dir.project source_dir |> Dune_project.dune_version
+      in
+      if dune_version >= (2, 0) then Alias0.all else Alias0.install
+    in
+    Action_builder.ignore (Alias_rec.dep_on_alias_rec default_alias dir))
 ;;
 
 let execution_parameters ~sandbox_actions =
@@ -31,7 +26,8 @@ let execution_parameters ~sandbox_actions =
     | Regular (With_context (context, source))
     | Anonymous_action (With_context (context, source)) ->
       (match Install.Context.analyze_path context source with
-       | Normal (_, source) -> Some source
+       | Normal (context, source) ->
+         Some (Path.Build.append_source (Context_name.build_dir context) source)
        | Install _ | Invalid -> None)
     | Regular Root | Anonymous_action Root | Invalid _ -> None
   in
@@ -49,8 +45,32 @@ let execution_parameters ~sandbox_actions =
       match source_backed_dir path with
       | None -> Memo.return ep
       | Some path ->
-        let+ dir = Source_tree.nearest_dir path in
-        Dune_project.update_execution_parameters (Source_tree.Dir.project dir) ep)
+        let* opaque =
+          match Pkg_sources.package_of_artifact_path path with
+          | None -> Memo.return false
+          | Some name ->
+            let+ mounted = Pkg_sources.find_mounted context name in
+            (match mounted with
+             | None -> true
+             | Some mounted ->
+               (match Pkg_sources.Mounted.kind mounted with
+                | Ok `Dune -> false
+                | Ok `Opam | Error _ -> true))
+        in
+        if opaque
+        then Memo.return ep
+        else
+          let+ loaded_project = Dune_load.find_loaded_project ~dir:path in
+          let action_project_root =
+            Path.Local.descendant
+              (Path.Build.local (Loaded_project.output_root loaded_project))
+              ~of_:(Path.Build.local (Context_name.build_dir context))
+            |> Option.value_exn
+          in
+          Dune_project.update_execution_parameters
+            (Loaded_project.project loaded_project)
+            ~action_project_root
+            ep)
   in
   let memo =
     let module Input = struct
@@ -98,7 +118,12 @@ let init ~sandbox_actions ~sandboxing_preference () : unit =
             :: (Install.Context.install_context.name, Empty)
             :: (Fetch_rules.context.name, Empty)
             :: List.map contexts ~f:(fun { Build_context.name; build_dir = _ } ->
-              name, With_sources))))
+              ( name
+              , With_sources
+                  { build_only_sub_dirs =
+                      Filename.Set.singleton
+                        (Filename.of_string_exn Pkg_sources.root_dir_basename)
+                  } )))))
     ~rule_generator:Gen_rules.gen_rules
     ~implicit_default_alias
     ~execution_parameters:(execution_parameters ~sandbox_actions)

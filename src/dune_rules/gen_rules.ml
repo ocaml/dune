@@ -17,6 +17,8 @@ let install_stanza_rules ~ctx_dir ~expander (install_conf : Install_conf.t) =
             install_conf.files
             ~expand
             ~dir:ctx_dir
+            ~source_dir:(Expander.source_dir expander)
+            ~source_tree_root:(Expander.source_tree_root expander)
         and+ dirs_expanded =
           Install_entry.Dir.to_file_bindings_expanded
             install_conf.dirs
@@ -46,7 +48,7 @@ module For_stanza : sig
     :  Stanza.t list
     -> cctxs:Compilation_context.t option Compilation_mode.Per_mode.t Loc.Map.t
     -> sctx:Super_context.t
-    -> src_dir:Path.Source.t
+    -> src_dir:Source_path.t
     -> ctx_dir:Path.Build.t
     -> scope:Scope.t
     -> dir_contents:Dir_contents.t
@@ -182,7 +184,7 @@ end = struct
         | true ->
           (match
              let error_loc = String_with_vars.loc glob in
-             Path.relative (Path.source src_dir) src_glob ~error_loc
+             Path.relative (Source_path.to_path src_dir) src_glob ~error_loc
            with
            | In_source_tree s -> Some (Path.Source.parent_exn s)
            | In_build_dir _ | External _ -> None)
@@ -197,7 +199,14 @@ end = struct
       let+ () = Plugin_rules.setup_rules ~sctx ~dir p in
       empty_none
     | Cinaps.T cinaps ->
-      let+ () = Cinaps.gen_rules sctx cinaps ~dir ~scope in
+      let+ () =
+        Cinaps.gen_rules
+          sctx
+          cinaps
+          ~dir
+          ~scope
+          ~source_tree_dir:(Expander.source_tree_dir expander)
+      in
       empty_none
     | Mdx.T mdx ->
       Expander.eval_blang expander (Mdx.enabled_if mdx)
@@ -257,11 +266,14 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
   in
   let+ () =
     let more_src_dirs =
-      Merlin.more_src_dirs dir_contents ~source_dirs:(src_dir :: source_dirs)
+      let source_dirs =
+        match Source_path.as_workspace src_dir with
+        | None -> source_dirs
+        | Some src_dir -> src_dir :: source_dirs
+      in
+      Merlin.more_src_dirs dir_contents ~source_dirs
     in
-    Memo.parallel_iter
-      merlins
-      ~f:(Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander)
+    Memo.parallel_iter merlins ~f:(Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs)
   and+ () =
     Memo.parallel_iter stanzas ~f:(fun stanza ->
       match Stanza.repr stanza with
@@ -355,7 +367,10 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
 
 let gen_common_directory_rules sctx ~dir source_dir =
   let+ () = Format_rules.setup_alias sctx ~dir
-  and+ () = Cram_rules.rules source_dir ~sctx ~dir
+  and+ () =
+    match source_dir with
+    | None -> Memo.return ()
+    | Some source_dir -> Cram_rules.rules source_dir ~sctx ~dir
   and+ () = Revdep_rules.add ~sctx ~dir in
   ()
 ;;
@@ -363,14 +378,17 @@ let gen_common_directory_rules sctx ~dir source_dir =
 let gen_rules_source_only sctx ~dir source_dir =
   Rules.collect_unit (fun () ->
     let* sctx = sctx in
-    let+ () = gen_common_directory_rules sctx ~dir source_dir
+    let+ () = gen_common_directory_rules sctx ~dir (Some source_dir)
     and+ () =
-      define_all_alias ~dir ~js_targets:[] ~project:(Source_tree.Dir.project source_dir)
+      define_all_alias
+        ~dir
+        ~js_targets:[]
+        ~project:(Source_tree.Rules.Dir.project source_dir)
     in
     ())
 ;;
 
-let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
+let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~project ~dir
   : Compilation_context.t option Compilation_mode.Per_mode.t Loc.Map.t Memo.t
   =
   let+ () = gen_common_directory_rules sctx ~dir source_dir
@@ -382,7 +400,6 @@ let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
       Super_context.expander sctx ~dir
       >>= gen_rules_for_stanzas sctx dir_contents cctxs ~dune_file ~dir
     | None ->
-      let project = Source_tree.Dir.project source_dir in
       let+ () = define_all_alias ~dir ~js_targets:[] ~project in
       Loc.Map.empty
   in
@@ -405,9 +422,21 @@ let duplicate_deps =
 (* To be called once per project, when we are generating the rules for the root
    directory of the project *)
 let gen_project_rules =
-  let rules sctx project =
+  let rules sctx loaded_project =
     let* sctx = sctx in
+    let project = Loaded_project.project loaded_project in
+    let project =
+      match Loaded_project.visible_packages loaded_project with
+      | None -> project
+      | Some packages ->
+        Dune_project.filter_packages project ~f:(Package.Name.Set.mem packages)
+    in
     let dune_version = Dune_project.dune_version project in
+    let warning_context =
+      Warning_emit.Context.project
+        project
+        ~vendored:(Loaded_project.vendored_warnings loaded_project)
+    in
     let+ () = Install_rules.gen_project_rules sctx project
     and+ () = Odoc.gen_project_rules sctx project
     and+ () = Odoc_new.gen_project_rules sctx project
@@ -418,7 +447,9 @@ let gen_project_rules =
       | None -> Memo.return ()
       | Some _ when dune_version < version -> Memo.return ()
       | Some loc ->
-        let+ vendored = Source_tree.is_vendored (Dune_project.root project) in
+        let+ vendored =
+          Dune_load.vendored_warnings ~dir:(Loaded_project.output_root loaded_project)
+        in
         if not vendored
         then
           Dune_lang.Syntax.Warning.deprecated_in
@@ -439,19 +470,16 @@ let gen_project_rules =
          with
          | None -> Memo.return ()
          | Some project_file ->
-           Warning_emit.emit
-             missing_project_name
-             (Warning_emit.Context.project project)
-             (fun () ->
-                let+ () = Memo.return () in
-                let loc = Loc.in_file (Path.source project_file) in
-                User_message.make
-                  ~loc
-                  [ Pp.text
-                      "Project name is not specified. Add a (name <project-name>) field \
-                       to your dune-project file to make sure that $ dune subst works in \
-                       release or pinned builds"
-                  ]))
+           Warning_emit.emit missing_project_name warning_context (fun () ->
+             let+ () = Memo.return () in
+             let loc = Loc.in_file (Source_path.to_path project_file) in
+             User_message.make
+               ~loc
+               [ Pp.text
+                   "Project name is not specified. Add a (name <project-name>) field to \
+                    your dune-project file to make sure that $ dune subst works in \
+                    release or pinned builds"
+               ]))
     and+ () =
       (* Emit warnings for duplicate dependencies in packages *)
       let packages = Dune_project.packages project in
@@ -459,21 +487,17 @@ let gen_project_rules =
       |> Memo.parallel_iter ~f:(fun pkg ->
         Dune_lang.Package.duplicate_dep_warnings pkg
         |> Memo.parallel_iter ~f:(fun message ->
-          Warning_emit.emit
-            duplicate_deps
-            (Warning_emit.Context.project project)
-            (fun () -> Memo.return message)))
+          Warning_emit.emit duplicate_deps warning_context (fun () -> Memo.return message)))
     in
     ()
   in
-  fun sctx source_dir ->
-    let* () = Memo.return () in
-    let project = Source_tree.Dir.project source_dir in
-    match
-      Path.Source.equal (Source_tree.Dir.path source_dir) (Dune_project.root project)
-    with
-    | false -> Memo.return Rules.empty
-    | true -> Rules.collect_unit (fun () -> rules sctx project)
+  fun sctx loaded_project -> Rules.collect_unit (fun () -> rules sctx loaded_project)
+;;
+
+let gen_project_metadata_rules sctx loaded_project ~dir =
+  let* sctx = sctx in
+  Rules.collect_unit (fun () ->
+    Install_rules.gen_metadata_rules sctx (Loaded_project.project loaded_project) ~dir)
 ;;
 
 module Automatic_subdir = struct
@@ -491,7 +515,7 @@ module Automatic_subdir = struct
   ;;
 
   let of_src_dir src_dir =
-    match Path.Source.basename_opt src_dir with
+    match Path.basename_opt (Source_path.to_path src_dir) with
     | None -> None
     | Some basename -> Filename.Map.find map basename
   ;;
@@ -528,7 +552,7 @@ let has_rules ~dir subdirs f =
        rules)
 ;;
 
-let gen_rules_standalone_or_root sctx ~dir ~source_dir =
+let gen_rules_standalone_or_root sctx ~dir ~project =
   let* sctx = sctx in
   let* standalone_or_root =
     Dir_contents.triage ~dir sctx
@@ -540,18 +564,26 @@ let gen_rules_standalone_or_root sctx ~dir ~source_dir =
   let* rules' =
     Rules.collect_unit (fun () ->
       let* dir_contents = Dir_contents.Standalone_or_root.root standalone_or_root in
+      let source_dir = Dir_contents.source_dir dir_contents in
       let* cctxs =
-        gen_rules_group_part_or_root sctx dir_contents Loc.Map.empty ~source_dir ~dir
+        gen_rules_group_part_or_root
+          sctx
+          dir_contents
+          Loc.Map.empty
+          ~source_dir
+          ~project
+          ~dir
       in
       Dir_contents.Standalone_or_root.subdirs standalone_or_root
       >>= Memo.parallel_iter ~f:(fun dc ->
-        let source_dir = Option.value_exn (Dir_contents.source_dir dc) in
+        let source_dir = Dir_contents.source_dir dc in
         let+ (_ : Compilation_context.t option Compilation_mode.Per_mode.t Loc.Map.t) =
           gen_rules_group_part_or_root
             sctx
             dir_contents
             cctxs
             ~source_dir
+            ~project
             ~dir:(Dir_contents.dir dc)
         in
         ()))
@@ -560,29 +592,34 @@ let gen_rules_standalone_or_root sctx ~dir ~source_dir =
   Rules.union rules rules'
 ;;
 
-let gen_automatic_subdir_rules sctx ~dir ~nearest_src_dir ~src_dir =
-  (* There is always a source dir at the root, so we can't be at the root if
-     we are in this branch *)
-  match
-    match nearest_src_dir with
-    | None -> None
-    | Some _ -> Automatic_subdir.of_src_dir src_dir
-  with
+let gen_automatic_subdir_rules sctx ~dir ~has_nearest_source_dir ~src_dir =
+  match if has_nearest_source_dir then Automatic_subdir.of_src_dir src_dir else None with
   | None -> Memo.return Rules.empty
   | Some kind -> Rules.collect_unit (fun () -> Automatic_subdir.gen_rules ~sctx ~dir kind)
 ;;
 
 let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~components ~dir =
-  Dir_status.DB.get ~dir
-  >>= function
+  let* dir_status = Dir_status.DB.get ~dir
+  and* loaded_project = Dune_load.find_loaded_project ~dir in
+  let* source_tree_dir = Loaded_project.source_tree_dir loaded_project dir in
+  let source_files =
+    match source_tree_dir with
+    | None -> Path.Build.Map.empty
+    | Some source_dir ->
+      Path.Build.Map.singleton dir (Source_file_dir.rules ~dir source_dir)
+  in
+  match dir_status with
   | Lock_dir _ -> Memo.return Gen_rules.no_rules
   | dir_status ->
     let+ rules =
-      let* st_dir = Source_tree.find_dir src_dir in
-      let* nearest_src_dir =
-        match st_dir with
-        | Some dir -> Memo.return (Some dir)
-        | None -> Source_tree.find_dir (Path.Source.parent_exn src_dir)
+      let* has_nearest_source_dir =
+        match source_tree_dir with
+        | Some _ -> Memo.return true
+        | None ->
+          (match Path.Build.parent dir with
+           | None -> Memo.return false
+           | Some parent ->
+             Loaded_project.source_tree_dir loaded_project parent >>| Option.is_some)
       in
       let+ rules =
         let+ make_rules =
@@ -591,6 +628,14 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
               dir_status
               ~jsoo_enabled:Jsoo_rules.jsoo_enabled
               ~dir
+          and+ source_subdirs =
+            (match source_tree_dir with
+             | None -> Filename.Set.empty
+             | Some source_dir ->
+               Source_tree.Rules.Dir.sub_dir_names source_dir
+               |> Filename.Array.Set.to_list
+               |> Filename.Set.of_list)
+            |> Memo.return
           in
           let allowed_subdirs =
             let automatic = Automatic_subdir.subdirs components in
@@ -615,33 +660,40 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
           fun rules ->
             let rules =
               let+ automatic_subdir_rules =
-                gen_automatic_subdir_rules sctx ~dir ~nearest_src_dir ~src_dir
+                gen_automatic_subdir_rules sctx ~dir ~has_nearest_source_dir ~src_dir
+              and+ project_metadata_rules =
+                gen_project_metadata_rules sctx loaded_project ~dir
               and+ project_rules =
-                match st_dir with
-                | None -> Memo.return Rules.empty
-                | Some st_dir -> gen_project_rules sctx st_dir
+                if Path.Build.equal dir (Loaded_project.output_root loaded_project)
+                then gen_project_rules sctx loaded_project
+                else Memo.return Rules.empty
               and+ compile_commands_rules =
-                (* Generate compile_commands.json only for the merlin
-                   context at the context root *)
-                match components with
-                | [] ->
+                let { Build_context.build_dir; _ } =
+                  Build_partition.build_context (Loaded_project.partition loaded_project)
+                in
+                if Path.Build.equal dir build_dir
+                then
                   let* sctx = sctx in
                   if Context.merlin (Super_context.context sctx)
-                  then Rules.collect_unit (fun () -> Compile_commands.gen_rules sctx)
+                  then Rules.collect_unit (fun () -> Compile_commands.setup_aliases sctx)
                   else Memo.return Rules.empty
-                | _ -> Memo.return Rules.empty
+                else Memo.return Rules.empty
               and+ rules = rules in
               Rules.union
+                project_metadata_rules
                 (Rules.union
-                   (Rules.union project_rules automatic_subdir_rules)
-                   compile_commands_rules)
-                rules
+                   (Rules.union
+                      (Rules.union project_rules automatic_subdir_rules)
+                      compile_commands_rules)
+                   rules)
             in
             Gen_rules.Rules.create
               ~build_dir_only_sub_dirs:
                 (Gen_rules.Build_only_sub_dirs.singleton
                    ~dir
                    (Subdir_set.of_set allowed_subdirs))
+              ~source_sub_dirs:(Path.Build.Map.singleton dir source_subdirs)
+              ~source_files
               ~directory_targets
               rules
         in
@@ -651,11 +703,19 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
           Gen_rules.Rules (make_rules (gen_rules_source_only sctx ~dir source_dir))
         | Generated | Is_component_of_a_group_but_not_the_root _ ->
           Gen_rules.Redirect_to_parent (make_rules (Memo.return Rules.empty))
-        | Standalone (source_dir, _) | Group_root { source_dir; _ } ->
+        | Standalone (_, dune_file) | Group_root { dune_file; _ } ->
           Gen_rules.Rules
-            (make_rules (gen_rules_standalone_or_root sctx ~dir ~source_dir))
+            (make_rules
+               (gen_rules_standalone_or_root
+                  sctx
+                  ~dir
+                  ~project:(Dune_file.project dune_file)))
       in
-      let opam_rules = Opam_create.gen_rules sctx ~dir ~nearest_src_dir ~src_dir in
+      let opam_rules =
+        if has_nearest_source_dir
+        then Opam_create.gen_rules sctx ~dir ~loaded_project ~src_dir
+        else Gen_rules.no_rules
+      in
       Gen_rules.combine opam_rules rules
     and+ melange_rules = Melange_rules.setup_emit_js_rules sctx ~dir in
     Gen_rules.combine melange_rules rules
@@ -664,7 +724,10 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
 (* Once [gen_rules] has decided what to do with the directory, it should end
    with [has_rules] or [Gen_rules.Redirect_to_parent] *)
 let gen_rules ctx sctx ~dir components : Gen_rules.t Memo.t =
-  let src_dir = Path.Build.drop_build_context_exn dir in
+  let source_dir () =
+    let+ loaded_project = Dune_load.find_loaded_project ~dir in
+    Loaded_project.source_path loaded_project dir |> Option.value_exn
+  in
   match components with
   | ".js" :: rest ->
     has_rules
@@ -705,7 +768,10 @@ let gen_rules ctx sctx ~dir components : Gen_rules.t Memo.t =
          let* sctx = sctx in
          Pp_spec_rules.gen_rules sctx rest)
   | [ ".dune" ] ->
-    has_rules ~dir Subdir_set.empty (fun () -> Configurator_rules.gen_rules ctx)
+    has_rules ~dir Subdir_set.empty (fun () ->
+      let+ () = Configurator_rules.gen_rules ctx
+      and+ () = Compile_commands.gen_rules sctx ~dir in
+      ())
   | parameterised_dir :: rest
     when String.equal parameterised_dir Dune_lang.Oxcaml.parameterised_dir ->
     let* sctx = sctx in
@@ -714,6 +780,7 @@ let gen_rules ctx sctx ~dir components : Gen_rules.t Memo.t =
     Jsoo_archive_rules.lib_archive_rules_for_dir ~dir
     >>= (function
      | Jsoo_archive_rules.Not_found ->
+       let* src_dir = source_dir () in
        gen_rules_regular_directory sctx ~src_dir ~components ~dir
      | Jsoo_archive_rules.Root -> Gen_rules.make_empty ~dir Subdir_set.all |> Memo.return
      | Jsoo_archive_rules.Rules rules -> Gen_rules.make (Memo.return rules) |> Memo.return)
@@ -736,6 +803,7 @@ let analyze_private_context_path components =
        Per_context.valid ctx
        >>| (function
         | true -> `Valid (ctx, components)
+        | false when Context_name.is_default ctx -> `Shared_locks components
         | false -> `Invalid_context))
 ;;
 
@@ -743,23 +811,37 @@ let private_context ~dir components _ctx =
   analyze_private_context_path components
   >>= function
   | `Invalid_context -> Memo.return Gen_rules.Unknown_context
+  | `Shared_locks components -> Lock_rules.setup_rules ~dir ~components
   | `Valid (_, ".binaries" :: rest) -> Memo.return (Bin_layout.gen_rules ~dir rest)
   | `Valid (ctx, ".packages" :: rest) -> Install_layout.gen_rules ctx ~dir rest
+  | `Valid (ctx, ".opam" :: rest) -> Opam_rules.gen_rules ctx ~dir rest
+  | `Valid (ctx, ".dune-source" :: rest) ->
+    Pkg_sources.gen_prepared_source_rules ctx ~dir rest
   | `Valid (ctx, components) ->
     let+ lock_rules = Lock_rules.setup_rules ~dir ~components
     and+ pkg_rules = Pkg_rules.setup_rules ctx ~dir ~components in
-    let layout_roots =
+    let private_roots =
       match components with
       | [] ->
         Gen_rules.make_empty
           ~dir
           (Subdir_set.of_list
-             [ Filename.of_string_exn ".packages"; Filename.of_string_exn ".binaries" ])
+             [ Filename.of_string_exn ".packages"
+             ; Filename.of_string_exn ".binaries"
+             ; Filename.of_string_exn ".opam"
+             ; Filename.of_string_exn ".dune-source"
+             ])
       | _ -> Gen_rules.no_rules
     in
-    Gen_rules.combine layout_roots (Gen_rules.combine lock_rules pkg_rules)
+    Gen_rules.combine private_roots (Gen_rules.combine lock_rules pkg_rules)
   | `Root ->
     let+ contexts = Per_context.list () in
+    (* Lock directories use shared storage under [default], independently of
+       the workspace's build contexts. *)
+    let contexts =
+      Context_name.Set.of_list (Context_name.default :: contexts)
+      |> Context_name.Set.to_list
+    in
     let build_dir_only_sub_dirs =
       Gen_rules.Build_only_sub_dirs.singleton
         ~dir
@@ -781,11 +863,7 @@ let raise_on_lock_dir_out_of_sync =
           Dune_load.packages ()
           >>| Dune_lang.Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
         in
-        match
-          Dune_pkg.Package_universe.up_to_date
-            local_packages
-            ~dependency_hash:(Option.map ~f:snd lock_dir.dependency_hash)
-        with
+        match Dune_pkg.Package_universe.up_to_date local_packages lock_dir with
         | `Valid -> ()
         | `Invalid ->
           let source_path = Dune_pkg.Lock_dir.in_source_tree path in
@@ -831,11 +909,28 @@ let gen_rules ctx ~dir components =
   else if Context_name.equal ctx Fetch_rules.context.name
   then
     Fetch_rules.gen_rules ~dir ~components:(List.map components ~f:Filename.of_string_exn)
-  else
-    let* () = raise_on_lock_dir_out_of_sync ctx in
-    let gen_pkg_alias_rule = Pkg_rules.setup_pkg_install_alias ~dir ctx in
-    let+ sctx_rules = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
-    Gen_rules.combine sctx_rules gen_pkg_alias_rule
+  else (
+    match components with
+    | root :: packages :: name :: rest
+      when String.equal root Pkg_sources.root_dir_basename
+           && String.equal packages Pkg_sources.artifact_dir_basename ->
+      let* mounted = Pkg_sources.find_mounted ctx (Package.Name.of_string name) in
+      (match mounted with
+       | None -> Opam_rules.gen_mounted_rules ctx ~dir (packages :: name :: rest)
+       | Some mounted ->
+         let* kind = Pkg_sources.Mounted.kind_exn mounted in
+         (match kind with
+          | `Dune ->
+            let* () = Dune_load.check_package ctx (Package.Name.of_string name) in
+            gen_rules ctx (Super_context.find_exn ctx) ~dir rest
+          | `Opam -> Opam_rules.gen_mounted_rules ctx ~dir (packages :: name :: rest)))
+    | root :: rest when String.equal root Pkg_sources.root_dir_basename ->
+      Opam_rules.gen_mounted_rules ctx ~dir rest
+    | _ ->
+      let* () = raise_on_lock_dir_out_of_sync ctx in
+      let gen_pkg_alias_rule = Pkg_rules.setup_pkg_install_alias ~dir ctx in
+      let+ sctx_rules = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
+      Gen_rules.combine sctx_rules gen_pkg_alias_rule)
 ;;
 
 let () =

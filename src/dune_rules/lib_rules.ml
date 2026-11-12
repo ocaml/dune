@@ -562,6 +562,7 @@ let library_rules
       ~source_modules
       ~dir_contents
       ~compile_info
+      ~expander
       ~ctx_dir
       ~for_merlin
   =
@@ -579,7 +580,6 @@ let library_rules
       (Compilation_context.dep_graphs cctx).impl
       impl_only
   in
-  let* expander = Super_context.expander sctx ~dir in
   let for_ = Compilation_context.for_ cctx in
   let* () = Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir implements in
   let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
@@ -602,6 +602,7 @@ let library_rules
       lib
       ~expander:(Memo.return (Expander.to_expander0 expander))
       ~dir
+      ~src_dir:(Expander.source_dir expander)
       ~lib_config
   in
   let+ () =
@@ -648,6 +649,8 @@ let library_rules
       | Melange -> lib.buildable.melange_preprocess.config
     in
     Merlin.make
+      ~scope
+      ~expander
       ~requires_compile
       ~requires_hidden
       ~stdlib_dir:lib_config.stdlib_dir
@@ -666,7 +669,7 @@ let library_rules
 
 let resolve_compile_info (lib : Library.t) ~dir ~scope =
   let lib_id =
-    let src_dir = Path.Build.drop_build_context_exn dir in
+    let src_dir = Scope.source_dir scope dir in
     Library.to_lib_id ~src_dir lib
   in
   let+ local_lib, compile_info =
@@ -690,6 +693,9 @@ let compile_context_data (lib : Library.t) ~dir_contents ~scope ~for_ =
 ;;
 
 let compile_context (lib : Library.t) ~sctx ~dir_contents ~expander ~scope ~for_ =
+  let package = Library.package lib in
+  let* scope = Scope.DB.for_package scope package in
+  let expander = Expander.for_package expander package in
   let dir = Dir_contents.dir dir_contents in
   let* local_lib, compile_info, source_modules, parameters =
     compile_context_data lib ~dir_contents ~scope ~for_
@@ -709,6 +715,9 @@ let compile_context (lib : Library.t) ~sctx ~dir_contents ~expander ~scope ~for_
 ;;
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
+  let package = Library.package lib in
+  let* scope = Scope.DB.for_package scope package in
+  let expander = Expander.for_package expander package in
   let dir = Dir_contents.dir dir_contents in
   let buildable = lib.buildable in
   let f ~for_ ~for_merlin =
@@ -758,6 +767,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         ~source_modules
         ~dir_contents
         ~compile_info
+        ~expander
         ~ctx_dir:dir
         ~for_merlin
     in
@@ -774,6 +784,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         lib
         ~expander:(Memo.return (Expander.to_expander0 expander))
         ~dir
+        ~src_dir:(Expander.source_dir expander)
         ~lib_config
     in
     let merlin_ident = Merlin_ident.for_lib (Library.best_name lib) in

@@ -154,10 +154,7 @@ let context_indexes =
            |> Dune_load.dune_files
            >>| Dune_file.fold_static_stanzas ~init:[] ~f:(fun dune_file stanza acc ->
              let obj =
-               let dir =
-                 let build_dir = Context.build_dir ctx in
-                 Path.Build.append_source build_dir (Dune_file.dir dune_file)
-               in
+               let dir = Dune_file.output_dir dune_file in
                match Stanza.repr stanza with
                | Executables.T exes | Tests.T { exes; _ } ->
                  Some (Executables.obj_dir ~dir exes)
@@ -185,7 +182,9 @@ let project_rule sctx project =
   Memo.when_ (Context.merlin ctx) (fun () ->
     let ocaml_index_alias =
       let dir =
-        Path.Build.append_source (Context.build_dir ctx) @@ Dune_project.root project
+        Source_path.to_build_dir
+          (Dune_project.root project)
+          ~workspace_build_dir:(Context.build_dir ctx)
       in
       Alias.make Alias0.ocaml_index ~dir
     in

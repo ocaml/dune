@@ -15,7 +15,7 @@ val to_string_hum : t -> string
 module Infix : Comparator.OPS with type t = t
 module Map : Map.S with type key = t
 
-val anonymous : Path.Source.t -> t
+val anonymous : Source_path.t -> t
 val named : Loc.t -> string -> t
 val encode : t Encoder.t
 val decode : t Decoder.t

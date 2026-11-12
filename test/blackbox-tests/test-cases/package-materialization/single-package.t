@@ -72,3 +72,55 @@ Different package set produces a different layout directory:
 
   $ dune rules --format=json _build/default/out3 | jq_dune '.[] | ruleDepFilePaths' | censor | grep dune-package | sort
   "_build/_private/default/.packages/$DIGEST/lib/bar/dune-package"
+
+Each package's entry list combines shared project documentation with only that
+package's install stanzas, even when stanzas are interleaved in the same file.
+
+  $ echo license > LICENSE
+  $ echo foo > foo-data
+  $ echo bar > bar-data
+  $ cat >> dune <<'EOF'
+  > (install (package bar) (section share) (files (bar-data as data)))
+  > (install (package foo) (section share) (files (foo-data as data)))
+  > EOF
+  $ dune build out1 out2 out3
+  $ dune rules --format=json _build/default/out1 | jq_dune '.[] | ruleDepFilePaths | select(test("/(share|doc)/"))' | censor | sort
+  "_build/_private/default/.packages/$DIGEST/doc/foo/LICENSE"
+  "_build/_private/default/.packages/$DIGEST/share/foo/data"
+  $ dune rules --format=json _build/default/out3 | jq_dune '.[] | ruleDepFilePaths | select(test("/(share|doc)/"))' | censor | sort
+  "_build/_private/default/.packages/$DIGEST/doc/bar/LICENSE"
+  "_build/_private/default/.packages/$DIGEST/share/bar/data"
+
+The materialized files must come from the corresponding package's sources.
+
+  $ foo_data=$(dune rules --format=json _build/default/out1 \
+  >   | jq_dune -r '.[] | ruleDepFilePaths | select(endswith("/share/foo/data"))')
+  $ bar_data=$(dune rules --format=json _build/default/out3 \
+  >   | jq_dune -r '.[] | ruleDepFilePaths | select(endswith("/share/bar/data"))')
+  $ cat "$foo_data" "$bar_data"
+  foo
+  bar
+
+Collecting foo's entries must not expand an unrelated bar install stanza,
+even when that directory also contains a deprecated name belonging to foo.
+
+  $ mkdir bar-only
+  $ cat >bar-only/dune <<'EOF'
+  > (install
+  >  (package bar)
+  >  (section doc)
+  >  (source_trees missing))
+  > (deprecated_library_name
+  >  (old_public_name foo.compat)
+  >  (new_public_name bar.missing))
+  > EOF
+  $ dune build out1 META.foo
+  $ grep 'bar.missing' _build/default/META.foo
+    requires = "bar.missing"
+    exports = "bar.missing"
+  $ dune build out3
+  File "bar-only/dune", line 4, characters 15-22:
+  4 |  (source_trees missing))
+                     ^^^^^^^
+  Error: This source directory does not exist
+  [1]

@@ -44,10 +44,9 @@ module Index = struct
   let memo context_name =
     let open Memo.O in
     let* sctx = Super_context.find_exn context_name in
-    let build_dir = Context_name.build_dir context_name in
     let process_dune_file acc dune_file =
       let src_dir = Dune_file.dir dune_file in
-      let dir = Path.Build.append_source build_dir src_dir in
+      let dir = Dune_file.output_dir dune_file in
       let* scope = Scope.DB.find_by_dir dir in
       Dune_file.stanzas dune_file
       >>= Memo.List.fold_left ~init:acc ~f:(fun acc stanza ->

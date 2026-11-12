@@ -2,15 +2,10 @@
 
 open Import
 
-(** The package management rules setup two rules for every package:
-
-    - A rule for fetching the source to produce .pkg/$package/source
-
-    - A rule to build the package and produce the artifacts in
-      .pkg/$package/target.
-
-    It setups an alias rules to trigger the fetch and build of the
-    package universe. *)
+(** Selected lock packages use the context's [.lockfile/pkg/<name>] subtree.
+    Source snapshots are prepared independently in [_fetch]; opaque recipes
+    install under [.opam/<name>/target] within the package mount. Dev tools and
+    their unshared dependencies retain their private package directories. *)
 
 val setup_rules
   :  components:string list
@@ -18,29 +13,37 @@ val setup_rules
   -> Context_name.t
   -> Build_config.Gen_rules.t Memo.t
 
+val gen_mounted_rule
+  :  Context_name.t
+  -> Pkg_sources.Candidate.t
+  -> dependencies:(Package.Name.Set.t * Install_layout.t) Action_builder.t
+  -> unit Memo.t
+
 val lock_dir_path : Context_name.t -> Path.t option Memo.t
 val lock_dir_active : Context_name.t -> bool Memo.t
 val ocaml_toolchain : Context_name.t -> Ocaml_toolchain.t Action_builder.t option Memo.t
 
 (** [which ~packages context program] looks [program] up among the binaries
-    installed by [packages] in the lock directory. Only those packages are
-    considered, not their dependencies. [All] means the whole lock
-    directory. *)
+    installed by opaque [packages] in the lock directory. Native declarations
+    are resolved by [Artifacts] before this fallback. The caller supplies the
+    packages visible to the requester, including any explicit dependencies.
+    Standard tools from the selected OCaml toolchain are also available. *)
 val which
-  :  packages:Package.Name.Selection.t
+  :  packages:Package.Name.Set.t
   -> Context_name.t
   -> Filename.t
   -> Path.t option Memo.t
 
 (** [env_for_packages ~packages context] is an env holding environment
-    variables constructed from the [packages] in the lock directory. Only those
-    packages are included, not their dependencies. [All] means the whole lock
-    directory. Empty when the context has no lock directory. *)
+    variables constructed from the opaque [packages] in the lock directory.
+    Native packages use the consumer's shared install layout. Only the named
+    packages are included, not their dependencies. [All] means all opaque
+    packages. Empty when the context has no lock directory. *)
 val env_for_packages : packages:Package.Name.Selection.t -> Context_name.t -> Env.t Memo.t
 
 (** [bin_paths_for_packages ~packages context] returns a list of bin
-    directories of [packages] in the lock directory. [All] means the whole lock
-    directory. Empty when the context has no lock directory. *)
+    directories of opaque [packages] in the lock directory. [All] means all
+    opaque packages. Empty when the context has no lock directory. *)
 val bin_paths_for_packages
   :  packages:Package.Name.Selection.t
   -> Context_name.t
@@ -49,12 +52,24 @@ val bin_paths_for_packages
 val exported_env : Context_name.t -> Env.t Memo.t
 val project_ocamlpath : Context_name.t -> Path.t list Memo.t
 val dev_tool_ocamlpath : Dune_pkg.Dev_tool.t -> Path.t list Memo.t
-val find_package : Context_name.t -> Package.Name.t -> unit Action_builder.t option Memo.t
+
+(** The selected lock dependency closure and the action that builds its outputs.
+    Inspecting the names does not build the package. *)
+val find_package
+  :  Context_name.t
+  -> Package.Name.t
+  -> (Package.Name.Set.t * unit Action_builder.t) option Memo.t
+
+val dependency
+  :  Context_name.t
+  -> Package.Name.t
+  -> Opam_build.Dependency.t Action_builder.t option Memo.t
 
 (* CR-someday Alizter: These prefixes would be [Path.Build.t] if not for
    the "toolchain" mechanism, which installs outside the build directory. *)
 
-(** Installation prefixes and owning packages from the context's lock directory. *)
+(** Opaque installation prefixes and owning packages from the context's lock
+    directory. Native libraries use ordinary workspace library resolution. *)
 val package_prefixes : Context_name.t -> (Path.t * Package.Name.t) list Memo.t
 
 val resolve_installed_file

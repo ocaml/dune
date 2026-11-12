@@ -8,6 +8,8 @@ type t =
   ; ocamlc : Path.t
   ; ocamlopt : Action.Prog.t
   ; ocamldep : Action.Prog.t
+  ; ocamllex : Action.Prog.t
+  ; ocamlyacc : Action.Prog.t
   ; ocamlmklib : Action.Prog.t
   ; ocamlobjinfo : Action.Prog.t
   ; ocaml_config : Ocaml_config.t

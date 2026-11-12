@@ -39,6 +39,8 @@ let deduplicate_errors f =
       f exn)
 ;;
 
+let without_reporting f = Fiber.Var.set var (Some (fun _ -> Fiber.return ())) f
+
 let with_error_handler t f =
   Fiber.of_thunk (fun () ->
     (* [with_error_handler] runs once for every incremental run, so calling

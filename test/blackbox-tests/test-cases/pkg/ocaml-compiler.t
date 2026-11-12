@@ -105,4 +105,132 @@ Now we finally make the OCaml package for testing through the lock file:
 This should display the ocaml from the lock file rather than shadowsystemocaml
 
   $ DUNE_CONFIG__SYS_OCAML_VERSION=4.14.1 dune build @foo 2>&1 | censor
-  $PWD/_build/_private/default/.pkg/mycaml.0.0.1-$DIGEST/target/bin/ocamlc
+  $PWD/_build/default/.lockfile/pkg/mycaml/.opam/mycaml/target/bin/ocamlc
+
+The compiler's auxiliary tools can live in a transitive compiler package, as
+with the ocaml / ocaml-base-compiler / ocaml-compiler split. They must remain
+available to both scoped workspace packages and mounted projects, without an
+ambient OCaml installation.
+
+  $ cat >mycamlsources/ocamllex <<'EOF'
+  > #!/bin/sh
+  > while test "$1" != -o; do shift; done
+  > printf 'let source = "managed lexer"\n' > "$2"
+  > EOF
+  $ cat >mycamlsources/ocamlyacc <<'EOF'
+  > #!/bin/sh
+  > printf 'let source = "managed parser"\n' > "${1%.mly}.ml"
+  > printf 'val source : string\n' > "${1%.mly}.mli"
+  > EOF
+  $ cat >mycamlsources/ocaml <<'EOF'
+  > #!/bin/sh
+  > echo managed toplevel
+  > EOF
+  $ cp mycamlsources/ocaml mycamlsources/compiler-private-tool
+  $ chmod +x mycamlsources/ocamllex mycamlsources/ocamlyacc \
+  >   mycamlsources/ocaml mycamlsources/compiler-private-tool
+  $ make_lockpkg mycaml-tools <<EOF
+  > (version 0.0.1)
+  > (source (copy $PWD/mycamlsources))
+  > (build
+  >  (write-file mycaml-tools.install
+  >   "bin: [ \"ocaml\" \"ocamllex\" \"ocamlyacc\" \"compiler-private-tool\" ]"))
+  > EOF
+  $ make_lockpkg mycaml <<EOF
+  > (version 0.0.1)
+  > (depends mycaml-tools)
+  > (source (copy $PWD/mycamlsources))
+  > (build (write-file mycaml.install "bin: [ \"ocamlc\" ]"))
+  > EOF
+  $ make_lockpkg unrelated <<'EOF'
+  > (version 1)
+  > (build (run false))
+  > EOF
+
+Keep only the tools needed to build the fake compiler on PATH.
+
+  $ mkdir _path
+  $ for tool in dune sh bash cat mkdir cp chmod grep; do
+  >   ln -s "$(command -v "$tool")" "_path/$tool"
+  > done
+  $ export PATH="$PWD/_path"
+  $ cat >dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name main) (allow_empty) (dir .) (depends mycaml))
+  > EOF
+  $ cat >dune <<'EOF'
+  > (dirs :standard \ mycamlsources shadowsystemocaml stdlib)
+  > (ocamllex lexer)
+  > (ocamlyacc parser)
+  > (rule
+  >  (with-stdout-to toplevel-output (run ocaml)))
+  > (rule
+  >  (with-stdout-to private-available
+  >   (echo %{bin-available:compiler-private-tool})))
+  > EOF
+  $ echo 'rule token = parse | eof { () }' >lexer.mll
+  $ cat >parser.mly <<'EOF'
+  > %token EOF
+  > %start main
+  > %type <unit> main
+  > %%
+  > main: EOF { () }
+  > EOF
+
+The selected compiler's standard tools are visible, but arbitrary tools from
+its transitive dependencies are not:
+
+  $ dune build lexer.ml parser.ml toplevel-output private-available
+  $ cat _build/default/lexer.ml _build/default/parser.ml \
+  >   _build/default/toplevel-output _build/default/private-available
+  let source = "managed lexer"
+  let source = "managed parser"
+  managed toplevel
+  false
+  $ test ! -e _build/default/.lockfile/pkg/unrelated/.opam/unrelated/target
+
+An ambient copy must not replace the selected compiler's tools. The compiler
+also remains available without an explicit package dependency on it.
+
+  $ for tool in ocaml ocamllex ocamlyacc; do
+  >   printf '#!/bin/sh\nexit 42\n' >"_path/$tool"
+  >   chmod +x "_path/$tool"
+  > done
+  $ cat >dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name main) (allow_empty) (dir .))
+  > EOF
+  $ dune build lexer.ml parser.ml toplevel-output private-available
+  $ cat >dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name main) (allow_empty))
+  > EOF
+  $ dune build lexer.ml parser.ml toplevel-output private-available
+
+Mounted projects use the same selected compiler, even when they only depend on
+the metadata package rather than the package installing its tools.
+
+  $ mkdir _native
+  $ cp dune lexer.mll parser.mly _native/
+  $ cat >_native/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name native))
+  > EOF
+  $ echo '(library (public_name native))' >>_native/dune
+  $ make_lockpkg native <<EOF
+  > (version 1)
+  > (depends mycaml)
+  > (source (copy $PWD/_native))
+  > (build (run false))
+  > EOF
+  $ native_dir=_build/default/.lockfile/pkg/native
+  $ dune build "$native_dir/lexer.ml" "$native_dir/parser.ml" \
+  >   "$native_dir/toplevel-output" "$native_dir/private-available"
+  $ cat "$native_dir/lexer.ml" "$native_dir/parser.ml" \
+  >   "$native_dir/toplevel-output" "$native_dir/private-available"
+  let source = "managed lexer"
+  let source = "managed parser"
+  managed toplevel
+  false
+  $ test ! -e _build/default/.lockfile/pkg/native/.opam/native/target
+  $ test ! -e _build/default/.lockfile/pkg/unrelated/.opam/unrelated/target

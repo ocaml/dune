@@ -43,27 +43,33 @@ Test that installed binaries are visible in dependent packages
   { files =
       [ (LIB,
          [ In_build_dir
-             "_private/default/.pkg/test.0.0.1-$DIGEST/target/lib/test/libxxx"
+             "default/.lockfile/pkg/test/.opam/test/target/lib/test/libxxx"
          ])
       ; (LIB_ROOT,
          [ In_build_dir
-             "_private/default/.pkg/test.0.0.1-$DIGEST/target/lib/lib_rootxxx"
+             "default/.lockfile/pkg/test/.opam/test/target/lib/lib_rootxxx"
          ])
       ; (BIN,
-         [ In_build_dir
-             "_private/default/.pkg/test.0.0.1-$DIGEST/target/bin/foo"
+         [ In_build_dir "default/.lockfile/pkg/test/.opam/test/target/bin/foo"
          ])
       ; (SHARE_ROOT,
          [ In_build_dir
-             "_private/default/.pkg/test.0.0.1-$DIGEST/target/share/lib_rootxxx"
+             "default/.lockfile/pkg/test/.opam/test/target/share/lib_rootxxx"
          ])
       ]
   ; variables = []
   }
 
-It should also be visible in the workspace:
+It should also be visible in a workspace package that declares the dependency:
 
-  $ make_dune_project 3.9
+  $ make_dune_project 3.24
+  $ cat >>dune-project <<'EOF'
+  > (package
+  >  (name consumer)
+  >  (allow_empty)
+  >  (dir .)
+  >  (depends test))
+  > EOF
 
   $ cat >dune <<EOF
   > (rule

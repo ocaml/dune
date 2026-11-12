@@ -70,14 +70,14 @@ end
 
 type t =
   { name : Dune_project_name.t
-  ; root : Path.Source.t
+  ; root : Source_path.t
   ; version : Package_version.t option
   ; dune_version : Syntax.Version.t
   ; info : Package_info.t
   ; packages : Package.t Package.Name.Map.t
-  ; exclusive_dir_packages : Package_id.t Path.Source.Map.t
+  ; exclusive_dir_packages : Package_id.t Source_path.Map.t
   ; stanza_parser : Stanza.t list Decoder.t
-  ; project_file : Path.Source.t option
+  ; project_file : Source_path.t option
   ; extension_args : Univ_map.t
   ; parsing_context : Univ_map.t
   ; implicit_transitive_deps : Implicit_transitive_deps.Stanza.t
@@ -183,11 +183,11 @@ let to_dyn
   let open Dyn in
   record
     [ "name", Dune_project_name.to_dyn name
-    ; "root", Path.Source.to_dyn root
+    ; "root", Source_path.to_dyn root
     ; "version", (option Package_version.to_dyn) version
     ; "dune_version", Syntax.Version.to_dyn dune_version
     ; "info", Package_info.to_dyn info
-    ; "project_file", Dyn.option Path.Source.to_dyn project_file
+    ; "project_file", Dyn.option Source_path.to_dyn project_file
     ; ( "packages"
       , (list (pair Package.Name.to_dyn Package.to_dyn))
           (Package.Name.Map.to_list packages) )
@@ -547,7 +547,7 @@ let make_exclusive_dir_packages packages =
     |> List.filter_map ~f:(fun package ->
       Package.exclusive_dir package
       |> Option.map ~f:(fun (loc, dir) -> loc, dir, Package.id package))
-    |> Path.Source.Map.of_list_map ~f:(fun (_loc, dir, id) -> dir, id)
+    |> Source_path.Map.of_list_map ~f:(fun (_loc, dir, id) -> dir, id)
   with
   | Ok s -> s
   | Error (dir, (loc, _, _), (_, _, id)) ->
@@ -555,7 +555,7 @@ let make_exclusive_dir_packages packages =
       ~loc
       [ Pp.textf
           "package %s is already defined in %S"
-          (Path.Source.to_string_maybe_quoted dir)
+          (Source_path.to_string_maybe_quoted dir)
           (Package.Name.to_string id.name)
       ]
 ;;
@@ -781,13 +781,13 @@ let cram t = t.cram
 let info t = t.info
 let pins t = t.pins
 
-let update_execution_parameters t ep =
+let update_execution_parameters t ~action_project_root ep =
   ep
   |> Execution_parameters.set_expand_aliases_in_sandbox t.expand_aliases_in_sandbox
   |> Execution_parameters.set_workspace_root_to_build_path_prefix_map
        (if t.map_workspace_root then Set "/workspace_root" else Unset)
   |> Execution_parameters.set_action_project_root
-       (if t.dune_version >= (3, 23) then Some t.root else None)
+       (if t.dune_version >= (3, 23) then Some action_project_root else None)
   |> Execution_parameters.set_use_sandbox_policy (t.dune_version >= (3, 25))
 ;;
 
@@ -796,6 +796,25 @@ let opam_file_location t = t.opam_file_location
 let filter_packages t ~f =
   let packages = Package.Name.Map.filter t.packages ~f:(fun p -> f (Package.name p)) in
   { t with packages }
+;;
+
+let set_package_version t ~package:name ~version =
+  let set_version packages =
+    match Package.Name.Map.find packages name with
+    | None -> packages
+    | Some package ->
+      let package =
+        Package.set_version_and_info
+          package
+          ~version:(Some version)
+          ~info:(Package.info package)
+      in
+      Package.Name.Map.set packages name package
+  in
+  { t with
+    packages = set_version t.packages
+  ; including_hidden_packages = set_version t.including_hidden_packages
+  }
 ;;
 
 let including_hidden_packages t = t.including_hidden_packages
@@ -869,7 +888,7 @@ let make_packages
     (match opam_file_location with
      | `Inside_opam_directory ->
        Package.Name.Map.map packages ~f:(fun p ->
-         let dir = Path.Source.relative dir "opam" in
+         let dir = Source_path.relative dir "opam" in
          let p = Package.set_inside_opam_dir p ~dir in
          generated_opam_file p)
      | `Relative_to_project ->
@@ -1116,16 +1135,16 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
 ;;
 
 let load_dune_project ~read ~dir opam_packages : t Memo.t =
-  let file = Path.Source.relative_fname dir filename in
+  let file = Source_path.relative_fname dir filename in
   let open Memo.O in
   let* lexbuf =
     let+ contents = read file in
-    Lexbuf.from_string contents ~fname:(Path.Source.to_string file)
+    Lexbuf.from_string contents ~fname:(Source_path.to_string file)
   in
   parse_contents lexbuf ~f:(fun lang -> parse ~dir ~lang ~file) opam_packages
 ;;
 
-let gen_load ~read ~dir ~files ~infer_from_opam_files ~load_opam_file_with_contents
+let gen_load_source ~read ~dir ~files ~infer_from_opam_files ~load_opam_file_with_contents
   : t option Memo.t
   =
   let open Memo.O in
@@ -1134,8 +1153,8 @@ let gen_load ~read ~dir ~files ~infer_from_opam_files ~load_opam_file_with_conte
       match Package.Name.of_opam_file_basename fn with
       | None -> acc
       | Some name ->
-        let opam_file = Path.Source.relative_fname dir fn in
-        let loc = Loc.in_file (Path.source opam_file) in
+        let opam_file = Source_path.relative_fname dir fn in
+        let loc = Loc.in_file (Source_path.to_path opam_file) in
         let pkg =
           let+ contents = read opam_file in
           load_opam_file_with_contents ~contents opam_file name
@@ -1153,6 +1172,19 @@ let gen_load ~read ~dir ~files ~infer_from_opam_files ~load_opam_file_with_conte
     in
     Some (infer Package_info.empty ~dir opam_packages)
   else Memo.return None
+;;
+
+let gen_load ~read ~dir ~files ~infer_from_opam_files ~load_opam_file_with_contents =
+  let workspace_path = function
+    | Source_path.Workspace path -> path
+    | Build _ -> Code_error.raise "expected workspace source path" []
+  in
+  gen_load_source
+    ~read:(fun path -> read (workspace_path path))
+    ~dir:(Source_path.workspace dir)
+    ~files
+    ~infer_from_opam_files
+    ~load_opam_file_with_contents
 ;;
 
 let load =

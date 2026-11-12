@@ -19,7 +19,7 @@ module Names : sig
     :  t
     -> ext:Filename.Extension.t
     -> enabled_if:Blang.t
-    -> dir:Path.Source.t
+    -> dir:Source_path.t
     -> Install_conf.t option
 end = struct
   type public =
@@ -181,7 +181,7 @@ end = struct
                  ~src:(locn, name ^ Filename.Extension.to_string ext)
                  ~dst:(locp, pub)
                  ~dune_syntax:t.dune_syntax
-                 ~dir:(Some dir))))
+                 ~dir:(Source_path.as_workspace dir))))
         |> Nonempty_list.to_list
         |> List.filter_opt
       in

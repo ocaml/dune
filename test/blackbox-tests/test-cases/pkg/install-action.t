@@ -9,8 +9,6 @@ Testing install actions
   $ build_pkg test
   foobar
 
-  $ export BUILD_PATH_PREFIX_MAP="/PKG_ROOT=test/target:$BUILD_PATH_PREFIX_MAP"
-
   $ show_pkg_targets test
   
   /bin
@@ -32,8 +30,7 @@ Testing install actions
   $ show_pkg_cookie test
   { files =
       [ (LIB_ROOT,
-         [ In_build_dir
-             "_private/default/.pkg/test.0.0.1-$DIGEST/target/lib/xxx"
+         [ In_build_dir "default/.lockfile/pkg/test/.opam/test/target/lib/xxx"
          ])
       ]
   ; variables = []
@@ -59,10 +56,7 @@ as libexec, so the cookie incorrectly records it in both lib and libexec.
          [ In_build_dir
              "_private/default/.pkg/overlap.1.0-$DIGEST/target/lib/overlap/payload"
          ])
-      ; (LIBEXEC,
-         [ In_build_dir
-             "_private/default/.pkg/overlap.1.0-$DIGEST/target/lib/overlap/payload"
-         ])
+      ; (LIBEXEC, [])
       ]
   ; variables = []
   }

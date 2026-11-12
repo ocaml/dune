@@ -196,6 +196,98 @@ let apply_patches ~dir patches =
           [ Pp.textf "Cannot rename file %S: file does not exist" old_file ])
 ;;
 
+module File_patch = struct
+  type t =
+    { patch_file : Path.t
+    ; patch : Patch.t
+    ; index : int
+    ; source : Path.Local.t option
+    ; target : Path.Local.t option
+    }
+
+  let local path = Path.Local.of_string path
+
+  let paths = function
+    | Patch.Edit (source, target) -> Some (local source), Some (local target)
+    | Delete source -> Some (local source), None
+    | Create target -> None, Some (local target)
+    | Git_ext (source, target, extension) ->
+      (match extension with
+       | Rename_only _ -> Some (local source), Some (local target)
+       | Delete_only -> Some (local target), None
+       | Create_only -> None, Some (local target))
+  ;;
+
+  let parse ~loc ~patch_file contents =
+    parse_patches ~loc ~patch_file contents
+    |> List.mapi ~f:(fun index patch ->
+      let source, target = paths patch.Patch.operation in
+      { patch_file; patch; index; source; target })
+  ;;
+
+  let source t = t.source
+  let target t = t.target
+
+  let removes_source t =
+    match t.patch.Patch.operation with
+    | Delete _ | Git_ext (_, _, Delete_only) | Git_ext (_, _, Rename_only _) -> true
+    | Edit _ | Create _ | Git_ext (_, _, Create_only) -> false
+  ;;
+
+  let preserves_source_mode t =
+    match t.patch.Patch.operation with
+    | Git_ext (_, _, Rename_only _) -> true
+    | Edit _ | Delete _ | Create _
+    | Git_ext (_, _, Delete_only)
+    | Git_ext (_, _, Create_only) -> false
+  ;;
+
+  let missing_file t path =
+    User_error.raise
+      [ Pp.textf
+          "trying to apply patch %s, but file %s does not exist"
+          (Path.to_string_maybe_quoted t.patch_file)
+          (String.maybe_quoted (Path.Local.to_string path))
+      ]
+  ;;
+
+  let apply t contents =
+    let file =
+      match t.target, t.source with
+      | Some path, _ | None, Some path -> Path.Local.to_string path
+      | None, None -> Path.to_string t.patch_file
+    in
+    match t.patch.Patch.operation with
+    | Delete _ | Git_ext (_, _, Delete_only) -> None
+    | Create _ | Git_ext (_, _, Create_only) ->
+      Patch.apply ~file ~cleanly:false None t.patch
+    | Edit _ ->
+      let source = Option.value_exn t.source in
+      let contents =
+        match contents with
+        | Some contents -> Some contents
+        | None -> missing_file t source
+      in
+      Patch.apply ~file ~cleanly:false contents t.patch
+    | Git_ext (_, _, Rename_only _) ->
+      (match contents with
+       | Some contents -> Some contents
+       | None -> missing_file t (Option.value_exn t.source))
+  ;;
+
+  let repr =
+    Repr.record
+      "file-patch"
+      [ Repr.field "patch_file" Path.repr ~get:(fun t -> t.patch_file)
+      ; Repr.field "index" Repr.int ~get:(fun t -> t.index)
+      ; Repr.field "source" (Repr.option Path.Local.repr) ~get:(fun t -> t.source)
+      ; Repr.field "target" (Repr.option Path.Local.repr) ~get:(fun t -> t.target)
+      ]
+  ;;
+
+  let to_dyn = Repr.to_dyn repr
+end
+
 let exec ~loc ~dir ~patch =
   let open Fiber.O in
   let+ () = Fiber.return () in

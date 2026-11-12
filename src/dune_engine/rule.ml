@@ -4,7 +4,7 @@ module Info = struct
   type t =
     | From_dune_file of Loc.t
     | Internal
-    | Source_file_copy of Path.Source.t
+    | Source_file_copy of Path.t
 
   let of_loc_opt = function
     | None -> Internal
@@ -18,7 +18,7 @@ module Info = struct
       Loc.in_file
         (Path.drop_optional_build_context
            (Path.build (Path.Build.relative dir "_unknown_")))
-    | Source_file_copy p -> Loc.in_file (Path.source p)
+    | Source_file_copy path -> Loc.in_file path
   ;;
 
   let repr =
@@ -30,7 +30,7 @@ module Info = struct
       ; Repr.case0 "Internal" ~test:(function
           | Internal -> true
           | From_dune_file _ | Source_file_copy _ -> false)
-      ; Repr.case "Source_file_copy" Path.Source.repr ~proj:(function
+      ; Repr.case "Source_file_copy" Path.repr ~proj:(function
           | Source_file_copy path -> Some path
           | From_dune_file _ | Internal -> None)
       ]
@@ -129,6 +129,7 @@ let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~targets action =
 ;;
 
 let set_action t action = { t with action }
+let set_mode t mode = { t with mode }
 
 module Anonymous_action = struct
   type t =

@@ -64,13 +64,13 @@ let to_string = to_string ~sep:'!' Lib_name.to_string
 let of_string = of_string ~sep:'!' Lib_name.of_string
 
 module Scope = struct
-  type t = Path.Source.t option
+  type t = Path.Build.t option
 
-  let equal = Option.equal Path.Source.equal
+  let equal = Option.equal Path.Build.equal
 
   let to_string = function
     | None -> ""
-    | Some path -> Path.Source.to_string path
+    | Some path -> Path.Build.to_string path
   ;;
 
   let reverse_table : (Digest.t, t) Table.t = Table.create (module Digest) 128

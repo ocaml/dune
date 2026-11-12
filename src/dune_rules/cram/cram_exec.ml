@@ -645,6 +645,7 @@ let combine_with_current_stanzas =
 ;;
 
 let print_timeout_correction_and_fail
+      ~promotion
       ~src
       ~conflict_markers
       ~timeout
@@ -671,11 +672,11 @@ let print_timeout_correction_and_fail
       Io.write_file_exn ~binary:false corrected_file expected;
       let+ diff = Dune_engine.Print_diff.get ~sandbox src corrected_file in
       let () =
-        let source_file = Path.drop_optional_build_context_src_exn src in
         let correction_file = Path.as_in_build_dir_exn corrected_file in
         Dune_engine.Diff_promotion.register_intermediate
           `Move
-          ~source_file
+          ~promotion
+          ~source_file:src
           ~correction_file
       in
       match diff with
@@ -813,6 +814,7 @@ module Script = Persistent.Make (struct
   end)
 
 let run_and_produce_output
+      ~promotion
       ~conflict_markers
       ~src
       ~env
@@ -857,7 +859,14 @@ let run_and_produce_output
     List.exists commands ~f:(function
       | { metadata = Timed_out _; _ } -> true
       | _ -> false)
-  then print_timeout_correction_and_fail ~src ~conflict_markers ~timeout ~sandbox commands
+  then
+    print_timeout_correction_and_fail
+      ~promotion
+      ~src
+      ~conflict_markers
+      ~timeout
+      ~sandbox
+      commands
   else (
     let dst = Path.build dst in
     Path.mkdir_p (Path.parent_exn dst);
@@ -921,6 +930,7 @@ module Run = struct
           ~(eenv : Action.env)
       =
       run_and_produce_output
+        ~promotion:ectx.promotion
         ~conflict_markers:Ignore
         ~src
         ~env:eenv.env

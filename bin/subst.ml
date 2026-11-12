@@ -204,7 +204,7 @@ module Dune_project = struct
     let open Option.O in
     let* project = project in
     let* project_file = Dune_project.file project in
-    let project_file = project_file in
+    let project_file = Dune_lang.Source_path.as_workspace_exn project_file in
     let contents = Io.read_file_exn (Path.source project_file) in
     let sexp =
       let lb = Lexbuf.from_string contents ~fname:(Path.Source.to_string project_file) in
@@ -458,7 +458,9 @@ let subst vcs =
     let opam_package_files =
       Dune_project.packages dune_project.project
       |> Package.Name.Map.fold ~init:Path.Source.Set.empty ~f:(fun package acc ->
-        Path.Source.Set.add acc (Package.opam_file package))
+        Path.Source.Set.add
+          acc
+          (Package.opam_file package |> Dune_lang.Source_path.as_workspace_exn))
     in
     List.iter files ~f:(fun path ->
       if is_a_source_file path && not (Path.Source.equal path Dune_project.filename)

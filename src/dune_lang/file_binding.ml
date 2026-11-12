@@ -90,7 +90,11 @@ module Unexpanded = struct
         Syntax.Error.since (String_with_vars.loc s) Stanza.syntax (1, 6) ~what)
       else s, dune_syntax
     in
-    let dir = Dune_project.get () >>| Option.map ~f:Dune_project.root in
+    let dir =
+      Dune_project.get ()
+      >>| Option.bind ~f:(fun project ->
+        Dune_project.root project |> Source_path.as_workspace)
+    in
     peek_exn
     >>= function
     | Atom _ | Quoted_string _ | Template _ ->

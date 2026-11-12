@@ -9,7 +9,7 @@ end = struct
     let name = Dune_project.name project in
     let root = Dune_project.root project in
     let digest =
-      Digest.repr Repr.(pair Dune_project_name.repr Path.Source.repr) (name, root)
+      Digest.repr Repr.(pair Dune_project_name.repr Source_path.repr) (name, root)
       |> Digest.to_string
     in
     String.take digest 12

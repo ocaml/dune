@@ -35,7 +35,7 @@ Verify we captured a trace entry:
 
 Build compile_commands.json:
 
-  $ dune build compile_commands.json
+  $ dune build @compile_commands
 
 Extract from compile_commands.json (first entry):
 

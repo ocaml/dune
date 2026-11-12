@@ -7,6 +7,8 @@ type t =
   ; ocamlc : Path.t
   ; ocamlopt : Action.Prog.t
   ; ocamldep : Action.Prog.t
+  ; ocamllex : Action.Prog.t
+  ; ocamlyacc : Action.Prog.t
   ; ocamlmklib : Action.Prog.t
   ; ocamlobjinfo : Action.Prog.t
   ; ocaml_config : Ocaml_config.t
@@ -107,6 +109,8 @@ let make name ~which ~env ~get_ocaml_tool =
   let* ocamlopt = get_ocaml_tool "ocamlopt"
   and* ocaml = get_ocaml_tool "ocaml"
   and* ocamldep = get_ocaml_tool "ocamldep"
+  and* ocamllex = get_ocaml_tool "ocamllex"
+  and* ocamlyacc = get_ocaml_tool "ocamlyacc"
   and* ocamlmklib = get_ocaml_tool "ocamlmklib"
   and* ocamlobjinfo = get_ocaml_tool "ocamlobjinfo" in
   let* stdlib_dir =
@@ -131,6 +135,8 @@ let make name ~which ~env ~get_ocaml_tool =
     ; ocamlc
     ; ocamlopt
     ; ocamldep
+    ; ocamllex
+    ; ocamlyacc
     ; ocamlmklib
     ; ocamlobjinfo
     ; ocaml_config

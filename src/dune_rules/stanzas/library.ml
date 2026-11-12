@@ -489,6 +489,7 @@ let to_lib_info
       conf
       ~expander
       ~dir
+      ~src_dir
       ~lib_config:
         ({ Lib_config.has_native; ext_lib; ext_dll; natdynlink_supported; _ } as
          lib_config)
@@ -570,10 +571,7 @@ let to_lib_info
   let local_main_module_name = local_main_module_name conf in
   let main_module_name = main_module_name conf in
   let name = best_name conf in
-  let lib_id =
-    let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
-    Lib_id.Local (to_lib_id ~src_dir conf)
-  in
+  let lib_id = Lib_id.Local (to_lib_id ~src_dir conf) in
   let enabled =
     let+ enabled_if_result =
       let* expander = expander in

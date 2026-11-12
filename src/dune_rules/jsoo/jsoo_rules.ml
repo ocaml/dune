@@ -121,9 +121,13 @@ end
 module Config : sig
   type t
 
+  val make : mode:Js_of_ocaml.Mode.t -> compiler:Path.t -> build_config:string -> t
   val path : t -> string
   val of_string : string -> t
-  val of_flags : string list -> t
+  val build_config : t -> string
+  val compiler : t -> mode:Js_of_ocaml.Mode.t -> Path.t option
+  val modes : t -> Js_of_ocaml.Mode.t list
+  val of_flags : string list -> string
   val to_flags : jsoo_version:Version.t option -> t -> string list
   val remove_config_flags : string list -> string list
 end = struct
@@ -137,7 +141,67 @@ end = struct
     ; toplevel : bool option
     }
 
-  type t = string
+  (* Shared artifacts retain the resolved tool, not a scope for another lookup.
+     Flag-only paths remain available for explicitly requested archive targets. *)
+  type t =
+    { build_config : string
+    ; compiler : (Js_of_ocaml.Mode.t * Path.t) option
+    }
+
+  let compiler_repr = Repr.pair Js_of_ocaml.Mode.repr Path.repr
+  let compilers = Table.create (module Digest) 16
+
+  let make ~mode ~compiler ~build_config =
+    { build_config; compiler = Some (mode, compiler) }
+  ;;
+
+  let build_config { build_config; _ } = build_config
+
+  let compiler { compiler; _ } ~mode =
+    match compiler with
+    | None -> None
+    | Some (selected_mode, program) ->
+      if not (Js_of_ocaml.Mode.equal mode selected_mode)
+      then
+        User_error.raise
+          [ Pp.text "JavaScript compiler configuration belongs to a different backend." ];
+      Some program
+  ;;
+
+  let modes { compiler; _ } =
+    match compiler with
+    | None -> Js_of_ocaml.Mode.all
+    | Some (mode, _) -> [ mode ]
+  ;;
+
+  let path { build_config; compiler } =
+    match compiler with
+    | None -> build_config
+    | Some compiler ->
+      let key = Digest.repr compiler_repr compiler in
+      (match Table.find compilers key with
+       | None -> Table.set compilers key compiler
+       | Some previous ->
+         if not (Tuple.T2.equal Js_of_ocaml.Mode.equal Path.equal previous compiler)
+         then
+           Code_error.raise
+             "JavaScript compiler identity collision"
+             [ "previous", Repr.to_dyn compiler_repr previous
+             ; "compiler", Repr.to_dyn compiler_repr compiler
+             ]);
+      build_config ^ "@" ^ Digest.to_string key
+  ;;
+
+  let of_string path =
+    match String.rsplit2 path ~on:'@' with
+    | None -> { build_config = path; compiler = None }
+    | Some (build_config, key) ->
+      let compiler = Option.bind (Digest.from_hex key) ~f:(Table.find compilers) in
+      (match compiler with
+       | Some _ -> { build_config; compiler }
+       | None ->
+         User_error.raise [ Pp.textf "Unknown JavaScript compiler identity %S." key ])
+  ;;
 
   let default = { js_string = None; effects = None; toplevel = None }
 
@@ -273,10 +337,11 @@ end = struct
       ]
   ;;
 
-  let path t = t
-  let of_string x = x
   let of_flags l = path_of_config (config_of_flags l)
-  let to_flags ~jsoo_version t = flags_of_config ~jsoo_version (config_of_string t)
+
+  let to_flags ~jsoo_version { build_config; _ } =
+    flags_of_config ~jsoo_version (config_of_string build_config)
+  ;;
 
   let remove_config_flags flags =
     let rec loop acc = function
@@ -354,10 +419,15 @@ let compiler ~dir sctx ~(mode : Js_of_ocaml.Mode.t) =
   | Wasm -> wasmoo ~dir sctx
 ;;
 
-let jsoo_version ~dir sctx =
+let compiler_for_config sctx ~dir ~mode ~config =
   let open Action_builder.O in
-  let* jsoo = jsoo ~dir sctx in
-  Action_builder.of_memo (Version.jsoo_version jsoo)
+  match config with
+  | None -> compiler ~dir sctx ~mode
+  | Some config ->
+    let* config = config in
+    (match Config.compiler config ~mode with
+     | Some program -> Action_builder.return (Ok program)
+     | None -> compiler ~dir sctx ~mode)
 ;;
 
 let jsoo_version_at_least version minimum =
@@ -393,15 +463,17 @@ let resolve_config sctx ~dir ~(mode : Js_of_ocaml.Mode.t) flags =
   let* compile_flags = js_of_ocaml_flags sctx ~dir ~mode ~sub_command:Compile flags in
   let* jsoo = compiler ~dir sctx ~mode in
   let* jsoo_version = Action_builder.of_memo (Version.jsoo_version jsoo) in
-  if jsoo_has_build_config jsoo_version
-  then
-    Action_builder.of_memo (Version.jsoo_build_config jsoo compile_flags)
-    |> Action_builder.map ~f:Config.of_string
-  else Action_builder.return (Config.of_flags compile_flags)
+  let+ build_config =
+    if jsoo_has_build_config jsoo_version
+    then Action_builder.of_memo (Version.jsoo_build_config jsoo compile_flags)
+    else Action_builder.return (Config.of_flags compile_flags)
+  in
+  Config.make ~mode ~compiler:(Action.Prog.ok_exn jsoo) ~build_config
 ;;
 
 let js_of_ocaml_rule
       sctx
+      ~compiler:jsoo
       ~(mode : Js_of_ocaml.Mode.t)
       ~sub_command
       ~dir
@@ -413,7 +485,6 @@ let js_of_ocaml_rule
       ~directory_targets
   =
   let open Action_builder.O in
-  let jsoo = compiler ~dir sctx ~mode in
   let flags = js_of_ocaml_flags sctx ~dir ~mode ~sub_command flags in
   let flags =
     (* Avoid duplicating flags that are covered by the config *)
@@ -450,7 +521,8 @@ let js_of_ocaml_rule
               Action_builder.of_memo (Version.jsoo_version jsoo)
             in
             if jsoo_has_build_config jsoo_version
-            then Command.Args.S [ A "--apply-build-config"; A (Config.path config) ]
+            then
+              Command.Args.S [ A "--apply-build-config"; A (Config.build_config config) ]
             else
               Command.Args.S
                 (Config.to_flags ~jsoo_version config
@@ -477,7 +549,7 @@ module Runtime_key : sig
     type t = private
       { mode : Js_of_ocaml.Mode.t
       ; lib_names : Lib_name.t list
-      ; project_root : Path.Source.t option
+      ; scope_dir : Path.Build.t option
       }
 
     val of_libs : mode:Js_of_ocaml.Mode.t -> Lib.t list -> t
@@ -492,26 +564,25 @@ end = struct
     type t =
       { mode : Js_of_ocaml.Mode.t
       ; lib_names : Lib_name.t list
-      ; project_root : Path.Source.t option
+      ; scope_dir : Path.Build.t option
       }
 
     let equal x y =
       Js_of_ocaml.Mode.equal x.mode y.mode
       && List.equal Lib_name.equal x.lib_names y.lib_names
-      && Option.equal Path.Source.equal x.project_root y.project_root
+      && Option.equal Path.Build.equal x.scope_dir y.scope_dir
     ;;
 
-    let to_string { mode; lib_names; project_root } =
+    let to_string { mode; lib_names; scope_dir } =
       let s =
         sprintf
           "%s runtime for %s"
           (Js_of_ocaml.Mode.select ~mode ~js:"js" ~wasm:"wasm")
           (String.enumerate_and (List.map lib_names ~f:Lib_name.to_string))
       in
-      match project_root with
+      match scope_dir with
       | None -> s
-      | Some dir ->
-        sprintf "%s (in project: %s)" s (Path.Source.to_string_maybe_quoted dir)
+      | Some dir -> sprintf "%s (in scope: %s)" s (Path.Build.to_string_maybe_quoted dir)
     ;;
 
     let of_libs ~mode libs =
@@ -524,8 +595,8 @@ end = struct
          so reordering (e.g. sorting by name) can change which conflicting
          binding wins. *)
       let lib_names = List.map libs_with_runtime ~f:Lib.name in
-      let project_root = Lib.L.project_root libs_with_runtime in
-      { mode; lib_names; project_root }
+      let scope_dir = Lib.L.scope_dir libs_with_runtime in
+      { mode; lib_names; scope_dir }
     ;;
   end
 
@@ -543,11 +614,11 @@ end = struct
       ]
   ;;
 
-  let encode ({ Decoded.mode; lib_names; project_root } as x) =
+  let encode ({ Decoded.mode; lib_names; scope_dir } as x) =
     let y =
       Digest.repr
-        Repr.(triple mode_repr (list Lib_name.repr) (option Path.Source.repr))
-        (mode, lib_names, project_root)
+        Repr.(triple mode_repr (list Lib_name.repr) (option Path.Build.repr))
+        (mode, lib_names, scope_dir)
     in
     match Table.find reverse_table y with
     | None ->
@@ -597,6 +668,7 @@ let standalone_runtime_rule ~mode cc ~runtime_files ~target ~flags ~sourcemap =
   let dir = Compilation_context.dir cc in
   js_of_ocaml_rule
     (Compilation_context.super_context cc)
+    ~compiler:(compiler_for_config sctx ~dir ~mode ~config:(Some config))
     ~mode
     ~sub_command:Build_runtime
     ~dir
@@ -628,10 +700,14 @@ let exe_rule
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
   let libs = Compilation_context.requires_link cc in
+  let compiler = compiler ~dir sctx ~mode in
   let linkall =
     let open Action_builder.O in
     let+ linkall = linkall
-    and+ jsoo_version = jsoo_version ~dir sctx in
+    and+ jsoo_version =
+      let* compiler = compiler in
+      Action_builder.of_memo (Version.jsoo_version compiler)
+    in
     Command.Args.As (linkall_arg ~version:jsoo_version ~linkall)
   in
   let spec =
@@ -647,6 +723,7 @@ let exe_rule
   in
   js_of_ocaml_rule
     sctx
+    ~compiler
     ~mode
     ~sub_command:Compile
     ~dir
@@ -716,6 +793,7 @@ let link_rule
   let context = Super_context.context sctx in
   let ctx = Context.build_context context in
   let build_dir = Context.build_dir context in
+  let compiler = compiler ~dir sctx ~mode in
   let get_all =
     let open Action_builder.O in
     let+ config = resolve_config sctx ~dir ~mode flags
@@ -724,7 +802,10 @@ let link_rule
     and+ libs = Resolve.Memo.read (Compilation_context.requires_link cc)
     and+ { Link_time_code_gen_type.to_link; force_linkall } =
       Resolve.read link_time_code_gen
-    and+ jsoo_version = jsoo_version ~dir sctx in
+    and+ jsoo_version =
+      let* compiler = compiler in
+      Action_builder.of_memo (Version.jsoo_version compiler)
+    in
     let libs =
       List.map libs ~f:(Lib.Parameterised.for_instance ~build_dir ~ext_lib:None)
     in
@@ -770,6 +851,7 @@ let link_rule
   let spec = Command.Args.S [ Dyn runtime_dep; Dyn get_all ] in
   js_of_ocaml_rule
     sctx
+    ~compiler
     ~mode
     ~sub_command:Link
     ~dir
@@ -792,6 +874,7 @@ let build_cm'
       ~shapes
       ~sourcemap
   =
+  let compiler = compiler_for_config sctx ~dir ~mode ~config in
   let spec =
     Command.Args.(
       S
@@ -800,7 +883,10 @@ let build_cm'
             (let open Action_builder.O in
              let* () = Action_builder.return () in
              let+ shapes =
-               let* jsoo_version = jsoo_version ~dir sctx in
+               let* compiler = compiler in
+               let* jsoo_version =
+                 Action_builder.of_memo (Version.jsoo_version compiler)
+               in
                match jsoo_has_shapes jsoo_version with
                | false -> Action_builder.return []
                | true -> shapes
@@ -810,6 +896,7 @@ let build_cm'
   in
   js_of_ocaml_rule
     sctx
+    ~compiler
     ~mode
     ~sub_command:Compile
     ~dir
@@ -886,10 +973,12 @@ let setup_shared_runtime_rule sctx s_config s_digest =
   match Digest.from_hex s_digest with
   | None -> User_error.raise [ Pp.textf "invalid jsoo runtime key: %s" s_digest ]
   | Some digest ->
-    let { Runtime_key.Decoded.mode; lib_names; project_root } =
-      Runtime_key.decode digest
+    let { Runtime_key.Decoded.mode; lib_names; scope_dir } = Runtime_key.decode digest in
+    let* scope =
+      match scope_dir with
+      | None -> Scope.DB.find_by_dir (Context.build_dir ctx)
+      | Some dir -> Scope.DB.find_by_dir dir
     in
-    let* scope = Scope.DB.find_by_project_root ctx project_root in
     let* libs =
       let lib_db = Scope.libs scope in
       Memo.parallel_map lib_names ~f:(fun name ->
@@ -908,6 +997,12 @@ let setup_shared_runtime_rule sctx s_config s_digest =
     in
     js_of_ocaml_rule
       sctx
+      ~compiler:
+        (compiler_for_config
+           sctx
+           ~dir
+           ~mode
+           ~config:(Some (Action_builder.return config)))
       ~mode
       ~sub_command:Build_runtime
       ~dir
@@ -928,8 +1023,8 @@ let setup_separate_compilation_rules sctx components =
     let config = Config.of_string s_config in
     let pkg = Lib_name.parse_string_exn (Loc.none, s_pkg) in
     let ctx = Super_context.context sctx in
-    let* installed_libs = Lib.DB.installed ctx in
-    Lib.DB.find installed_libs pkg
+    let* scope = Scope.DB.find_by_dir (Context.build_dir ctx) in
+    Lib.DB.find (Scope.libs scope) pkg
     >>= (function
      | None -> Memo.return ()
      | Some pkg ->
@@ -957,7 +1052,7 @@ let setup_separate_compilation_rules sctx components =
            archive "stdlib.cma" :: archive "std_exit.cmo" :: archives
          | _ -> Memo.return archives
        in
-       Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
+       Memo.parallel_iter (Config.modes config) ~f:(fun mode ->
          Memo.parallel_iter archives ~f:(fun fn ->
            let build_context = Context.build_context ctx in
            let name = Path.basename fn in

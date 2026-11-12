@@ -33,6 +33,7 @@ val with_
     Expands [targets] with the set of files discovered in directory targets. *)
 val move_targets_to_build_dir
   :  t
+  -> promotion:Execution_parameters.Promotion.t
   -> skip_files:Path.Build.Set.t
   -> targets:Targets.Validated.t
   -> unit Fiber.t

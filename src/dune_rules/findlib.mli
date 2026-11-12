@@ -37,6 +37,13 @@ val create : Context_name.t -> t Memo.t
     "path" field in the findlib.conf file. *)
 val create_with_paths : paths:Path.t list -> Context_name.t -> t Memo.t
 
+(** Search only this producer's installed metadata, without compiler builtins. *)
+val create_for_package
+  :  Context_name.t
+  -> package:Package.Name.t
+  -> lib_root:Path.t
+  -> t Memo.t
+
 module For_tests : sig
   val create : paths:Path.t list -> lib_config:Lib_config.t -> t Memo.t
 end

@@ -223,11 +223,11 @@ module Create = struct
 end
 
 let load_opam_file_with_contents ~contents:opam_file_string file name =
-  let loc = Loc.in_file (Path.source file) in
+  let loc = Loc.in_file (Dune_lang.Source_path.to_path file) in
   let opam =
     let opam =
       let lexbuf =
-        Lexbuf.from_string opam_file_string ~fname:(Path.Source.to_string file)
+        Lexbuf.from_string opam_file_string ~fname:(Dune_lang.Source_path.to_string file)
       in
       try Ok (parse lexbuf) with
       | User_error.E _ as exn -> Error exn
@@ -275,7 +275,7 @@ let load_opam_file_with_contents ~contents:opam_file_string file name =
       >>| List.rev
     | _ -> None
   in
-  let dir = Path.Source.parent_exn file in
+  let dir = Dune_lang.Source_path.parent_exn file in
   let info =
     Dune_lang.Package_info.create
       ~maintainers:(get_many "maintainer")

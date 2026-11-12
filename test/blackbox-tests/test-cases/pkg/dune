@@ -48,8 +48,13 @@
  (deps %{bin:strace}))
 
 (cram
- (applies_to relocatable-compiler-sandbox)
- (deps %{bin:menhir}))
+ (applies_to relocatable-compiler-sandbox.t)
+ (deps
+  %{bin:menhir}
+  ../../../../vendor/sha/flags/dune
+  ../../../../vendor/sha/flags/c_flags.ml
+  ../../../../vendor/ocaml-lmdb/flags/dune
+  ../../../../vendor/ocaml-lmdb/flags/gen_c_flags.ml))
 
 (cram
  (deps %{bin:awk} %{bin:cmp})
@@ -69,7 +74,10 @@
 
 (cram
  (deps %{bin:cmp} %{bin:ocamlfind})
- (applies_to package-library-closure.t))
+ (applies_to
+  package-library-closure.t
+  mounted-projects.t
+  mounted-dune-package.t))
 
 (cram
  (deps %{bin:curl})
@@ -104,6 +112,10 @@
   extra-sources.t
   pkg-extract-fail.t
   broken-symlink-in-dependency.t))
+
+(cram
+ (deps %{bin:odoc} %{bin:sherlodoc})
+ (applies_to mounted-rule-parity.t))
 
 (cram
  (deps %{bin:ocaml_index})

@@ -1,0 +1,3 @@
+(library
+ (name bar)
+ (public_name my_pkg.bar))

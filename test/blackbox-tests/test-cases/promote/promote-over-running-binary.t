@@ -13,16 +13,27 @@ Regression test for https://github.com/ocaml/dune/issues/3484
   >  (promote (until-clean) (into .)))
   > EOF
 
-The server writes a ready file on startup and exits after 30 seconds to
-avoid leaking a process if the test fails.
+The server flushes its version before creating the ready file, then waits
+until explicitly stopped. Clean it up even if the test is interrupted.
+
+  $ PID=
+  $ stop_server() {
+  >   if [ -n "$PID" ]; then
+  >     kill "$PID" 2>/dev/null || true
+  >     wait "$PID" 2>/dev/null || true
+  >     PID=
+  >   fi
+  > }
+  $ trap stop_server EXIT
+  $ trap 'exit 1' INT TERM
 
   $ cat > server.ml <<'EOF'
   > let () =
+  >   print_endline "server v1";
   >   let ready = Filename.concat (Sys.getcwd ()) "ready" in
   >   let oc = open_out ready in
   >   close_out oc;
-  >   print_endline "server v1";
-  >   Unix.sleepf 30.0
+  >   while true do Unix.pause () done
   > EOF
 
   $ dune build ./server.exe
@@ -30,9 +41,8 @@ avoid leaking a process if the test fails.
 Run the promoted binary directly (not via dune exec) because the test
 is specifically about promoting over a running binary on disk.
 
-  $ ./server.exe &
+  $ ./server.exe & PID=$!
   server v1
-  $ PID=$!
 
   $ dune_cmd wait-for-file-to-appear ready
   $ rm -f ready
@@ -41,23 +51,23 @@ Modify the source and rebuild while the promoted binary is running.
 
   $ cat > server.ml <<'EOF'
   > let () =
+  >   print_endline "server v2";
   >   let ready = Filename.concat (Sys.getcwd ()) "ready" in
   >   let oc = open_out ready in
   >   close_out oc;
-  >   print_endline "server v2";
-  >   Unix.sleepf 30.0
+  >   while true do Unix.pause () done
   > EOF
 
   $ dune build ./server.exe
 
-The promoted binary should be updated. Kill the old server.
+The promoted binary should be updated while the original server is still alive.
 
-  $ kill $PID 2>/dev/null; wait $PID 2>/dev/null || true
+  $ kill -0 "$PID"
+  $ stop_server
 
 Verify the new binary works.
 
-  $ ./server.exe &
+  $ ./server.exe & PID=$!
   server v2
-  $ NEW_PID=$!
   $ dune_cmd wait-for-file-to-appear ready
-  $ kill $NEW_PID 2>/dev/null; wait $NEW_PID 2>/dev/null || true
+  $ stop_server

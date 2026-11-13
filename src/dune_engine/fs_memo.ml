@@ -196,15 +196,10 @@ module Cached_digest = struct
       result
     in
     fun path ->
-      let path_string = Path.to_string path in
       Digest_result.catch_fs_errors (fun () ->
-        match Stat.stat path_string with
-        | stats -> refresh_sync stats path
-        | exception Unix.Unix_error (ENOENT, _, _) ->
-          (* Test if this is a broken symlink for better error messages. *)
-          (match Unix.lstat path_string with
-           | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
-           | _stats_so_must_be_a_symlink -> Error Broken_symlink))
+        match Digest_result.stat path with
+        | Ok stats -> refresh_sync stats path
+        | Error error -> Error error)
   ;;
 
   let peek (cache : t) ~table path ~f ~emit =
@@ -444,19 +439,14 @@ module Debug = struct
     }
 
   let current_digest path =
-    let path_string = Path.to_string path in
     match
       Digest_result.catch_fs_errors (fun () ->
-        match Stat.stat path_string with
-        | stats ->
+        match Digest_result.stat path with
+        | Ok stats ->
           Ok
             ( Some (Cached_digest.Stats.of_stat stats)
             , Cached_digest.digest_path_with_stats path stats )
-        | exception Unix.Unix_error (ENOENT, _, _) ->
-          (match Unix.lstat path_string with
-           | exception Unix.Unix_error (ENOENT, _, _) ->
-             Error Digest_result.Error.No_such_file
-           | _ -> Error Digest_result.Error.Broken_symlink))
+        | Error error -> Error error)
     with
     | Ok current -> current
     | Error error -> None, Error error

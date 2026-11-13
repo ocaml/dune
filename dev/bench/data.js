@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794611783232,
+  "lastUpdate": 1794612051321,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -487633,6 +487633,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.52900380762,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "shon.feder@gmail.com",
+            "name": "Shon",
+            "username": "shonfeder"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f408f280d95ea26affcefeee2d5c6c550b404339",
+          "message": "Bump dune version to 3.26 (#17028)",
+          "timestamp": "2026-11-13T18:01:52-05:00",
+          "tree_id": "78eb1a1002c7fdfe1d005c88b932a3b6046b3f62",
+          "url": "https://github.com/ocaml/dune/commit/f408f280d95ea26affcefeee2d5c6c550b404339"
+        },
+        "date": 1794612049281,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 51.13393949702667,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794562231032,
+  "lastUpdate": 1794562239054,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -487314,6 +487314,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 60.47102062440666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "630391ec995e589121f7f6a9358d10d0e9a1787c",
+          "message": "refactor(pkg): introduce a fetch source kind type (#17017)\n\nReplace the polymorphic fetch kind with Kind.t and use its enum for\ntarget\nbasenames. Update package source and extra-source callers.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-13T17:06:18+08:00",
+          "tree_id": "36943361057082ec69f3441359c44f9dabc7afa4",
+          "url": "https://github.com/ocaml/dune/commit/630391ec995e589121f7f6a9358d10d0e9a1787c"
+        },
+        "date": 1794562238224,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.48243754439333336,
             "unit": "seconds"
           }
         ]

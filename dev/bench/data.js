@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794587700990,
+  "lastUpdate": 1794588059120,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -678860,6 +678860,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.16347063544,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c792e6022889963069498767707ddadfd26c10d5",
+          "message": "perf: tune GC defaults for compiler and ocamldep commands (#16914)\n\nSet GC defaults for Dune-generated OCaml compiler and ocamldep commands\nin every build profile:\n\n- `s=2M` for all supported compiler versions.\n- A nominal 128 MiB-equivalent `Xsmall_heap_limit` threshold, converted\nto GC-work units using the context compiler word size, when the compiler\nis OCaml 5.5 or newer.\n\nExplicit `OCAMLRUNPARAM` settings, including empty values and directory\noverrides, take precedence. Legacy-only `CAMLRUNPARAM` settings do not\nsuppress these defaults.\n\n`Ocaml.Runparam` takes typed GC settings and owns the variable name,\nencoding and default application. A shared rules-layer helper selects\nthe policy using existing command-environment overrides. Environment\nmerging, other tools, user actions, executed programs and the Dune\nruntime remain unchanged.\n\nPreparatory test coverage: #17001.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-14T00:23:03+08:00",
+          "tree_id": "82e792a8be4c3dd3eb20b9f474ef7809094ecd55",
+          "url": "https://github.com/ocaml/dune/commit/c792e6022889963069498767707ddadfd26c10d5"
+        },
+        "date": 1794587654059,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.739476582,
             "unit": "seconds"
           }
         ]

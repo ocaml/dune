@@ -308,45 +308,45 @@ let lock_dir_active ctx =
 
 let source_kind (source : Dune_pkg.Source.t) =
   let loc, url = source.url in
+  let error paragraphs = Error (User_error.make ~loc paragraphs) in
   if OpamUrl.is_local url && url.backend = `rsync
   then (
     let path =
       match Path.of_string_allow_outside_workspace url.path with
-      | External e -> Path.Outside_build_dir.External e
-      | In_source_tree s -> Path.Outside_build_dir.In_source_dir s
+      | External e -> Ok (Path.Outside_build_dir.External e)
+      | In_source_tree s -> Ok (Path.Outside_build_dir.In_source_dir s)
       | In_build_dir b ->
-        User_error.raise
-          ~loc
+        error
           [ Pp.textf
               "package source path %s is inside the build directory"
               (Path.Build.to_string_maybe_quoted b)
           ]
     in
-    Fs_memo.path_kind path
-    >>| function
-    | Error (ENOENT, _, _) ->
-      User_error.raise
-        ~loc
-        [ Pp.textf
-            "%s does not exist"
-            (Path.Outside_build_dir.to_string_maybe_quoted path)
-        ]
-    | Error exn ->
-      User_error.raise
-        ~loc
-        [ Pp.textf
-            "unable to read %s"
-            (Path.Outside_build_dir.to_string_maybe_quoted path)
-        ; Unix_error.Detailed.pp exn
-        ]
-    | Ok S_REG -> `Local (`File, path)
-    | Ok S_DIR -> `Local (`Directory, path)
-    | Ok _kind ->
-      User_error.raise
-        ~loc
-        [ Pp.textf
-            "path %s is not a directory or a file"
-            (Path.Outside_build_dir.to_string_maybe_quoted path)
-        ])
-  else Memo.return `Fetch
+    match path with
+    | Error _ as error -> Memo.return error
+    | Ok path ->
+      Fs_memo.path_kind path
+      >>| (function
+       | Error (ENOENT, _, _) ->
+         error
+           [ Pp.textf
+               "%s does not exist"
+               (Path.Outside_build_dir.to_string_maybe_quoted path)
+           ]
+       | Error exn ->
+         error
+           [ Pp.textf
+               "unable to read %s"
+               (Path.Outside_build_dir.to_string_maybe_quoted path)
+           ; Unix_error.Detailed.pp exn
+           ]
+       | Ok S_REG -> Ok (`Local (`File, path))
+       | Ok S_DIR -> Ok (`Local (`Directory, path))
+       | Ok _kind ->
+         error
+           [ Pp.textf
+               "path %s is not a directory or a file"
+               (Path.Outside_build_dir.to_string_maybe_quoted path)
+           ]))
+  else Memo.return (Ok `Fetch)
 ;;

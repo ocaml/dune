@@ -2128,6 +2128,7 @@ let source_files (t : Pkg.t) ~loc =
    | None -> Memo.return None
    | Some source ->
      Lock_dir.source_kind source
+     >>| User_error.ok_exn
      >>| (function
       | `Local (`File, _) | `Fetch -> None
       | `Local (`Directory, root) -> Some root))
@@ -2143,6 +2144,7 @@ let source_rules (pkg : Pkg.t) =
     | Some source ->
       let loc = fst source.url in
       Lock_dir.source_kind source
+      >>| User_error.ok_exn
       >>= (function
        | `Local (`File, _) | `Fetch ->
          let fetch =
@@ -2453,6 +2455,7 @@ let setup_package_rules db ~package_universe ~dir ~pkg_digest : Gen_rules.t Memo
     | None -> Memo.return map
     | Some source ->
       Lock_dir.source_kind source
+      >>| User_error.ok_exn
       >>| (function
        | `Local (`Directory, _) -> map
        | `Local (`File, _) | `Fetch ->

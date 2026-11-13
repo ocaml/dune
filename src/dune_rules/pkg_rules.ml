@@ -2679,6 +2679,18 @@ let bin_paths_for_packages ~packages context =
   Env_path.path env
 ;;
 
+let compiler_bin_paths context =
+  lock_dir_active context
+  >>= function
+  | false -> Memo.return []
+  | true ->
+    let* lock_dir = Lock_dir.get_exn context in
+    (match lock_dir.ocaml with
+     | None -> Memo.return []
+     | Some (_, ocaml) ->
+       bin_paths_for_packages ~packages:(Only (Package.Name.Set.singleton ocaml)) context)
+;;
+
 let find_package ctx pkg =
   lock_dir_active ctx
   >>= function

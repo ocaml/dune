@@ -435,12 +435,18 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
               (Context_name.to_string builder.name))
           (fun () ->
              let+ current_env = builder.env
-             and+ pkg_env = Pkg_rules.exported_env builder.name in
-             (* [PATH] is not added here because it is contributed per
-                directory by [Env_node], where the set of narrowed lockdir
-                packages is known. *)
+             and+ pkg_env = Pkg_rules.exported_env builder.name
+             and+ compiler_bin_paths = Pkg_rules.compiler_bin_paths builder.name in
+             (* Actions must declare the executables they use from the lock dir
+                so that they are rerun when those change. We make an exception
+                for the compiler, as build scripts expect [ocamlc] and friends
+                to be the compiler of the build rather than the system
+                one. Actions do not depend on the compiler package for that
+                matter, so an action running the compiler through [PATH] without
+                declaring it is not rerun when the compiler changes. *)
              let pkg_env = Env.remove pkg_env ~var:Env_path.var in
-             Env_path.extend_env_concat_path current_env pkg_env)
+             Env_path.extend_env_concat_path current_env pkg_env
+             |> Env_path.cons_multi ~dirs:compiler_bin_paths)
         |> Memo.Lazy.force
       in
       { builder with env }

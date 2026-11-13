@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794584805073,
+  "lastUpdate": 1794587428556,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -678773,6 +678773,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.711279176713333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "82d28bdf0be7795031a6646d7fac13acbb89f578",
+          "message": "test(pkg): keep unrelated package preparation lazy (#17025)\n\nExtend the existing single-package test with an unused package whose\nsource and build program are missing, and whose exported environment\nrefers to a dependency that fails to build. Building an unrelated\npackage must still succeed without preparing the unused package or\ncreating its dependency’s target directory.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-14T00:16:19+08:00",
+          "tree_id": "1cbd2c08b7886547511022568f1d69d8a27b842b",
+          "url": "https://github.com/ocaml/dune/commit/82d28bdf0be7795031a6646d7fac13acbb89f578"
+        },
+        "date": 1794587111155,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.16347063544,
             "unit": "seconds"
           }
         ]

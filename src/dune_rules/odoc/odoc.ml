@@ -32,6 +32,8 @@ module Paths = struct
   let html ctx m = add_parent_id (html_root ctx) m
   let markdown ctx m = add_parent_id (markdown_root ctx) m
   let odocl ctx m = add_parent_id (odocl_root ctx) m
+  let index ctx pkg = odocl ctx (Pkg pkg) ++ "index.odoc-index"
+  let sidebar ctx pkg = odocl ctx (Pkg pkg) ++ "sidebar.odoc-sidebar"
   let gen_mld_dir ctx pkg = root ctx ++ "_mlds" ++ Package.Name.to_string pkg
   let odoc_support ctx = html_root ctx ++ odoc_support_dirname
   let toplevel_index ctx = html_root ctx ++ "index.html"
@@ -132,6 +134,12 @@ module Artifact = struct
       in
       base ++ (basename |> String.drop_prefix ~prefix:"page-" |> Option.value_exn)
       |> Path.Build.extend_basename ~suffix
+  ;;
+
+  let package t =
+    match t.target with
+    | Pkg pkg -> Some pkg
+    | Lib lib -> Lib_info.package (Lib.Local.info lib)
   ;;
 end
 
@@ -550,7 +558,14 @@ let html_generate_args sctx ~search_db ~html_root ~odoc_support_path odoc_file o
     | Some search_db ->
       Sherlodoc.odoc_args sctx ~search_db ~dir_sherlodoc_dot_js:html_root
   in
+  let sidebar_args =
+    match Artifact.package odoc_file with
+    | None -> Command.Args.empty
+    | Some pkg ->
+      Command.Args.S [ A "--sidebar"; Dep (Path.build (Paths.sidebar ctx pkg)) ]
+  in
   [ search_args
+  ; sidebar_args
   ; Command.Args.A "-o"
   ; Path (Path.build html_root)
   ; A "--support-uri"
@@ -928,6 +943,32 @@ let setup_pkg_rules_def memo_name f =
     f
 ;;
 
+let setup_pkg_sidebar_rules sctx ~pkg odocs =
+  let ctx = Super_context.context sctx in
+  let dir = Path.build (Paths.odocl ctx (Pkg pkg)) in
+  let odocls =
+    List.map odocs ~f:(fun odoc -> Path.build (Artifact.odocl_file ctx odoc))
+  in
+  let* () =
+    run_odoc
+      sctx
+      ~dir
+      "compile-index"
+      ~quiet:false
+      ~flags_for:None
+      [ A "-o"; Target (Paths.index ctx pkg); Deps odocls ]
+    |> add_rule sctx
+  in
+  run_odoc
+    sctx
+    ~dir
+    "sidebar-generate"
+    ~quiet:false
+    ~flags_for:None
+    [ A "-o"; Target (Paths.sidebar ctx pkg); Dep (Path.build (Paths.index ctx pkg)) ]
+  |> add_rule sctx
+;;
+
 let setup_pkg_odocl_rules_def =
   let f (sctx, pkg, for_) =
     let* libs = Super_context.context sctx |> Context.name |> libs_of_pkg ~pkg in
@@ -936,7 +977,7 @@ let setup_pkg_odocl_rules_def =
       Lib.closure libs ~linking:false ~for_
     in
     let* () = Memo.parallel_iter libs ~f:(setup_lib_odocl_rules sctx ~requires)
-    and* _ =
+    and* pkg_odocs =
       let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
       let pkg = Some pkg in
       let+ () =
@@ -944,8 +985,10 @@ let setup_pkg_odocl_rules_def =
           link_odoc_rules sctx ~pkg ~requires odoc)
       in
       pkg_odocs
-    and* _ = Memo.parallel_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib)) in
-    Memo.return ()
+    and* lib_odocs =
+      Memo.parallel_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
+    in
+    setup_pkg_sidebar_rules sctx ~pkg (pkg_odocs @ List.concat lib_odocs)
   in
   setup_pkg_rules_def "setup-package-odocls-rules" f
 ;;

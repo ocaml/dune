@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794538975872,
+  "lastUpdate": 1794539084427,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -678280,6 +678280,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8061358022666667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7ee0079498b649627ba4d1c2b4306640166197dc",
+          "message": "test(boot): reproduce secondary compiler launcher failures (#17012)\n\nReproduce the secondary-compiler bootstrap failure with spaces in\ncompiler paths, temporary paths, and forwarded arguments. Exercise\nnative shell commands without requiring an old compiler, and include the\ncase in Windows test runs.\n\nReported in\nhttps://ocaml.zulipchat.com/#narrow/channel/527834-dune/topic/dune.2E3.2E25.2E0.20on.20ocaml.2E4.2E13.2E1/near/639907176.",
+          "timestamp": "2026-11-13T02:46:24Z",
+          "tree_id": "8b800aece77a2ea08f4f453cb0aaf041c7752492",
+          "url": "https://github.com/ocaml/dune/commit/7ee0079498b649627ba4d1c2b4306640166197dc"
+        },
+        "date": 1794538679963,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.777679059746667,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794539300775,
+  "lastUpdate": 1794539308450,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -487082,6 +487082,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.84413828627333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3a700d315eb6e07be51718b8934d2278244b75fa",
+          "message": "test(action-plugin): preserve watcher exit status through timeout (#17015)\n\nPreserve Dune's exit status when stopping the action-plugin watch test\nso uutils `timeout` returns the expected 130 rather than 124. Run the\nwatchdog in the foreground to avoid duplicate signals, matching the\nexisting trace-test workaround.",
+          "timestamp": "2026-11-13T02:44:45Z",
+          "tree_id": "63a0410f3bd4ac799be00444dbd9b0619b554d0e",
+          "url": "https://github.com/ocaml/dune/commit/3a700d315eb6e07be51718b8934d2278244b75fa"
+        },
+        "date": 1794539307446,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5404103449066667,
             "unit": "seconds"
           }
         ]

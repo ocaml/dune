@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794592569739,
+  "lastUpdate": 1794592842695,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -487517,6 +487517,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5554087395333334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4a044042df2998839ce86b96ee28594ed64aa60d",
+          "message": "prototype: add RPC-backed rule plugins (#16760)\n\nThis prototype lets a project define its own stanza-like forms using a\nsmall OCaml program. For example, here's a `(plugin.greet ...)` form\nthat generates a greeting file.\n\n**1. Enable rule plugins in `dune-project`:**\n\n```lisp\n(lang dune 3.26)\n(using plugin 0.1)\n```\n\n**2. Define the plugin in `build-plugins/dune`:**\n\n```lisp\n(executable\n (name greet)\n (libraries dune-rules-plugin))\n\n(plugin\n (name greet)\n (executable ./greet.exe))\n```\n\nIn `build-plugins/greet.ml`, turn the invocation's arguments into\nordinary Dune stanzas:\n\n```ocaml\nopen Dune_rules_plugin\n\nlet () =\n  run (function\n    | [Sexp.Atom target; Atom who] ->\n      [ Sexp.List\n          [ Atom \"rule\"\n          ; List [ Atom \"target\"; Atom target ]\n          ; List\n              [ Atom \"action\"\n              ; List\n                  [ Atom \"write-file\"\n                  ; Atom target\n                  ; Quoted_string (\"Hello, \" ^ who ^ \"!\\n\")\n                  ]\n              ]\n          ]\n      ]\n    | _ -> failwith \"expected a target and a name\")\n```\n\n**3. Use it in `app/dune`:**\n\n```lisp\n(plugin.greet hello.txt world)\n```\n\nThis expands to the equivalent of:\n\n```lisp\n(rule\n (target hello.txt)\n (action (write-file hello.txt \"Hello, world!\\n\")))\n```\n\n**4. Build normally:**\n\n```console\n$ dune build app/hello.txt\n$ cat _build/default/app/hello.txt\nHello, world!\n```\n\nDune builds and starts the plugin automatically; there's no separate\ngeneration step. Arguments are passed as unexpanded s-expressions, and\nreturned stanzas are interpreted in the invocation's directory. Returned\nstanzas may themselves invoke plugins, including the same plugin\nrecursively.\n\nFor now, the definition and invocation must be in different directories,\nand generated stanzas have the same restrictions as `dynamic_include`.\nThis remains a draft: error reporting still needs work.\n\nStarting with Dune language 3.26, the existing site-plugin stanza is\nspelled `(dune_site.plugin ...)` to distinguish it from rule plugins.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-14T01:41:45+08:00",
+          "tree_id": "b0dc79487091d295eca886dd1f0154d28d2bd8f6",
+          "url": "https://github.com/ocaml/dune/commit/4a044042df2998839ce86b96ee28594ed64aa60d"
+        },
+        "date": 1794592840797,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 52.252112395640005,
             "unit": "seconds"
           }
         ]

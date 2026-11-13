@@ -7,6 +7,11 @@
   %{project_root}/boot/pps.mll
   %{bin:bootstrap.exe}))
 
+(cram
+ (applies_to secondary-compiler.t)
+ (alias runtest-windows)
+ (deps %{project_root}/boot/bootstrap.ml))
+
 (env
  (_
   (binaries

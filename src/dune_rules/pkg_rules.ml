@@ -457,7 +457,6 @@ module Pkg = struct
     ; paths : Path.t Paths.t
     ; write_paths : Path.Build.t Paths.t
     ; files_dir : Path.Build.t
-    ; pkg_digest : Pkg_digest.t
     ; mutable exported_env : string Env_update.t list
     }
 
@@ -1606,7 +1605,6 @@ end = struct
         ; write_paths
         ; info
         ; files_dir
-        ; pkg_digest
         ; exported_env = []
         }
       in
@@ -2450,7 +2448,7 @@ let setup_pkg_install_alias =
 
 let setup_package_rules db ~package_universe ~dir ~pkg_digest : Gen_rules.t Memo.t =
   let* pkg = Resolve.resolve db Loc.none pkg_digest package_universe in
-  let paths = Paths.make pkg.pkg_digest package_universe ~relative:Path.Build.relative in
+  let paths = Paths.make pkg_digest package_universe ~relative:Path.Build.relative in
   let+ directory_targets =
     let map =
       let target_dir = paths.target_dir in

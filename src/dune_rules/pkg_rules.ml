@@ -2088,13 +2088,13 @@ let rule ?loc { Action_builder.With_targets.build; targets } =
   Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
 ;;
 
-let source_files (t : Pkg.t) ~loc =
+let source_files root ~loc =
   let skip_dir = function
     | ".hg" | ".git" | "_darcs" | "_opam" | "_build" | "_esy" -> true
     | _ -> false
   in
   let skip_file = String.starts_with ~prefix:".#" in
-  let rec loop root acc path =
+  let rec loop acc path =
     let full_path = Path.Outside_build_dir.append_local root path in
     Fs_memo.dir_contents full_path
     >>= function
@@ -2120,21 +2120,11 @@ let source_files (t : Pkg.t) ~loc =
       let acc = Path.Local.Set.of_list files |> Path.Local.Set.union acc in
       Memo.map_reduce
         dirs
-        ~f:(fun dir -> loop root Path.Local.Set.empty dir)
+        ~f:(loop Path.Local.Set.empty)
         ~empty:acc
         ~combine:Path.Local.Set.union
   in
-  (match t.info.source with
-   | None -> Memo.return None
-   | Some source ->
-     Lock_dir.source_kind source
-     >>| User_error.ok_exn
-     >>| (function
-      | `Local (`File, _) | `Fetch -> None
-      | `Local (`Directory, root) -> Some root))
-  >>= function
-  | None -> Memo.return Path.Local.Set.empty
-  | Some root -> loop root Path.Local.Set.empty Path.Local.root
+  loop Path.Local.Set.empty Path.Local.root
 ;;
 
 let source_rules (pkg : Pkg.t) =
@@ -2163,9 +2153,10 @@ let source_rules (pkg : Pkg.t) =
          Memo.return (Dep.Set.of_files [ pkg.paths.source_dir ], [ loc, fetch ])
        | `Local (`Directory, source_root) ->
          let+ source_files, rules =
+           source_files source_root ~loc
+           >>|
            let source_root = Path.outside_build_dir source_root in
-           source_files pkg ~loc
-           >>| Path.Local.Set.fold ~init:([], []) ~f:(fun file (source_files, rules) ->
+           Path.Local.Set.fold ~init:([], []) ~f:(fun file (source_files, rules) ->
              let src = Path.append_local source_root file in
              if Path.is_broken_symlink src
              then

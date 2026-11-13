@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794556899237,
+  "lastUpdate": 1794557101306,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -487169,6 +487169,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5342512498266666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "86de9f1c78f0666f7f18ba6caeab5cea544fb14e",
+          "message": "refactor(digest): share missing-path and broken-symlink classification (#17014)\n\nExtract `Digest_result.stat` to share missing-file and broken-symlink\nclassification between digest refresh and digest-cache diagnostics. The\nhelper only reads metadata; callers retain their existing handling of\nother filesystem errors.\n\nThe cram coverage was added separately in #17007.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-13T15:48:01+08:00",
+          "tree_id": "82ac7d0f3d6225acf9924efd50acecbdf421e743",
+          "url": "https://github.com/ocaml/dune/commit/86de9f1c78f0666f7f18ba6caeab5cea544fb14e"
+        },
+        "date": 1794557100141,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 38.7686939968,
             "unit": "seconds"
           }
         ]

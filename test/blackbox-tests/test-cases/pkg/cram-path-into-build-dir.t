@@ -55,4 +55,32 @@ When the package changes, it is rebuilt and the test is rerun:
   +  v2
   [1]
 
+Build directory paths in the incoming PATH, as set by `eval $(dune tools env)`,
+are removed, whether they hold lock directory or workspace binaries:
+
+  $ cat > wsbin <<EOF
+  > #!/bin/sh
+  > echo workspace
+  > EOF
+  $ chmod +x wsbin
+  $ cat > dune <<EOF
+  > (install (section bin) (package mypkg) (files wsbin))
+  > (cram)
+  > EOF
+  $ cat > t.t <<EOF
+  >   \$ helper 2> /dev/null
+  >   \$ wsbin 2> /dev/null
+  > EOF
+  $ dune build @install
+  $ PATH="$PWD/$(get_build_pkg_dir provider)/target/bin:$PWD/_build/install/default/bin:$PATH" dune test
+  File "t.t", line 1, characters 0-0:
+  --- t.t
+  +++ t.t.corrected
+  @@ -1,2 +1,4 @@
+     $ helper 2> /dev/null
+  +  [127]
+     $ wsbin 2> /dev/null
+  +  [127]
+  [1]
+
   $ cd ..

@@ -9,7 +9,20 @@ end
 
 let to_dune_dep_set =
   let of_action_plugin_dep ~loc ~root : Dune_rpc.Dep.t -> Dep.t =
-    let to_dune_path = Path.relative root in
+    let to_dune_path path =
+      let rec resolve root path =
+        match String.drop_prefix path ~prefix:"../" with
+        | Some path -> resolve (Filename.dirname root) path
+        | None ->
+          if String.equal path ".."
+          then Filename.dirname root
+          else Filename.concat root path
+      in
+      resolve root path
+      |> Path.of_string
+      |> Path.Expert.try_localize_external
+      |> Path.drop_optional_sandbox_root
+    in
     function
     | File fn -> Dep.file (to_dune_path fn)
     | Directory dir ->
@@ -27,7 +40,7 @@ let to_dune_dep_set =
       Dep.file_selector selector
   in
   fun set ~loc ~root ->
-    let root = Path.drop_optional_sandbox_root root in
+    let root = Path.to_absolute_filename root in
     Dune_rpc.Dep.Set.to_list_map set ~f:(of_action_plugin_dep ~loc ~root)
     |> Dep.Set.of_list
 ;;
@@ -45,6 +58,7 @@ module Server = struct
     { build_deps : Dep.Set.t -> unit Fiber.t
     ; rule_loc : Loc.t
     ; root : Path.t
+    ; job_slot : Scheduler.Job_slot.t
     ; mutable initialized : bool
     ; mutable pending : unit Fiber.Ivar.t list
     ; mutable errors : string list
@@ -68,10 +82,18 @@ module Server = struct
   ;;
 
   let with_active ~(ectx : context) f =
-    let { Action.Ext.Exec.build_deps; rule_loc; root; _ } = ectx in
+    let { Action.Ext.Exec.build_deps; rule_loc; root; metadata; _ } = ectx in
+    let { Process_metadata.job_slots; _ } = metadata in
     let action_id = Action_id.gen () in
     let active_action =
-      { build_deps; rule_loc; root; initialized = false; pending = []; errors = [] }
+      { build_deps
+      ; rule_loc
+      ; root
+      ; job_slot = Scheduler.Job_slot.create ~job_slots
+      ; initialized = false
+      ; pending = []
+      ; errors = []
+      }
     in
     Action_id.Table.add_exn active action_id active_action;
     let open Fiber.O in
@@ -108,15 +130,16 @@ module Server = struct
         let completed = Fiber.Ivar.create () in
         active.pending <- completed :: active.pending;
         Fiber.finalize
-          (fun () ->
-             Fiber.collect_errors (fun () -> active.build_deps deps_to_build)
-             >>| function
-             | Error errors ->
-               let message = build_error_message errors in
-               active.errors <- message :: active.errors;
-               Some message
-             | Ok () -> None)
           ~finally:(fun () -> Fiber.Ivar.fill completed ())
+          (fun () ->
+             Scheduler.Job_slot.with_ active.job_slot ~f:(fun () ->
+               Fiber.collect_errors (fun () -> active.build_deps deps_to_build)
+               >>| function
+               | Ok () -> None
+               | Error errors ->
+                 let message = build_error_message errors in
+                 active.errors <- message :: active.errors;
+                 Some message))
   ;;
 
   let initialize _session action_id =
@@ -149,7 +172,8 @@ let exec ~(ectx : context) ~(eenv : env) prog args =
            ~value:(Action_id.to_string action_id)
     in
     let+ (_ : (unit, int) result) =
-      Process.run
+      Process.run_with_job_slot
+        ~job_slot:active_action.job_slot
         ~display:!Clflags.display
         (Accept eenv.exit_codes)
         ~dir:eenv.working_dir
@@ -182,7 +206,7 @@ module Spec = struct
 
   let name = "dynamic-run"
   let version = 1
-  let is_useful_to ~memoize = memoize
+  let is_useful_to_memoize = true
   let is_dynamic = true
   let runs_process = true
   let can_run_in_action_runner = true

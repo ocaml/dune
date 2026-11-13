@@ -28,11 +28,11 @@ let trim_broken_metadata_entries ~trimmed_so_far =
         Layout.Versioned.file_path (Version.Metadata.file_version version)
       in
       Layout.Versioned.list_metadata_entries version
-      |> List.fold_left
+      |> Seq.fold_left
            ~init:trimmed_so_far
-           ~f:(fun trimmed_so_far (path, rule_or_action_digest) ->
+           ~f:(fun trimmed_so_far (path, _rule_or_action_digest) ->
              let should_be_removed =
-               match Local.Metadata.Versioned.restore version ~rule_or_action_digest with
+               match Local.Artifacts.Metadata_file.load path with
                | Not_found_in_cache ->
                  (* A concurrent process must have removed this metadata file. No
                  need to try removing such "phantom" metadata files again. *)
@@ -71,8 +71,15 @@ let garbage_collect () =
 ;;
 
 let files_in_cache_for_all_supported_versions () =
-  List.concat_map Version.File.all ~f:(fun file_version ->
-    Layout.Versioned.list_file_entries file_version)
+  let legacy =
+    Version.File.all |> List.to_seq |> Seq.concat_map ~f:Layout.Legacy.list_file_entries
+  in
+  let current =
+    Version.File.all
+    |> List.to_seq
+    |> Seq.concat_map ~f:Layout.Versioned.list_file_entries
+  in
+  Seq.append current legacy
 ;;
 
 (* We call a cached file "unused" if there are currently no hard links to it
@@ -92,13 +99,18 @@ end
 
 let unused_files_in_cache () =
   files_in_cache_for_all_supported_versions ()
-  |> List.filter_map ~f:(fun (path, _) ->
+  |> Seq.filter_map ~f:(fun (path, _) ->
     match Path.stat path with
     | Error _ -> None
     | Ok stats ->
       if file_exists_and_is_unused ~stats
       then Some { Unused_file.path; size = stats.st_size; ctime = stats.st_ctime }
       else None)
+;;
+
+let unused_files_size files =
+  List.fold_left files ~init:0L ~f:(fun total (file : Unused_file.t) ->
+    Int64.add total (Int64.of_int file.size))
 ;;
 
 (* Dune uses [ctime] to prioritise entries for deletion. How does this work?
@@ -114,27 +126,38 @@ let unused_files_in_cache () =
      entry's [ctime]. This means that the trimmer will start deleting entries
      starting from the one that was least recently created or used. *)
 let trim ~goal =
+  (* An exact byte goal may leave zero-byte entries, so keep sorting unless
+     the goal strictly exceeds the total unused size. *)
   let files =
-    unused_files_in_cache ()
-    |> List.sort ~compare:(fun x y -> Float.compare x.Unused_file.ctime y.ctime)
+    if goal <= 0L
+    then []
+    else (
+      let files = unused_files_in_cache () |> List.of_seq in
+      let overhead = unused_files_size files in
+      if goal > overhead
+      then files
+      else List.sort files ~compare:(fun x y -> Float.compare x.ctime y.ctime))
   in
-  let delete (trimmed_so_far : Trimming_result.t) { Unused_file.path; size; _ } =
+  let rec delete (trimmed_so_far : Trimming_result.t) files =
     if trimmed_so_far.trimmed_bytes >= goal
     then trimmed_so_far
     else (
-      Fpath.unlink_no_err (Path.to_string path);
-      (* CR-someday amokhov: We should really be using block_size * #blocks
-         because that's how much we save actually. *)
-      Trimming_result.add trimmed_so_far ~bytes:size)
+      match files with
+      | [] -> trimmed_so_far
+      | { Unused_file.path; size; _ } :: rest ->
+        Fpath.unlink_no_err (Path.to_string path);
+        (* CR-someday amokhov: We should really be using block_size * #blocks
+           because that's how much we save actually. *)
+        delete (Trimming_result.add trimmed_so_far ~bytes:size) rest)
   in
-  let trimmed_so_far = List.fold_left ~init:Trimming_result.empty ~f:delete files in
+  let trimmed_so_far = delete Trimming_result.empty files in
   trim_broken_metadata_entries ~trimmed_so_far
 ;;
 
 let overhead_size () =
   unused_files_in_cache ()
-  |> List.fold_left ~init:0L ~f:(fun acc file ->
-    Int64.add acc (Int64.of_int file.Unused_file.size))
+  |> Seq.fold_left ~init:0L ~f:(fun total file ->
+    Int64.add total (Int64.of_int file.Unused_file.size))
 ;;
 
 let clear () =
@@ -152,6 +175,8 @@ let clear () =
   rm_rf_all Version.Metadata.all Layout.Versioned.metadata_storage_dir;
   rm_rf_all Version.File.all Layout.Versioned.file_storage_dir;
   rm_rf (Lazy.force Layout.temp_dir);
+  rm_rf (Path.relative (Lazy.force Layout.legacy_cache_dir) "meta");
+  rm_rf (Path.relative (Lazy.force Layout.legacy_cache_dir) "files");
   (* Do not catch errors when deleting the root directory so that they are
      reported to the user. *)
   let build_cache_dir = Path.to_string (Lazy.force Layout.build_cache_dir) in

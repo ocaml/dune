@@ -92,7 +92,7 @@ may start in a different directory while sharing the same action ID.
   launch
   $ dune build helper-output > helper.log 2>&1; echo $?
   1
-  $ cat _build/default/helper-output
+  $ test ! -e _build/default/helper-output
 
 The same cold read must work in sandboxes, without prebuilding the input or
 assuming the sandbox has the same root as the canonical build tree.
@@ -122,17 +122,24 @@ physical cwd and Dune's spelling of the root still refer to the same tree.
   second
   
 
-Batched declarations allow ordinary subprocess I/O without copying whole files
-into the plugin's heap.
+Absolute paths can name generated files. Batched declarations allow ordinary
+subprocess I/O without copying whole files into the plugin's heap.
 
   $ cat >> dune <<'EOF'
+  > (rule (target plain-abs-input) (action (write-file plain-abs-input absolute)))
+  > (rule
+  >  (target plain-abs-output)
+  >  (action (with-stdout-to plain-abs-output
+  >   (dynamic-run ./foo.exe absolute plain-abs-input))))
   > (rule (target first) (action (write-file first first)))
   > (rule (target second) (action (write-file second second)))
   > (rule
   >  (target batched)
   >  (action (with-stdout-to batched (dynamic-run ./foo.exe batch first second))))
   > EOF
-  $ dune build -j 1 batched
+  $ dune build -j 1 plain-abs-output batched
+  $ cat _build/default/plain-abs-output
+  absolute
   $ cat _build/default/batched; echo
   firstsecond
 
@@ -172,3 +179,79 @@ The promise-returning runner leaves ownership of the event loop with the caller.
   $ cat _build/default/promise-output
   promise
   returned
+
+An absolute path can name a generated input inside the action's sandbox. The
+request must build that input and make it available before the client reads it.
+Changing the producer's source must invalidate the consuming action.
+
+  $ printf first > abs-control
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target abs-input)
+  >  (deps abs-control)
+  >  (action (copy abs-control abs-input)))
+  > (rule
+  >  (target abs-output)
+  >  (deps (sandbox always))
+  >  (action (with-stdout-to abs-output
+  >   (dynamic-run ./foo.exe absolute abs-input))))
+  > EOF
+  $ test ! -e _build/default/abs-input
+  $ dune build --sandbox hardlink abs-output
+  $ cat _build/default/abs-output
+  first
+  $ printf second > abs-control
+  $ dune build --sandbox hardlink abs-output
+  $ cat _build/default/abs-output
+  second
+
+Absolute paths also work when the plugin runs without Dune.
+
+  $ ./foo.exe read "$PWD/abs-control"
+  second
+
+Absolute inputs outside the workspace are tracked too.
+
+  $ external_input=$(mktemp)
+  $ printf external > "$external_input"
+  $ cat >> dune <<EOF
+  > (rule
+  >  (target external-output)
+  >  (action (with-stdout-to external-output
+  >   (dynamic-run ./foo.exe read "$external_input"))))
+  > EOF
+  $ dune build external-output
+  $ cat _build/default/external-output
+  external
+  $ printf changed > "$external_input"
+  $ dune build external-output
+  $ cat _build/default/external-output
+  changed
+
+The build directory may also live outside the source workspace. Generated and
+external absolute inputs remain readable when using its physical path.
+
+  $ external_build=$(mktemp -d)
+  $ dune build --build-dir="$external_build" abs-output external-output
+  $ cat "$external_build/default/abs-output"
+  second
+  $ cat "$external_build/default/external-output"
+  changed
+
+Generated absolute inputs also rebuild when the external build directory is
+reached through a symlink.
+
+  $ ln -s "$external_build" _build-external-link
+  $ printf third > abs-control
+  $ dune build --build-dir=_build-external-link abs-output
+  $ cat _build-external-link/default/abs-output
+  third
+
+This is a bug: the same symlinked build directory breaks external absolute
+inputs, even though they work with the physical build-directory path.
+
+  $ dune build --build-dir=_build-external-link external-output > linked-external.log 2>&1
+  [1]
+  $ grep -q '^File unavailable:' linked-external.log
+  $ test ! -e _build-external-link/default/external-output
+  $ rm "$external_input"

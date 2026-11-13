@@ -1,5 +1,4 @@
 let () =
-    let open Result in
     print_endline "Registration of Plugin1";
     Queue.add (fun () ->
       let th = Thread.create (fun () ->

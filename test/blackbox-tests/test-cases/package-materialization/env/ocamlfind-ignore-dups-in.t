@@ -10,4 +10,4 @@ Test that (deps (package ...)) adds lib/ to OCAMLFIND_IGNORE_DUPS_IN.
   $ baseline=$OCAMLFIND_IGNORE_DUPS_IN
   $ dune build out
   $ env_added "$(cat _build/default/out)" "$baseline" | censor
-  $PWD/_build/install/default/.packages/$DIGEST/lib
+  $PWD/_build/_private/default/.packages/$DIGEST/lib

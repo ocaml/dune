@@ -1,8 +1,6 @@
 (** Result type *)
 
-type ('a, 'error) t = ('a, 'error) result =
-  | Ok of 'a
-  | Error of 'error
+include module type of Stdlib.Result
 
 val return : 'a -> ('a, _) t
 val ok : 'a -> ('a, _) t

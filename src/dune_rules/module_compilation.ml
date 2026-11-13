@@ -343,21 +343,27 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t) =
      |> List.concat_map ~f:(fun p -> [ Command.Args.A "-I"; Path (Path.build p) ])
    in
    let can_go_in_shared_cache = cm_kind_can_go_in_shared_cache cm_kind in
+   let rule_dir =
+     let dune_version =
+       Compilation_context.scope cctx |> Scope.project |> Dune_project.dune_version
+     in
+     (* TODO DUNE4 get rid of the old behavior *)
+     if dune_version >= (3, 7) then dir else Context.build_dir ctx
+   in
    add_rule
      ~can_go_in_shared_cache
      sctx
-     ~dir:
-       (let dune_version =
-          Compilation_context.scope cctx |> Scope.project |> Dune_project.dune_version
-        in
-        (* TODO DUNE4 get rid of the old behavior *)
-        if dune_version >= (3, 7) then dir else Context.build_dir ctx)
+     ~dir:rule_dir
      ?loc:(Compilation_context.loc cctx)
      (let open Action_builder.With_targets.O in
       Action_builder.with_no_targets other_cm_files
       >>> Command.run
             ~dir:(Path.build (Context.build_dir ctx))
             ~sandbox
+            ~env:
+              (match mode with
+               | Melange -> Action_builder.return Env.empty
+               | Ocaml _ -> Ocaml_runtime_env.toolchain sctx ~dir:rule_dir Env.empty)
             ~forbid_action_runner:true
             compiler
             [ flags
@@ -389,7 +395,7 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t) =
   |> Memo.Option.iter ~f:Fun.id
 ;;
 
-let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
+let build_module_rules ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
   let open Memo.O in
   let build_cm = build_cm cctx m ~force_write_cmi ~precompiled_cmi in
   match Compilation_context.for_ cctx with
@@ -426,29 +432,40 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
            in
            Super_context.add_rule sctx ~dir action_with_targets)))
   | Melange ->
-    let* () = build_cm ~cm_kind:(Melange Cmj)
-    and* () =
+    let+ () = build_cm ~cm_kind:(Melange Cmj)
+    and+ () =
       Memo.when_ (not precompiled_cmi) (fun () -> build_cm ~cm_kind:(Melange Cmi))
     in
-    let project = Compilation_context.scope cctx |> Scope.project in
-    let dir = Compilation_context.dir cctx in
-    let predicate_dir =
-      let obj_dir = Compilation_context.obj_dir cctx in
-      Obj_dir.melange_dir obj_dir
-    in
-    let predicate =
-      [ Lib_mode.Cm_kind.ext (Melange Cmi); Lib_mode.Cm_kind.ext (Melange Cmj) ]
-      |> Glob.matching_extensions
-      |> Predicate_lang.Glob.of_glob
-    in
-    let deps =
-      File_selector.of_predicate_lang
-        ~dir:(Path.build predicate_dir)
-        ~only_generated_files:(Dune_project.dune_version project >= (3, 0))
-        predicate
-      |> Action_builder.paths_matching_unit ~loc:Loc.none
-    in
-    Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir) deps
+    ()
+;;
+
+let melange_all_alias cctx =
+  let project = Compilation_context.scope cctx |> Scope.project in
+  let dir = Compilation_context.dir cctx in
+  let predicate_dir =
+    let obj_dir = Compilation_context.obj_dir cctx in
+    Obj_dir.melange_dir obj_dir
+  in
+  let predicate =
+    [ Lib_mode.Cm_kind.ext (Melange Cmi); Lib_mode.Cm_kind.ext (Melange Cmj) ]
+    |> Glob.matching_extensions
+    |> Predicate_lang.Glob.of_glob
+  in
+  let deps =
+    File_selector.of_predicate_lang
+      ~dir:(Path.build predicate_dir)
+      ~only_generated_files:(Dune_project.dune_version project >= (3, 0))
+      predicate
+    |> Action_builder.paths_matching_unit ~loc:Loc.none
+  in
+  Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir) deps
+;;
+
+let build_module ?force_write_cmi ?precompiled_cmi cctx m =
+  let* () = build_module_rules ?force_write_cmi ?precompiled_cmi cctx m in
+  match Compilation_context.for_ cctx with
+  | Ocaml -> Memo.return ()
+  | Melange -> melange_all_alias cctx
 ;;
 
 let build_inference_alias cctx ~name ~aliases =
@@ -480,6 +497,7 @@ let build_inference_alias cctx ~name ~aliases =
   let+ () =
     Command.run
       (Ok ocaml.ocamlc)
+      ~env:(Ocaml_runtime_env.toolchain sctx ~dir Env.empty)
       ~dir:(Path.build (Context.build_dir (Super_context.context sctx)))
       ~sandbox:Sandbox_config.needs_sandboxing
       ~forbid_action_runner:true
@@ -504,7 +522,8 @@ let build_inference_alias cctx ~name ~aliases =
 
 let ocamlc_i_action ~impl_deps ~alias cctx (m : Module.t) =
   let obj_dir = Compilation_context.obj_dir cctx in
-  let ctx = Compilation_context.super_context cctx |> Super_context.context in
+  let sctx = Compilation_context.super_context cctx in
+  let ctx = Super_context.context sctx in
   let src = Option.value_exn (Module.file m ~ml_kind:Impl) in
   let original = Module.source_without_pp m ~ml_kind:Impl in
   let sandbox =
@@ -544,6 +563,8 @@ let ocamlc_i_action ~impl_deps ~alias cctx (m : Module.t) =
   cm_deps
   >>> Command.run'
         (Ok ocaml.ocamlc)
+        ~env:
+          (Ocaml_runtime_env.toolchain sctx ~dir:(Compilation_context.dir cctx) Env.empty)
         ~dir:(Path.build (Context.build_dir ctx))
         ~sandbox
         ~forbid_action_runner:true
@@ -779,7 +800,7 @@ let build_alias_module cctx group =
        Action_builder.write_file_dyn (Path.as_in_build_dir_exn file) alias_file)
   in
   let cctx = Compilation_context.for_alias_module cctx alias_module in
-  build_module cctx alias_module
+  build_module_rules cctx alias_module
 ;;
 
 let root_source entries =
@@ -816,19 +837,21 @@ let build_root_module cctx root_module =
           let+ entries = entries in
           root_source entries))
   in
-  build_module cctx root_module
+  build_module_rules cctx root_module
 ;;
 
 let build_all cctx =
   let for_wrapped_compat = lazy (Compilation_context.for_wrapped_compat cctx) in
   let modules = Compilation_context.modules cctx in
-  Memo.parallel_iter
-    (Modules.With_vlib.fold_no_vlib_with_aliases
-       modules
-       ~init:[]
-       ~normal:(fun x acc -> `Normal x :: acc)
-       ~alias:(fun group acc -> `Alias group :: acc))
-    ~f:(function
+  let module_rules =
+    Modules.With_vlib.fold_no_vlib_with_aliases
+      modules
+      ~init:[]
+      ~normal:(fun x acc -> `Normal x :: acc)
+      ~alias:(fun group acc -> `Alias group :: acc)
+  in
+  let build =
+    Memo.parallel_iter module_rules ~f:(function
       | `Alias group -> build_alias_module cctx group
       | `Normal m ->
         (match Module.kind m with
@@ -836,7 +859,7 @@ let build_all cctx =
          | Root -> build_root_module cctx m
          | Wrapped_compat ->
            let cctx = Lazy.force for_wrapped_compat in
-           build_module cctx m
+           build_module_rules cctx m
          | _ ->
            let cctx =
              if Modules.With_vlib.is_stdlib_alias modules m
@@ -846,7 +869,13 @@ let build_all cctx =
                Compilation_context.for_alias_module cctx m
              else cctx
            in
-           build_module cctx m))
+           build_module_rules cctx m))
+  in
+  match Compilation_context.for_ cctx, module_rules with
+  | Ocaml, _ | Melange, [] -> build
+  | Melange, _ :: _ ->
+    let* () = build in
+    melange_all_alias cctx
 ;;
 
 let with_empty_intf ~sctx ~dir module_ =

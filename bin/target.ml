@@ -43,12 +43,13 @@ let all_direct_targets dir =
     | None -> Source_tree.root ()
     | Some dir -> Source_tree.nearest_dir dir
   and* contexts = Memo.Lazy.force (Build_config.get ()).contexts in
-  Context_name.Map.values contexts
-  |> List.filter_map ~f:(fun (ctx, (ctx_type : Build_config.Context_type.t)) ->
+  Context_name.Map.to_list contexts
+  |> List.filter_map ~f:(fun (name, (ctx_type : Build_config.Context_type.t)) ->
     match ctx_type with
     | Empty -> None
-    | With_sources -> Some ctx)
-  |> Memo.parallel_map ~f:(fun (ctx : Dune_engine.Build_context.t) ->
+    | With_sources -> Some name)
+  |> Memo.parallel_map ~f:(fun name ->
+    let build_dir = Context_name.build_dir name in
     Source_tree_map_reduce.map_reduce
       root
       ~traverse:Source_dir_status.Set.all
@@ -56,8 +57,7 @@ let all_direct_targets dir =
       ~f:(fun dir ->
         Dune_engine.Load_rules.load_dir
           ~dir:
-            (Path.build
-               (Path.Build.append_source ctx.build_dir (Source_tree.Dir.path dir)))
+            (Path.build (Path.Build.append_source build_dir (Source_tree.Dir.path dir)))
         >>| function
         | External _ | Source _ -> All_targets.empty
         | Build { rules_here; _ } ->

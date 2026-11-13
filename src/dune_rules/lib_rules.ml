@@ -117,6 +117,7 @@ let build_lib
          (Ok compiler)
          ~dir:(Path.build (Context.build_dir ctx))
          ~forbid_action_runner:true
+         ~env:(Ocaml_runtime_env.toolchain sctx ~dir Env.empty)
     |> Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc)
 ;;
 
@@ -401,6 +402,7 @@ let build_shared (lib : Library.t) ~native_archives ~sctx ~dir ~flags =
          ~dir:(Path.build (Context.build_dir ctx))
          ~forbid_action_runner:true
          (Ok ocamlopt)
+         ~env:(Ocaml_runtime_env.toolchain sctx ~dir Env.empty)
     |> Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc)
 ;;
 
@@ -644,8 +646,8 @@ let library_rules
     let flags = Compilation_context.flags cctx in
     let preprocess =
       match for_ with
-      | Ocaml -> lib.buildable.preprocess.config
-      | Melange -> lib.buildable.melange_preprocess.config
+      | Ocaml -> lib.buildable.preprocess
+      | Melange -> lib.buildable.melange_preprocess
     in
     Merlin.make
       ~requires_compile
@@ -653,7 +655,8 @@ let library_rules
       ~stdlib_dir:lib_config.stdlib_dir
       ~flags
       ~modules
-      ~preprocess:(Preprocess.Per_module.without_instrumentation preprocess)
+      ~preprocess:(Preprocess.Per_module.without_instrumentation preprocess.config)
+      ~preprocessor_deps:preprocess.preprocessor_deps
       ~libname:(Some (snd lib.name))
       ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))

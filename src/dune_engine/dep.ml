@@ -10,35 +10,6 @@ module T = struct
     | File_selector of File_selector.t
     | Universe
 
-  module Stable_for_digest = struct
-    type t =
-      | Env of string
-      | File of Digest.t (* Digest of the underlying [Path.t] *)
-      | Alias of
-          { dir : string
-          ; name : string
-          }
-      | File_selector of Digest.t (* Digest of the underlying [File_selector.t] *)
-      | Universe
-
-    let digest d = function
-      | Env var ->
-        Digest.Manual.int d 0;
-        Digest.Manual.string d var
-      | File digest ->
-        Digest.Manual.int d 1;
-        Digest.Manual.digest d digest
-      | Alias { dir; name } ->
-        Digest.Manual.int d 2;
-        Digest.Manual.string d dir;
-        Digest.Manual.string d name
-      | File_selector digest ->
-        Digest.Manual.int d 3;
-        Digest.Manual.digest d digest
-      | Universe -> Digest.Manual.int d 4
-    ;;
-  end
-
   let env e = Env e
   let file f = File f
   let alias a = Alias a
@@ -92,8 +63,6 @@ module Map = struct
   module M = Map.Make (T)
   include M
   include Memo.Map (M)
-
-  let has_universe t = mem t Universe
 end
 
 let as_in_build_dir_no_source = function
@@ -135,20 +104,13 @@ module Fact = struct
       Digest.Manual.get d
     ;;
 
-    let create files ~build_file =
-      let open Memo.O in
-      let empty_dir =
-        if Filename_set.is_empty files
-        then Path.as_in_build_dir (Filename_set.dir files)
-        else None
-      in
+    let create ~dir ~files ~digests =
+      let empty_dir = if List.is_empty files then Path.as_in_build_dir dir else None in
       let empty_dirs =
         match empty_dir with
         | None -> Path.Build.Set.empty
         | Some dir -> Path.Build.Set.singleton dir
       in
-      let files = Filename_set.to_list files in
-      let+ digests = Memo.parallel_map files ~f:build_file in
       { files = Path.Set.of_list files
       ; empty_dirs
       ; digest = combined_digest ?empty_dir files digests
@@ -320,23 +282,21 @@ module Set = struct
     iter t ~f:(fun dep ->
       match dep with
       | Env var ->
-        Stable_for_digest.digest digest (Stable_for_digest.Env (Env.Var.to_string var))
-      | Universe -> Stable_for_digest.digest digest Stable_for_digest.Universe
-      | File p ->
-        Stable_for_digest.digest
-          digest
-          (Stable_for_digest.File (Path.to_string p |> Digest.string))
-      | File_selector fs ->
-        Stable_for_digest.digest
-          digest
-          (Stable_for_digest.File_selector (File_selector.digest fs))
-      | Alias a ->
-        Stable_for_digest.digest
-          digest
-          (Stable_for_digest.Alias
-             { dir = Path.Build.to_string (Alias.dir a)
-             ; name = Alias.Name.to_string (Alias.name a)
-             }))
+        Digest.Manual.int digest 0;
+        Digest.Manual.string digest (Env.Var.to_string var)
+      | File path ->
+        let path_digest = Digest.string (Path.to_string path) in
+        Digest.Manual.int digest 1;
+        Digest.Manual.digest digest path_digest
+      | Alias alias ->
+        Digest.Manual.int digest 2;
+        Digest.Manual.string digest (Path.Build.to_string (Alias.dir alias));
+        Digest.Manual.string digest (Alias.Name.to_string (Alias.name alias))
+      | File_selector selector ->
+        let selector_digest = File_selector.digest selector in
+        Digest.Manual.int digest 3;
+        Digest.Manual.digest digest selector_digest
+      | Universe -> Digest.Manual.int digest 4)
   ;;
 end
 
@@ -346,7 +306,6 @@ module Facts = struct
   let singleton = Map.singleton
   let equal x y = Map.equal ~equal:Fact.equal x y
   let empty = Map.empty
-  let record_facts set ~f = Map.parallel_map set ~f:(fun dep () -> f dep)
 
   let union a b =
     Map.union a b ~f:(fun _ a b ->

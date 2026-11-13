@@ -103,21 +103,27 @@ let maybe_read_lines p =
   | exception Sys_error _ -> None
 ;;
 
+let parse_os_release lines =
+  List.filter_map lines ~f:(fun line ->
+    match Scanf.sscanf line "%s@= %s" (fun k v -> k, v) with
+    | Error _ -> None
+    | Ok (key, v) ->
+      Some
+        ( key
+        , match Scanf.sscanf v "\"%s@\"" Fun.id with
+          | Ok contents -> contents
+          | Error _ ->
+            (match Scanf.sscanf v "'%s@'" Fun.id with
+             | Ok contents -> contents
+             | Error _ -> v) ))
+;;
+
 let os_release_fields () =
   match
     List.find_map [ "/etc/os-release"; "/usr/lib/os-release" ] ~f:maybe_read_lines
   with
   | None -> []
-  | Some release_lines ->
-    List.filter_map release_lines ~f:(fun line ->
-      match Scanf.sscanf line "%s@= %s" (fun k v -> k, v) with
-      | Error _ -> None
-      | Ok (key, v) ->
-        Some
-          ( key
-          , match Scanf.sscanf v "\"%s@\"" Fun.id with
-            | Error _ -> v
-            | Ok contents -> contents ))
+  | Some release_lines -> parse_os_release release_lines
 ;;
 
 let os_version ~android_release ~os ~os_release_fields ~path =

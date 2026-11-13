@@ -44,6 +44,7 @@ if !isCross then
 else
   assert stdenv.hostPlatform.isMinGW -> lib.versionAtLeast ocaml.version "5.4";
   template.overrideAttrs (o: {
+    outputs = [ "out" ];
     dontAddPrefix = true;
     dontFixup = true;
     depsBuildBuild = [ buildPackages.stdenv.cc ];

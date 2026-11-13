@@ -1,0 +1,9 @@
+(cram
+ (applies_to cross-lib-pps-runtime-no-ocamldep-barrier.t)
+ (deps
+  (package ppxlib)))
+
+(cram
+ (applies_to cinaps-pps-runtime-libs.t)
+ (deps
+  (package cinaps)))

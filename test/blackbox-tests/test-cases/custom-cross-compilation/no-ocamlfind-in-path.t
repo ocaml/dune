@@ -12,8 +12,9 @@ isn't set
   $ chmod +x ocaml-bin/ocamlc
 
   $ DUNE_PATH=$(dirname `which dune`)
-  $ SH_PATH=$(dirname `which sh`)
-  $ env ORIG_PATH="$PATH" PATH="$SH_PATH:$DUNE_PATH:$PWD/ocaml-bin" dune build @install -x foo
+  $ mkdir sh-bin
+  $ ln -s `which sh` sh-bin/sh
+  $ env ORIG_PATH="$PATH" PATH="$PWD/sh-bin:$DUNE_PATH:$PWD/ocaml-bin" dune build @install -x foo
   Error: Could not find `ocamlfind' in PATH or an environment variable
   `OCAMLFIND_CONF' while cross-compiling with toolchain `foo'
   Hint:

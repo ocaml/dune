@@ -62,3 +62,16 @@ Now we install foo with a library
 
   $ OCAMLPATH="$PWD/$dir/_install/lib:$OCAMLPATH" runtest 2.9
   foo is ''
+
+The version macro accepts package names, not sublibrary names.
+
+  $ cat > dune <<'EOF'
+  > (rule (alias version) (action (echo %{version:foo.child})))
+  > EOF
+  $ dune build @version
+  File "dune", line 1, characters 36-56:
+  1 | (rule (alias version) (action (echo %{version:foo.child})))
+                                          ^^^^^^^^^^^^^^^^^^^^
+  Error: Library names are not allowed in this position. Only package names are
+  allowed
+  [1]

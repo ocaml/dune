@@ -25,7 +25,7 @@ let quote_length s =
          4
   done;
   if !needs_quoting
-  then Needs_quoting_with_length len
+  then Needs_quoting_with_length !n
   else (
     assert (len = !n);
     No_quoting)

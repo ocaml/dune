@@ -48,3 +48,57 @@ Show the build and annotation paths Dune gives Merlin for the dependency.
   >   | unique[]'
   B $TESTCASE_ROOT/_build/default/lib/.dep.objs/public_cmi
   CMT $TESTCASE_ROOT/_build/default/lib/.dep.objs/byte
+
+Compilers with hidden includes can type a public alias of a private module
+using only Merlin's B/BH paths, without exposing the private module (#16531).
+
+  $ if ocamlc -H . -version > /dev/null 2>&1; then
+  >   printf '\nmodule P = Private\n' >> lib/api.ml &&
+  >   printf 'let answer = Dep.Api.P.answer\n' > exe/main.ml &&
+  >   dune build &&
+  >   dune ocaml merlin dump-config --format=json "$PWD/exe" > merlin.json &&
+  >   jq -r '
+  >     [.[]
+  >      | select(.module_name == "Main")
+  >      | .config[]
+  >      | select(.[0] == "B" or .[0] == "BH")
+  >      | [(if .[0] == "B" then "-I" else "-H" end), .[1]]]
+  >     | unique[] | .[]' merlin.json > includes &&
+  >   ocamlc -color never -args includes -c exe/main.ml &&
+  >   printf 'let answer = Dep__Private.answer\n' > exe/main.ml &&
+  >   ! ocamlc -color never -args includes -c exe/main.ml > errors 2>&1
+  > fi
+
+The same alias works when the library is a hidden transitive dependency.
+Its byte directory must still supply hidden CMIs and navigation annotations,
+but neither the dependency nor its private module can be named directly.
+
+  $ if ocamlc -H . -version > /dev/null 2>&1; then
+  >   printf '\n(implicit_transitive_deps false)\n' >> dune-project &&
+  >   mkdir bridge &&
+  >   printf '(library (name bridge) (libraries dep))\n' > bridge/dune &&
+  >   printf 'module P = Dep.Api.P\n' > bridge/bridge.ml &&
+  >   printf '(executable (name main) (libraries bridge))\n' > exe/dune &&
+  >   printf 'let answer = Bridge.P.answer\n' > exe/main.ml &&
+  >   dune build &&
+  >   dune ocaml merlin dump-config --format=json "$PWD/exe" > merlin.json &&
+  >   jq -e '
+  >     [.[]
+  >      | select(.module_name == "Main")
+  >      | .config[]
+  >      | select(.[0] == "CMT")
+  >      | .[1] | endswith("/lib/.dep.objs/byte")]
+  >     | any' merlin.json > /dev/null &&
+  >   jq -r '
+  >     [.[]
+  >      | select(.module_name == "Main")
+  >      | .config[]
+  >      | select(.[0] == "B" or .[0] == "BH")
+  >      | [(if .[0] == "B" then "-I" else "-H" end), .[1]]]
+  >     | unique[] | .[]' merlin.json > includes &&
+  >   ocamlc -color never -args includes -c exe/main.ml &&
+  >   printf 'let answer = Dep.Api.answer\n' > exe/main.ml &&
+  >   ! ocamlc -color never -args includes -c exe/main.ml > errors 2>&1 &&
+  >   printf 'let answer = Dep__Private.answer\n' > exe/main.ml &&
+  >   ! ocamlc -color never -args includes -c exe/main.ml > errors 2>&1
+  > fi

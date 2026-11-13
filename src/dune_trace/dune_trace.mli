@@ -78,6 +78,7 @@ module Event : sig
     -> categories:string list
     -> targets:targets option
     -> queued:Time.Span.t
+    -> job_slots:int
     -> t
 
   val process
@@ -268,6 +269,19 @@ module Event : sig
       val runner_event : name:Action_runner_name.t -> kind -> t
     end
 
+    module Rule_plugin : sig
+      type kind =
+        | Spawn
+        | Connected
+        | Request_start
+        | Request_finish
+        | Stop
+        | Disconnected
+        | Exited
+
+      val event : name:string -> pid:Pid.t -> kind -> t
+    end
+
     val write_file : start:Time.t -> finish:Time.t -> file:Path.t -> size:int -> t
     val trace : digest:string -> Csexp.t -> t
   end
@@ -319,14 +333,20 @@ module File_watcher_event : sig
     | File_changed
     | Unknown
 
+  type sync =
+    { id : int
+    ; retries : int
+    }
+
   type t =
     [ `File of Path.t * kind
     | `Queue_overflow
-    | `Sync of int
+    | `Sync of sync
     | `Watcher_terminated
     ]
 
   val kind_repr : kind Repr.t
+  val sync_repr : sync Repr.t
   val to_event : t -> Event.t
   val debounce_extend : files:(Path.t * kind) list -> invalidation_empty:bool -> Event.t
 end

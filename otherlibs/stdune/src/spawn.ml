@@ -101,6 +101,12 @@ module Pgid = struct
   ;;
 end
 
+module Nice = struct
+  type t = int
+
+  let of_int t = if t >= 0 && t <= 19 then Some t else None
+end
+
 external spawn_unix_raw
   :  env:(Env.Var.t * string) list option
   -> cwd:Working_dir.raw
@@ -115,6 +121,7 @@ external spawn_unix_raw
   -> sigprocmask:(Unix.sigprocmask_command * int list) option
   -> landlock_fd:Unix.file_descr option
   -> pdeathsig:int
+  -> nice:Nice.t option
   -> int
   = "dune_spawn_unix_byte" "dune_spawn_unix"
 
@@ -132,6 +139,7 @@ let spawn_unix
       ~sigprocmask
       ~landlock
       ~pdeathsig
+      ~nice
   =
   let env = Option.map env ~f:Env.to_list in
   let setpgid = Option.map ~f:Pgid.to_int setpgid in
@@ -155,6 +163,7 @@ let spawn_unix
       ~sigprocmask
       ~landlock_fd:(Option.map landlock_fd ~f:Fd.unsafe_to_unix_file_descr)
       ~pdeathsig
+      ~nice
     |> Pid.of_int_exn
   in
   (* CR-soon rgrinberg: [landlock] is a policy recipe, so this creates an
@@ -195,6 +204,7 @@ let spawn_windows
       ~setpgid:_
       ~sigprocmask:_
       ~pdeathsig:_
+      ~nice:_
   =
   let env = Option.map env ~f:Env.to_windows_block in
   let cwd =
@@ -236,6 +246,7 @@ let default_stderr = Fd.unsafe_of_unix_file_descr Unix.stderr
 let use_vfork = Poly.equal Platform.OS.value Linux
 
 let spawn
+      ~nice
       ?env
       ?(cwd = Working_dir.inherit_)
       ~prog
@@ -271,6 +282,7 @@ let spawn
       ~setpgid
       ~sigprocmask
       ~pdeathsig
+      ~nice
   else
     spawn_unix
       ~env
@@ -286,6 +298,7 @@ let spawn
       ~sigprocmask
       ~landlock
       ~pdeathsig
+      ~nice
 ;;
 
 external safe_pipe_raw : unit -> Unix.file_descr * Unix.file_descr = "dune_spawn_pipe"

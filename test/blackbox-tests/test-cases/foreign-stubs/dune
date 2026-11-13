@@ -1,2 +1,11 @@
 (cram
  (deps sandboxed.sh))
+
+(cram
+ (applies_to asm-msvc.t)
+ (enabled_if
+  (and
+   (= %{os_type} Win32)
+   (= %{ocaml-config:ccomp_type} msvc)
+   (= %{architecture} amd64)))
+ (alias runtest-windows))

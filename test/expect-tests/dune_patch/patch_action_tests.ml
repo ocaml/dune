@@ -153,3 +153,9 @@ let%expect_test "action test - edit_with_rename" =
   check "target.ml";
   [%expect {| This is right |}]
 ;;
+
+let%expect_test "action test - empty patch is a no-op" =
+  test [ "foo.ml", "Hello World\n" ] ("foo.patch", "");
+  check "foo.ml";
+  [%expect {| Hello World |}]
+;;

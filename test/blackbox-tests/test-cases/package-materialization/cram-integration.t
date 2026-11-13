@@ -37,15 +37,15 @@ The inner test fails showing exactly what the package dep added to each var:
   +++ tests/check-env.t.corrected
   @@ -1,6 +1,12 @@
      $ env_added "$PATH" "$BASELINE_PATH"
-  +  $TESTCASE_ROOT/_build/install/default/.packages/$DIGEST/bin
+  +  $TESTCASE_ROOT/_build/_private/default/.packages/$DIGEST/bin
      $ env_added "$OCAMLPATH" "$BASELINE_OCAMLPATH"
-  +  $TESTCASE_ROOT/_build/install/default/.packages/$DIGEST/lib
+  +  $TESTCASE_ROOT/_build/_private/default/.packages/$DIGEST/lib
      $ env_added "$CAML_LD_LIBRARY_PATH" "$BASELINE_CAML_LD_LIBRARY_PATH"
-  +  $TESTCASE_ROOT/_build/install/default/.packages/$DIGEST/lib/stublibs
+  +  $TESTCASE_ROOT/_build/_private/default/.packages/$DIGEST/lib/stublibs
      $ env_added "$OCAMLFIND_IGNORE_DUPS_IN" "$BASELINE_OCAMLFIND_IGNORE_DUPS_IN"
-  +  $TESTCASE_ROOT/_build/install/default/.packages/$DIGEST/lib
+  +  $TESTCASE_ROOT/_build/_private/default/.packages/$DIGEST/lib
      $ env_added "$OCAMLTOP_INCLUDE_PATH" "$BASELINE_OCAMLTOP_INCLUDE_PATH"
-  +  $TESTCASE_ROOT/_build/install/default/.packages/$DIGEST/lib/toplevel
+  +  $TESTCASE_ROOT/_build/_private/default/.packages/$DIGEST/lib/toplevel
      $ env_added "$MANPATH" "$BASELINE_MANPATH"
-  +  $TESTCASE_ROOT/_build/install/default/.packages/$DIGEST/man
+  +  $TESTCASE_ROOT/_build/_private/default/.packages/$DIGEST/man
   [1]

@@ -74,3 +74,12 @@ val supports_oxcaml : string -> bool
 
 (** Whether the compiler supports the [-cmi-file] flag *)
 val supports_cmi_file : t -> bool
+
+(** Whether the compiler supports the [-bytecode-hints] flag *)
+val supports_bytecode_hints : t -> bool
+
+(** Whether ocamldep supports the [-strict] flag *)
+val supports_ocamldep_strict : t -> bool
+
+(** Whether the compiler's runtime supports the [small_heap_limit] GC tweak. *)
+val supports_small_heap_limit : t -> bool

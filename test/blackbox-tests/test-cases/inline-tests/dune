@@ -11,6 +11,11 @@
  (deps %{bin:refmt}))
 
 (cram
+ (applies_to inline_tests-byte.t)
+ (deps
+  (package ppx_inline_test)))
+
+(cram
  (applies_to clicolor-force-inline-tests-github6607.t)
  (deps
   (package stdune)

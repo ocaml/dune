@@ -18,5 +18,12 @@ Test fetching from git
   > (build (run cat foo))
   > EOF
 
+Loading fetch rules must not resolve Git sources of unrelated packages.
+
+  $ make_lockpkg unused <<EOF
+  > (version 0.0.1)
+  > (source (fetch (url "git+file://$PWD/missing-repo")))
+  > EOF
+
   $ build_pkg test
   hello world

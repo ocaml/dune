@@ -1,5 +1,5 @@
 (deps (package NAME)) in a cross-compilation context. The install
-layout dir should sit under the host context's install tree.
+layout dir should sit under the host context's private tree.
 
   $ make_dune_project_with_package 3.24 mypkg
 
@@ -27,10 +27,10 @@ layout dir should sit under the host context's install tree.
 
   $ dune build _build/target/out
 
-The layout dir should be under install/host/ (the layout for a
+The layout dir should be under _private/host/ (the layout for a
 target-context action uses host artifacts):
 
   $ dune rules --format=json _build/target/out \
   >   | jq_dune '.[] | ruleDepFilePaths' \
   >   | grep dune-package | censor
-  "_build/install/host/.packages/$DIGEST/lib/mypkg/dune-package"
+  "_build/_private/host/.packages/$DIGEST/lib/mypkg/dune-package"

@@ -5,3 +5,8 @@
  (deps
   (package dune)
   (package dune-configurator)))
+
+(cram
+ (applies_to ppx-cross-context-issue.t)
+ (deps
+  (package ppxlib)))

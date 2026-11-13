@@ -9,7 +9,9 @@ module Dir_rules = struct
 
     type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
 
+    let singleton loc item = { expansions = Appendable_list.singleton (loc, item) }
     let union x y = { expansions = Appendable_list.( @ ) x.expansions y.expansions }
+    let to_list t = Appendable_list.to_list_rev t.expansions
   end
 
   type alias =
@@ -146,10 +148,7 @@ module Produce = struct
     ;;
 
     let add_deps t ?(loc = Loc.none) expansion =
-      alias
-        t
-        { expansions = Appendable_list.singleton (loc, Dir_rules.Alias_spec.Deps expansion)
-        }
+      alias t (Dir_rules.Alias_spec.singleton loc (Dir_rules.Alias_spec.Deps expansion))
     ;;
 
     (* All aliases in [ts] are expected to share a directory: the shared
@@ -162,10 +161,7 @@ module Produce = struct
       in
       let anon = Rule.Anonymous_action.make ~loc ~dir:(Alias.dir representative) action in
       Memo.parallel_iter ts ~f:(fun t ->
-        alias
-          t
-          { expansions = Appendable_list.singleton (loc, Dir_rules.Alias_spec.Action anon)
-          })
+        alias t (Dir_rules.Alias_spec.singleton loc (Dir_rules.Alias_spec.Action anon)))
     ;;
   end
 end
@@ -214,23 +210,6 @@ let collect_unit f =
 
 let to_map x = (x : t :> Dir_rules.t Path.Build.Map.t)
 
-let map t ~f =
-  Path.Build.Map.map t ~f:(fun m ->
-    Id.Map.to_list (m : Dir_rules.Nonempty.t :> Dir_rules.t)
-    |> Id.Map.of_list_map_exn ~f:(fun (id, data) ->
-      match f data with
-      | `No_change -> id, data
-      | `Changed data -> Id.gen (), data)
-    |> Dir_rules.Nonempty.create
-    |> Option.value_exn)
-;;
-
-let map_rules t ~f =
-  map t ~f:(function
-    | (Alias _ : Dir_rules.data) -> `No_change
-    | Rule r -> `Changed (Rule (f r) : Dir_rules.data))
-;;
-
 let find t p =
   match Path.as_in_build_dir p with
   | None -> Dir_rules.empty
@@ -243,14 +222,21 @@ let find t p =
 let prefix_rules prefix ~f =
   let open Memo.O in
   let* res, rules = collect f in
-  let+ () =
-    produce
-      (map_rules rules ~f:(fun (rule : Rule.t) ->
-         let t =
-           let open Action_builder.O in
-           prefix >>> rule.action
-         in
-         Rule.set_action rule t))
+  let rules =
+    Path.Build.Map.map rules ~f:(fun dir_rules ->
+      Id.Map.to_list (dir_rules : Dir_rules.Nonempty.t :> Dir_rules.t)
+      |> Id.Map.of_list_map_exn ~f:(fun (id, data) ->
+        match (data : Dir_rules.data) with
+        | Alias _ -> id, data
+        | Rule rule ->
+          let action =
+            let open Action_builder.O in
+            prefix >>> rule.action
+          in
+          Id.gen (), Dir_rules.Rule (Rule.set_action rule action))
+      |> Dir_rules.Nonempty.create
+      |> Option.value_exn)
   in
+  let+ () = produce rules in
   res
 ;;

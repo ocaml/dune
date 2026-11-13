@@ -70,11 +70,11 @@ Cmj rules should include --mel-package-output
 Using `(module_system es6)` is deprecated in `(using melange 1.0)`
 
   $ cat > app/dune <<EOF
-  > (melange.emit (target dist) (module_systems es6))
+  > (melange.emit (target dist) (module_systems es6) (emit_stdlib false))
   > EOF
   $ dune rules --root . --format=json @app/melange > /dev/null
   File "app/dune", line 1, characters 44-47:
-  1 | (melange.emit (target dist) (module_systems es6))
+  1 | (melange.emit (target dist) (module_systems es6) (emit_stdlib false))
                                                   ^^^
   Warning: 'es6' was deprecated in version 1.0 of the Melange extension. Use
   `esm' instead.

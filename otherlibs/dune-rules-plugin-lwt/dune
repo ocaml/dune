@@ -1,0 +1,5 @@
+(library
+ (name dune_rules_plugin_lwt)
+ (public_name dune-rules-plugin-lwt)
+ (libraries dune-rules-plugin dune-rpc-lwt lwt lwt.unix)
+ (synopsis "API for writing Dune rule plugins using Lwt"))

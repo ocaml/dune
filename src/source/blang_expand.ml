@@ -6,10 +6,14 @@ let rec eval (t : Blang.t) ~dir ~f =
   | Const x -> Memo.return x
   | Expr sw ->
     String_expander.Memo.expand sw ~mode:Single ~dir ~f
-    >>| (function
-     | String "true" -> true
-     | String "false" -> false
-     | _ ->
+    >>| fun s ->
+    (match
+       match s with
+       | String s -> Bool.of_string s
+       | _ -> None
+     with
+     | Some s -> s
+     | None ->
        let loc = String_with_vars.loc sw in
        User_error.raise ~loc [ Pp.text "This value must be either true or false" ])
   | And xs -> Memo.List.for_all xs ~f:(fun x -> eval ~f ~dir x)

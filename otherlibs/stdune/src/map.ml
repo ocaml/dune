@@ -77,6 +77,19 @@ module Make (Key : Key) : S with type key = Key.t = struct
   let fold t ~init ~f = foldi t ~init ~f:(fun _ x acc -> f x acc)
   let for_alli t ~f = for_all t ~f
   let for_all t ~f = for_alli t ~f:(fun _ x -> f x)
+
+  let is_singleton t =
+    (* [for_alli] visits the root first, so this examines at most two nodes. *)
+    let seen = ref false in
+    for_alli t ~f:(fun _ _ ->
+      match !seen with
+      | true -> false
+      | false ->
+        seen := true;
+        true)
+    && !seen
+  ;;
+
   let existsi t ~f = exists t ~f
   let exists t ~f = existsi t ~f:(fun _ x -> f x)
   let filteri t ~f = filter t ~f

@@ -34,3 +34,12 @@ The action's PATH gets the .bin/ symlink directory:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH"
   $TESTCASE_ROOT/_build/default/.bin
+
+An include_subdirs child inherits the binary even though its ordinary rules
+come from the group root. Its generated .bin directory remains accessible.
+
+  $ echo '(include_subdirs unqualified)' >> dune
+  $ mkdir child
+  $ dune build _build/default/child/.bin/myothername
+  $ _build/default/child/.bin/myothername
+  hello

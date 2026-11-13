@@ -324,10 +324,9 @@ module Vars = struct
       match get_opt t var with
       | None -> default
       | Some s ->
-        (match s with
-         | "true" -> true
-         | "false" -> false
-         | s -> fail "Value of %S is neither 'true' neither 'false': %s." var s)
+        (match Bool.of_string s with
+         | Some s -> s
+         | None -> fail "Value of %S is neither 'true' neither 'false': %s." var s)
     ;;
 
     let get_int_opt t var =

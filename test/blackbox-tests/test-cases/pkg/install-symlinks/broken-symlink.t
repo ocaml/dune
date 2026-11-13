@@ -15,10 +15,9 @@ Test that broken symlinks are detected during symlink resolution.
 
 The broken symlink is detected:
 
-  $ build_pkg foo 2>&1 | sanitize_pkg_digest foo.0.0.1 \
-  > | dune_cmd subst '\.sandbox/[a-f0-9]+' '.sandbox/$SANDBOX'
+  $ build_pkg foo 2>&1 | censor
   Error:
-  readlink(_build/.sandbox/$SANDBOX/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/target/lib/foo/nonexistent.txt): No such file or directory
+  readlink(_build/.sandbox/$DIGEST1/_private/default/.pkg/foo.0.0.1-$DIGEST2/target/lib/foo/nonexistent.txt): No such file or directory
   -> required by
-     _build/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/target
+     _build/_private/default/.pkg/foo.0.0.1-$DIGEST2/target
   [1]

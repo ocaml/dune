@@ -84,3 +84,31 @@ Attempt to create a lock directory with the same name as an existing regular fil
   Error: Refusing to regenerate lock directory dune.lock
   Specified lock dir path (dune.lock) is not a directory
   [1]
+
+An existing hidden backup may be left by an interrupted regeneration. Refuse
+to overwrite either the current lock directory or that backup.
+
+  $ rm "${default_lock_dir}"
+  $ cp -r dev/dune.lock "${default_lock_dir}"
+  $ cp -r "${default_lock_dir}" ".${default_lock_dir}"
+  $ echo current > "${default_lock_dir}/sentinel"
+  $ echo backup > ".${default_lock_dir}/sentinel"
+  $ dune_pkg_lock_normalized
+  Error: Refusing to regenerate lock directory dune.lock
+  Directory dune.lock already exists: can't rename safely
+  [1]
+  $ cat "${default_lock_dir}/sentinel" ".${default_lock_dir}/sentinel"
+  current
+  backup
+
+Refuse a wrong-kind backup path too, without deleting the current lockdir.
+
+  $ rm -r ".${default_lock_dir}"
+  $ echo backup > ".${default_lock_dir}"
+  $ dune_pkg_lock_normalized
+  Error: Refusing to regenerate lock directory .dune.lock
+  Specified lock dir path (.dune.lock) is not a directory
+  [1]
+  $ cat "${default_lock_dir}/sentinel" ".${default_lock_dir}"
+  current
+  backup

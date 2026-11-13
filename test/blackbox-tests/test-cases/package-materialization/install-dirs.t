@@ -107,3 +107,35 @@ not `(package consumer)` as the root that pulled in `dirpkg`.
   -> required by alias check in dune:2
   Leaving directory 'consumer'
   [1]
+
+A directory install can own an entire section. Its scoped view and its ordinary
+installation must both work, without either namespace removing the other.
+
+  $ mkdir _section-root
+  $ cd _section-root
+  $ make_dune_project_with_package 3.24 rootdir
+  $ cat >dune <<'EOF'
+  > (rule
+  >  (target (dir generated))
+  >  (action
+  >   (progn
+  >    (system "mkdir %{target}")
+  >    (system "echo section-root > %{target}/data"))))
+  > (install
+  >  (package rootdir)
+  >  (section share_root)
+  >  (dirs (generated as .)))
+  > (rule
+  >  (target out)
+  >  (deps (package rootdir))
+  >  (action (write-file %{target} ok)))
+  > EOF
+  $ dune build out
+  $ layout_share=$(dune rules --format=json _build/default/out \
+  >   | jq_dune -r '.[] | ruleDepFilePaths | select(endswith("/share"))')
+  $ cat "$layout_share/data"
+  section-root
+  $ dune build @install
+  $ cat _build/install/default/share/data "$layout_share/data"
+  section-root
+  section-root

@@ -112,6 +112,9 @@ let%expect_test "print digests for all declared RPCs" =
       Version 1:
         Request: Unit
         Response: Unit
+      Version 2:
+        Request: String
+        Response: Unit
     flush-file-watcher
       Version 1:
         Request: Unit
@@ -171,6 +174,9 @@ let%expect_test "print digests for all declared RPCs" =
       Version 2:
         Request: Sexp
         Response: 929074caab98360dc7116b6f27c2b9ad
+      Version 3:
+        Request: Sexp
+        Response: a93de7f59ba3f920d347184523437637
     cancel-poll/running-jobs
       Version 1:
         Payload: Sexp

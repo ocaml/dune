@@ -82,8 +82,7 @@ module Ast = struct
   let rec encode encode_string t =
     let open Encoder in
     match t with
-    | Const true -> string "true"
-    | Const false -> string "false"
+    | Const bool -> string (Bool.to_string bool)
     | Not t -> List [ string "not"; encode encode_string t ]
     | Expr e -> encode_string e
     | And ts -> List (string "and" :: List.map ts ~f:(encode encode_string))

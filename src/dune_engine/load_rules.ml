@@ -4,8 +4,6 @@ module Gen_rules = Build_config.Gen_rules
 module Context_type = Build_config.Context_type
 module Build_only_sub_dirs = Gen_rules.Build_only_sub_dirs
 
-module type Rule_generator = Gen_rules.Rule_generator
-
 module Current_rule_loc = struct
   let t = ref (fun () -> Memo.return None)
   let set f = t := f
@@ -77,8 +75,8 @@ module Dir_triage = struct
 end
 
 let get_dir_triage ~dir =
-  match Dpath.analyse_dir dir with
-  | Source dir ->
+  match (dir : Path.t) with
+  | In_source_tree dir ->
     let module Source_tree = (val (Build_config.get ()).source_tree) in
     Source_tree.find_dir dir
     >>| (function
@@ -104,32 +102,32 @@ let get_dir_triage ~dir =
         |> Filename.Array.Set.of_list
     in
     Dir_triage.Known (External { filenames })
-  | Build (Regular Root) ->
-    let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
-    let allowed_subdirs =
-      [ Path.Build.basename Dpath.Build.anonymous_actions_dir ]
-      @ (Context_name.Map.keys contexts
-         |> List.map ~f:(fun name -> Filename.of_string_exn (Context_name.to_string name))
-        )
-      |> Subdir_set.of_list
-      |> Subdir_set.to_dir_set
-    in
-    Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
-  | Build (Anonymous_action p) ->
-    let build_dir = Dpath.Target_dir.build_dir p in
-    Code_error.raise
-      "Called get_dir_triage on an anonymous action directory"
-      [ "dir", Path.Build.to_dyn build_dir ]
-  | Build (Invalid _) ->
-    Memo.return @@ Dir_triage.Known (Loaded.no_rules ~allowed_subdirs:Dir_set.empty)
-  | Build (Regular (With_context (context_name, sub_dir))) ->
-    let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
-    (match Context_name.Map.find contexts context_name with
-     | None -> Dir_triage.no_rules
-     | Some ((_ : Build_context.t), context_type) ->
-       (* In this branch, [dir] is in the build directory. *)
-       let dir = Path.as_in_build_dir_exn dir in
-       Dir_triage.Build_directory { dir; context_name; context_type; sub_dir })
+  | In_build_dir dir ->
+    (match Dpath.Target_dir.of_target dir with
+     | Regular Root ->
+       let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
+       let allowed_subdirs =
+         [ Path.Build.basename Dpath.Build.anonymous_actions_dir ]
+         @ (Context_name.Map.keys contexts
+            |> List.map ~f:(fun name ->
+              Filename.of_string_exn (Context_name.to_string name)))
+         |> Subdir_set.of_list
+         |> Subdir_set.to_dir_set
+       in
+       Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
+     | Anonymous_action p ->
+       let build_dir = Dpath.Target_dir.build_dir p in
+       Code_error.raise
+         "Called get_dir_triage on an anonymous action directory"
+         [ "dir", Path.Build.to_dyn build_dir ]
+     | Invalid _ ->
+       Memo.return @@ Dir_triage.Known (Loaded.no_rules ~allowed_subdirs:Dir_set.empty)
+     | Regular (With_context (context_name, sub_dir)) ->
+       let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
+       (match Context_name.Map.find contexts context_name with
+        | None -> Dir_triage.no_rules
+        | Some context_type ->
+          Dir_triage.Build_directory { dir; context_name; context_type; sub_dir }))
 ;;
 
 let describe_rule (rule : Rule.t) =
@@ -370,16 +368,11 @@ end = struct
           Alias.Name.Map.set
             aliases
             Alias.Name.default
-            { expansions =
-                Appendable_list.singleton
-                  (Loc.none, Rules.Dir_rules.Alias_spec.Deps expansion)
-            }
+            (Rules.Dir_rules.Alias_spec.singleton
+               Loc.none
+               (Rules.Dir_rules.Alias_spec.Deps expansion))
     in
-    Alias.Name.Map.map aliases ~f:(fun { Rules.Dir_rules.Alias_spec.expansions } ->
-      (* CR-soon rgrinberg: hide this reversal behind the interface from
-         [Alias_spec]. The order doesn't really matter, as we're just
-         collecting the dependencies that are attached to the alias *)
-      Appendable_list.to_list_rev expansions)
+    Alias.Name.Map.map aliases ~f:Rules.Dir_rules.Alias_spec.to_list
   ;;
 
   let add_non_fallback_rules ~init ~dir ~source_filenames rules =
@@ -518,15 +511,13 @@ end = struct
     ;;
 
     let check_all_sub_dirs_rule_dirs_are_descendant ~of_:dir build_dir_only_sub_dirs =
-      Build_only_sub_dirs.iter_dirs_containing_sub_dirs
-        build_dir_only_sub_dirs
-        ~f:(fun p ->
-          if not (Path.Build.is_descendant p ~of_:dir)
-          then
-            Code_error.raise
-              "[gen_rules] returned sub-directories in a directory that is not a \
-               descendant of the directory it was called for"
-              [ "dir", Path.Build.to_dyn dir; "example", Path.Build.to_dyn p ])
+      Path.Build.Map.iteri build_dir_only_sub_dirs ~f:(fun p _ ->
+        if not (Path.Build.is_descendant p ~of_:dir)
+        then
+          Code_error.raise
+            "[gen_rules] returned sub-directories in a directory that is not a \
+             descendant of the directory it was called for"
+            [ "dir", Path.Build.to_dyn dir; "example", Path.Build.to_dyn p ])
     ;;
 
     let check_all_rules_are_descendant ~of_:dir rules =
@@ -595,9 +586,8 @@ end = struct
           ({ Dir_triage.Build_directory.dir; context_name; context_type = _; sub_dir } as
            d)
       =
-      let (module RG : Rule_generator) = (Build_config.get ()).rule_generator in
       let sub_dir_components = Path.Source.explode sub_dir |> Filename.L.to_string in
-      RG.gen_rules context_name ~dir sub_dir_components
+      (Build_config.get ()).rule_generator context_name ~dir sub_dir_components
       >>= function
       | Rules rules -> Memo.return @@ Normal (Normal.make_rules_gen_result ~of_:dir rules)
       | Unknown_context ->
@@ -832,7 +822,8 @@ end = struct
       Memo.return (Loaded.Build_under_directory_target { directory_target_ancestor })
     | Normal { rules; build_dir_only_sub_dirs; directory_targets } ->
       let build_dir_only_sub_dirs =
-        Build_only_sub_dirs.find build_dir_only_sub_dirs dir
+        Path.Build.Map.find build_dir_only_sub_dirs dir
+        |> Option.value ~default:Subdir_set.empty
       in
       Path.Build.Map.iteri directory_targets ~f:(fun dir_target loc ->
         let name = Path.Build.basename dir_target in

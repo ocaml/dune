@@ -4,43 +4,10 @@ open Stdune.Action_types
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
 let max_live_sandboxes = 250
 let live_sandbox_throttle = lazy (Fiber.Throttle.create max_live_sandboxes)
-let with_live_sandbox_slot ~f = Fiber.Throttle.run (Lazy.force live_sandbox_throttle) ~f
 
-module Pending_targets = struct
-  (* All file and directory targets of non-sandboxed actions that are currently
-     being executed. On exit, we need to delete them as they might contain
-     garbage. *)
-
-  let files = Path.Build.Table.create 128
-  let dirs = Path.Build.Table.create 128
-
-  let remove targets =
-    Targets.Validated.iter
-      targets
-      ~file:(Path.Build.Table.remove files)
-      ~dir:(Path.Build.Table.remove dirs)
-  ;;
-
-  let add targets =
-    Targets.Validated.iter
-      targets
-      ~file:(fun path -> Path.Build.Table.set files path ())
-      ~dir:(fun path -> Path.Build.Table.set dirs path ())
-  ;;
-
-  let cleanup () =
-    Exn.protect
-      ~f:(fun () ->
-        Path.Build.Table.iteri files ~f:(fun path () ->
-          Path.Build.to_string path |> Fpath.unlink_no_err);
-        Path.Build.Table.iteri dirs ~f:(fun path () -> Path.rm_rf (Path.build path)))
-      ~finally:(fun () ->
-        Path.Build.Table.clear files;
-        Path.Build.Table.clear dirs)
-  ;;
-end
-
-let cleanup_pending_targets = Pending_targets.cleanup
+let with_live_sandbox_slot ~f =
+  Fiber.Throttle.run (Lazy.force live_sandbox_throttle) ~size:1 ~f
+;;
 
 let maybe_async f =
   (* It would be nice to do this check only once and return a function, but the
@@ -168,10 +135,10 @@ let link_function ~(mode : Sandbox_mode.some) =
     Path.mkdir_p ~perms dst
   in
   let link_recursively ~src ~dst =
-    Tree_copy.copy
+    Tree_traversal.traverse
       ~src
       ~dst
-      ~copy_file:link_file
+      ~on_file:link_file
       ~mkdir:mkdir_with_perms
       ~on_unsupported:raise_other_kind
       ~on_symlink:(`Call resolve_symlink_kind)
@@ -249,10 +216,12 @@ let unlinked_deps t deps =
   Path.Set.fold deps ~init:Path.Set.empty ~f:loop
 ;;
 
-let add_deps t ~dirs ~deps =
+let add_deps t facts ~expand_aliases =
   match t with
   | No_sandbox _ -> Fiber.return ()
   | Sandboxed t ->
+    let dirs = Dep.Facts.necessary_dirs_for_sandboxing facts in
+    let deps = Dep.Facts.paths facts ~expand_aliases in
     Fiber.Mutex.with_lock t.mutex ~f:(fun () ->
       let open Fiber.O in
       let+ (_ : Time.t * Time.t * Time.Span.t option) =
@@ -496,7 +465,7 @@ let hint_delete_dir =
   ]
 ;;
 
-let move_real_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Validated.t)
+let move_real_targets_to_build_dir t ~skip_files ~(targets : Targets.Validated.t)
   : unit Fiber.t
   =
   let open Fiber.O in
@@ -515,7 +484,7 @@ let move_real_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Vali
     Targets.Validated.iter
       targets
       ~file:(fun target ->
-        if not (should_be_skipped target)
+        if not (Path.Build.Set.mem skip_files target)
         then rename_optional_file ~src:(map_real_path t target) ~dst:target)
       ~dir:(fun target ->
         let src_dir = map_real_path t target in
@@ -547,10 +516,10 @@ let move_real_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Vali
     Dune_trace.Event.sandbox `Extract ~start ~stop ~queued:None t.loc ~dir:t.dir)
 ;;
 
-let move_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Validated.t) =
+let move_targets_to_build_dir t ~skip_files ~(targets : Targets.Validated.t) =
   match t with
   | No_sandbox _ -> Fiber.return ()
-  | Sandboxed t -> move_real_targets_to_build_dir t ~should_be_skipped ~targets
+  | Sandboxed t -> move_real_targets_to_build_dir t ~skip_files ~targets
 ;;
 
 let failed_to_delete_sandbox dir reason =
@@ -562,7 +531,10 @@ let failed_to_delete_sandbox dir reason =
 
 let destroy = function
   | No_sandbox { targets } ->
-    Pending_targets.remove targets;
+    Targets.Validated.iter
+      targets
+      ~file:(fun path -> Path.Build.to_string path |> Fpath.unlink_no_err)
+      ~dir:(fun path -> Path.rm_rf ~chmod:true (Path.build path));
     Fiber.return ()
   | Sandboxed t ->
     let open Fiber.O in
@@ -582,9 +554,17 @@ let destroy = function
 let with_ ~mode corrections ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest ~targets ~f =
   match mode with
   | None ->
-    Pending_targets.add targets;
+    let open Fiber.O in
     let sandbox = No_sandbox { targets } in
-    Fiber.finalize ~finally:(fun () -> destroy sandbox) (fun () -> f sandbox)
+    Fiber.collect_errors (fun () -> f sandbox)
+    >>= (function
+     | Ok result -> Fiber.return result
+     | Error errors ->
+       let* cleanup = Fiber.collect_errors (fun () -> destroy sandbox) in
+       Fiber.reraise_all
+         (match cleanup with
+          | Ok () -> errors
+          | Error cleanup_errors -> errors @ cleanup_errors))
   | Some mode ->
     with_live_sandbox_slot ~f:(fun () ->
       let open Fiber.O in

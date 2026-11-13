@@ -5,7 +5,7 @@ be a particular event emitted by dune.
 
   $ dune build
 
-  $ dune trace cat | jq -s 'first | {name, cat, args: (.args | keys)}'
+  $ dune trace cat | jq -s 'first | {name, cat, args: (.args | del(.gc_tweaks) | keys)}'
   {
     "name": "init",
     "cat": "config",

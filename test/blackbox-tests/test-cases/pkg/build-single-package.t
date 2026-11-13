@@ -31,6 +31,23 @@ We should only see the result of building "bar"
   $ build_pkg bar
   building bar
 
+Loading package rules must not resolve or expand unrelated packages, reject
+missing sources, or build dependencies needed by their exported environment.
+
+  $ make_lockpkg not-needed <<EOF
+  > (version dev)
+  > (build (run false))
+  > EOF
+  $ make_lockpkg unused <<EOF
+  > (version dev)
+  > (depends not-needed)
+  > (source (copy "$PWD/missing-source"))
+  > (exported_env (= UNUSED %{pkg:not-needed:version}))
+  > (build (run missing-program))
+  > EOF
+  $ build_pkg bar
+  $ test ! -e "$(get_build_pkg_dir not-needed)/target"
+
 Package build commands are not restricted by the shared-cache Landlock policy.
 
   $ export DUNE_CACHE_ROOT=$PWD/cache-root
@@ -42,3 +59,41 @@ Package build commands are not restricted by the shared-cache Landlock policy.
   $ build_pkg cache-writer
   $ test -e "$DUNE_CACHE_ROOT/db/package-marker" && echo wrote
   wrote
+
+Editing a lock input must rebuild the affected package.
+
+  $ make_lockpkg foo <<EOF
+  > (build (run echo rebuilt foo))
+  > (version dev)
+  > EOF
+  $ build_pkg foo
+  rebuilt foo
+
+Binary lock payloads reach the installed package byte-for-byte.
+
+  $ mkdir -p dune.lock/payload.files/sub
+  $ printf 'binary\000contents\n' > dune.lock/payload.files/sub/data
+  $ cat > dune.lock/payload.files/tool <<'EOF'
+  > #!/bin/sh
+  > echo payload-ok
+  > EOF
+  $ chmod +x dune.lock/payload.files/tool
+  $ make_lockpkg payload <<'EOF'
+  > (version dev)
+  > (build (run ./tool))
+  > (install (run cp sub/data %{pkg-self:share}/data))
+  > EOF
+  $ build_pkg payload
+  payload-ok
+  $ payload_dir=$(get_build_pkg_dir payload)
+  $ cmp dune.lock/payload.files/sub/data "$payload_dir/target/share/payload/data"
+  $ build_pkg payload
+
+Changing bytes after the NUL must invalidate the package without changing
+its metadata or the payload size.
+
+  $ printf 'binary\000modified\n' > dune.lock/payload.files/sub/data
+  $ build_pkg payload
+  payload-ok
+  $ payload_dir=$(get_build_pkg_dir payload)
+  $ cmp dune.lock/payload.files/sub/data "$payload_dir/target/share/payload/data"

@@ -718,6 +718,7 @@ module Dune_config = struct
                 let fdw = Fd.unsafe_of_unix_file_descr fdw in
                 (match
                    Stdune.Spawn.spawn
+                     ~nice:None
                      ~prog
                      ~argv0:prog
                      ~args:(Stdune.Array.Immutable.of_list args)
@@ -729,7 +730,7 @@ module Dune_config = struct
                  | exception Unix.Unix_error _ ->
                    Fd.close fdw;
                    Unix.close fdr;
-                   loop commands
+                   loop rest
                  | pid ->
                    Fd.close fdw;
                    let ic = Unix.in_channel_of_descr fdr in

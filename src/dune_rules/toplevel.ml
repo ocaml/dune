@@ -88,6 +88,7 @@ let pp_flags t =
         let ctx = Compilation_context.context t.cctx in
         Ppx_driver.get_ppx_driver
           ctx
+          ~for_
           ~loc
           ~expander:t.expander
           ~lib_name:None
@@ -98,7 +99,7 @@ let pp_flags t =
       Dyn.list
         Dyn.string
         [ Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
-          |> String.concat ~sep:" "
+          |> String.quote_list_for_shell
         ]
     in
     (* Set Clflags.all_ppx for dune utop, and Compenv.first_ppx for custom
@@ -198,6 +199,7 @@ module Stanza = struct
           let preprocess = Module_reference.Per_item.for_all toplevel.pps in
           Pp_spec_rules.make
             sctx
+            ~for_
             ~dir
             ~expander
             ~scope

@@ -20,6 +20,7 @@ rule targeting the same filename.
   - file present in source tree
   Hint: rm -f mylib.cma
   [1]
+  $ rm mylib.cma
   $ touch foo.xyz
   $ dune build
   Error: Multiple rules generated for _build/default/foo.xyz:
@@ -28,9 +29,10 @@ rule targeting the same filename.
   Hint: rm -f foo.xyz
   [1]
 
-With ``(files ...)`` the source artifact is ignored and the rule can build the
-target.
+With ``(files ...)`` both source artifacts are ignored and the rules can build
+the targets.
 
+  $ touch mylib.cma
   $ cat >>dune <<EOF
   > (files :standard \ *.cma *.xyz)
   > EOF

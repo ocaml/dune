@@ -14,7 +14,9 @@
   dune_patch
   dune_pkg
   re
+  rpc
   dune_rpc
+  dune_rpc_impl
   dune_section
   dune_site_private
   targets
@@ -67,6 +69,7 @@
  (alias runtest)
  (target setup.defaults.ml.gen)
  (deps
+  (:stdlib %{ocaml_where})
   (:configure %{project_root}/boot/configure.ml))
  (action
   (chdir
@@ -74,7 +77,7 @@
    (setenv
     DUNE_CONFIGURE_OUTPUT
     "%{target}"
-    (run %{ocaml} %{configure})))))
+    (run %{ocaml} -noinit -I %{stdlib} %{configure})))))
 
 (rule
  (alias runtest)

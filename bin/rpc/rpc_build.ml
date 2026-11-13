@@ -6,11 +6,23 @@ let term =
   let+ (builder : Common.Builder.t) = Common.Builder.term
   and+ wait = Rpc_common.wait_term
   and+ targets = Arg.(value & pos_all string [] name_) in
-  Rpc_common.client_term builder
+  let common, config =
+    builder
+    |> Common.Builder.forbid_builds
+    |> Common.Builder.disable_log_file
+    |> Common.init
+  in
+  Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Fiber.O in
   let+ response =
-    Rpc_common.fire_request ~name:"build" ~wait builder Dune_rpc_impl.Decl.build targets
+    Rpc_common.fire_request_with_progress
+      ~name:"build"
+      ~wait
+      ~config
+      builder
+      Dune_rpc_impl.Decl.build
+      targets
   in
   match response with
   | Success -> print_endline "Success"

@@ -33,7 +33,6 @@ cache, it will fail, as the source is 404 now:
   4 |   (url http://localhost:1)
              ^^^^^^^^^^^^^^^^^^
   Error: Download failed with code 404
-         
   [1]
 
 However when enabling the cache again, the file that was fetched in the first

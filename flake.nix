@@ -1,9 +1,5 @@
 {
   inputs = {
-    melange = {
-      url = "github:melange-re/melange/v7-55";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     nixpkgs.url = "github:nix-ocaml/nix-overlays";
     ocaml-trunk = {
       url = "github:ocaml/ocaml/trunk";
@@ -23,7 +19,6 @@
   outputs =
     {
       self,
-      melange,
       nixpkgs,
       ocaml-trunk,
       revdeps-dune,
@@ -41,23 +36,6 @@
                     ocaml = osuper.ocaml.override {
                       flambdaSupport = false;
                       framePointerSupport = true;
-                    };
-                    # Keep the 3.25 builder from before the flake update.
-                    # Newer builders emit 3.26 metadata the RC cannot read.
-                    dune_3 = osuper.dune_3.overrideAttrs {
-                      version = "3.25-dev";
-                      src = self.fetchFromGitHub {
-                        owner = "ocaml";
-                        repo = "dune";
-                        rev = "ab02ae0d95df25b4118047a421d955df0579cf58";
-                        hash = "sha256-Sjh12lyuXopNU0sU6fX1E0cdR17qbOFkPZJDfsn1I1I=";
-                      };
-                    };
-                    utop = osuper.utop.overrideAttrs {
-                      dontGzipMan = true;
-                    };
-                    lambda-term = osuper.lambda-term.overrideAttrs {
-                      dontGzipMan = true;
                     };
                     odoc-parser = osuper.odoc-parser.overrideAttrs (old: {
                       doCheck = false;
@@ -88,7 +66,6 @@
                   ocamlPackages_5_5 = self.ocamlPackages;
                 };
               })
-              melange.overlays.default
             ];
           in
           f pkgs

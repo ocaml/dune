@@ -346,11 +346,11 @@ but not `package-only-dep` from package metadata.
   > censor |
   > grep dune-package |
   > sort
-  "_build/install/default/.packages/$DIGEST/lib/bar/dune-package"
-  "_build/install/default/.packages/$DIGEST/lib/baz/dune-package"
-  "_build/install/default/.packages/$DIGEST/lib/foo/dune-package"
-  "_build/install/default/.packages/$DIGEST/lib/namespace/dune-package"
-  "_build/install/default/.packages/$DIGEST/lib/stubbed/dune-package"
+  "_build/_private/default/.packages/$DIGEST/lib/bar/dune-package"
+  "_build/_private/default/.packages/$DIGEST/lib/baz/dune-package"
+  "_build/_private/default/.packages/$DIGEST/lib/foo/dune-package"
+  "_build/_private/default/.packages/$DIGEST/lib/namespace/dune-package"
+  "_build/_private/default/.packages/$DIGEST/lib/stubbed/dune-package"
 
 The required libraries' compiled interfaces are tracked.
 
@@ -359,9 +359,9 @@ The required libraries' compiled interfaces are tracked.
   > censor |
   > grep -E 'lib/(bar/bar|bar/__private__/bar_private/.public_cmi/bar_private|baz/baz)\.cmi' |
   > sort
-  "_build/install/default/.packages/$DIGEST/lib/bar/__private__/bar_private/.public_cmi/bar_private.cmi"
-  "_build/install/default/.packages/$DIGEST/lib/bar/bar.cmi"
-  "_build/install/default/.packages/$DIGEST/lib/baz/baz.cmi"
+  "_build/_private/default/.packages/$DIGEST/lib/bar/__private__/bar_private/.public_cmi/bar_private.cmi"
+  "_build/_private/default/.packages/$DIGEST/lib/bar/bar.cmi"
+  "_build/_private/default/.packages/$DIGEST/lib/baz/baz.cmi"
 
 The sibling library's interface is also a dependency of the action.
 

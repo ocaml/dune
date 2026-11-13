@@ -16,6 +16,7 @@
    ../utils/action_trace.exe
    ../utils/dunepp.exe
    ../utils/melc_stdlib_prefix.exe
+   ../utils/merlin_configurations.exe
    ../utils/refmt.exe
    ../utils/curl
    ../utils/sherlodoc.exe
@@ -24,6 +25,21 @@
 (cram
  (applies_to pp-cwd.t)
  (deps %{bin:dunepp}))
+
+(cram
+ (applies_to reason.t)
+ (deps
+  (package ppxlib)))
+
+(cram
+ (applies_to preprocessor-directory.t test-modes-byte.t)
+ (deps
+  (package ppx_inline_test)))
+
+(cram
+ (applies_to lint.t)
+ (deps
+  (package ppxlib)))
 
 (cram
  (applies_to :whole_subtree)
@@ -48,7 +64,11 @@
  (alias runtest-windows))
 
 (cram
- (applies_to empty-meta-version-gh9176.t)
+ (applies_to
+  build-info-no-head-commit-gh4429.t
+  dune-build-info-in-ppx-github3336.t
+  empty-meta-version-gh9176.t
+  version-corruption.t)
  (deps
   (package dune-build-info)))
 
@@ -107,6 +127,12 @@
    (<> %{architecture} arm64))))
 
 (cram
+ (applies_to auto-concurrency-spawn-failure.t)
+ (enabled_if
+  (= %{system} linux))
+ (deps %{bin:strace} %{bin:awk}))
+
+(cram
  (applies_to corrupt-persistent.t)
  (deps %{bin:truncate}))
 
@@ -132,6 +158,12 @@
  (enabled_if
   (not %{arch_sixtyfour}))
  (deps %{bin:ocaml}))
+
+(cram
+ (applies_to
+  (or compiler-gc.t ocaml-tool-runtime.t))
+ (enabled_if
+  (>= %{ocaml_version} 5.5.0)))
 
 (cram
  (applies_to hidden-deps-supported.t)

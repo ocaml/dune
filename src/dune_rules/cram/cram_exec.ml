@@ -487,7 +487,7 @@ let create_sh_script cram_stanzas ~temp_dir ~setup_scripts (shell : Cram_stanza.
   =
   let script = Path.relative temp_dir "main.sh" in
   let oc = Io.open_out ~binary:true script in
-  Fiber.finalize ~finally:(fun () -> Fiber.return @@ close_out oc)
+  Fiber.finalize_now ~finally:(fun () -> close_out oc)
   @@ fun () ->
   let file name = Path.relative temp_dir name in
   let open Fiber.O in
@@ -610,7 +610,7 @@ let make_temp_dir ~script =
     in
     Dune_engine.Dtemp.action Dir ~prefix:"dune_cram" ~suffix
   in
-  Path.mkdir_p temp_dir;
+  Path.mkdir_p (Path.relative temp_dir "tmp");
   temp_dir
 ;;
 
@@ -878,7 +878,7 @@ module Run = struct
       }
 
     let name = "cram-run"
-    let version = 7
+    let version = 8
     let runs_process = true
     let can_run_in_action_runner = true
 
@@ -896,7 +896,7 @@ module Run = struct
       }
     ;;
 
-    let is_useful_to ~memoize:_ = true
+    let is_useful_to_memoize = true
 
     let encode { src = _; dir; script; output; timeout; shell; setup_scripts } path target
       : Sexp.t
@@ -954,7 +954,7 @@ module Make_script = struct
     let runs_process = false
     let can_run_in_action_runner = false
     let bimap t f g = { t with script = f t.script; target = g t.target }
-    let is_useful_to ~memoize:_ = true
+    let is_useful_to_memoize = true
 
     let encode { script = src; target = dst; conflict_markers } path target : Sexp.t =
       List
@@ -1002,7 +1002,7 @@ module Diff = struct
     let runs_process = false
     let can_run_in_action_runner = false
     let bimap { script; out } f _ = { script = f script; out = f out }
-    let is_useful_to ~memoize:_ = true
+    let is_useful_to_memoize = true
     let encode { script; out } path _ : Sexp.t = List [ path script; path out ]
 
     let action { script; out } ~ectx:_ ~eenv:_ =
@@ -1041,11 +1041,11 @@ module Action = struct
     type ('path, _) t = 'path
 
     let name = "cram"
-    let version = 2
+    let version = 3
     let runs_process = true
     let can_run_in_action_runner = true
     let bimap path f _ = f path
-    let is_useful_to ~memoize:_ = true
+    let is_useful_to_memoize = true
     let encode script path _ : Sexp.t = List [ path script ]
 
     let action script ~(ectx : Action.context) ~(eenv : Action.env) =

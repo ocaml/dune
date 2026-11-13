@@ -1,12 +1,6 @@
 (** Left or right *)
 
-include sig
-  open Stdlib
-
-  type ('a, 'b) t = ('a, 'b) Either.t =
-    | Left of 'a
-    | Right of 'b
-end
+include module type of Stdlib.Either
 
 val map : ('a, 'b) t -> l:('a -> 'c) -> r:('b -> 'c) -> 'c
 val left : 'a -> ('a, _) t

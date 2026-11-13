@@ -321,6 +321,20 @@ struct
     res
   ;;
 
+  let read_file_if_small fn ~max_size =
+    let start = Counter.Timer.start () in
+    Counter.incr Metrics.File_read.count;
+    let res =
+      try Fs_io.read_file_if_small (Path.to_string fn) ~max_size with
+      | exn -> Error exn
+    in
+    (match res with
+     | Ok (Some contents) -> Counter.add Metrics.File_read.bytes (String.length contents)
+     | Ok None | Error _ -> ());
+    Counter.Timer.stop Metrics.File_read.time start;
+    res
+  ;;
+
   let read_file_exn ?binary fn = read_file ?binary fn |> Result.ok_exn
   let lines_of_file fn = with_file_in fn ~f:input_lines ~binary:false
   let zero_strings_of_file fn = with_file_in fn ~f:input_zero_separated ~binary:true
@@ -486,18 +500,16 @@ let portable_symlink ~overwrite ~src ~dst =
          | _ -> Path.reach ~from src)
     in
     let dst = Path.to_string dst in
-    if overwrite
-    then (
-      match Unix.readlink dst with
-      | target ->
-        if target <> src
-        then (
-          (* @@DRA Win32 remove read-only attribute needed when symlinking
-           enabled *)
-          Unix.unlink dst;
-          Unix.symlink src dst)
-      | exception Unix.Unix_error _ -> Unix.symlink src dst)
-    else Unix.symlink src dst)
+    try Unix.symlink src dst with
+    | Unix.Unix_error (Unix.EEXIST, _, _) as exn when overwrite ->
+      (match Unix.readlink dst with
+       | exception Unix.Unix_error _ -> raise exn
+       | target when target = src -> ()
+       | _ ->
+         (* @@DRA Win32 remove read-only attribute needed when symlinking
+            enabled *)
+         Unix.unlink dst;
+         Unix.symlink src dst))
 ;;
 
 let portable_hardlink ~overwrite ~src ~dst =

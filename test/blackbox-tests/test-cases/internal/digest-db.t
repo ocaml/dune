@@ -52,3 +52,28 @@ future timestamp.
   $ dune build future.txt
   $ dune internal digest-db dump 2>&1 | grep 1893456000000000000
   [1]
+
+Checking cached paths distinguishes missing files, broken links, and cycles.
+
+  $ touch missing.txt broken.txt cyclic.txt
+  $ dune build missing.txt broken.txt cyclic.txt
+  $ rm missing.txt broken.txt cyclic.txt
+  $ ln -s absent broken.txt
+  $ ln -s cyclic.txt cyclic.txt
+  $ dune internal digest-db check broken.txt cyclic.txt missing.txt
+  [ { status = "stale"
+    ; path = In_source_tree "broken.txt"
+    ; cached_digest = digest "662cf3f7d59f76428301690d4ead67ae"
+    ; actual = Error Broken_symlink
+    }
+  ; { status = "stale"
+    ; path = In_source_tree "cyclic.txt"
+    ; cached_digest = digest "662cf3f7d59f76428301690d4ead67ae"
+    ; actual = Error Cyclic_symlink
+    }
+  ; { status = "stale"
+    ; path = In_source_tree "missing.txt"
+    ; cached_digest = digest "662cf3f7d59f76428301690d4ead67ae"
+    ; actual = Error No_such_file
+    }
+  ]

@@ -98,6 +98,7 @@ let run ?env ~prog ~argv () =
     let args = Array.Immutable.of_list argv in
     let env = Option.map env ~f:(fun env -> Env.of_unix (Array.of_list env)) in
     Spawn.spawn
+      ~nice:None
       ~prog
       ~argv0:prog
       ~args
@@ -110,12 +111,7 @@ let run ?env ~prog ~argv () =
   Fd.close stdout_w;
   Fd.close stderr_w;
   ( pid
-  , (let+ proc =
-       Scheduler.wait_for_process
-         ~timeout:(Time.Span.of_secs 3.0)
-         ~is_process_group_leader:false
-         pid
-     in
+  , (let+ proc = Scheduler.wait_for_process ~is_process_group_leader:false pid in
      if proc.status <> Unix.WEXITED 0
      then (
        let name =
@@ -200,5 +196,5 @@ let run run =
     ~finally:(fun () -> Sys.chdir cwd)
     ~f:(fun () ->
       Sys.chdir (Path.to_string dir);
-      Scheduler.Run.go config run ~timeout:(Time.Span.of_secs 5.0))
+      Scheduler.Run.go config run ~timeout:(Time.Span.of_secs 30.0))
 ;;

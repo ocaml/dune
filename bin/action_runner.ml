@@ -82,7 +82,7 @@ let create ~config ~sandbox_actions =
             (* Use SIGTERM because the action runner knows how to clean up
                its children. *)
             let args = Array.Immutable.of_list args in
-            Spawn.spawn ~env ~prog ~argv0 ~args ~pdeathsig:Term ())
+            Spawn.spawn ~nice:None ~env ~prog ~argv0 ~args ~pdeathsig:Term ())
       in
       let action_runner =
         Dune_engine.Action_runner.create name pid ~connection_fd:parent_fd

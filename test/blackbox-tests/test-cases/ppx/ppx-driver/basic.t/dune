@@ -128,5 +128,29 @@
  (name test_ppx_staged)
  (modules test_ppx_staged)
  (preprocess
-  (staged_pps -arg1 driver_print_tool ppx_with_cookies_print_tool -arg2 -arg3=%{env:AMERICA=undefined} --
+  (staged_pps -arg1 driver_print_tool ppx_with_cookies_print_tool
+    ppx_matching_cookies -arg2 -arg3=%{env:AMERICA=undefined} --
     -foo bar %{env:ENGLAND=undefined})))
+
+(library
+ (name ppx_matching_cookies)
+ (kind
+  (ppx_rewriter
+   (cookies
+    (france "Petit Beurre")
+    (library-name "%{library-name}"))))
+ (modules ())
+ (libraries driver_print_tool))
+
+(library
+ (name bad_ppx)
+ (kind (ppx_rewriter (cookies (library-name "other"))))
+ (modules ())
+ (libraries driver_print_tool))
+
+(rule (with-stdout-to bad.ml (echo "")))
+
+(library
+ (name bad)
+ (modules bad)
+ (preprocess (pps bad_ppx)))

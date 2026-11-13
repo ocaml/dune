@@ -168,6 +168,24 @@ let evalauted_rules ~rule_total =
   Event.instant ~name:"evalauted_rules" ~args now Rules
 ;;
 
+[%%if ocaml_version >= (5, 5, 0)]
+
+let gc_tweak_args () =
+  match Gc.Tweak.list_active () with
+  | [] -> []
+  | tweaks ->
+    [ ( "gc_tweaks"
+      , Arg.list
+          (Arg.record (List.map tweaks ~f:(fun (name, value) -> name, Arg.int value))) )
+    ]
+;;
+
+[%%else]
+
+let gc_tweak_args () = []
+
+[%%endif]
+
 let init ~version =
   let now = Time.now () in
   let args =
@@ -180,6 +198,7 @@ let init ~version =
       ; "initial_cwd", Arg.string Fpath.initial_cwd
       ; "start", Arg.time Time.start
       ]
+      @ gc_tweak_args ()
     in
     match version with
     | None -> args
@@ -548,6 +567,7 @@ let process_start
       ~categories
       ~targets
       ~queued
+      ~job_slots
   =
   let args =
     let always =
@@ -555,6 +575,7 @@ let process_start
       ; "pid", Arg.int (Pid.to_int pid)
       ; "categories", Arg.list (List.map categories ~f:Arg.string)
       ; "queued", Arg.span queued
+      ; "job_slots", Arg.int job_slots
       ]
     in
     let extended =
@@ -957,6 +978,32 @@ module Action = struct
     let runner_event ~name kind =
       let event_name, extra_args = name_and_args kind in
       let args = ("name", Arg.string (Action_runner_name.to_string name)) :: extra_args in
+      Event.instant ~args ~name:event_name (Time.now ()) Action
+    ;;
+  end
+
+  module Rule_plugin = struct
+    type kind =
+      | Spawn
+      | Connected
+      | Request_start
+      | Request_finish
+      | Stop
+      | Disconnected
+      | Exited
+
+    let event ~name ~pid kind =
+      let event_name =
+        match kind with
+        | Spawn -> "rule-plugin-spawn"
+        | Connected -> "rule-plugin-connected"
+        | Request_start -> "rule-plugin-request-start"
+        | Request_finish -> "rule-plugin-request-finish"
+        | Stop -> "rule-plugin-stop"
+        | Disconnected -> "rule-plugin-disconnected"
+        | Exited -> "rule-plugin-exited"
+      in
+      let args = [ "name", Arg.string name; "pid", Arg.int (Pid.to_int pid) ] in
       Event.instant ~args ~name:event_name (Time.now ()) Action
     ;;
   end

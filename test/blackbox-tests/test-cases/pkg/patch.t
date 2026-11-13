@@ -87,3 +87,24 @@ without sources).
   -> required by
      _build/_private/default/.pkg/no-source.0.0.1-$DIGEST/target
   [1]
+
+Empty patches are treated as a no-op, matching Opam behavior:
+
+  $ mkdir empty-test-source
+  $ cat > empty-test-source/foo.ml <<EOF
+  > original content
+  > EOF
+  $ make_lockpkg empty-test <<EOF
+  > (version 0.0.1)
+  > (source (copy $PWD/empty-test-source))
+  > (build
+  >  (progn
+  >   (patch foo.patch)
+  >   (system "cat foo.ml")))
+  > EOF
+
+  $ make_lockpkg_file empty-test foo.patch <<EOF
+  > EOF
+
+  $ build_pkg empty-test
+  original content

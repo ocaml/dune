@@ -167,8 +167,8 @@ jobs:
         # 4.02.x and 4.07.x in other environments
         include:
           # OCaml trunk:
-          - ocaml-compiler: ocaml-variants.5.6.0+trunk
-            cache-prefix: ocaml-variants.5.6.0+trunk
+          - ocaml-compiler: ocaml-variants.5.7.0+trunk
+            cache-prefix: ocaml-variants.5.7.0+trunk
             os: ubuntu-latest
           # OCaml 5:
           ## ubuntu (x86)
@@ -186,14 +186,14 @@ jobs:
             cache-prefix: 5.5.x
             os: macos-26-intel
           ## MSVC
-          - ocaml-compiler: ocaml-compiler.5.5.1,system-msvc
+          - ocaml-compiler: ocaml-compiler.5.5.2,system-msvc
             os: windows-latest
-            cache-prefix: ocaml-compiler.5.5.1-system-msvc
+            cache-prefix: ocaml-compiler.5.5.2-system-msvc
             run_tests: true
           ## mingw
-          - ocaml-compiler: ocaml-base-compiler.5.5.1,system-mingw
+          - ocaml-compiler: ocaml-base-compiler.5.5.2,system-mingw
             os: windows-latest
-            cache-prefix: ocaml-compiler.5.5.1-system-mingw
+            cache-prefix: ocaml-compiler.5.5.2-system-mingw
             run_tests: true
           # OCaml 4:
           ## ubuntu (x86)
@@ -201,8 +201,8 @@ jobs:
             cache-prefix: 4.14.x
             os: ubuntu-latest
           ## ubuntu (x86-32)
-          - ocaml-compiler: "ocaml-variants.4.14.2+options,ocaml-option-32bit"
-            cache-prefix: "ocaml-variants.4.14.2-ocaml-option-32bit"
+          - ocaml-compiler: "ocaml-variants.4.14.5+options,ocaml-option-32bit"
+            cache-prefix: "ocaml-variants.4.14.5-ocaml-option-32bit"
             os: ubuntu-latest
             apt_update: true
           ## macos (Apple Silicon)
@@ -261,7 +261,7 @@ jobs:
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: |
-          opam pin -n . --with-version=3.25.0
+          opam pin -n . --with-version=3.26.0
           opam install dune --deps-only
 
       - name: Install system deps on macOS
@@ -275,8 +275,9 @@ jobs:
       - name: Install deps
         run: |
           # CR-soon Alizter: ocaml_intrinsics_kernel v0.17 doesn't compile on
-          # MSVC. Pin to master which has the fix. Remove when v0.18 is released.
-          opam pin add ocaml_intrinsics_kernel https://github.com/janestreet/ocaml_intrinsics_kernel.git --no-action
+          # MSVC. Pin before the unreleased basement dependency was added.
+          # Remove when v0.18 is released.
+          opam pin add ocaml_intrinsics_kernel https://github.com/janestreet/ocaml_intrinsics_kernel.git#15f3a84aa61b2508ffd8599a323e7f63af81f524 --no-action
           # CR-soon Alizter: base v0.17 doesn't compile on MSVC.
           # Pin to fork with cherry-picked fix. Remove when merged upstream.
           # See: https://github.com/LexiFi/base/tree/fix_windows
@@ -295,11 +296,6 @@ jobs:
       - name: Run test suite on Win32
         run: opam exec -- make test-windows
         if: ${{ matrix.os == 'windows-latest' && matrix.run_tests }}
-
-      # We never build configurator
-      - name: Build configurator
-        run: opam install dune-configurator
-        if: ${{ matrix.configurator == true }}
 
       - name: Save cache when not Windows
         uses: actions/cache/save@v6
@@ -411,7 +407,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Setup Cygwin
-        uses: cygwin/cygwin-install-action@v6
+        uses: cygwin/cygwin-install-action@v7
         with:
           packages: ocaml gcc-core make
       - name: Build Dune
@@ -509,7 +505,7 @@ jobs:
       - name: Create an empty switch
         run: opam switch create . --empty
       - name: Pin local packages to local dependencies
-        run: opam pin add . -n --with-version=3.25.0
+        run: opam pin add . -n --with-version=3.26.0
         #                                     ^^^^^^
         # When updating dune lang, update this too
       - name: Install external dependencies

@@ -3,6 +3,17 @@
  (deps %{bin:strace}))
 
 (cram
+ (applies_to sync-overflow.t sync-timeout.t)
+ (enabled_if
+  (= %{system} linux))
+ (deps %{bin:strace} %{bin:od}))
+
+(cram
+ (applies_to sync-timeout.t)
+ ;; Its two five-second retry deadlines make this too slow for @runtest.
+ (enabled_if false))
+
+(cram
  ;; see https://github.com/ocaml/dune/pull/4728
  (enabled_if
   (<> "macosx" %{ocaml-config:system}))

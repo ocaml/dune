@@ -38,5 +38,11 @@ let rec add_loc (t : T.t) ~loc =
   | Atom s -> Atom (loc, s)
   | Quoted_string s -> Quoted_string (loc, s)
   | List l -> List (loc, List.map l ~f:(add_loc ~loc))
-  | Template t -> Template { t with loc }
+  | Template ({ parts; _ } as t) ->
+    let parts =
+      List.map parts ~f:(function
+        | Template.Part.Text _ as part -> part
+        | Pform pform -> Pform { pform with loc })
+    in
+    Template { t with loc; parts }
 ;;

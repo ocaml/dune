@@ -15,11 +15,13 @@ they each generate a [Foo] alias, their leaf module artifacts are distinct.
   > (include_subdirs qualified)
   > (library
   >  (name left)
+  >  (modules Foo.Bar)
   >  (libraries
   >   (select foo/bar.ml from
   >    (unix -> foo/bar.unix.ml))))
   > (library
   >  (name right)
+  >  (modules Foo.Baz)
   >  (libraries
   >   (select foo/baz.ml from
   >    (unix -> foo/baz.unix.ml))))

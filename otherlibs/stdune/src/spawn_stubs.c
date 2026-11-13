@@ -226,6 +226,7 @@ static int __pthread_fchdir(int fd) {
 #endif
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/resource.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -316,6 +317,8 @@ CAMLprim value dune_spawn_pipe()
    | Code executed in the child                                      |
    +-----------------------------------------------------------------+ */
 
+#if !defined(USE_POSIX_SPAWN)
+
 enum error_arg { NOTHING, CWD, PROG };
 
 /* Structure used to communicate errors from the child to the
@@ -387,6 +390,8 @@ static void subprocess_failure(int failure_fd,
   _exit(127);
 }
 
+#endif
+
 /* same as [dup] but ensures the result is -1 or >= 3. */
 static int safe_dup(int fd)
 {
@@ -400,6 +405,8 @@ static int safe_dup(int fd)
   }
 }
 
+#if !defined(USE_POSIX_SPAWN)
+
 /* same as [safe_dup] but writes errors to a file descriptor,
    as from a subprocess. */
 static int safe_dup_failure_fd(int failure_fd, int fd)
@@ -408,6 +415,8 @@ static int safe_dup_failure_fd(int failure_fd, int fd)
   if (new_fd == -1) subprocess_failure(failure_fd, "dup", NOTHING);
   return new_fd;
 }
+
+#endif
 
 enum working_dir_kind { PATH, FD, INHERIT };
 
@@ -425,9 +434,12 @@ struct spawn_info {
   pid_t pgid;
   int landlock_fd;
   int pdeathsig;
+  int nice;
   pid_t parent_pid;
   sigset_t child_sigmask;
 };
+
+#if !defined(USE_POSIX_SPAWN)
 
 static void reset_signal_to_default(int signal)
 {
@@ -524,6 +536,11 @@ static void subprocess(int failure_fd, struct spawn_info *info)
   }
 
   apply_landlock(failure_fd, info);
+  if (info->nice >= 0) {
+    errno = 0;
+    if (nice(info->nice) == -1 && errno != 0)
+      subprocess_failure(failure_fd, "nice", NOTHING);
+  }
   pthread_sigmask(SIG_SETMASK, &info->child_sigmask, NULL);
 
   execve(info->prog, info->argv, info->env);
@@ -549,6 +566,8 @@ static void raise_subprocess_failure(struct subprocess_failure* failure,
   assert(memchr(failure->function, 0, sizeof(failure->function)));
   unix_error(failure->error, failure->function, arg);
 }
+
+#endif
 
 /* Convert a list of [(variable, value)] pairs into a NULL terminated array
    of C strings. */
@@ -685,13 +704,15 @@ static void init_spawn_info(struct spawn_info *info,
                             value v_setpgid,
                             value v_sigprocmask,
                             value v_landlock_fd,
-                            value v_pdeathsig)
+                            value v_pdeathsig,
+                            value v_nice)
 {
   extern char ** environ;
 
   info->std_fds[0] = Int_val(v_stdin);
   info->std_fds[1] = Int_val(v_stdout);
   info->std_fds[2] = Int_val(v_stderr);
+  info->nice = Is_block(v_nice) ? Int_val(Field(v_nice, 0)) : -1;
 
   if (Is_long(v_cwd)) {
     assert(v_cwd == Val_long(0));
@@ -793,7 +814,8 @@ CAMLprim value dune_spawn_unix(value v_env,
                                value v_setpgid,
                                value v_sigprocmask,
                                value v_landlock_fd,
-                               value v_pdeathsig)
+                               value v_pdeathsig,
+                               value v_nice)
 {
   CAMLparam5(v_env, v_cwd, v_prog, v_argv0, v_args);
   CAMLlocal1(e_arg);
@@ -806,21 +828,30 @@ CAMLprim value dune_spawn_unix(value v_env,
   char *e_function = NULL;
 
   posix_spawn_file_actions_t actions;
-  if (posix_spawn_file_actions_init(&actions)) {
+  int actions_initialized = 0;
+  posix_spawnattr_t attr;
+  int attr_initialized = 0;
+  struct spawn_info info;
+  int info_initialized = 0;
+
+  e_error = posix_spawn_file_actions_init(&actions);
+  if (e_error) {
     e_function = "posix_spawn_file_actions_init";
     goto cleanup;
   }
+  actions_initialized = 1;
 
-  posix_spawnattr_t attr;
-  if (posix_spawnattr_init(&attr)) {
+  e_error = posix_spawnattr_init(&attr);
+  if (e_error) {
     e_function = "posix_spawnattr_init";
     goto cleanup;
   }
+  attr_initialized = 1;
 
-  struct spawn_info info;
   init_spawn_info(&info, v_env, v_cwd, v_prog, v_argv0, v_args,
                   v_stdin, v_stdout, v_stderr, v_setpgid, v_sigprocmask,
-                  v_landlock_fd, v_pdeathsig);
+                  v_landlock_fd, v_pdeathsig, v_nice);
+  info_initialized = 1;
 
   short attr_flags = POSIX_SPAWN_SETSIGMASK;
   if (info.set_pgid) attr_flags |= POSIX_SPAWN_SETPGROUP;
@@ -886,6 +917,20 @@ CAMLprim value dune_spawn_unix(value v_env,
   e_error = posix_spawn(&pid, info.prog,
                         &actions, &attr,
                         info.argv, info.env);
+  if (e_error == 0 && info.nice >= 0) {
+    /* Dune's scheduler does not reap children until this stub returns.
+       Adjusting priority is best-effort: the child may have already exited. */
+    errno = 0;
+    int priority = getpriority(PRIO_PROCESS, pid);
+    if (priority != -1 || errno == 0) {
+      /* Match nice()'s cap of 19 without decreasing current niceness. */
+      if (priority < 19) {
+        priority += info.nice;
+        if (priority > 19) priority = 19;
+      }
+      (void)setpriority(PRIO_PROCESS, pid, priority);
+    }
+  }
   if (info.cwd_kind != INHERIT) {
     /* go back to inheriting the process cwd */
     __pthread_fchdir(-1);
@@ -902,9 +947,12 @@ CAMLprim value dune_spawn_unix(value v_env,
     if (tmp_fds[fd] > 2)
       close(tmp_fds[fd]);
 
-  free_spawn_info(&info);
-  posix_spawnattr_destroy(&attr);
-  posix_spawn_file_actions_destroy(&actions);
+  if (info_initialized)
+    free_spawn_info(&info);
+  if (attr_initialized)
+    posix_spawnattr_destroy(&attr);
+  if (actions_initialized)
+    posix_spawn_file_actions_destroy(&actions);
 
   if (e_function) {
     unix_error(e_error, e_function, e_arg);
@@ -927,7 +975,8 @@ CAMLprim value dune_spawn_unix(value v_env,
                                value v_setpgid,
                                value v_sigprocmask,
                                value v_landlock_fd,
-                               value v_pdeathsig)
+                               value v_pdeathsig,
+                               value v_nice)
 {
   CAMLparam5(v_env, v_cwd, v_prog, v_argv0, v_args);
   pid_t ret;
@@ -943,7 +992,7 @@ CAMLprim value dune_spawn_unix(value v_env,
 
   init_spawn_info(&info, v_env, v_cwd, v_prog, v_argv0, v_args,
                   v_stdin, v_stdout, v_stderr, v_setpgid, v_sigprocmask,
-                  v_landlock_fd, v_pdeathsig);
+                  v_landlock_fd, v_pdeathsig, v_nice);
 
   caml_enter_blocking_section();
   enter_safe_pipe_section();
@@ -1070,7 +1119,8 @@ CAMLprim value dune_spawn_unix(value v_env,
                                value v_setpgid,
                                value v_sigprocmask,
                                value v_landlock_fd,
-                               value v_pdeathsig)
+                               value v_pdeathsig,
+                               value v_nice)
 {
   (void)v_env;
   (void)v_cwd;
@@ -1085,6 +1135,7 @@ CAMLprim value dune_spawn_unix(value v_env,
   (void)v_sigprocmask;
   (void)v_landlock_fd;
   (void)v_pdeathsig;
+  (void)v_nice;
   unix_error(ENOSYS, "spawn_unix", Nothing);
 }
 
@@ -1190,7 +1241,8 @@ CAMLprim value dune_spawn_unix_byte(value * argv)
                     argv[9],
                     argv[10],
                     argv[11],
-                    argv[12]);
+                    argv[12],
+                    argv[13]);
 }
 
 CAMLprim value dune_spawn_windows_byte(value * argv)

@@ -1,5 +1,8 @@
 (cram
- (deps %{bin:node} %{bin:js_of_ocaml})
+ (deps
+  %{bin:node}
+  %{bin:js_of_ocaml}
+  (package js_of_ocaml))
  (alias runtest-js))
 
 (cram
@@ -14,3 +17,8 @@
  (deps
   %{bin:git}
   (package dune-build-info)))
+
+(cram
+ (applies_to bytecode-hints.t)
+ (enabled_if
+  (>= %{ocaml_version} 5.6.0)))

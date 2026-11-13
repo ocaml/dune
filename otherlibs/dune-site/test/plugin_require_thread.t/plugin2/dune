@@ -6,7 +6,7 @@
  (public_name plugin2.plugin2_impl)
  (name plugin2_impl)
  (modules plugin2_impl)
- (libraries app.MyControls app.register result threads))
+ (libraries app.MyControls app.register threads))
 
 (plugin
  (name plugin2)

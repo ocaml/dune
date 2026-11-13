@@ -89,15 +89,14 @@ A forwarded runtest request also uses the client's directory.
   $ find _build/default -name 'rpc-runtest-*' -type f -print
   _build/default/sub/rpc-runtest-sub
 
-The format RPC has no path argument, so it formats recursively from the
-workspace root rather than the client's directory.
+The format RPC formats recursively from the client's directory.
 
   $ (cd sub && unset INSIDE_DUNE; dune fmt) 2>/dev/null
   $ cat root.ml
-  (* fake ocamlformat output *)
+  let ()=print_int (5+4)
   $ cat sub/nested.ml
   (* fake ocamlformat output *)
   $ cat server/server.ml
-  (* fake ocamlformat output *)
+  let ()=print_int (7+6)
 
   $ stop_dune_quiet

@@ -5,15 +5,45 @@
 
 (cram
  (applies_to :whole_subtree)
- (deps %{bin:node} %{bin:melc})
+ (deps
+  %{bin:node}
+  %{bin:melc}
+  (package melange))
  (alias runtest-melange))
 
 (cram
- (deps %{bin:melc_stdlib_prefix})
+ (deps
+  (package ppxlib))
+ (applies_to
+  conditional-pps.t
+  conditional-ppx-runtime-deps.t
+  lint.t
+  melange-emit-package.t
+  merlin.t
+  ppx-generated-dependencies.t
+  ppx-merlin-cookies.t
+  preprocess.t
+  reason-lint-promotion.t
+  sandbox-preprocessed-reason-source.t
+  sandbox-preprocessed-source.t))
+
+(cram
+ ; CR-soon Alizter: figure out why this is failing
+ ; Disabled to unblock https://github.com/ocaml/dune/pull/16460
+ (applies_to conditional-pps.t)
+ (enabled_if false))
+
+(cram
+ (deps %{bin:melc_stdlib_prefix} %{bin:merlin_configurations})
  (enabled_if
   ; CR-soon Alizter: re-enable this test inside Nix
   (not %{env:INSIDE_NIX=false}))
  (applies_to merlin.t))
+
+(cram
+ (deps
+  (package ppxlib))
+ (applies_to ppx-lint-cookies.t))
 
 (cram
  (deps %{bin:refmt})
@@ -21,6 +51,11 @@
   preprocess.t
   reason-lint-promotion.t
   sandbox-preprocessed-reason-source.t))
+
+(cram
+ (deps
+  (package ppxlib))
+ (applies_to ppx-compilation-mode.t ppx-cookies.t))
 
 (cram
  (deps

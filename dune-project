@@ -119,7 +119,9 @@ Among other things, dune-configurator allows one to:
  (name dune-site)
  (dir otherlibs/dune-site)
  (synopsis "Embed locations information inside executable and libraries")
- (depends (dune-private-libs (= :version)))
+ (depends
+  (dune-private-libs (= :version))
+  (dune-build-info :with-test))
  (description ""))
 
 (package
@@ -149,6 +151,26 @@ Among other things, dune-configurator allows one to:
   (stdune (= :version))
   base-unix)
  (description "Specialization of dune-rpc to Lwt"))
+
+(package
+ (name dune-rules-plugin)
+ (dir otherlibs/dune-rules-plugin)
+ (synopsis "Transport-independent API for writing Dune rule plugins")
+ (depends
+  (dune-rpc (= :version))
+  (csexp (>= 1.5.0)))
+ (description "Experimental API for generating Dune rules from plugins."))
+
+(package
+ (name dune-rules-plugin-lwt)
+ (dir otherlibs/dune-rules-plugin-lwt)
+ (synopsis "API for writing Dune rule plugins using Lwt")
+ (depends
+  (dune-rules-plugin (= :version))
+  (dune-rpc-lwt (= :version))
+  (lwt (>= 5.6.0))
+  base-unix)
+ (description "Lwt specialization of the experimental Dune rule plugin API."))
 
 (package
  (name dyn)

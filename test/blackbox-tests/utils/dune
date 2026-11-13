@@ -11,7 +11,15 @@
 (executable
  (name action_plugin_helper)
  (modules action_plugin_helper)
- (libraries dune-rpc-lwt lwt lwt.unix unix))
+ (libraries dune-rpc-lwt dune-rpc stdune csexp lwt lwt.unix unix))
+
+(rule
+ (target fail_trace_write.so)
+ (deps fail_trace_write.c)
+ (enabled_if
+  (= %{system} linux))
+ (action
+  (run %{cc} -shared -fPIC -o %{target} %{deps} -ldl)))
 
 (ocamllex dunepp)
 
@@ -23,6 +31,11 @@
  (modules melc_stdlib_prefix)
  (name melc_stdlib_prefix)
  (libraries stdune fs_io unix))
+
+(executable
+ (name merlin_configurations)
+ (modules merlin_configurations)
+ (libraries stdune dune_rules dune_lang ocaml))
 
 (executable
  (name refmt)

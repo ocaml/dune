@@ -141,7 +141,7 @@ let driver_flags expander ~corrected_suffix ~driver_flags ~standard =
   Expander.expand_and_eval_set expander driver_flags ~standard
 ;;
 
-let lint_module sctx ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope =
+let lint_module sctx ~for_ ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope =
   let open Action_builder.O in
   let add_alias build =
     Super_context.add_alias_action sctx [ Alias.make Alias0.lint ~dir ] build ~dir
@@ -177,6 +177,7 @@ let lint_module sctx ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope
              let* exe, driver, flags =
                Ppx_driver.ppx_driver_and_flags
                  ctx
+                 ~for_
                  ~expander
                  ~loc
                  ~lib_name
@@ -219,6 +220,7 @@ let lint_module sctx ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope
 
 let pp_one_module
       sctx
+      ~for_
       ~context
       ~lib_name
       ~scope
@@ -274,6 +276,7 @@ let pp_one_module
             (let* exe, driver, flags =
                Ppx_driver.ppx_driver_and_flags
                  context
+                 ~for_
                  ~expander
                  ~loc
                  ~scope
@@ -322,6 +325,7 @@ let pp_one_module
            let* exe, driver, flags =
              Ppx_driver.ppx_driver_and_flags
                context
+               ~for_
                ~expander
                ~loc
                ~lib_name
@@ -384,6 +388,7 @@ let pp_one_module
 
 let make
       sctx
+      ~for_
       ~dir
       ~expander
       ~lint
@@ -429,12 +434,13 @@ let make
     in
     let sandbox = sandbox_of_setting sandbox in
     Staged.unstage
-      (lint_module sctx ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope)
+      (lint_module sctx ~for_ ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope)
   in
   Module_reference.Per_item.map preprocess ~f:(fun spec ->
     Staged.unstage
     @@ pp_one_module
          sctx
+         ~for_
          ~context
          ~lib_name
          ~scope

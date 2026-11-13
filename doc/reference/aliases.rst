@@ -52,7 +52,8 @@ the command line. For example, if a Dune file contains the following, then
 
    (rule
     (alias deploy)
-    (action ./run-deployer.exe))
+    (action
+     (run ./run-deployer.exe)))
 
 Built-In Aliases
 ----------------

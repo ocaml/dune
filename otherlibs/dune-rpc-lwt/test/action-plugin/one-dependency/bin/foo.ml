@@ -21,7 +21,9 @@ let sandbox_action dap =
   if Sys.file_exists "../choice" then failwith "undeclared dependency is visible";
   replace_file "../inputs/static.txt" "local";
   let* choice, repeated =
-    Lwt.both (read_file dap ~path:"../choice") (read_file dap ~path:"../choice")
+    Lwt.both
+      (read_file dap ~path:"../choice")
+      (read_file dap ~path:(Filename.concat (Sys.getcwd ()) "../choice"))
   in
   if choice <> repeated then failwith "inconsistent dependency contents";
   let* data = read_file dap ~path:choice in
@@ -43,19 +45,31 @@ let sandbox_action dap =
   if Sys.file_exists "../inputs/unused" then failwith "unmatched dependency is visible";
   let* (_ : string) = read_file dap ~path:"../tree/sub/first" in
   replace_file "../tree/sub/first" "local tree";
+  Unix.mkdir "../tree/other" 0o755;
+  let* () =
+    Lwt_io.with_file ~mode:Output "../tree/other/local" (fun output ->
+      Lwt_io.write output "sandbox-only")
+  in
   let* () =
     let+ tree = read_directory_with_glob dap ~path:".." ~glob:(Glob.of_string "tree") in
     if tree <> [ "tree" ] then failwith "missing directory target"
   in
+  let* () = build_deps dap [ Dep.File "../tree" ] in
   let* first = read_file dap ~path:"../tree/sub/first" in
   let* second = read_file dap ~path:"../tree/sub/second" in
-  if first <> "local tree" || second <> "second"
+  let* third = read_file dap ~path:"../tree/other/third" in
+  let* local = Lwt_io.with_file ~mode:Input "../tree/other/local" Lwt_io.read in
+  if
+    first <> "local tree"
+    || second <> "second"
+    || third <> "third"
+    || local <> "sandbox-only"
   then failwith "incorrect overlapping directory contents";
   Lwt_io.with_file ~mode:Output "../result" (fun output ->
     Lwt_io.fprintf output "%s\n%s\n%s\n" data (String.concat ", " listing) static)
 ;;
 
-let detached_action dap state ~cancel =
+let detached_sandbox_action dap state ~cancel =
   let open Lwt.Syntax in
   let* () =
     Lwt_io.with_file ~mode:Output (Filename.concat state "pid") (fun output ->
@@ -108,6 +122,50 @@ let absolute_path path =
   if Filename.is_relative path then Filename.concat (Sys.getcwd ()) path else path
 ;;
 
+let detached_action dap =
+  let open Lwt.Syntax in
+  let* () =
+    Lwt_io.with_file ~mode:Output "parent-pid" (fun output ->
+      Lwt_io.fprintf output "%d" (Unix.getpid ()))
+  in
+  let rec wait_started () =
+    if Sys.file_exists "started"
+    then Lwt.return_unit
+    else
+      let* () = Lwt_unix.sleep 0.01 in
+      wait_started ()
+  in
+  let* () =
+    Lwt.choose [ Lwt.map ignore (read_file dap ~path:"slow-input"); wait_started () ]
+  in
+  let* () =
+    Lwt_io.with_file ~mode:Output "detached" (fun output -> Lwt_io.write output "done")
+  in
+  Lwt_io.printl "ran"
+;;
+
+let helper env args =
+  let cwd = Sys.getcwd () in
+  let prog = Filename.concat cwd "foo.exe" in
+  env, cwd, (prog, Array.of_list (prog :: args))
+;;
+
+let reject_helper env =
+  let env, cwd, command = helper env [ "initialize" ] in
+  let open Lwt.Syntax in
+  let* status = Lwt_process.exec ~env ~cwd ~stderr:`Dev_null command in
+  match status with
+  | Unix.WEXITED 1 -> Lwt.return_unit
+  | _ -> failwith "helper was not rejected"
+;;
+
+let action_id_prefix = "DUNE_DYNAMIC_RUN_ACTION_ID="
+
+let is_action_id value =
+  String.length value >= String.length action_id_prefix
+  && String.sub value 0 (String.length action_id_prefix) = action_id_prefix
+;;
+
 let change_dir dir =
   if not (Sys.file_exists dir) then Unix.mkdir dir 0o755;
   Sys.chdir dir
@@ -151,7 +209,9 @@ let action dap =
     let open Lwt.Syntax in
     let first_path = absolute_path first in
     let second_path = absolute_path second in
-    let* () = build_deps dap [ Dep.File first; Dep.File second; Dep.File first ] in
+    let* () =
+      build_deps dap [ Dep.File first_path; Dep.File second_path; Dep.File first_path ]
+    in
     Lwt_process.exec ("cat", [| "cat"; first_path; second_path |])
     |> Lwt.map (function
       | Unix.WEXITED 0 -> ()
@@ -175,14 +235,61 @@ let action dap =
     |> Lwt.map (function
       | Unix.WEXITED 0 -> ()
       | _ -> failwith "cat failed")
+  | [| _; "absolute"; path |] -> ordinary_action dap ~path:(absolute_path path)
   | [| _ |] -> ordinary_action dap ~path:"some_dependency"
   | [| _; "read"; path |] -> ordinary_action dap ~path
+  | [| _; "build"; path |] -> build_deps dap [ Dep.File path ]
   | [| _; "sandbox" |] -> sandbox_action dap
-  | [| _; "detached"; state |] -> detached_action dap state ~cancel:false
-  | [| _; "cancelled"; state |] -> detached_action dap state ~cancel:true
+  | [| _; "detached"; state |] -> detached_sandbox_action dap state ~cancel:false
+  | [| _; "cancelled"; state |] -> detached_sandbox_action dap state ~cancel:true
   | [| _; "hold"; connection; release |] -> held_action dap ~connection ~release
   | [| _; "initialize" |] -> Lwt.return_unit
   | [| _; "exit"; code |] -> exit (int_of_string code)
+  | [| _; "detached" |] -> detached_action dap
+  | [| _; "helpers" |] ->
+    let open Lwt.Syntax in
+    let read path =
+      let env, cwd, command = helper (Unix.environment ()) [ "read"; path ] in
+      Lwt_process.with_process_in ~env ~cwd command (fun process ->
+        let* contents = Lwt_io.read process#stdout in
+        let+ status = process#status in
+        match status with
+        | Unix.WEXITED 0 -> contents
+        | _ -> failwith "helper failed")
+    in
+    let* first, second = Lwt.both (read "helper-first") (read "helper-second") in
+    let* repeated = read "helper-first" in
+    Lwt_io.printf "%s%s%s" first second repeated
+  | [| _; "ignore-missing" |] ->
+    Lwt.catch
+      (fun () -> read_file dap ~path:"missing-helper-input" |> Lwt.map ignore)
+      (fun _ -> Lwt.return_unit)
+  | [| _; "helper-failure" |] ->
+    let open Lwt.Syntax in
+    let env, cwd, command = helper (Unix.environment ()) [ "ignore-missing" ] in
+    let* status = Lwt_process.exec ~env ~cwd command in
+    (match status with
+     | Unix.WEXITED 0 -> Lwt.return_unit
+     | _ -> failwith "helper did not catch the failure")
+  | [| _; "action-id" |] -> Lwt_io.printl (Sys.getenv "DUNE_DYNAMIC_RUN_ACTION_ID")
+  | [| _; "expired" |] ->
+    let open Lwt.Syntax in
+    let* token = read_file dap ~path:"action-id" in
+    let env =
+      (action_id_prefix ^ String.trim token)
+      :: (Unix.environment ()
+          |> Array.to_list
+          |> List.filter (fun s -> not (is_action_id s)))
+      |> Array.of_list
+    in
+    let* () = reject_helper env in
+    Lwt_io.printl "expired action rejected"
+  | [| _; "parallel"; first; second |] ->
+    let open Lwt.Syntax in
+    let* first, second =
+      Lwt.both (read_file dap ~path:first) (read_file dap ~path:second)
+    in
+    Lwt_io.printf "%s,%s\n" first second
   | _ -> invalid_arg "invalid arguments"
 ;;
 

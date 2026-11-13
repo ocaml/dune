@@ -34,7 +34,7 @@ Now we attempt to use a dune-package file produced by a future version of Dune:
   This version of Dune supports the following versions of the dune language:
   - 1.0 to 1.12
   - 2.0 to 2.9
-  - 3.0 to 3.25
+  - 3.0 to 3.26
   -> required by _build/default/.foo.eobjs/native/dune__exe__Foo.cmx
   -> required by _build/default/foo.exe
   Hint: Upgrade Dune to a version that supports (lang dune 99.0).

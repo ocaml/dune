@@ -25,7 +25,7 @@ PATH gets a .binaries dir with symlinks to both bins:
 
   $ dune build path-output
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/install/default/.binaries/$DIGEST
+  $PWD/_build/_private/default/.binaries/$DIGEST
 
 The rule depends on each binary via two paths: the build artifact
 (from the pform expansion) and the .binaries symlink (from the PATH
@@ -33,10 +33,10 @@ machinery):
 
   $ dune rules --format=json _build/default/path-output \
   >   | jq_dune '.[] | ruleDepFilePaths' | censor
+  "_build/_private/default/.binaries/$DIGEST/bar"
+  "_build/_private/default/.binaries/$DIGEST/foo"
   "_build/default/src/bar.exe"
   "_build/default/src/foo.exe"
-  "_build/install/default/.binaries/$DIGEST/bar"
-  "_build/install/default/.binaries/$DIGEST/foo"
 
 Both binaries are callable by name:
 

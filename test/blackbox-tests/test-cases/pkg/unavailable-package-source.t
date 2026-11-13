@@ -24,23 +24,21 @@ Local file system
 
 Git
   $ runtest "(fetch (url \"git+file://$PWD/dummy\"))" 2>&1 \
-  > | dune_cmd subst "$PWD" 'PWD' \
-  > | sanitize_pkg_digest foo.dev \
-  > | dune_cmd subst '/url/[a-f0-9]+' '/url/DIGEST'
-  fatal: 'PWD/dummy' does not appear to be a git repository
+  > | censor
+  fatal: '$PWD/dummy' does not appear to be a git repository
   fatal: Could not read from remote repository.
   
   Please make sure you have the correct access rights
   and the repository exists.
   Error: Failed to run external command:
-  'git ls-remote "file://PWD/dummy"'
-  -> required by _build/_fetch/url/DIGEST/dir
+  'git ls-remote "file://$PWD/dummy"'
+  -> required by _build/_fetch/url/$DIGEST1/dir
   -> required by
-     _build/_private/default/.pkg/foo.dev-DIGEST_HASH/source
+     _build/_private/default/.pkg/foo.dev-$DIGEST2/source
   -> required by
-     _build/_private/default/.pkg/foo.dev-DIGEST_HASH/target
+     _build/_private/default/.pkg/foo.dev-$DIGEST2/target
   Hint: Check that this Git URL in the project configuration is correct:
-  "file://PWD/dummy"
+  "file://$PWD/dummy"
   [1]
 
 HTTP
@@ -51,4 +49,20 @@ HTTP
   >  | dune_cmd subst "'[0-9]*'" 'X'
   Error: failed to extract 'download'
   Reason: 'tar' failed with non-zero exit code X and output:
+  [1]
+
+Mercurial and Darcs URLs can be stored in a lock directory, but fetching them
+must report the unsupported backend without trying to contact the server.
+
+  $ runtest '(fetch (url "hg+https://example.invalid/source"))'
+  File "dune.lock/foo.pkg", line 2, characters 20-55:
+  2 | (source (fetch (url "hg+https://example.invalid/source")))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Unsupported backend: mercurial
+  [1]
+  $ runtest '(fetch (url "darcs+https://example.invalid/source"))'
+  File "dune.lock/foo.pkg", line 2, characters 20-58:
+  2 | (source (fetch (url "darcs+https://example.invalid/source")))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Unsupported backend: darcs
   [1]

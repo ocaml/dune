@@ -41,7 +41,9 @@ let entry_resolver_fdecl
 let set_entry_resolver f = Fdecl.set entry_resolver_fdecl f
 
 let dir ~context ~key =
-  Path.Build.L.relative (Install.Context.dir ~context) [ ".packages"; key ]
+  Path.Build.L.relative
+    Private_context.t.build_dir
+    [ Context_name.to_string context; ".packages"; key ]
 ;;
 
 (* Resolve the package set's install entries against the layout root: filter
@@ -228,7 +230,7 @@ let gen_rules context_name ~dir rest =
            Rules.Produce.rule (Rule.make ~info:(Rule.Info.of_loc_opt None) ~targets build))))
   | _ :: _ :: _ ->
     Memo.return
-    @@ Build_config.Gen_rules.redirect_to_parent Build_config.Gen_rules.Rules.empty
+    @@ Build_config.Gen_rules.Redirect_to_parent Build_config.Gen_rules.Rules.empty
 ;;
 
 module For_rocq_only = struct

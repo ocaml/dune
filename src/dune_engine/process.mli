@@ -89,6 +89,17 @@ module Build : sig
   val run_id : t -> Run_id.t
   val cancellation : t -> Fiber.Cancel.t
   val action_runner : t -> Action_runner.t option
+
+  (** [exited] must be filled after the plugin process has been reaped. *)
+  val register_rule_plugin
+    :  t
+    -> initialized:unit Rpc.Server.Session.t option Fiber.Ivar.t
+    -> exited:unit Fiber.Ivar.t
+    -> unit
+
+  (** Close plugin RPC sessions and wait for their processes to exit. *)
+  val complete_rule_plugins : t -> unit Fiber.t
+
   val get : unit -> t option
   val with_ : t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
   val cancel_current : unit -> unit Fiber.t
@@ -114,6 +125,21 @@ val run
   -> ?metadata:Process_metadata.t
   -> ?build:Build.t
   -> ?sandbox:Sandbox.t
+  -> (unit, 'a) Failure_mode.t
+  -> Path.t
+  -> string list
+  -> 'a Fiber.t
+
+(** Run a dynamic action with a job slot that can be lent to dependency builds. *)
+val run_with_job_slot
+  :  job_slot:Scheduler.Job_slot.t
+  -> dir:Path.t
+  -> display:Display.t
+  -> stdout_to:Io.output Io.t
+  -> stderr_to:Io.output Io.t
+  -> stdin_from:Io.input Io.t
+  -> env:Env.t
+  -> metadata:Process_metadata.t
   -> (unit, 'a) Failure_mode.t
   -> Path.t
   -> string list

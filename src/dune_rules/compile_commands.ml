@@ -78,10 +78,20 @@ let collect_from_foreign_sources
     ocaml.lib_config.ext_obj
   in
   Foreign.Sources.to_list_map foreign_sources ~f:(fun _ (loc, src) ->
-    let include_flags =
-      Foreign_rules.build_include_flags ~sctx ~dir ~expander ~dir_contents ~requires ~src
-    in
-    build_c_command ~sctx ~dir ~expander ~include_flags ~loc src ~ext_obj)
+    match Foreign.Source.language src with
+    | Asm -> None
+    | C | Cxx ->
+      let include_flags =
+        Foreign_rules.build_include_flags
+          ~sctx
+          ~dir
+          ~expander
+          ~dir_contents
+          ~requires
+          ~src
+      in
+      Some (build_c_command ~sctx ~dir ~expander ~include_flags ~loc src ~ext_obj))
+  |> List.filter_map ~f:Fun.id
   |> Action_builder.all
 ;;
 

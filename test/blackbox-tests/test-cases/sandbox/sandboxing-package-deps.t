@@ -20,6 +20,6 @@ Test sandboxing when depending on things from the install context using
 
   $ dune build --sandbox symlink @foo 2>&1 | censor
   $PWD/_build/.sandbox/$DIGEST1/default
-  $PWD/_build/install/default/.packages/$DIGEST2/bin/mybin
+  $PWD/_build/_private/default/.packages/$DIGEST2/bin/mybin
   foo/mybin.exe
   hello from package foo

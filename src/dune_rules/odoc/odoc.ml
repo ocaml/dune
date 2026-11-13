@@ -5,74 +5,6 @@ module Gen_rules = Build_config.Gen_rules
 let ( ++ ) = Path.Build.relative
 let mld_ext = Filename.Extension.of_string_exn ".mld"
 
-module Scope_key : sig
-  val of_string : Context_name.t -> string -> (Lib_name.t * Lib.DB.t) Memo.t
-  val to_string : Lib_name.t -> Dune_project.t -> string
-end = struct
-  let file_key project =
-    let name = Dune_project.name project in
-    let root = Dune_project.root project in
-    let digest =
-      Digest.repr Repr.(pair Dune_project_name.repr Path.Source.repr) (name, root)
-      |> Digest.to_string
-    in
-    String.take digest 12
-  ;;
-
-  let find_project_by_key =
-    let memo =
-      let make_map projects =
-        String.Map.of_list_map_exn projects ~f:(fun project -> file_key project, project)
-        |> Memo.return
-      in
-      let module Input = struct
-        type t = Dune_project.t list
-
-        let equal = List.equal Dune_project.equal
-        let hash = List.hash Dune_project.hash
-        let to_dyn = Dyn.list Dune_project.to_dyn
-      end
-      in
-      Memo.create "project-by-keys" ~input:(module Input) make_map
-    in
-    fun key ->
-      let* projects = Dune_load.projects () in
-      let+ map = Memo.exec memo projects in
-      String.Map.find_exn map key
-  ;;
-
-  let of_string context s =
-    match String.rsplit2 s ~on:'@' with
-    | None ->
-      let+ public_libs = Scope.DB.public_libs context in
-      Lib_name.parse_string_exn (Loc.none, s), public_libs
-    | Some (lib, key) ->
-      let+ scope = find_project_by_key key >>= Scope.DB.find_by_project context in
-      Lib_name.parse_string_exn (Loc.none, lib), Scope.libs scope
-  ;;
-
-  let to_string lib project =
-    let key = file_key project in
-    sprintf "%s@%s" (Lib_name.to_string lib) key
-  ;;
-end
-
-let lib_unique_name lib =
-  let name = Lib.name lib in
-  let info = Lib.info lib in
-  let status = Lib_info.status info in
-  match status with
-  | Installed_private _ | Installed _ -> assert false
-  | Public _ -> Lib_name.to_string name
-  | Private (project, _) -> Scope_key.to_string name project
-;;
-
-let pkg_or_lnu lib =
-  match Lib_info.package (Lib.info lib) with
-  | Some p -> Package.Name.to_string p
-  | None -> lib_unique_name lib
-;;
-
 type target =
   | Lib of Lib.Local.t
   | Pkg of Package.Name.t
@@ -102,7 +34,7 @@ module Paths = struct
     ++
     match m with
     | Pkg pkg -> Package.Name.to_string pkg
-    | Lib lib -> pkg_or_lnu (Lib.Local.to_lib lib)
+    | Lib lib -> Odoc_scope.pkg_or_lnu (Lib.Local.to_lib lib)
   ;;
 
   let html ctx m = add_pkg_lnu (html_root ctx) m
@@ -489,7 +421,7 @@ let link_odoc_rules sctx (odoc_file : Artifact.t) ~pkg ~requires =
 let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
   (* Using the proper package name doesn't actually work since odoc assumes that
      a package contains only 1 library *)
-  let pkg_or_lnu = pkg_or_lnu (Lib.Local.to_lib local_lib) in
+  let pkg_or_lnu = Odoc_scope.pkg_or_lnu (Lib.Local.to_lib local_lib) in
   let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
   let info = Lib.Local.info local_lib in
@@ -1135,10 +1067,12 @@ let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.
     in
     Rules.Produce.Alias.add_deps alias deps
   | Html | Json ->
-    let* libs =
+    let libs =
       Context.name ctx |> libs_of_pkg ~pkg:name >>| List.map ~f:(fun lib -> Lib lib)
     in
     let deps =
+      let open Action_builder.O in
+      let* libs = Action_builder.of_memo libs in
       Pkg name :: libs
       |> List.map ~f:(Dep.format_alias output ctx)
       |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
@@ -1302,8 +1236,8 @@ let gen_rules sctx ~dir rest =
       (let* () = setup_toplevel_index_rule sctx Markdown in
        Package.Name.Map.to_seq packages
        |> Memo.parallel_iter_seq ~f:(fun (_, (pkg : Package.t)) ->
-         let pkg_name = Package.name pkg in
-         setup_pkg_markdown_rules sctx ~pkg:pkg_name))
+         let pkg = Package.name pkg in
+         setup_pkg_markdown_rules sctx ~pkg))
   | [ "_markdown"; _lib_unique_name_or_pkg ] ->
     (* package directories are directory targets *)
     Memo.return Gen_rules.no_rules
@@ -1316,90 +1250,63 @@ let gen_rules sctx ~dir rest =
     with_package pkg ~f:(fun pkg ->
       let pkg = Package.name pkg in
       setup_package_odoc_rules sctx ~pkg)
-  | [ "_odocls"; lib_unique_name_or_pkg ] ->
+  | [ (("_odocls" | "_html") as what); lib_unique_name_or_pkg ] ->
     has_rules
       ((* TODO we can be a better with the error handling in the case where
           lib_unique_name_or_pkg is neither a valid pkg or lnu *)
-       let ctx = Super_context.context sctx in
-       let* lib, lib_db = Scope_key.of_string (Context.name ctx) lib_unique_name_or_pkg in
        (* jeremiedimino: why isn't [None] some kind of error here? *)
        let* lib =
-         let+ lib = Lib.DB.find lib_db lib in
-         Option.bind ~f:Lib.Local.of_lib lib
+         let* lib, lib_db =
+           let ctx = Super_context.context sctx in
+           Odoc_scope.Scope_key.of_string (Context.name ctx) lib_unique_name_or_pkg
+         in
+         Lib.DB.find lib_db lib >>| Option.bind ~f:Lib.Local.of_lib
        in
        let for_ =
          match lib with
+         | None -> Compilation_mode.Ocaml
          | Some lib ->
-           let modes =
-             Lib_info.modes (Lib.Local.info lib) |> Compilation_mode.Set.of_lib_mode_set
-           in
-           Compilation_mode.Set.for_merlin modes
-         | None -> Ocaml
+           Lib.Local.info lib
+           |> Lib_info.modes
+           |> Compilation_mode.Set.of_lib_mode_set
+           |> Compilation_mode.Set.for_merlin
+       in
+       let what =
+         match what with
+         | "_odocls" -> `Odocl
+         | "_html" -> `Html
+         | _ -> assert false
+       in
+       let setup_pkg_rules =
+         match what with
+         | `Odocl -> setup_pkg_odocl_rules
+         | `Html -> setup_pkg_html_rules
        in
        let+ () =
-         match lib with
-         | None -> Memo.return ()
-         | Some lib ->
-           (match Lib_info.status (Lib.Local.info lib) with
-            | Installed _ | Installed_private _ -> Memo.return ()
-            | Private (_, None) ->
-              let* requires = Lib.closure [ Lib.Local.to_lib lib ] ~linking:false ~for_ in
-              setup_lib_odocl_rules sctx lib ~requires
-            | Public (_, pkg) | Private (_, Some pkg) ->
-              setup_pkg_odocl_rules sctx ~pkg:(Package.name pkg) ~for_)
+         Memo.Option.iter lib ~f:(fun lib ->
+           match Lib_info.status (Lib.Local.info lib) with
+           | Installed _ | Installed_private _ -> Memo.return ()
+           | Private (_, None) ->
+             (match what with
+              | `Odocl ->
+                let* requires =
+                  Lib.closure [ Lib.Local.to_lib lib ] ~linking:false ~for_
+                in
+                setup_lib_odocl_rules sctx lib ~requires
+              | `Html ->
+                (* lib with no package above it *)
+                let* search_db = search_db_for_lib sctx lib in
+                setup_lib_html_rules sctx ~search_db lib)
+           | Public (_, pkg) | Private (_, Some pkg) ->
+             setup_pkg_rules sctx ~pkg:(Package.name pkg) ~for_)
        and+ () =
          let* packages = Dune_load.packages () in
-         match
-           Package.Name.Map.find packages (Package.Name.of_string lib_unique_name_or_pkg)
-         with
-         | None -> Memo.return ()
-         | Some pkg ->
-           let name = Package.name pkg in
-           setup_pkg_odocl_rules sctx ~pkg:name ~for_
+         Package.Name.of_string lib_unique_name_or_pkg
+         |> Package.Name.Map.find packages
+         |> Memo.Option.iter ~f:(fun pkg ->
+           let pkg = Package.name pkg in
+           setup_pkg_rules sctx ~pkg ~for_)
        in
        ())
-  | [ "_html"; lib_unique_name_or_pkg ] ->
-    has_rules
-      ((* TODO we can be a better with the error handling in the case where
-          lib_unique_name_or_pkg is neither a valid pkg or lnu *)
-       let ctx = Super_context.context sctx in
-       let* lib, lib_db = Scope_key.of_string (Context.name ctx) lib_unique_name_or_pkg in
-       (* jeremiedimino: why isn't [None] some kind of error here? *)
-       let* lib =
-         let+ lib = Lib.DB.find lib_db lib in
-         Option.bind ~f:Lib.Local.of_lib lib
-       in
-       let for_ =
-         match lib with
-         | Some lib ->
-           let modes =
-             Lib_info.modes (Lib.Local.info lib) |> Compilation_mode.Set.of_lib_mode_set
-           in
-           Compilation_mode.Set.for_merlin modes
-         | None -> Ocaml
-       in
-       let+ () =
-         match lib with
-         | None -> Memo.return ()
-         | Some lib ->
-           (match Lib_info.status (Lib.Local.info lib) with
-            | Installed _ | Installed_private _ -> Memo.return ()
-            | Private (_, None) ->
-              (* lib with no package above it *)
-              let* search_db = search_db_for_lib sctx lib in
-              setup_lib_html_rules sctx ~search_db lib
-            | Public (_, pkg) | Private (_, Some pkg) ->
-              setup_pkg_html_rules sctx ~pkg:(Package.name pkg) ~for_)
-       and+ () =
-         let* packages = Dune_load.packages () in
-         match
-           Package.Name.Map.find packages (Package.Name.of_string lib_unique_name_or_pkg)
-         with
-         | None -> Memo.return ()
-         | Some pkg ->
-           let name = Package.name pkg in
-           setup_pkg_html_rules sctx ~pkg:name ~for_
-       in
-       ())
-  | _ -> Memo.return (Gen_rules.redirect_to_parent Gen_rules.Rules.empty)
+  | _ -> Memo.return (Gen_rules.Redirect_to_parent Gen_rules.Rules.empty)
 ;;

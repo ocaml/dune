@@ -17,7 +17,24 @@ let make_sandboxing_config config =
 
 let make_alias expander s =
   let loc = String_with_vars.loc s in
-  Expander.expand_path expander s >>| Alias.of_user_written_path ~loc
+  let+ path = Expander.expand_path expander s in
+  match Path.as_in_build_dir path with
+  | Some path ->
+    let name =
+      Path.Build.basename path
+      |> Filename.to_string
+      |> Alias.Name.of_string_opt_loose
+      |> Option.value_exn
+    in
+    Alias.make name ~dir:(Path.Build.parent_exn path)
+  | None ->
+    User_error.raise
+      ~loc
+      [ Pp.text "Invalid alias!"
+      ; Pp.textf
+          "Tried to reference path outside build dir: %S"
+          (Path.to_string_maybe_quoted path)
+      ]
 ;;
 
 let expand_package_name expander swv =
@@ -88,7 +105,9 @@ let expand_include =
          (Pform.Env.initial ~stanza:Stanza.latest_version ~extensions:[])
          Dep_conf.decode_bindings)
   in
-  fun ~dir ~project s ->
+  fun ~expander s ->
+    let dir = Expander.dir expander in
+    let project = Expander.project expander in
     Path.Build.relative dir s
     |> Path.build
     |> Action_builder.read_sexp
@@ -129,7 +148,16 @@ let make_bin_env expander bin_names =
         (let open Memo.O in
          Expander.host_context expander >>| Context.name)
     in
-    let* layout = Action_builder.of_memo (Bin_layout.create context ~dir bin_names) in
+    (* Resolve through the artifacts of [dir] not the context-wide database. *)
+    let* artifacts =
+      Action_builder.of_memo
+        (let open Memo.O in
+         let* sctx = Super_context.find_exn (Expander.context expander) in
+         Super_context.artifacts_host sctx ~dir)
+    in
+    let* layout =
+      Action_builder.of_memo (Bin_layout.create context ~artifacts ~dir bin_names)
+    in
     (match layout with
      | None -> Action_builder.return Env.empty
      | Some (layout_dir, files) ->
@@ -265,12 +293,8 @@ let rec dep expander : Dep_conf.t -> _ = function
   | Include s ->
     (* TODO this is wrong. we shouldn't allow bindings here if we are in an
        unnamed expansion *)
-    let dir = Expander.dir expander in
     let pair =
-      let* deps =
-        let* project = Action_builder.of_memo @@ Dune_load.find_project ~dir in
-        expand_include ~dir ~project s
-      in
+      let* deps = expand_include ~expander s in
       let builder, _bindings, action_env = named_paths_builder ~expander deps in
       let+ paths = builder
       and+ env = action_env in
@@ -316,15 +340,16 @@ let rec dep expander : Dep_conf.t -> _ = function
        let+ () = dep_on_alias_rec ~loc:(String_with_vars.loc s) a in
        [])
   | Glob_files glob_files ->
+    let dir = Expander.dir expander in
     Other
       (Glob_files_expand.action_builder
          glob_files
          ~f:(Expander.expand ~mode:Single expander)
-         ~base_dir:(Expander.dir expander)
+         ~base_dir:dir
        >>| Glob_files_expand.Expanded.matches
        >>| List.map ~f:(fun path ->
          if Filename.is_relative path
-         then Path.Build.relative (Expander.dir expander) path |> Path.build
+         then Path.Build.relative dir path |> Path.build
          else Path.of_string path))
   | Source_tree s ->
     Other
@@ -399,10 +424,29 @@ and combined_package_deps_builder expander pkgs =
       | _ -> None)
     |> Package.Name.Set.of_list
   in
+  let lockdir_package_names =
+    List.filter_map classified ~f:(fun (_, pkg, found) ->
+      match found with
+      | Some (Package_db.Build _) -> Some pkg
+      | _ -> None)
+    |> Package.Name.Set.of_list
+  in
   let* env =
-    if Package.Name.Set.is_empty local_package_names
-    then Action_builder.return Env.empty
-    else Install_layout.env context.name local_package_names
+    let* local_env =
+      if Package.Name.Set.is_empty local_package_names
+      then Action_builder.return Env.empty
+      else Install_layout.env context.name local_package_names
+    in
+    if Package.Name.Set.is_empty lockdir_package_names
+    then Action_builder.return local_env
+    else
+      let+ lockdir_env =
+        Action_builder.of_memo
+          (Pkg_rules.env_for_packages
+             ~packages:(Package.Name.Selection.Only lockdir_package_names)
+             context.name)
+      in
+      Install.Roots.extend_env_concat_path_vars lockdir_env local_env
   in
   let dune_version = Expander.project expander |> Dune_project.dune_version in
   let+ () =
@@ -558,11 +602,7 @@ let named sandbox ~expander l =
     let open Action_builder.O in
     let rec sandbox_dep acc = function
       | Dep_conf.Include s ->
-        let* deps =
-          let dir = Expander.dir expander in
-          let* project = Action_builder.of_memo (Dune_load.find_project ~dir) in
-          expand_include ~dir ~project s
-        in
+        let* deps = expand_include ~expander s in
         sandbox_bindings acc deps
       | dep -> Action_builder.return (add_sandbox_config acc dep)
     and sandbox_bindings acc deps =

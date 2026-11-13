@@ -7,7 +7,6 @@ Reports module dependency cycles inside executables.
   > EOF
 
   $ cat > foo.ml <<EOF
-  > open Bar
   > open Baz
   > EOF
 

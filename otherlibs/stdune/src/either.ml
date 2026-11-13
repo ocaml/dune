@@ -1,10 +1,4 @@
-include struct
-  open Stdlib
-
-  type ('a, 'b) t = ('a, 'b) Either.t =
-    | Left of 'a
-    | Right of 'b
-end
+include Stdlib.Either
 
 let map t ~l ~r =
   match t with

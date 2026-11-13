@@ -19,7 +19,6 @@ module Map : sig
 
   include Map.S with type key := t
 
-  val has_universe : _ t -> bool
   val parallel_map : 'a t -> f:(dep -> 'a -> 'b Memo.t) -> 'b t Memo.t
 end
 
@@ -44,10 +43,10 @@ module Fact : sig
     (** A group of files for which we cache the digest of the whole group. *)
     type t
 
-    (** Record a file-digest mapping for a given [Filename_set.t]. If the set is empty,
-        record the parent directory as existing, so that it can be created in the sandbox
-        even when the mapping is empty. *)
-    val create : Filename_set.t -> build_file:(Path.t -> Digest.t Memo.t) -> t Memo.t
+    (** Record a file-digest mapping for [files] in [dir]. The lists of files
+        and digests must have the same length and order. If [files] is empty,
+        record [dir] as existing so it can be created in the sandbox. *)
+    val create : dir:Path.t -> files:Path.t list -> digests:Digest.t list -> t
 
     val to_dyn : t -> Dyn.t
     val equal : t -> t -> bool
@@ -92,7 +91,6 @@ module Facts : sig
   val empty : t
   val union : t -> t -> t
   val union_all : t list -> t
-  val record_facts : Set.t -> f:(dep -> Fact.t Memo.t) -> t Memo.t
 
   (** Return all file paths, expanding aliases if [expand_aliases = true]. *)
   val paths : t -> expand_aliases:bool -> Path.Set.t

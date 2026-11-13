@@ -78,12 +78,14 @@ let default_flags ~dune_version ~profile =
    Melange accepts duplicate `-nopervasives` CLI flags. *)
 type t =
   { nostdlib : bool
+  ; melange_inherits_common : bool
   ; flags : string list Action_builder.t Dune_lang.Ocaml_flags.t
   }
 
 let empty =
   let build = Action_builder.return [] in
   { nostdlib = false
+  ; melange_inherits_common = true
   ; flags = { Ocaml_flags.common = build; specific = Lib_mode.Map.make_all build }
   }
 ;;
@@ -94,6 +96,7 @@ let of_list l =
 
 let default ~dune_version ~profile =
   { nostdlib = false
+  ; melange_inherits_common = true
   ; flags =
       { common = Action_builder.return (default_flags ~dune_version ~profile)
       ; specific =
@@ -107,11 +110,16 @@ let default ~dune_version ~profile =
   }
 ;;
 
-let make ~(spec : Ocaml_flags.Spec.t) ~default ~eval =
+let make ~spec:{ Spec.flags = spec; melange } ~default ~eval =
   let f name x standard =
     Action_builder.memoize ~cutoff:(List.equal String.equal) name (eval x ~standard)
   in
   { nostdlib = false
+  ; melange_inherits_common =
+      (match melange with
+       | None -> default.melange_inherits_common
+       | Some Flags -> false
+       | Some Compile_flags -> true)
   ; flags =
       { common = f "common flags" spec.common default.flags.common
       ; specific =
@@ -128,10 +136,7 @@ let make ~(spec : Ocaml_flags.Spec.t) ~default ~eval =
                     default.flags.specific.ocaml.native
               }
           ; melange =
-              f
-                "melange compile_flags"
-                spec.specific.melange
-                default.flags.specific.melange
+              f "melange flags" spec.specific.melange default.flags.specific.melange
           }
       }
   }
@@ -140,21 +145,29 @@ let make ~(spec : Ocaml_flags.Spec.t) ~default ~eval =
 let nostdlib_flags = [ "-nopervasives"; "-nostdlib" ]
 
 let get t mode =
-  let+ common = t.flags.common
+  let+ common =
+    match mode with
+    | Lib_mode.Melange when not t.melange_inherits_common -> Action_builder.return []
+    | Melange | Ocaml _ -> t.flags.common
   and+ specific = Lib_mode.Map.get t.flags.specific mode in
   let nostdlib = if t.nostdlib then nostdlib_flags else [] in
   nostdlib @ common @ specific
 ;;
 
-let map_common t ~f =
-  let common =
-    let+ l = t.common in
-    f l
+let append_common t extra =
+  let append flags =
+    let+ flags = flags in
+    flags @ extra
   in
-  { t with common }
+  let { Ocaml_flags.common; specific } = t.flags in
+  let specific =
+    if t.melange_inherits_common
+    then specific
+    else { specific with melange = append specific.melange }
+  in
+  { t with flags = { Ocaml_flags.common = append common; specific } }
 ;;
 
-let append_common t flags = { t with flags = map_common t.flags ~f:(fun l -> l @ flags) }
 let append_nostdlib t = { t with nostdlib = true }
 let with_vendored_warnings t = append_common t vendored_warnings
 let with_vendored_alerts t = append_common t vendored_alerts
@@ -164,12 +177,15 @@ let dump t =
   and+ byte = t.flags.specific.ocaml.byte
   and+ native = t.flags.specific.ocaml.native
   and+ melange = t.flags.specific.melange in
+  let melange_field =
+    if t.melange_inherits_common then "melange.compile_flags" else "melange.flags"
+  in
   List.map
     ~f:Dune_lang.Encoder.(pair string (list string))
     [ "flags", (if t.nostdlib then nostdlib_flags else []) @ common
     ; "ocamlc_flags", byte
     ; "ocamlopt_flags", native
-    ; "melange.compile_flags", melange
+    ; melange_field, melange
     ]
 ;;
 

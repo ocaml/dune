@@ -3,6 +3,7 @@ The client requests dependencies from a subdirectory, concurrently and repeatedl
 then reads an overlapping glob and an empty directory. Static inputs modified by
 an earlier part of the action must not be replaced by their original contents.
 A directory target requested after one of its files must not replace that file.
+It must preserve directories and files created by the action itself.
 
   $ cat > dune-project <<'EOF'
   > (lang dune 3.25)
@@ -24,9 +25,10 @@ A directory target requested after one of its files must not replace that file.
   >  (targets (dir tree))
   >  (action
   >   (progn
-  >    (run mkdir -p tree/sub)
+  >    (run mkdir -p tree/sub tree/other)
   >    (bash "printf first > tree/sub/first")
-  >    (bash "printf second > tree/sub/second"))))
+  >    (bash "printf second > tree/sub/second")
+  >    (bash "printf third > tree/other/third"))))
   > EOF
   $ cat > inputs/dune <<'EOF'
   > (rule
@@ -43,7 +45,7 @@ A directory target requested after one of its files must not replace that file.
 The second build should reuse the result. Changing a discovered dependency must
 rerun the action with its new contents, without exposing unmatched dependencies.
 
-  $ for mode in symlink hardlink; do
+  $ for mode in symlink hardlink copy; do
   >   echo "$mode:"
   >   printf ../inputs/picked.txt > selection
   >   if dune build result --sandbox "$mode" --build-dir "_build-$mode"; then
@@ -69,6 +71,16 @@ rerun the action with its new contents, without exposing unmatched dependencies.
   local
   checked isolation
   hardlink:
+  starting sandboxed action
+  picked
+  other.txt, picked.txt, static.txt
+  local
+  starting sandboxed action
+  other
+  other.txt, picked.txt, static.txt
+  local
+  checked isolation
+  copy:
   starting sandboxed action
   picked
   other.txt, picked.txt, static.txt
@@ -211,3 +223,59 @@ The source input remains untouched until the deletions are promoted.
 
   $ cat todelete/nested/input
   original
+
+Patch-back may read a dynamically requested directory target, but must reject
+changes to its contents. This includes deletions: newly populated directories
+must be fully recorded in the snapshot.
+
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target (dir tree))
+  >  (action
+  >   (progn
+  >    (run mkdir -p tree)
+  >    (system "echo generated > tree/file"))))
+  > (rule
+  >  (alias dynamic-read)
+  >  (deps (sandbox patch_back_source_tree))
+  >  (action
+  >   (progn
+  >    (dynamic-run ./foo.exe build tree)
+  >    (run cat tree/file))))
+  > (rule
+  >  (alias dynamic-edit)
+  >  (deps (sandbox patch_back_source_tree))
+  >  (action
+  >   (progn
+  >    (dynamic-run ./foo.exe build tree)
+  >    (run rm tree/file))))
+  > EOF
+
+CR: Directory population currently fails before either action finishes.
+
+  $ dune build @dynamic-read --build-dir _build-dynamic-patch-back
+  File "dune", lines 7-13, characters 0-150:
+   7 | (rule
+   8 |  (alias dynamic-read)
+   9 |  (deps (sandbox patch_back_source_tree))
+  10 |  (action
+  11 |   (progn
+  12 |    (dynamic-run ./foo.exe build tree)
+  13 |    (run cat tree/file))))
+  Sys_error("Is a directory")
+  [1]
+  $ dune build @dynamic-edit --build-dir _build-dynamic-patch-back
+  File "dune", lines 14-20, characters 0-149:
+  14 | (rule
+  15 |  (alias dynamic-edit)
+  16 |  (deps (sandbox patch_back_source_tree))
+  17 |  (action
+  18 |   (progn
+  19 |    (dynamic-run ./foo.exe build tree)
+  20 |    (run rm tree/file))))
+  Sys_error("Is a directory")
+  [1]
+  $ dune promotion list --build-dir _build-dynamic-patch-back
+  $ test ! -e _build-dynamic-patch-back/.to-promote
+  $ cat _build-dynamic-patch-back/default/tree/file
+  generated

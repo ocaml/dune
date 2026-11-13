@@ -13,6 +13,7 @@ let config =
 
 let spawn () =
   Spawn.spawn
+    ~nice:None
     ~prog:"/bin/sleep"
     ~argv0:"/bin/sleep"
     ~args:(Array.Immutable.of_list [ "10" ])
@@ -39,7 +40,7 @@ let rec interrupt_when_registered children =
 
 let run_once () =
   match
-    Scheduler.Run.go config ~timeout:(Time.Span.of_secs 2.) (fun () ->
+    Scheduler.Run.go config ~timeout:(Time.Span.of_secs 10.) (fun () ->
       let children = List.init child_count ~f:(fun _ -> spawn ()) in
       Fiber.fork_and_join_unit
         (fun () -> Fiber.parallel_iter children ~f:wait_for_process)

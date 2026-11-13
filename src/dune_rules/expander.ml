@@ -677,6 +677,14 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
      in
      string (Option.value sha ~default:""))
     |> static
+  | Stub_dll_suffix ->
+    Need_full_expander
+      (fun t ->
+        Deps.Without
+          (let+ ocaml = ocaml in
+           Lib_config.stub_dll_suffix ocaml.lib_config ~project:t.project
+           |> Option.value ~default:""
+           |> string))
 ;;
 
 let ocaml_config_macro source macro_invocation context =

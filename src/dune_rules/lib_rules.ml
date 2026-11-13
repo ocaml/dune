@@ -34,11 +34,11 @@ let expand_c_library_flags sctx expander ~dir ~has_cxx flags =
   Expander.expand_and_eval_set expander flags ~standard
 ;;
 
-let lib_args (mode : Mode.t) ~stub_mode archive =
+let lib_args (mode : Mode.t) ~stub_mode ~suffixed archive =
   let lname = "-l" ^ Foreign.Archive.(name ~mode:stub_mode archive |> Name.to_string) in
   (match mode with
    | Native -> []
-   | Byte -> [ "-dllib"; lname ])
+   | Byte -> [ (if suffixed then "-dllib-suffixed" else "-dllib"); lname ])
   @ [ "-cclib"; lname ]
 ;;
 
@@ -56,6 +56,9 @@ let build_lib
   let ctx = Super_context.context sctx in
   let* ocaml = Context.ocaml ctx in
   let map_cclibs = cclibs ocaml.lib_config.ccomp_type ~flag:"-cclib" in
+  let suffixed =
+    Lib_config.stub_dll_suffix ocaml.lib_config ~project:lib.project |> Option.is_some
+  in
   Ocaml_toolchain.compiler ocaml mode
   |> Memo.Result.iter ~f:(fun compiler ->
     [ Command.Args.dyn (Ocaml_flags.get flags (Ocaml mode))
@@ -66,7 +69,7 @@ let build_lib
     ; As
         (let foreign_archives =
            Library.foreign_archives lib
-           |> List.concat_map ~f:(lib_args mode ~stub_mode:All)
+           |> List.concat_map ~f:(lib_args mode ~stub_mode:All ~suffixed)
          in
          let stubs_archive =
            match Library.stubs_archive lib with
@@ -77,7 +80,7 @@ let build_lib
                then Only mode
                else All
              in
-             lib_args mode ~stub_mode lib_archive
+             lib_args mode ~stub_mode ~suffixed lib_archive
          in
          stubs_archive @ foreign_archives)
     ; Dyn
@@ -167,9 +170,11 @@ let ocamlmklib
       ~archive_name
       ~stubs_mode
       ~build_targets_together
+      ~project
   =
   let ctx = Super_context.context sctx in
   let* ocaml = Context.ocaml ctx in
+  let suffix = Lib_config.stub_dll_suffix ocaml.lib_config ~project in
   let build =
     let cclibs =
       Action_builder.map
@@ -179,7 +184,11 @@ let ocamlmklib
     fun ~custom ~sandbox targets ->
       let ctx = Super_context.context sctx in
       [ Command.Args.A "-g"
-      ; (if custom then A "-custom" else Command.Args.empty)
+      ; (if custom
+         then A "-custom"
+         else if Option.is_some suffix
+         then A "-suffixed"
+         else Command.Args.empty)
       ; A "-o"
       ; Path (Path.build (Foreign.Archive.Name.path ~dir archive_name ~mode:stubs_mode))
       ; Command.Args.Dyn
@@ -194,7 +203,7 @@ let ocamlmklib
   in
   let { Lib_config.ext_lib; ext_dll; _ } = ocaml.lib_config in
   let dynamic_target =
-    Foreign.Archive.Name.dll_file archive_name ~dir ~ext_dll ~mode:stubs_mode
+    Foreign.Archive.Name.dll_file archive_name ~dir ~ext_dll ~suffix ~mode:stubs_mode
   in
   let static_target =
     Foreign.Archive.Name.lib_file archive_name ~dir ~ext_lib ~mode:stubs_mode
@@ -284,6 +293,7 @@ let foreign_rules (library : Foreign_library.t) ~sctx ~expander ~dir ~dir_conten
     ~o_files
     ~build_targets_together:false
     ~stubs_mode:Mode.Select.All
+    ~project:(Expander.project expander)
 ;;
 
 (* Build a required set of archives for an OCaml library. *)
@@ -344,6 +354,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
         ~dir
         ~c_library_flags
         ~build_targets_together
+        ~project:lib.project
     in
     let for_all_modes =
       let lib_o_files_for_all_modes = Mode.Map.Multi.for_all_modes o_files in

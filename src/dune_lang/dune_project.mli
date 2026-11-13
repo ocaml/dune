@@ -132,6 +132,11 @@ val executables_implicit_empty_intf : t -> bool
 val accept_alternative_dune_file_name : t -> bool
 val strict_package_deps : t -> bool
 val cram : t -> bool
+
+(** Whether the DLLs of stub libraries get the runtime suffix
+    ([dll<name>-<target>-<bytecode_runtime_id>]) when the compiler supports it. *)
+val suffixed_stub_libraries : t -> bool
+
 val info : t -> Package_info.t
 val warnings : t -> Warning.Settings.t
 val pins : t -> Pin_stanza.Project.t

@@ -2202,8 +2202,9 @@ let source_rules (paths : Path.Build.t Paths.t) (info : Pkg_info.t) =
   in
   let copy_rules = copy_rules @ extra_copy_rules in
   let source_deps =
-    Result.map source_deps ~f:(fun source_deps ->
-      Dep.Set.union source_deps (Dep.Set.of_files extra_source_deps))
+    let open Action_builder.O in
+    let+ () = Action_builder.return () in
+    Dep.Set.union (User_error.ok_exn source_deps) (Dep.Set.of_files extra_source_deps)
   in
   source_deps, Memo.parallel_iter copy_rules ~f:(fun (loc, copy) -> rule ~loc copy)
 ;;
@@ -2374,12 +2375,31 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
        ~directory_targets:[ pkg.write_paths.target_dir ]
 ;;
 
-let gen_rules context_name (pkg : Pkg.t) =
-  let* source_deps, copy_rules = source_rules pkg.write_paths pkg.info in
-  let source_deps = User_error.ok_exn source_deps in
+let gen_rules ({ DB.pkg_digest_table; _ } as db) ~package_universe pkg_digest =
+  let { DB.Pkg_table.pkg = { info; _ }; _ } =
+    Pkg_digest.Map.find_exn pkg_digest_table pkg_digest
+  in
+  let paths = Paths.make pkg_digest package_universe ~relative:Path.Build.relative in
+  let* source_deps, copy_rules = source_rules paths info in
+  let build =
+    let open Action_builder.O in
+    let* { With_targets.build; targets = _ } =
+      let* source_deps = source_deps in
+      let context_name = Package_universe.context_name package_universe in
+      let* pkg =
+        Resolve.resolve db Loc.none pkg_digest package_universe |> Action_builder.of_memo
+      in
+      build_rule context_name pkg ~source_deps |> Action_builder.of_memo
+    in
+    build
+  in
+  let build_rule =
+    Action_builder.with_no_targets build
+    |> Action_builder.With_targets.add_directories ~directory_targets:[ paths.target_dir ]
+  in
   let* () = copy_rules
-  and* build_rule = build_rule context_name pkg ~source_deps in
-  rule ~loc:Loc.none (* TODO *) build_rule
+  and* () = rule ~loc:Loc.none (* TODO *) build_rule in
+  Memo.return ()
 ;;
 
 module Gen_rules = Build_config.Gen_rules
@@ -2446,29 +2466,35 @@ let setup_pkg_install_alias =
         rule
 ;;
 
-let setup_package_rules db ~package_universe ~dir ~pkg_digest : Gen_rules.t Memo.t =
-  let* pkg = Resolve.resolve db Loc.none pkg_digest package_universe in
+let setup_package_rules
+      ({ DB.pkg_digest_table; _ } as db)
+      ~package_universe
+      ~dir
+      ~pkg_digest
+  : Gen_rules.t Memo.t
+  =
+  let { DB.Pkg_table.pkg = { info; _ }; _ } =
+    Pkg_digest.Map.find_exn pkg_digest_table pkg_digest
+  in
   let paths = Paths.make pkg_digest package_universe ~relative:Path.Build.relative in
   let+ directory_targets =
     let map =
       let target_dir = paths.target_dir in
       Path.Build.Map.singleton target_dir Loc.none
     in
-    match pkg.info.source with
+    match info.source with
     | None -> Memo.return map
     | Some source ->
       Lock_dir.source_kind source
-      >>| User_error.ok_exn
       >>| (function
-       | `Local (`Directory, _) -> map
-       | `Local (`File, _) | `Fetch ->
+       | Error _ | Ok (`Local (`Directory, _)) -> map
+       | Ok (`Local (`File, _) | `Fetch) ->
          Path.Build.Map.add_exn map paths.source_dir (fst source.url))
   in
   let build_dir_only_sub_dirs =
     Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty
   in
-  let context_name = Package_universe.context_name package_universe in
-  let rules = Rules.collect_unit (fun () -> gen_rules context_name pkg) in
+  let rules = Rules.collect_unit (fun () -> gen_rules db ~package_universe pkg_digest) in
   Gen_rules.make ~directory_targets ~build_dir_only_sub_dirs rules
 ;;
 

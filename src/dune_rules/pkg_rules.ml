@@ -164,26 +164,6 @@ module Pkg_digest = struct
       (Dune_digest.to_string lockfile_and_dependency_digest)
   ;;
 
-  let of_string s =
-    let parse_error msg =
-      User_error.raise [ Pp.textf "Failed to parse %S as a package pkg digest." s; msg ]
-    in
-    match String.lsplit2 s ~on:'.' with
-    | None -> parse_error (Pp.text "Missing '.' between name and version.")
-    | Some (name, rest) ->
-      (match String.rsplit2 rest ~on:'-' with
-       | None -> parse_error (Pp.text "Missing '-' between version and lockfile digest.")
-       | Some (version, lockfile_and_dependency_digest) ->
-         (match Dune_digest.from_hex lockfile_and_dependency_digest with
-          | None ->
-            parse_error
-              (Pp.textf "Failed to parse %S as digest" lockfile_and_dependency_digest)
-          | Some lockfile_and_dependency_digest ->
-            let name = Package.Name.of_string name in
-            let version = Package_version.of_string version in
-            { name; version; lockfile_and_dependency_digest }))
-  ;;
-
   let create lockfile_pkg depends_pkg_digests =
     let lockfile_and_dependency_digest =
       Digest_feed.compute_digest
@@ -457,7 +437,6 @@ module Pkg = struct
     ; paths : Path.t Paths.t
     ; write_paths : Path.Build.t Paths.t
     ; files_dir : Path.Build.t
-    ; pkg_digest : Pkg_digest.t
     ; mutable exported_env : string Env_update.t list
     }
 
@@ -1606,7 +1585,6 @@ end = struct
         ; write_paths
         ; info
         ; files_dir
-        ; pkg_digest
         ; exported_env = []
         }
       in
@@ -2099,13 +2077,15 @@ let source_files root ~loc =
     Fs_memo.dir_contents full_path
     >>= function
     | Error e ->
-      User_error.raise
-        ~loc
-        [ Pp.textf
-            "Unable to read %s"
-            (Path.Outside_build_dir.to_string_maybe_quoted full_path)
-        ; Unix_error.Detailed.pp e
-        ]
+      Memo.return
+        (Error
+           (User_error.make
+              ~loc
+              [ Pp.textf
+                  "Unable to read %s"
+                  (Path.Outside_build_dir.to_string_maybe_quoted full_path)
+              ; Unix_error.Detailed.pp e
+              ]))
     | Ok contents ->
       let files, dirs =
         let contents = Fs_memo.Dir_contents.to_list contents in
@@ -2121,63 +2101,73 @@ let source_files root ~loc =
       Memo.map_reduce
         dirs
         ~f:(loop Path.Local.Set.empty)
-        ~empty:acc
-        ~combine:Path.Local.Set.union
+        ~empty:(Ok acc)
+        ~combine:(fun left right ->
+          let open Result.O in
+          let* left = left in
+          let+ right = right in
+          Path.Local.Set.union left right)
   in
   loop Path.Local.Set.empty Path.Local.root
 ;;
 
-let source_rules (pkg : Pkg.t) =
+let source_rules (paths : Path.Build.t Paths.t) (info : Pkg_info.t) =
   let+ source_deps, copy_rules =
-    match pkg.info.source with
-    | None -> Memo.return (Dep.Set.empty, [])
+    match info.source with
+    | None -> Memo.return (Ok Dep.Set.empty, [])
     | Some source ->
       let loc = fst source.url in
       Lock_dir.source_kind source
-      >>| User_error.ok_exn
       >>= (function
-       | `Local (`File, _) | `Fetch ->
+       | Error error -> Memo.return (Error error, [])
+       | Ok (`Local (`File, _) | `Fetch) ->
          let fetch =
-           Fetch_rules.fetch ~target:pkg.write_paths.source_dir Dir source
+           Fetch_rules.fetch ~target:paths.source_dir Dir source
            |> With_targets.map
                 ~f:
                   (Action.Full.map ~f:(fun action ->
                      let progress =
                        Pkg_build_progress.progress_action
-                         pkg.info.name
-                         pkg.info.version
+                         info.name
+                         info.version
                          `Downloading
                      in
                      Action.progn [ progress; action ]))
          in
-         Memo.return (Dep.Set.of_files [ pkg.paths.source_dir ], [ loc, fetch ])
-       | `Local (`Directory, source_root) ->
-         let+ source_files, rules =
-           source_files source_root ~loc
-           >>|
-           let source_root = Path.outside_build_dir source_root in
-           Path.Local.Set.fold ~init:([], []) ~f:(fun file (source_files, rules) ->
-             let src = Path.append_local source_root file in
-             if Path.is_broken_symlink src
-             then
-               (* Don't copy broken symlinks into the build directory. Note
-                  that this only works for packages sourced from local
-                  directories. Packages whose source is extracted from an
-                  archive (possibly fetched over the web) have broken symlinks
-                  explicitly deleted immediately after the archive is
-                  extracted. This logic is implemented in
-                  [Fetch.resolve_directory_symlinks]. *)
-               source_files, rules
-             else (
-               let dst = Path.Build.append_local pkg.write_paths.source_dir file in
-               let copy = loc, Action_builder.copy ~src ~dst in
-               Path.build dst :: source_files, copy :: rules))
-         in
-         Dep.Set.of_files source_files, rules)
+         Memo.return
+           (Ok (Dep.Set.of_files [ Path.build paths.source_dir ]), [ loc, fetch ])
+       | Ok (`Local (`Directory, source_root)) ->
+         source_files source_root ~loc
+         >>| (function
+          | Error error -> Error error, []
+          | Ok files ->
+            let source_root = Path.outside_build_dir source_root in
+            let source_files, rules =
+              Path.Local.Set.fold
+                files
+                ~init:([], [])
+                ~f:(fun file (source_files, rules) ->
+                  let src = Path.append_local source_root file in
+                  if Path.is_broken_symlink src
+                  then
+                    (* Don't copy broken symlinks into the build directory. Note
+                       that this only works for packages sourced from local
+                       directories. Packages whose source is extracted from an
+                       archive (possibly fetched over the web) have broken symlinks
+                       explicitly deleted immediately after the archive is
+                       extracted. This logic is implemented in
+                       [Fetch.resolve_directory_symlinks]. *)
+                    source_files, rules
+                  else (
+                    let dst = Path.Build.append_local paths.source_dir file in
+                    let copy = loc, Action_builder.copy ~src ~dst in
+                    Path.build dst :: source_files, copy :: rules))
+            in
+            Ok (Dep.Set.of_files source_files), rules))
   in
   let extra_source_deps, extra_copy_rules =
-    List.map pkg.info.extra_sources ~f:(fun (local, (fetch : Source.t)) ->
-      let extra_source = Paths.extra_source_build pkg.write_paths local in
+    List.map info.extra_sources ~f:(fun (local, (fetch : Source.t)) ->
+      let extra_source = Paths.extra_source_build paths local in
       let rule =
         let loc = fst fetch.url in
         (* We assume that [fetch] is always a file. Would be good
@@ -2193,7 +2183,11 @@ let source_rules (pkg : Pkg.t) =
     |> List.unzip
   in
   let copy_rules = copy_rules @ extra_copy_rules in
-  let source_deps = Dep.Set.union source_deps (Dep.Set.of_files extra_source_deps) in
+  let source_deps =
+    let open Action_builder.O in
+    let+ () = Action_builder.return () in
+    Dep.Set.union (User_error.ok_exn source_deps) (Dep.Set.of_files extra_source_deps)
+  in
   source_deps, Memo.parallel_iter copy_rules ~f:(fun (loc, copy) -> rule ~loc copy)
 ;;
 
@@ -2363,11 +2357,31 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
        ~directory_targets:[ pkg.write_paths.target_dir ]
 ;;
 
-let gen_rules context_name (pkg : Pkg.t) =
-  let* source_deps, copy_rules = source_rules pkg in
+let gen_rules ({ DB.pkg_digest_table; _ } as db) ~package_universe pkg_digest =
+  let { DB.Pkg_table.pkg = { info; _ }; _ } =
+    Pkg_digest.Map.find_exn pkg_digest_table pkg_digest
+  in
+  let paths = Paths.make pkg_digest package_universe ~relative:Path.Build.relative in
+  let* source_deps, copy_rules = source_rules paths info in
+  let build =
+    let open Action_builder.O in
+    let* { With_targets.build; targets = _ } =
+      let* source_deps = source_deps in
+      let context_name = Package_universe.context_name package_universe in
+      let* pkg =
+        Resolve.resolve db Loc.none pkg_digest package_universe |> Action_builder.of_memo
+      in
+      build_rule context_name pkg ~source_deps |> Action_builder.of_memo
+    in
+    build
+  in
+  let build_rule =
+    Action_builder.with_no_targets build
+    |> Action_builder.With_targets.add_directories ~directory_targets:[ paths.target_dir ]
+  in
   let* () = copy_rules
-  and* build_rule = build_rule context_name pkg ~source_deps in
-  rule ~loc:Loc.none (* TODO *) build_rule
+  and* () = rule ~loc:Loc.none (* TODO *) build_rule in
+  Memo.return ()
 ;;
 
 module Gen_rules = Build_config.Gen_rules
@@ -2434,30 +2448,12 @@ let setup_pkg_install_alias =
         rule
 ;;
 
-let setup_package_rules db ~package_universe ~dir ~pkg_digest : Gen_rules.t Memo.t =
-  let* pkg = Resolve.resolve db Loc.none pkg_digest package_universe in
-  let paths = Paths.make pkg.pkg_digest package_universe ~relative:Path.Build.relative in
-  let+ directory_targets =
-    let map =
-      let target_dir = paths.target_dir in
-      Path.Build.Map.singleton target_dir Loc.none
-    in
-    match pkg.info.source with
-    | None -> Memo.return map
-    | Some source ->
-      Lock_dir.source_kind source
-      >>| User_error.ok_exn
-      >>| (function
-       | `Local (`Directory, _) -> map
-       | `Local (`File, _) | `Fetch ->
-         Path.Build.Map.add_exn map paths.source_dir (fst source.url))
+let setup_package_rules db ~package_universe pkg_digests : Gen_rules.t Memo.t =
+  let+ rules =
+    Rules.collect_unit (fun () ->
+      Memo.parallel_iter pkg_digests ~f:(gen_rules db ~package_universe))
   in
-  let build_dir_only_sub_dirs =
-    Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty
-  in
-  let context_name = Package_universe.context_name package_universe in
-  let rules = Rules.collect_unit (fun () -> gen_rules context_name pkg) in
-  Gen_rules.make ~directory_targets ~build_dir_only_sub_dirs rules
+  Gen_rules.make ~directory_targets:(Rules.directory_targets rules) (Memo.return rules)
 ;;
 
 let setup_rules ~components ~dir ctx =
@@ -2471,18 +2467,19 @@ let setup_rules ~components ~dir ctx =
     let pkg_name = Package.Name.of_string dev_tool_package_name in
     let dev_tool = Pkg_dev_tool.of_package_name pkg_name in
     let* db, pkg_digest = DB.of_dev_tool (Dune_pkg.Dev_tool.of_package_name pkg_name) in
-    setup_package_rules db ~package_universe:(Dev_tool dev_tool) ~dir ~pkg_digest
+    setup_package_rules db ~package_universe:(Dev_tool dev_tool) [ pkg_digest ]
   | true, [ ".dev-tool" ] -> Gen_rules.make_empty ~dir Subdir_set.all |> Memo.return
-  | _, [ ".pkg" ] -> Gen_rules.make_empty ~dir Subdir_set.all |> Memo.return
-  | _, [ ".pkg"; pkg_digest_string ] ->
+  | _, [ ".pkg" ] ->
     (* Only generate pkg rules if there is a lock dir for that context *)
     let* lock_dir_active = Lock_dir.lock_dir_active ctx in
     (match lock_dir_active with
      | false -> Memo.return @@ Gen_rules.make (Memo.return Rules.empty)
      | true ->
-       let pkg_digest = Pkg_digest.of_string pkg_digest_string in
        let* db = DB.of_ctx ctx ~allow_sharing:true in
-       setup_package_rules db ~package_universe:(Dependencies ctx) ~dir ~pkg_digest)
+       setup_package_rules
+         db
+         ~package_universe:(Dependencies ctx)
+         (Pkg_digest.Map.keys db.pkg_digest_table))
   | _, ".pkg" :: _ :: _ ->
     Memo.return (Gen_rules.Redirect_to_parent Gen_rules.Rules.empty)
   | true, ".dev-tool" :: _ :: _ :: _ ->

@@ -16,12 +16,17 @@ let context_name = Context_name.of_string "_fetch"
 let context = Build_context.create ~name:context_name
 let digest_of_url url = OpamUrl.to_string url |> Digest.string
 
+module Kind = struct
+  type t =
+    | File
+    | Dir
+
+  let all = [ "file", File; "dir", Dir ]
+  let enum = Repr.Enum.make "Kind.t" all
+end
+
 let make_target ~kind url_or_checksum =
-  let basename =
-    match kind with
-    | `File -> "file"
-    | `Directory -> "dir"
-  in
+  let basename = Repr.Enum.to_string Kind.enum kind in
   let dir1, dir2 =
     match url_or_checksum with
     | `Url url -> "url", digest_of_url url |> Digest.to_string
@@ -29,11 +34,6 @@ let make_target ~kind url_or_checksum =
   in
   Path.Build.L.relative context.build_dir [ dir1; dir2; basename ]
 ;;
-
-type kind =
-  [ `File
-  | `Directory
-  ]
 
 let resolve_url =
   (* Before we fetch any git repo, we make sure to convert the URL to fetch the
@@ -70,11 +70,11 @@ module Spec = struct
     { target : 'target
     ; url : Loc.t * OpamUrl.t
     ; checksum : (Loc.t * Checksum.t) option
-    ; kind : kind
+    ; kind : Kind.t
     }
 
   let name = "source-fetch"
-  let version = 2
+  let version = 3
   let runs_process = false
   let can_run_in_action_runner = false
   let bimap t _ g = { t with target = g t.target }
@@ -84,10 +84,7 @@ module Spec = struct
     List
       ([ encode_target target
        ; Sexp.Atom (OpamUrl.to_string url)
-       ; Atom
-           (match kind with
-            | `File -> "file"
-            | `Directory -> "directory")
+       ; Atom (Repr.Enum.to_string Kind.enum kind)
        ]
        @ (match OpamUrl.rev url with
           | None -> []
@@ -106,8 +103,8 @@ module Spec = struct
      Dune_pkg.Fetch.fetch
        ~unpack:
          (match kind with
-          | `File -> false
-          | `Directory -> true)
+          | File -> false
+          | Dir -> true)
        ~checksum
        ~target
        ~url:(loc_url, url))
@@ -221,7 +218,7 @@ let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
     | None -> `Url url
   in
   let directory_targets =
-    let target_dir = make_target ~kind:`Directory checksum_or_url in
+    let target_dir = make_target ~kind:Dir checksum_or_url in
     Path.Build.Map.singleton target_dir Loc.none
   in
   let rules =
@@ -250,13 +247,13 @@ let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
            |> Action.Full.make ~can_go_in_shared_cache:true)
     in
     let dir_rule =
-      let target = make_target ~kind:`Directory in
-      action ~target ~kind:`Directory
+      let target = make_target ~kind:Dir in
+      action ~target ~kind:Dir
       |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
     in
     let file_rule =
-      let target = make_target ~kind:`File in
-      action ~target ~kind:`File
+      let target = make_target ~kind:File in
+      action ~target ~kind:File
       |> Action_builder.With_targets.add ~file_targets:[ target ]
     in
     let+ () = rule dir_rule
@@ -344,14 +341,14 @@ let fetch ~target kind (source : Source.t) =
   in
   let open Action_builder.With_targets.O in
   (* [Action_builder.copy] already adds this dependency for us,
-     so this is only useful for the [`Directory] clause *)
+     so this is only useful for the [Dir] clause *)
   Dep.file src
   |> Action_builder.dep
   |> Action_builder.with_no_targets
   >>>
   match kind with
-  | `File -> Action_builder.copy ~src ~dst:target
-  | `Directory ->
+  | File -> Action_builder.copy ~src ~dst:target
+  | Dir ->
     let action =
       match source_kind with
       | `Fetch -> Copy.action ~src_dir:src ~dst_dir:target

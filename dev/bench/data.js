@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794595384744,
+  "lastUpdate": 1794595393061,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -487604,6 +487604,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.505852731306675,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "shon.feder@gmail.com",
+            "name": "Shon",
+            "username": "shonfeder"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3de1eec4deb3af117b50a285e3e1306b1dfe3438",
+          "message": "[3.25.0] release (#16604)\n\nRelease branch for https://github.com/ocaml/dune/issues/15593",
+          "timestamp": "2026-11-13T13:19:28-05:00",
+          "tree_id": "124d10d12da8efb2944d5028cfc092d2f50b8081",
+          "url": "https://github.com/ocaml/dune/commit/3de1eec4deb3af117b50a285e3e1306b1dfe3438"
+        },
+        "date": 1794595392020,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.52900380762,
             "unit": "seconds"
           }
         ]

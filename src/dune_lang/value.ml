@@ -4,6 +4,7 @@ type t =
   | String of string
   | Dir of Path.t
   | Path of Path.t
+  | Jobs of int
 
 (* CR-someday rgrinberg: one day, make these first class *)
 let true_ = String "true"
@@ -16,6 +17,9 @@ let of_bool = function
 
 let compare x y =
   match x, y with
+  | Jobs x, Jobs y -> Int.compare x y
+  | Jobs _, _ -> Lt
+  | _, Jobs _ -> Gt
   | String x, String y -> String.compare x y
   | String _, _ -> Lt
   | _, String _ -> Gt
@@ -31,6 +35,7 @@ let to_dyn = function
   | String s -> Dyn.variant "string" [ String s ]
   | Path p -> Dyn.variant "path" [ Path.to_dyn p ]
   | Dir p -> Dyn.variant "dir" [ Path.to_dyn p ]
+  | Jobs jobs -> Dyn.variant "jobs" [ Int jobs ]
 ;;
 
 let string_of_path ~dir p = Path.reach_for_running ~from:dir p
@@ -38,26 +43,28 @@ let string_of_path ~dir p = Path.reach_for_running ~from:dir p
 let to_string t ~dir =
   match t with
   | String s -> s
+  | Jobs jobs -> Int.to_string jobs
   | Dir p | Path p -> string_of_path ~dir p
 ;;
 
 let compare_vals ~dir x y =
   match x, y with
-  | String x, String y -> String.compare x y
   | (Path x | Dir x), (Path y | Dir y) -> Path.compare x y
-  | String x, (Path _ | Dir _) -> String.compare x (to_string ~dir y)
-  | (Path _ | Dir _), String y -> String.compare (to_string ~dir x) y
+  | _ -> String.compare (to_string ~dir x) (to_string ~dir y)
 ;;
 
 let to_path ?error_loc t ~dir =
   match t with
   | String s -> Path.relative ?error_loc dir s
+  | Jobs jobs -> Path.relative ?error_loc dir (Int.to_string jobs)
   | Dir p | Path p -> p
 ;;
 
 let to_path_in_build_or_external ?error_loc t ~dir =
   match t with
   | String s -> Path.relative_to_source_in_build_or_external ?error_loc ~dir s
+  | Jobs jobs ->
+    Path.relative_to_source_in_build_or_external ?error_loc ~dir (Int.to_string jobs)
   | Dir p | Path p ->
     if Path.is_in_source_tree p
     then
@@ -75,7 +82,7 @@ module L = struct
 
   let deps_only =
     List.filter_map ~f:(function
-      | Dir _ | String _ -> None
+      | Dir _ | String _ | Jobs _ -> None
       | Path p -> Some p)
   ;;
 

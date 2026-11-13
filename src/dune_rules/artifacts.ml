@@ -85,7 +85,7 @@ let analyze_binary t ~dir name =
           ~packages:t.visible_packages
           lookup_name
         >>= (function
-         | Some path -> Memo.return (`In_lock_dir path)
+         | Some (path, package) -> Memo.return (`In_lock_dir (path, package))
          | None ->
            Context.which_in_path t.context lookup_name
            >>| (function
@@ -133,7 +133,7 @@ let origin_original_path { dir; binding; _ } =
 let binary t ?hint ?(where = Original_path) ~dir ~loc name =
   analyze_binary t ~dir name
   >>= function
-  | `Resolved path | `In_lock_dir path | `In_path path -> Memo.return @@ Ok path
+  | `Resolved path | `In_lock_dir (path, _) | `In_path path -> Memo.return @@ Ok path
   | `None ->
     let hint =
       match t.visible_packages, hint with
@@ -165,8 +165,15 @@ let local_binary t ~dir name =
   | `Origin ({ package = Some _; dst; _ } as origin) ->
     let+ src = origin_original_path origin in
     Some (src, Path.Local.basename dst)
-  | `In_lock_dir path -> Memo.return (Some (path, Path.basename path))
+  | `In_lock_dir (path, _) -> Memo.return (Some (path, Path.basename path))
   | `Origin { package = None; _ } | `Resolved _ | `In_path _ | `None -> Memo.return None
+;;
+
+let lock_dir_package t ~dir name =
+  analyze_binary t ~dir name
+  >>| function
+  | `In_lock_dir (_, package) -> Some package
+  | `Resolved _ | `In_path _ | `Origin _ | `None -> None
 ;;
 
 let binary_available t ~dir name =

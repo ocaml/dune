@@ -22,6 +22,21 @@ let validate_target_dir ~targets_dir ~loc targets path =
       ]
 ;;
 
+(* The name a program is looked up by, when written [%{bin:name}] or as a
+   bare [name]. *)
+let program_name sw =
+  match String_with_vars.pform_only sw with
+  | Some (Macro ({ macro = Bin; _ } as m)) -> Some (Pform.Macro_invocation.Args.whole m)
+  | Some _ -> None
+  | None ->
+    (match String_with_vars.text_only sw with
+     | Some name ->
+       (match Filename.analyze_program_name name with
+        | In_path -> Some name
+        | Relative_to_current_dir | Absolute -> None)
+     | None -> None)
+;;
+
 module Action_expander : sig
   (* An applicative to help write action expansion. It is similar to
      [Action_builder.With_targets.t] but with some differences. The differences
@@ -43,12 +58,14 @@ module Action_expander : sig
   val chdir : Path.Build.t -> 'a t -> 'a t
   val set_env : var:string -> value:string t -> (value:string -> 'a) t -> 'a t
 
+  (* Also returns the lock directory packages whose binaries the action runs:
+     running such a binary is the same as depending on its whole package. *)
   val run
     :  'a t
     -> chdir:Path.Build.t
     -> targets_dir:Path.Build.t option
     -> expander:Expander.t
-    -> 'a Action_builder.With_targets.t Memo.t
+    -> ('a * Package.Name.Set.t) Action_builder.With_targets.t Memo.t
 
   val with_expander : (Expander.t -> 'a t Memo.t) -> 'a t
 
@@ -106,6 +123,7 @@ end = struct
     { file_targets : Loc.t Path.Build.Map.t (** We only infer file targets *)
     ; deps : deps
     ; deps_if_exist : deps
+    ; lock_dir_packages : Package.Name.Set.t Action_builder.t
     }
 
   type env =
@@ -148,10 +166,16 @@ end = struct
 
   let run t ~chdir ~targets_dir ~expander =
     let deps = Action_builder.return Path.Set.empty in
-    let acc = { file_targets = Path.Build.Map.empty; deps; deps_if_exist = deps } in
+    let acc =
+      { file_targets = Path.Build.Map.empty
+      ; deps
+      ; deps_if_exist = deps
+      ; lock_dir_packages = Action_builder.return Package.Name.Set.empty
+      }
+    in
     let env = { expander; infer = true; dir = chdir } in
     Memo.map (t env acc) ~f:(fun (b, acc) ->
-      let { file_targets; deps; deps_if_exist } = acc in
+      let { file_targets; deps; deps_if_exist; lock_dir_packages } = acc in
       (* A file can be inferred as both a dependency and a target, for
          instance:
 
@@ -185,8 +209,9 @@ end = struct
         ~targets
         (let+ () = deps >>= Action_builder.path_set
          and+ () = deps_if_exist >>= action_builder_path_set_if_exist
+         and+ lock_dir_packages
          and+ res = b in
-         res))
+         res, lock_dir_packages))
   ;;
 
   let chdir dir t env acc =
@@ -450,6 +475,23 @@ end = struct
           Ok prog, args, [ dep ]
         | Error _ as v -> v, args, []
       in
+      let acc =
+        match program_name sw with
+        | None -> acc
+        | Some name ->
+          let lock_dir_packages =
+            let+ package =
+              Action_builder.of_memo
+                (let open Memo.O in
+                 let* artifacts = Expander.artifacts env.expander in
+                 Artifacts.lock_dir_package artifacts ~dir:env.dir name)
+            and+ packages = acc.lock_dir_packages in
+            match package with
+            | None -> packages
+            | Some package -> Package.Name.Set.add packages package
+          in
+          { acc with lock_dir_packages }
+      in
       register_deps b env acc ~f:(function _, _, deps -> deps)
     ;;
 
@@ -625,6 +667,19 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     assert false
 ;;
 
+(* Running a lock directory package binary is the same as depending on its
+   whole package. *)
+let lock_dir_packages_env ~expander action_and_packages =
+  let open Action_builder.O in
+  let* _action, lock_dir_packages = action_and_packages in
+  match Package.Name.Set.to_list lock_dir_packages with
+  | [] -> Action_builder.return Env.empty
+  | packages ->
+    Dep_conf_eval.packages
+      ~expander
+      (List.map packages ~f:(fun package -> Loc.none, package))
+;;
+
 let expand_no_targets t sandbox ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
   let open Action_builder.O in
   let env, expander, sandbox =
@@ -633,7 +688,7 @@ let expand_no_targets t sandbox ~loc ~chdir ~deps:deps_written_by_user ~expander
   let expander =
     Expander.set_expanding_what expander (User_action_without_targets { what })
   in
-  let* { Action_builder.With_targets.build = action; targets } =
+  let* { Action_builder.With_targets.build = action_and_packages; targets } =
     expand t
     |> Action_expander.run ~chdir ~targets_dir:None ~expander
     |> Action_builder.of_memo
@@ -648,11 +703,16 @@ let expand_no_targets t sandbox ~loc ~chdir ~deps:deps_written_by_user ~expander
           (String.capitalize what)
       ; pp_targets targets
       ];
+  let action_and_packages =
+    Action_builder.memoize "action and lock dir packages" action_and_packages
+  in
   let+ sandbox
   and+ env
-  and+ action in
+  and+ action, _ = action_and_packages
+  and+ packages_env = lock_dir_packages_env ~expander action_and_packages in
   let action = Action.Chdir (Path.build chdir, action) in
-  Action.Full.make action ~sandbox |> Action.Full.add_env env
+  Action.Full.make action ~sandbox
+  |> Action.Full.add_env (Install.Roots.extend_env_concat_path_vars packages_env env)
 ;;
 
 let expand
@@ -690,7 +750,7 @@ let expand
     in
     Expander.set_expanding_what expander (User_action targets_written_by_user)
   in
-  let+! { Action_builder.With_targets.build = action; targets } =
+  let+! { Action_builder.With_targets.build = action_and_packages; targets } =
     expand t |> Action_expander.run ~chdir ~targets_dir:(Some targets_dir) ~expander
   in
   let targets =
@@ -709,12 +769,17 @@ let expand
       Targets.combine targets (Targets.create ~files ~dirs)
   in
   let build =
+    let action_and_packages =
+      Action_builder.memoize "action and lock dir packages" action_and_packages
+    in
     let+ sandbox
     and+ env
-    and+ action in
+    and+ action, _ = action_and_packages
+    and+ packages_env = lock_dir_packages_env ~expander action_and_packages in
+    (* The [PATH] entries of the declared dependencies take precedence. *)
     Action.Chdir (Path.build chdir, action)
     |> Action.Full.make ~sandbox
-    |> Action.Full.add_env env
+    |> Action.Full.add_env (Install.Roots.extend_env_concat_path_vars packages_env env)
   in
   Action_builder.with_targets ~targets build
 ;;

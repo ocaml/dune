@@ -1139,12 +1139,18 @@ module Action_expander = struct
   module Artifacts_and_deps = struct
     type artifacts_and_deps =
       { binaries : Path.t Filename.Map.t
+      ; binary_packages : Package.Name.t Filename.Map.t
       ; dep_info :
           (OpamVariable.variable_contents Package_variable_name.Map.t * Path.t Paths.t)
             Package.Name.Map.t
       }
 
-    let empty = { binaries = Filename.Map.empty; dep_info = Package.Name.Map.empty }
+    let empty =
+      { binaries = Filename.Map.empty
+      ; binary_packages = Filename.Map.empty
+      ; dep_info = Package.Name.Map.empty
+      }
+    ;;
 
     let of_closure closure =
       Memo.parallel_map closure ~f:(fun (pkg : Pkg.t) ->
@@ -1155,15 +1161,22 @@ module Action_expander = struct
         List.fold_left
           cookies
           ~init:empty
-          ~f:(fun { binaries; dep_info } ((pkg : Pkg.t), (cookie : Install_cookie.t)) ->
-            let binaries =
+          ~f:
+            (fun
+              { binaries; binary_packages; dep_info }
+              ((pkg : Pkg.t), (cookie : Install_cookie.t))
+            ->
+            let binaries, binary_packages =
               Section.Map.Multi.find cookie.files Bin
-              |> List.fold_left ~init:binaries ~f:(fun acc bin ->
-                Filename.Map.set
-                  acc
-                  (Filename.of_string_exn
-                     (Bin.strip_exe (Path.basename bin |> Filename.to_string)))
-                  bin)
+              |> List.fold_left
+                   ~init:(binaries, binary_packages)
+                   ~f:(fun (binaries, binary_packages) bin ->
+                     let name =
+                       Filename.of_string_exn
+                         (Bin.strip_exe (Path.basename bin |> Filename.to_string))
+                     in
+                     ( Filename.Map.set binaries name bin
+                     , Filename.Map.set binary_packages name pkg.info.name ))
             in
             let dep_info =
               let variables =
@@ -1173,7 +1186,7 @@ module Action_expander = struct
               in
               Package.Name.Map.add_exn dep_info pkg.info.name (variables, pkg.paths)
             in
-            { binaries; dep_info }))
+            { binaries; binary_packages; dep_info }))
     ;;
   end
 
@@ -2599,10 +2612,11 @@ let lock_dir_binaries =
            (describe_packages packages)
            (Context_name.to_string context)))
     (fun (context, packages) ->
-       let+ { binaries; dep_info = _ } =
+       let+ { binaries; binary_packages; dep_info = _ } =
          project_deps ~packages context >>= Action_expander.Artifacts_and_deps.of_closure
        in
-       binaries)
+       Filename.Map.merge binaries binary_packages ~f:(fun _ path package ->
+         Option.both path package))
 ;;
 
 let which ~packages context program =

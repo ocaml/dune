@@ -135,38 +135,6 @@ let bin_dep_name (dep : Dep_conf.t) =
   | _ -> None
 ;;
 
-(* Returns a partial env containing only a PATH-prepend hint for the
-   .binaries dir. [Super_context.extend_action] splices it onto the
-   action's real PATH; it is not usable as a standalone env. *)
-let make_bin_env expander bin_names =
-  match bin_names with
-  | [] -> Action_builder.return Env.empty
-  | _ ->
-    let dir = Expander.dir expander in
-    let* context =
-      Action_builder.of_memo
-        (let open Memo.O in
-         Expander.host_context expander >>| Context.name)
-    in
-    (* Resolve through the artifacts of [dir] not the context-wide database. *)
-    let* artifacts =
-      Action_builder.of_memo
-        (let open Memo.O in
-         let* sctx = Super_context.find_exn (Expander.context expander) in
-         Super_context.artifacts_host sctx ~dir)
-    in
-    let* layout =
-      Action_builder.of_memo (Bin_layout.create context ~artifacts ~dir bin_names)
-    in
-    (match layout with
-     | None -> Action_builder.return Env.empty
-     | Some (layout_dir, files) ->
-       let+ () = Action_builder.paths files in
-       (* The layout dir on PATH is an absolute build-tree path; dune's
-          sandbox does not relocate PATH. See [bin-pform/sandbox.t]. *)
-       Install.Roots.cons_path Env.empty ~var:Env_path.var layout_dir)
-;;
-
 let package_dep_swvs (dep : Dep_conf.t) =
   match dep with
   | Package p -> [ p, String_with_vars.loc p ]
@@ -289,6 +257,144 @@ let expand_package_set context package_names =
       >>| Package.Name.Set.of_list)
 ;;
 
+let packages ~expander requested =
+  let open Action_builder.O in
+  (* Resolve packages and name the layout dir in the host context, same as
+     [make_bin_env] below. *)
+  let* host_name =
+    Action_builder.of_memo
+      (let open Memo.O in
+       Expander.host_context expander >>| Context.name)
+  in
+  let context = Build_context.create ~name:host_name in
+  let* classified =
+    Action_builder.of_memo
+    @@
+    let open Memo.O in
+    let* package_db = Package_db.create context.name in
+    Package.Name.Set.of_list_map requested ~f:snd
+    |> expand_package_set context.name
+    >>| Package.Name.Set.to_list
+    >>= Memo.List.map ~f:(fun package ->
+      let loc =
+        (* CR-someday Alizter: The location here doesn't make sense for
+           packages from the lib-transitive closure and so defaults to none.
+           Consider pushing a stack frame in the action builder around this
+           whole affair in order to get some information on which package
+           required which transitively, when there is trouble materialising the
+           dependency. See
+           test/blackbox-tests/test-cases/package-materialization/install-dirs.t
+           for an example of a poor error message as a result of this. *)
+        List.find_map requested ~f:(fun (loc, requested_package) ->
+          if Package.Name.equal package requested_package then Some loc else None)
+        |> Option.value ~default:Loc.none
+      in
+      let+ found = Package_db.find_package package_db package in
+      loc, package, found)
+  in
+  let local_package_names =
+    List.filter_map classified ~f:(fun (_, _, found) ->
+      match found with
+      | Some (Package_db.Local pkg) -> Some (Package.name pkg)
+      | _ -> None)
+    |> Package.Name.Set.of_list
+  in
+  let lockdir_package_names =
+    List.filter_map classified ~f:(fun (_, pkg, found) ->
+      match found with
+      | Some (Package_db.Build _) -> Some pkg
+      | _ -> None)
+    |> Package.Name.Set.of_list
+  in
+  let* env =
+    let* local_env =
+      if Package.Name.Set.is_empty local_package_names
+      then Action_builder.return Env.empty
+      else Install_layout.env context.name local_package_names
+    in
+    if Package.Name.Set.is_empty lockdir_package_names
+    then Action_builder.return local_env
+    else
+      let+ lockdir_env =
+        Action_builder.of_memo
+          (Pkg_rules.env_for_packages
+             ~packages:(Package.Name.Selection.Only lockdir_package_names)
+             context.name)
+      in
+      Install.Roots.extend_env_concat_path_vars lockdir_env local_env
+  in
+  let dune_version = Expander.project expander |> Dune_project.dune_version in
+  let+ () =
+    Action_builder.List.iter classified ~f:(fun (loc, pkg_name, found) ->
+      match found with
+      | Some (Local _) -> Action_builder.return ()
+      | Some (Build build) -> build
+      | Some (Installed _) ->
+        let explicit =
+          List.exists requested ~f:(fun (_, requested_package) ->
+            Package.Name.equal pkg_name requested_package)
+        in
+        package ~explicit loc pkg_name context ~dune_version
+      | None -> package ~explicit:true loc pkg_name context ~dune_version)
+  in
+  env
+;;
+
+(* [lock_dir_packages_of_binaries expander ~artifacts bin_names] are the
+   lock directory packages installing [bin_names]. Depending on such a binary
+   is the same as depending on its whole package, so that the binary can
+   rely on the rest of its package. *)
+let lock_dir_packages_of_binaries expander ~artifacts bin_names =
+  let dir = Expander.dir expander in
+  Memo.List.filter_map bin_names ~f:(fun name ->
+    let open Memo.O in
+    Artifacts.lock_dir_package artifacts ~dir name
+    >>| Option.map ~f:(fun package -> Loc.none, package))
+;;
+
+(* Returns a partial env containing a PATH-prepend hint for the .binaries
+   dir, and the env of the lock directory packages installing the binaries.
+   [Super_context.extend_action] splices it onto the action's real PATH; it is
+   not usable as a standalone env. *)
+let make_bin_env expander bin_names =
+  match bin_names with
+  | [] -> Action_builder.return Env.empty
+  | _ ->
+    let dir = Expander.dir expander in
+    let* context =
+      Action_builder.of_memo
+        (let open Memo.O in
+         Expander.host_context expander >>| Context.name)
+    in
+    (* Resolve through the artifacts of [dir] not the context-wide database. *)
+    let* artifacts =
+      Action_builder.of_memo
+        (let open Memo.O in
+         let* sctx = Super_context.find_exn (Expander.context expander) in
+         Super_context.artifacts_host sctx ~dir)
+    in
+    let* layout =
+      Action_builder.of_memo (Bin_layout.create context ~artifacts ~dir bin_names)
+    in
+    let* lock_dir_packages =
+      Action_builder.of_memo (lock_dir_packages_of_binaries expander ~artifacts bin_names)
+    in
+    let* packages_env =
+      match lock_dir_packages with
+      | [] -> Action_builder.return Env.empty
+      | _ :: _ -> packages ~expander lock_dir_packages
+    in
+    (match layout with
+     | None -> Action_builder.return packages_env
+     | Some (layout_dir, files) ->
+       let+ () = Action_builder.paths files in
+       (* The layout dir on PATH is an absolute build-tree path; dune's
+          sandbox does not relocate PATH. See [bin-pform/sandbox.t]. *)
+       Install.Roots.extend_env_concat_path_vars
+         packages_env
+         (Install.Roots.cons_path Env.empty ~var:Env_path.var layout_dir))
+;;
+
 let rec dep expander : Dep_conf.t -> _ = function
   | Include s ->
     (* TODO this is wrong. we shouldn't allow bindings here if we are in an
@@ -379,90 +485,12 @@ let rec dep expander : Dep_conf.t -> _ = function
 
 and combined_package_deps_builder expander pkgs =
   let open Action_builder.O in
-  (* Resolve packages and name the layout dir in the host context, same as
-     [make_bin_env] above. *)
-  let* host_name =
-    Action_builder.of_memo
-      (let open Memo.O in
-       Expander.host_context expander >>| Context.name)
-  in
-  let context = Build_context.create ~name:host_name in
   let* requested =
     Action_builder.List.map pkgs ~f:(fun (swv, loc) ->
       let+ pkg = expand_package_name expander swv in
       loc, pkg)
   in
-  let* classified =
-    Action_builder.of_memo
-    @@
-    let open Memo.O in
-    let* package_db = Package_db.create context.name in
-    Package.Name.Set.of_list_map requested ~f:snd
-    |> expand_package_set context.name
-    >>| Package.Name.Set.to_list
-    >>= Memo.List.map ~f:(fun package ->
-      let loc =
-        (* CR-someday Alizter: The location here doesn't make sense for
-           packages from the lib-transitive closure and so defaults to none.
-           Consider pushing a stack frame in the action builder around this
-           whole affair in order to get some information on which package
-           required which transitively, when there is trouble materialising the
-           dependency. See
-           test/blackbox-tests/test-cases/package-materialization/install-dirs.t
-           for an example of a poor error message as a result of this. *)
-        List.find_map requested ~f:(fun (loc, requested_package) ->
-          if Package.Name.equal package requested_package then Some loc else None)
-        |> Option.value ~default:Loc.none
-      in
-      let+ found = Package_db.find_package package_db package in
-      loc, package, found)
-  in
-  let local_package_names =
-    List.filter_map classified ~f:(fun (_, _, found) ->
-      match found with
-      | Some (Package_db.Local pkg) -> Some (Package.name pkg)
-      | _ -> None)
-    |> Package.Name.Set.of_list
-  in
-  let lockdir_package_names =
-    List.filter_map classified ~f:(fun (_, pkg, found) ->
-      match found with
-      | Some (Package_db.Build _) -> Some pkg
-      | _ -> None)
-    |> Package.Name.Set.of_list
-  in
-  let* env =
-    let* local_env =
-      if Package.Name.Set.is_empty local_package_names
-      then Action_builder.return Env.empty
-      else Install_layout.env context.name local_package_names
-    in
-    if Package.Name.Set.is_empty lockdir_package_names
-    then Action_builder.return local_env
-    else
-      let+ lockdir_env =
-        Action_builder.of_memo
-          (Pkg_rules.env_for_packages
-             ~packages:(Package.Name.Selection.Only lockdir_package_names)
-             context.name)
-      in
-      Install.Roots.extend_env_concat_path_vars lockdir_env local_env
-  in
-  let dune_version = Expander.project expander |> Dune_project.dune_version in
-  let+ () =
-    Action_builder.List.iter classified ~f:(fun (loc, pkg_name, found) ->
-      match found with
-      | Some (Local _) -> Action_builder.return ()
-      | Some (Build build) -> build
-      | Some (Installed _) ->
-        let explicit =
-          List.exists requested ~f:(fun (_, requested_package) ->
-            Package.Name.equal pkg_name requested_package)
-        in
-        package ~explicit loc pkg_name context ~dune_version
-      | None -> package ~explicit:true loc pkg_name context ~dune_version)
-  in
-  env
+  packages ~expander requested
 
 and named_paths_builder ~expander l =
   let builders, bindings, combined_packages_builder, bin_names, include_envs =

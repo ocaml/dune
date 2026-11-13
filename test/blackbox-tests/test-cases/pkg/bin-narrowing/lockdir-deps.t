@@ -68,9 +68,11 @@ declaring any package dependencies:
   $ cat _build/default/mybin-output
   from provider
 
-The rule depends on the binary from the provider lockdir package:
+The rule depends on the binary from the provider lockdir package, and on the
+whole package:
 
   $ dune rules --format=json @test | jq_dune '.[] | ruleDepFilePaths' | censor
+  "_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target"
   "_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target/bin/mybin"
 
 [(deps (package provider))] puts [provider]'s bin directory on $PATH:

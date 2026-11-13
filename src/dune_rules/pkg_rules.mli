@@ -23,14 +23,14 @@ val lock_dir_active : Context_name.t -> bool Memo.t
 val ocaml_toolchain : Context_name.t -> Ocaml_toolchain.t Action_builder.t option Memo.t
 
 (** [which ~packages context program] looks [program] up among the binaries
-    installed by [packages] in the lock directory. Only those packages are
-    considered, not their dependencies. [All] means the whole lock
-    directory. *)
+    installed by [packages] in the lock directory, and returns its path along
+    with the package installing it. Only those packages are considered, not
+    their dependencies. [All] means the whole lock directory. *)
 val which
   :  packages:Package.Name.Selection.t
   -> Context_name.t
   -> Filename.t
-  -> Path.t option Memo.t
+  -> (Path.t * Package.Name.t) option Memo.t
 
 (** [env_for_packages ~packages context] is an env holding environment
     variables constructed from the [packages] in the lock directory. Only those

@@ -36,8 +36,8 @@ so that it can invoke companion executables from its installed environment.
   >  (action (with-stdout-to action-output (run %{bin:launcher}))))
   > EOF
 
-A normal rule gets its directory's [Env_node] environment, so [launcher] can
-find [helper] by bare name:
+A rule declaring a dependency on launcher gets an implicit [(deps (package
+provider))], so [launcher] can find [helper] by bare name in the PATH:
 
   $ dune build action-output
   $ cat _build/default/action-output

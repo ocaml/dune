@@ -72,13 +72,14 @@ val name : t -> Context_name.t
 val which : t -> Filename.t -> Path.t option Memo.t
 
 (** Like [which], but in a context with a lock directory only the binaries
-    installed by [packages] are considered, not their dependencies. The
-    ambient [PATH] is not searched, see [which_in_path]. *)
+    installed by [packages] are considered, not their dependencies, and the
+    package installing the binary is returned along with it. The ambient
+    [PATH] is not searched, see [which_in_path]. *)
 val which_narrowed_to_packages
   :  t
   -> packages:Package.Name.Selection.t
   -> Filename.t
-  -> Path.t option Memo.t
+  -> (Path.t * Package.Name.t) option Memo.t
 
 (** Look [program] up in the [PATH] of the context. *)
 val which_in_path : t -> Filename.t -> Path.t option Memo.t

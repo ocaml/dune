@@ -43,6 +43,10 @@ val binary
     by dune, from a local package or from the lock directory. *)
 val local_binary : t -> dir:Path.Build.t -> string -> (Path.t * Filename.t) option Memo.t
 
+(** [lock_dir_package t ~dir name] is the lock directory package installing
+    [binary t ~dir name]. *)
+val lock_dir_package : t -> dir:Path.Build.t -> string -> Package.Name.t option Memo.t
+
 val binary_available : t -> dir:Path.Build.t -> string -> bool Memo.t
 val add_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list -> t
 

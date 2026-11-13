@@ -54,10 +54,12 @@ The pform resolves and executes the host artifact:
   from provider
 
 The rule dependencies confirm that the selected binary belongs to the host
-context, and that it is staged in the host context's [.binaries] directory:
+context, that it is staged in the host context's [.binaries] directory, and
+that the rule depends on its whole package:
 
   $ dune rules --format=json _build/target/pform-output | jq_dune '.[] | ruleDepFilePaths' | censor
   "_build/_private/host/.binaries/$DIGEST1/tool"
+  "_build/_private/host/.pkg/provider.0.0.1-$DIGEST2/target"
   "_build/_private/host/.pkg/provider.0.0.1-$DIGEST2/target/bin/tool"
 
 Bare-name lookup succeeds too:
@@ -65,7 +67,10 @@ Bare-name lookup succeeds too:
   $ cat _build/target/path-output
   from provider
 
-The PATH points at the staged binaries of the host context:
+The PATH points at the staged binaries and at the package bin directory of the
+host context:
 
   $ env_added "$(cat _build/target/env-output)" "$PATH" | censor
-  $PWD/_build/_private/host/.binaries/$DIGEST
+  $PWD/_build/_private/host/.binaries/$DIGEST1
+  $PWD/_build/_private/host/.pkg/provider.0.0.1-$DIGEST2/target/bin
+  $PWD/_build/_private/host/.pkg/provider.0.0.1-$DIGEST2/target/bin

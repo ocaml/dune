@@ -88,6 +88,11 @@ module V1 = struct
 
   module Client = Client.Make (Fiber) (Channel)
 
+  module Private = struct
+    module Fiber = Fiber
+    module Client = Dune_rpc.Private.Client.Make (Fiber) (Channel)
+  end
+
   module Where =
     Where.Make
       (Fiber)

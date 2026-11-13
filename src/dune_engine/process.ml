@@ -314,14 +314,37 @@ module Io = struct
 end
 
 module Build = struct
+  type rule_plugin =
+    { initialized : unit Rpc.Server.Session.t option Fiber.Ivar.t
+    ; exited : unit Fiber.Ivar.t
+    }
+
   type t =
     { run_id : Run_id.t
     ; cancellation : Fiber.Cancel.t
     ; action_runner : Action_runner.t option
+    ; mutable rule_plugins : rule_plugin list
     }
 
   let create ~action_runner ~run_id ~cancellation =
-    { run_id; cancellation; action_runner }
+    { run_id; cancellation; action_runner; rule_plugins = [] }
+  ;;
+
+  let register_rule_plugin t ~initialized ~exited =
+    t.rule_plugins <- { initialized; exited } :: t.rule_plugins
+  ;;
+
+  let complete_rule_plugins t =
+    let plugins = t.rule_plugins in
+    t.rule_plugins <- [];
+    Fiber.parallel_iter plugins ~f:(fun { initialized; exited } ->
+      let* session = Fiber.Ivar.read initialized in
+      let* () =
+        match session with
+        | None -> Fiber.return ()
+        | Some session -> Rpc.Server.Session.close session
+      in
+      Fiber.Ivar.read exited)
   ;;
 
   let run_id t = t.run_id

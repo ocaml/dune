@@ -1143,14 +1143,17 @@ let handle_final_exns exns =
        List.iter exns ~f:Dune_util.Report_error.report)
 ;;
 
-let complete_action_runner_build build =
-  match Process.Build.action_runner build with
-  | None -> Fiber.return ()
-  | Some action_runner ->
-    Action_runner.complete_build
-      action_runner
-      ~run_id:(Process.Build.run_id build)
-      ~cancellation:(Process.Build.cancellation build)
+let complete_build build =
+  Fiber.finalize
+    ~finally:(fun () -> Process.Build.complete_rule_plugins build)
+    (fun () ->
+       match Process.Build.action_runner build with
+       | None -> Fiber.return ()
+       | Some action_runner ->
+         Action_runner.complete_build
+           action_runner
+           ~run_id:(Process.Build.run_id build)
+           ~cancellation:(Process.Build.cancellation build))
 ;;
 
 let run_with_error_collection ?restart_started_at ~build_started_at ~build collect_errors =
@@ -1274,9 +1277,9 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
         Option.iter timing_section ~f:Console.Status_line.remove_section)
   in
   Fiber.finalize
+    ~finally:(fun () -> complete_build build)
     (fun () ->
        Fiber.Mutex.with_lock State.build_mutex ~f:(fun () -> Process.Build.with_ build f))
-    ~finally:(fun () -> complete_action_runner_build build)
 ;;
 
 module Request = struct

@@ -32,7 +32,13 @@ let run_with_rpc_server server f =
     (fun () -> Fiber.finalize f ~finally:(fun () -> Dune_rpc_impl.Server.stop server))
 ;;
 
+let run_with_rule_plugins f =
+  Fiber.fork_and_join_unit Dune_rules.Rule_plugin_runner.run (fun () ->
+    Fiber.finalize f ~finally:Dune_rules.Rule_plugin_runner.stop)
+;;
+
 let go_with_rpc_server ~common ~config f =
+  let f () = run_with_rule_plugins f in
   let f =
     match Common.rpc common with
     | `Allow server ->
@@ -50,7 +56,7 @@ let go_with_rpc_server_and_file_watcher ~(common : Common.t) ~config:dune_config
   let watch_exclusions = Common.watch_exclusions common in
   let config = scheduler_config dune_config ~watch_exclusions in
   let file_watcher = Common.file_watcher common in
-  let run () =
+  let run_with_rpc () =
     match Common.rpc common with
     | `Allow server ->
       run_with_rpc_server server (fun () ->
@@ -59,5 +65,5 @@ let go_with_rpc_server_and_file_watcher ~(common : Common.t) ~config:dune_config
         run ())
     | `Forbid_builds -> run ()
   in
-  Run.go config ~file_watcher run
+  Run.go config ~file_watcher (fun () -> run_with_rule_plugins run_with_rpc)
 ;;

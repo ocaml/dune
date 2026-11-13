@@ -9,6 +9,9 @@ module Session : sig
 
   val id : _ t -> Id.t
 
+  (** The request used to initialize this session. *)
+  val initialize : _ t -> Initialize.Request.t
+
   (** Name of the endpoint the session is connected to. *)
   val name : _ t -> string
 

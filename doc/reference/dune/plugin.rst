@@ -1,15 +1,81 @@
-plugin
-------
+plugin and dune_site.plugin
+---------------------------
 
-.. versionadded:: 2.8
+Rule plugins
+~~~~~~~~~~~~
 
-Plugins are a way to load OCaml libraries at runtime. The ``plugin`` stanza
-allows you to declare the plugin's name, which :ref:`sites<sites>` should be
-present and which libraries it will load.
+.. versionadded:: 3.26
+
+Rule plugins are experimental. Enable version 0.1 in ``dune-project`` before
+using them:
+
+.. code:: dune
+
+   (using plugin 0.1)
+
+Rule plugins generate stanzas by calling a project-local executable. A plugin
+is defined with:
 
 .. code:: dune
 
    (plugin
+    (name <name>)
+    (executable <relative-path>))
+
+It is invoked by a top-level form in a ``dune`` file:
+
+.. code:: dune
+
+   (plugin.<name> <argument> ...)
+
+``<argument>`` values are passed to the plugin as s-expressions. The returned
+s-expressions are decoded as stanzas in the directory containing the
+invocation. They have the same restrictions as stanzas loaded with
+:ref:`dynamic_include`. They may contain further plugin invocations, including
+invocations of the same plugin.
+
+For Lwt, the executable should link the ``dune-rules-plugin-lwt`` library and
+call ``Dune_rules_plugin_lwt.run`` with an asynchronous callback. The caller owns
+the event loop and can run the returned promise with ``Lwt_main.run``. The
+``dune-rules-plugin`` library provides ``Dune_rules_plugin.Make`` for other fiber
+and RPC client implementations and has no Lwt dependency.
+
+Callbacks use the canonical ``Stdune.Dune_sexp.t`` type, re-exported as
+``Dune_rules_plugin.Sexp``. Use ``Sexp.atom`` to construct validated atoms.
+
+Dune builds the executable as a host tool, starts one process per plugin and
+build context, and serializes requests to that process. Invocations in one
+``dune`` file are processed in source order. At the end of each build, Dune
+closes the plugin's RPC connection and waits for its process to exit.
+
+Plugin names are local to a project and follow local library-name rules:
+a non-empty sequence of ASCII letters, digits, or underscores. The process runs
+with the plugin definition's directory as its working directory.
+
+The executable's rules must be loadable without evaluating the invocation's
+generated stanzas. Keep the executable in a separate directory if loading its
+rules would otherwise depend on its own output. The definition and invocation
+may share a directory when the executable can be built independently.
+
+Dune site plugins
+~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 2.8
+
+Dune site plugins are a way to load OCaml libraries at runtime.
+
+.. versionchanged:: 3.26
+
+   The site plugin stanza was renamed from ``plugin`` to
+   ``dune_site.plugin``. Projects using Dune language 3.25 or earlier continue
+   to use ``plugin``.
+
+The stanza declares the plugin's name, the :ref:`sites<sites>` that should be
+present, and the libraries it will load:
+
+.. code:: dune
+
+   (dune_site.plugin
     (name <name>)
     (libraries <libraries>)
     (site (<package> <site name>))

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794557107765,
+  "lastUpdate": 1794560639419,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -678512,6 +678512,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.3670061120866666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "93cc18d5c8d5a2eeb899b58eb47e68ce495859dc",
+          "message": "refactor(rpc-lwt): extract the client channel module (#17018)\n\nName the Lwt RPC client channel module instead of defining it inline in\n`Client.Make`, allowing the same transport to be reused by another\nclient instantiation.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-13T16:50:13+08:00",
+          "tree_id": "532003e9da9175ad3b1b0ec7e592a88c0e4bd0ff",
+          "url": "https://github.com/ocaml/dune/commit/93cc18d5c8d5a2eeb899b58eb47e68ce495859dc"
+        },
+        "date": 1794560354011,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.40266828502,
             "unit": "seconds"
           }
         ]

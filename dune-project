@@ -1,4 +1,4 @@
-(lang dune 3.25)
+(lang dune 3.26)
 ;;         ^^^^
 ;; When changing the version, don't forget to regenerate *.opam files
 ;; by running [$ dune build @opam --auto-promote].

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794584797939,
+  "lastUpdate": 1794584805073,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -487372,6 +487372,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 43.68114821301999,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d8d9b6ef2dac5eb0ed2d8322c077834efbd3edcc",
+          "message": "test(promote): synchronize the running-binary promotion test (#17019)\n\nThe test could kill the new server after it created `ready` but before\nit printed its version, intermittently losing the expected output. Print\nand flush the version before publishing readiness.\n\nKeep servers alive until explicitly stopped, install cleanup traps, and\nassert that the original server remains alive after promotion so a slow\nrebuild cannot turn the test into a false positive.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-13T23:28:21+08:00",
+          "tree_id": "ecce2c335559276dd0db67f5d5d9aefac35139d4",
+          "url": "https://github.com/ocaml/dune/commit/d8d9b6ef2dac5eb0ed2d8322c077834efbd3edcc"
+        },
+        "date": 1794584804183,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.43775064766,
             "unit": "seconds"
           }
         ]

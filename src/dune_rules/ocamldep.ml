@@ -60,9 +60,9 @@ let ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit =
     let source = Option.value_exn (Module.source unit ~ml_kind) in
     let env =
       (* CR-someday rgrinberg: consider getting rid of this *)
-      Action_builder.of_memo
-        (let open Memo.O in
-         Super_context.env_node sctx ~dir >>= Env_node.external_env)
+      Memo.O.(Super_context.env_node sctx ~dir >>= Env_node.external_env)
+      |> Action_builder.of_memo
+      >>= Ocaml_runtime_env.toolchain sctx ~dir
     in
     Command.run'
       ~dir:(Path.build (Context.build_dir context))

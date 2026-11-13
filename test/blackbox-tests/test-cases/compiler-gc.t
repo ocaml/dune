@@ -9,7 +9,10 @@ environment, as do user actions and executables.
   $ cat > bin/wrapper <<'EOF'
   > #!/bin/sh
   > if [ "$1" = -config ]; then
-  >   if [ -n "${REPORTED_OCAML_VERSION-}" ]; then
+  >   if [ -n "${REPORTED_OCAML_WORD_SIZE-}" ]; then
+  >     "$REAL_OCAML_BIN/${0##*/}" "$@" |
+  >       sed "s/^word_size:.*/word_size: $REPORTED_OCAML_WORD_SIZE/"
+  >   elif [ -n "${REPORTED_OCAML_VERSION-}" ]; then
   >     "$REAL_OCAML_BIN/${0##*/}" "$@" |
   >       sed "s/^version:.*/version: $REPORTED_OCAML_VERSION/"
   >   else
@@ -62,55 +65,70 @@ environment, as do user actions and executables.
   >   sort -u "$GC_LOG"
   > }
   $ build defaults
-  ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
-  ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
-  ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamlc.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=16777216 CAMLRUNPARAM=unset
+  ocamldep.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=16777216 CAMLRUNPARAM=unset
+  ocamlopt.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=16777216 CAMLRUNPARAM=unset
   $ dune build --build-dir _build_defaults @runtest
   action: unset unset
   $ dune exec --build-dir _build_defaults ./main.exe
   hello: unset unset
 
-Release-profile actions and programs preserve the same environment.
+Compilers and dependency analysis share the same GC defaults, independent of
+build profile. Unrelated actions and programs are unchanged.
+
+  $ build custom --profile custom
+  ocamlc.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=16777216 CAMLRUNPARAM=unset
+  ocamldep.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=16777216 CAMLRUNPARAM=unset
+  ocamlopt.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=16777216 CAMLRUNPARAM=unset
 
   $ build release --profile release
-  ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
-  ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
-  ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamlc.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=16777216 CAMLRUNPARAM=unset
+  ocamldep.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=16777216 CAMLRUNPARAM=unset
+  ocamlopt.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=16777216 CAMLRUNPARAM=unset
   $ dune build --profile release --build-dir _build_release @runtest
   action: unset unset
   $ dune exec --profile release --build-dir _build_release ./main.exe
   hello: unset unset
   $ REPORTED_OCAML_VERSION=5.4.0 build older_release --profile release
-  ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
-  ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
-  ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamlc.opt OCAMLRUNPARAM=s=2M CAMLRUNPARAM=unset
+  ocamldep.opt OCAMLRUNPARAM=s=2M CAMLRUNPARAM=unset
+  ocamlopt.opt OCAMLRUNPARAM=s=2M CAMLRUNPARAM=unset
 
-Explicit runtime parameters, including an empty value, are preserved.
+Use the context compiler's word size for the nominal byte-to-GC-work conversion.
+
+  $ REPORTED_OCAML_WORD_SIZE=32 build narrow_words
+  ocamlc.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=33554432 CAMLRUNPARAM=unset
+  ocamldep.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=33554432 CAMLRUNPARAM=unset
+  ocamlopt.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=33554432 CAMLRUNPARAM=unset
+
+Explicit OCAMLRUNPARAM settings, including an empty value, take precedence.
+The legacy CAMLRUNPARAM variable does not suppress these defaults.
 
   $ OCAMLRUNPARAM=s=123456 build explicit --profile release
   ocamlc.opt OCAMLRUNPARAM=s=123456 CAMLRUNPARAM=unset
   ocamldep.opt OCAMLRUNPARAM=s=123456 CAMLRUNPARAM=unset
   ocamlopt.opt OCAMLRUNPARAM=s=123456 CAMLRUNPARAM=unset
   $ CAMLRUNPARAM=s=123456 build legacy --profile release
-  ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=s=123456
-  ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=s=123456
-  ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=s=123456
+  ocamlc.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=16777216 CAMLRUNPARAM=s=123456
+  ocamldep.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=16777216 CAMLRUNPARAM=s=123456
+  ocamlopt.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=16777216 CAMLRUNPARAM=s=123456
   $ OCAMLRUNPARAM= build empty --profile release
   ocamlc.opt OCAMLRUNPARAM= CAMLRUNPARAM=unset
   ocamldep.opt OCAMLRUNPARAM= CAMLRUNPARAM=unset
   ocamlopt.opt OCAMLRUNPARAM= CAMLRUNPARAM=unset
 
   $ CAMLRUNPARAM= build legacy_empty --profile release
-  ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=
-  ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=
-  ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=
+  ocamlc.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=16777216 CAMLRUNPARAM=
+  ocamldep.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=16777216 CAMLRUNPARAM=
+  ocamlopt.opt OCAMLRUNPARAM=s=2M,Xsmall_heap_limit=16777216 CAMLRUNPARAM=
 
-Runtime parameters are unchanged for older compilers as well.
+Older compilers get the larger minor heap, but not the unsupported major-GC
+setting.
 
   $ REPORTED_OCAML_VERSION=5.4.0 build older
-  ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
-  ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
-  ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamlc.opt OCAMLRUNPARAM=s=2M CAMLRUNPARAM=unset
+  ocamldep.opt OCAMLRUNPARAM=s=2M CAMLRUNPARAM=unset
+  ocamlopt.opt OCAMLRUNPARAM=s=2M CAMLRUNPARAM=unset
 
 Directory-specific environment settings take precedence as well.
 

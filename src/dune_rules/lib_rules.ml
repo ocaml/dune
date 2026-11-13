@@ -117,6 +117,7 @@ let build_lib
          (Ok compiler)
          ~dir:(Path.build (Context.build_dir ctx))
          ~forbid_action_runner:true
+         ~env:(Ocaml_runtime_env.toolchain sctx ~dir Env.empty)
     |> Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc)
 ;;
 
@@ -401,6 +402,7 @@ let build_shared (lib : Library.t) ~native_archives ~sctx ~dir ~flags =
          ~dir:(Path.build (Context.build_dir ctx))
          ~forbid_action_runner:true
          (Ok ocamlopt)
+         ~env:(Ocaml_runtime_env.toolchain sctx ~dir Env.empty)
     |> Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc)
 ;;
 

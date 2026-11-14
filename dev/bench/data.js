@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794676445956,
+  "lastUpdate": 1794690465967,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -679904,6 +679904,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.2886428657,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d363594a68fdd39aa416bf811a1d8e14efe1a199",
+          "message": "test(melange): cover compiler runtime environments (#16958)\n\nCover inherited and directory-local runtime settings for Melange\ncompiler actions. Prerequisite for #16955.\n\n01a1b8f2-7469-7990-90da-c0049284abf1\n\n---------\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-14T12:53:09-08:00",
+          "tree_id": "3672cedce6270b3faa09ef3899b0d766e0d5acf6",
+          "url": "https://github.com/ocaml/dune/commit/d363594a68fdd39aa416bf811a1d8e14efe1a199"
+        },
+        "date": 1794690143231,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.163085227426667,
             "unit": "seconds"
           }
         ]

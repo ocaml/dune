@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794630362690,
+  "lastUpdate": 1794630599698,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -487865,6 +487865,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4864062736133334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9c38baf8d74391e6acbe743304f35e449dabb16e",
+          "message": "refactor(pkg): move source_files next to source_rules (#17035)\n\nMove `source_files` out of `Pkg` and next to `source_rules`, without\nchanging behavior. This isolates code motion from the upcoming\npackage-rule loading refactor.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-14T12:13:57+08:00",
+          "tree_id": "73acef4647eb619751f2e13f1118e5afc2f10bd3",
+          "url": "https://github.com/ocaml/dune/commit/9c38baf8d74391e6acbe743304f35e449dabb16e"
+        },
+        "date": 1794630598002,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 45.6056148129,
             "unit": "seconds"
           }
         ]

@@ -92,7 +92,7 @@ module Stubs : sig
 
   type t =
     { loc : Loc.t
-    ; language : Foreign_language.t
+    ; languages : Foreign_language.t Nonempty_list.t
     ; names : Ordered_set_lang.t
     ; mode : Mode.Select.t
     ; flags : Ordered_set_lang.Unexpanded.t
@@ -137,7 +137,7 @@ module Source : sig
       useful for messages where the internally suffixed name would be confusing. *)
   val user_object_name : t -> Filename.t
 
-  val make : kind -> path:Path.Build.t -> t
+  val make : kind -> path:Path.Build.t -> language:Foreign_language.t -> t
 end
 
 (** A map from object names to the corresponding sources. *)

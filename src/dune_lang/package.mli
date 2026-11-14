@@ -38,6 +38,7 @@ val synopsis : t -> string option
 val info : t -> Package_info.t
 val description : t -> string option
 val enabled_if : t -> Blang.t option
+val odoc : t -> bool
 val id : t -> Id.t
 
 val set_version_and_info

@@ -62,12 +62,13 @@ let default_build_command =
   [ "dune" "install" "-p" name "--create-install-files" name ]
 ]
 |}))
-  and from_3 ~with_subst ~with_sites ~include_install_alias ~runtest =
+  and from_3 ~with_subst ~with_sites ~include_install_alias ~runtest ~doc =
     let subst = if with_subst then {|  [ "dune" "subst" ] {dev} |} else "" in
     let promote_install_files =
       if with_sites then {|  "--promote-install-files=false" |} else ""
     in
     let install_alias = if include_install_alias then {|      "@install"|} else "" in
+    let doc = if doc then {|      "@doc" {with-doc}|} else "" in
     let install =
       if with_sites
       then {| [ "dune" "install" "-p" name "--create-install-files" name ] |}
@@ -84,7 +85,7 @@ let default_build_command =
   [ "dune" "build" "-p" name "-j" jobs %s
 %s
       "%s" {with-test}
-      "@doc" {with-doc}
+%s
   ]
   %s
 ]
@@ -93,12 +94,14 @@ let default_build_command =
                promote_install_files
                install_alias
                runtest
+               doc
                install)))
   in
   fun project package ->
     let version = Dune_project.dune_version project in
     let with_subst = Toggle.enabled (snd (Dune_project.subst_config project)) in
     let with_sites = Dune_project.(is_extension_set project dune_site_extension) in
+    let doc = Package.odoc package in
     Lazy.force
       (if version < (1, 11)
        then before_1_11
@@ -109,17 +112,29 @@ let default_build_command =
        else if version < (3, 0)
        then from_2_9
        else if version < (3, 23)
-       then from_3 ~with_subst ~with_sites ~include_install_alias:true ~runtest:"@runtest"
+       then
+         from_3
+           ~with_subst
+           ~with_sites
+           ~include_install_alias:true
+           ~runtest:"@runtest"
+           ~doc
        else (
          match Package.exclusive_dir package with
          | None ->
-           from_3 ~with_subst ~with_sites ~include_install_alias:true ~runtest:"@runtest"
+           from_3
+             ~with_subst
+             ~with_sites
+             ~include_install_alias:true
+             ~runtest:"@runtest"
+             ~doc
          | Some (_loc, dir) ->
            from_3
              ~with_subst
              ~with_sites
              ~include_install_alias:false
-             ~runtest:("@runtest/" ^ Path.Source.to_string dir)))
+             ~runtest:("@runtest/" ^ Path.Source.to_string dir)
+             ~doc))
 ;;
 
 let var_of_sw sw : Package_constraint.Value.t =
@@ -313,7 +328,10 @@ let opam_fields project (package : Package.t) =
       Package.map_depends package ~f:(fun depends -> insert_dune_dep depends dune_version)
   in
   let package =
-    if dune_version < (2, 7) || Package.Name.equal package_name odoc_name
+    if
+      dune_version < (2, 7)
+      || Package.Name.equal package_name odoc_name
+      || not (Package.odoc package)
     then package
     else Package.map_depends package ~f:insert_odoc_dep
   in

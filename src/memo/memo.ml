@@ -298,6 +298,13 @@ let node = dep_node
 
 module Implicit_output = Implicit_output
 
+let node_staged ~name ~input f =
+  let spec =
+    Spec.create ~name:(Some name) ~input ~cutoff:None ~human_readable_description:None f
+  in
+  Staged.stage (fun input -> make_dep_node ~spec ~input)
+;;
+
 let lazy_node ~name ?cutoff ?human_readable_description ?on_event f =
   let on_event = Option.map on_event ~f:(fun on_event () event -> on_event event) in
   let human_readable_description =

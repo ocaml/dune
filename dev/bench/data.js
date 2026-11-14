@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794625013241,
+  "lastUpdate": 1794625020434,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -487836,6 +487836,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 53.685782918200005,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4525d59ba2febe1e1ab4fd71f54e90087228c692",
+          "message": "refactor(pkg): load fetch rules from a single directory (#16945)\n\nGenerate shared fetch rules directly in `_build/_fetch`, encoding the\nidentity type, source key, and output kind in each target name. This\nremoves the reverse lookups and per-source directory dispatch.\n\nKeep Git URL resolution deferred in action builders so only requested\nsources are resolved and fetched. Shared-source deduplication and\nlock-directory precedence are preserved. The laziness coverage is\nalready in #16912.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-14T10:37:20+08:00",
+          "tree_id": "040aeb07456ef336d8a3bdfd8af7ea784b2d5e2c",
+          "url": "https://github.com/ocaml/dune/commit/4525d59ba2febe1e1ab4fd71f54e90087228c692"
+        },
+        "date": 1794625019268,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4864062736133334,
             "unit": "seconds"
           }
         ]

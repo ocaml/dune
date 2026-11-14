@@ -477,55 +477,6 @@ module Pkg = struct
   ;;
 
   let deps_closure t = top_closure t.depends
-
-  let source_files t ~loc =
-    let skip_dir = function
-      | ".hg" | ".git" | "_darcs" | "_opam" | "_build" | "_esy" -> true
-      | _ -> false
-    in
-    let skip_file = String.starts_with ~prefix:".#" in
-    let rec loop root acc path =
-      let full_path = Path.Outside_build_dir.append_local root path in
-      Fs_memo.dir_contents full_path
-      >>= function
-      | Error e ->
-        User_error.raise
-          ~loc
-          [ Pp.textf
-              "Unable to read %s"
-              (Path.Outside_build_dir.to_string_maybe_quoted full_path)
-          ; Unix_error.Detailed.pp e
-          ]
-      | Ok contents ->
-        let files, dirs =
-          let contents = Fs_memo.Dir_contents.to_list contents in
-          List.rev_filter_partition_map contents ~f:(fun (name, kind) ->
-            (* TODO handle links and cycles correctly *)
-            let name_s = Filename.to_string name in
-            let relative = Path.Local.relative_fname path name in
-            match kind with
-            | S_DIR -> if skip_dir name_s then Skip else Right relative
-            | _ -> if skip_file name_s then Skip else Left relative)
-        in
-        let acc = Path.Local.Set.of_list files |> Path.Local.Set.union acc in
-        Memo.map_reduce
-          dirs
-          ~f:(fun dir -> loop root Path.Local.Set.empty dir)
-          ~empty:acc
-          ~combine:Path.Local.Set.union
-    in
-    (match t.info.source with
-     | None -> Memo.return None
-     | Some source ->
-       Lock_dir.source_kind source
-       >>| (function
-        | `Local (`File, _) | `Fetch -> None
-        | `Local (`Directory, root) -> Some root))
-    >>= function
-    | None -> Memo.return Path.Local.Set.empty
-    | Some root -> loop root Path.Local.Set.empty Path.Local.root
-  ;;
-
   let dep t = Dep.file t.paths.target_dir
 
   let package_deps t =
@@ -2137,6 +2088,54 @@ let rule ?loc { Action_builder.With_targets.build; targets } =
   Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
 ;;
 
+let source_files (t : Pkg.t) ~loc =
+  let skip_dir = function
+    | ".hg" | ".git" | "_darcs" | "_opam" | "_build" | "_esy" -> true
+    | _ -> false
+  in
+  let skip_file = String.starts_with ~prefix:".#" in
+  let rec loop root acc path =
+    let full_path = Path.Outside_build_dir.append_local root path in
+    Fs_memo.dir_contents full_path
+    >>= function
+    | Error e ->
+      User_error.raise
+        ~loc
+        [ Pp.textf
+            "Unable to read %s"
+            (Path.Outside_build_dir.to_string_maybe_quoted full_path)
+        ; Unix_error.Detailed.pp e
+        ]
+    | Ok contents ->
+      let files, dirs =
+        let contents = Fs_memo.Dir_contents.to_list contents in
+        List.rev_filter_partition_map contents ~f:(fun (name, kind) ->
+          (* TODO handle links and cycles correctly *)
+          let name_s = Filename.to_string name in
+          let relative = Path.Local.relative_fname path name in
+          match kind with
+          | S_DIR -> if skip_dir name_s then Skip else Right relative
+          | _ -> if skip_file name_s then Skip else Left relative)
+      in
+      let acc = Path.Local.Set.of_list files |> Path.Local.Set.union acc in
+      Memo.map_reduce
+        dirs
+        ~f:(fun dir -> loop root Path.Local.Set.empty dir)
+        ~empty:acc
+        ~combine:Path.Local.Set.union
+  in
+  (match t.info.source with
+   | None -> Memo.return None
+   | Some source ->
+     Lock_dir.source_kind source
+     >>| (function
+      | `Local (`File, _) | `Fetch -> None
+      | `Local (`Directory, root) -> Some root))
+  >>= function
+  | None -> Memo.return Path.Local.Set.empty
+  | Some root -> loop root Path.Local.Set.empty Path.Local.root
+;;
+
 let source_rules (pkg : Pkg.t) =
   let+ source_deps, copy_rules =
     match pkg.info.source with
@@ -2163,7 +2162,7 @@ let source_rules (pkg : Pkg.t) =
        | `Local (`Directory, source_root) ->
          let+ source_files, rules =
            let source_root = Path.outside_build_dir source_root in
-           Pkg.source_files pkg ~loc
+           source_files pkg ~loc
            >>| Path.Local.Set.fold ~init:([], []) ~f:(fun file (source_files, rules) ->
              let src = Path.append_local source_root file in
              if Path.is_broken_symlink src

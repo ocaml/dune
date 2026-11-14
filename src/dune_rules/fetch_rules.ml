@@ -25,14 +25,14 @@ module Kind = struct
   let enum = Repr.Enum.make "Kind.t" all
 end
 
-let make_target ~kind url_or_checksum =
+let make_target ~kind (source : Source.t) =
   let basename = Repr.Enum.to_string Kind.enum kind in
-  let dir1, dir2 =
-    match url_or_checksum with
-    | `Url url -> "url", digest_of_url url |> Digest.to_string
-    | `Checksum checksum -> "checksum", Checksum.to_string checksum
+  let prefix, key =
+    match source.checksum with
+    | None -> "url", digest_of_url (snd source.url) |> Digest.to_string
+    | Some (_, checksum) -> "checksum", Checksum.to_string checksum
   in
-  Path.Build.L.relative context.build_dir [ dir1; dir2; basename ]
+  Path.Build.relative context.build_dir (String.concat ~sep:"-" [ prefix; key; basename ])
 ;;
 
 let resolve_url =
@@ -134,154 +134,98 @@ module A = Action_ext.Make (Spec)
 
 let action ~url ~checksum ~target ~kind = A.action { Spec.target; checksum; url; kind }
 
-let extract_checksums_and_urls (lockdir : Dune_pkg.Lock_dir.t) =
-  Dune_pkg.Lock_dir.Packages.to_pkg_list lockdir.packages
-  |> List.fold_left
-       ~init:(Checksum.Map.empty, Dune_digest.Map.empty)
-       ~f:(fun acc (package : Lock_dir.Pkg.t) ->
-         let sources =
-           let sources = package.info.extra_sources |> List.rev_map ~f:snd in
-           match package.info.source with
-           | None -> sources
-           | Some source -> source :: sources
-         in
-         List.fold_left sources ~init:acc ~f:(fun (checksums, urls) (source : Source.t) ->
-           match Source.kind source with
-           | `Directory_or_archive _ -> checksums, urls
-           | `Fetch ->
-             let url = source.url in
-             (match source.checksum with
-              | Some ((_, checksum) as checksum_with_loc) ->
-                Checksum.Map.set checksums checksum (url, checksum_with_loc), urls
-              | None -> checksums, Digest.Map.set urls (digest_of_url (snd url)) url)))
-;;
-
-let find_checksum, find_url =
-  let add_checksums_and_urls (checksums, urls) lockdir =
-    let checksums', urls' = extract_checksums_and_urls lockdir in
-    Checksum.Map.superpose checksums checksums', Digest.Map.superpose urls urls'
-  in
-  let all =
-    Memo.lazy_ ~name:"all-fetches" (fun () ->
-      let* init =
-        Memo.List.fold_left
-          Dune_pkg.Dev_tool.all
-          ~init:(Checksum.Map.empty, Digest.Map.empty)
-          ~f:(fun acc dev_tool ->
-            let dir = Lock_dir.dev_tool_external_lock_dir dev_tool in
-            let exists =
-              (* Note we use [Fpath.exists] here rather than [Fs_memo] because a
-                 tool's lockdir may be generated part way through a build. *)
-              Fpath.exists (Path.to_string (Path.external_ dir))
-            in
-            match exists with
-            | false -> Memo.return acc
-            | true -> Lock_dir.of_dev_tool dev_tool >>| add_checksums_and_urls acc)
+let add_sources sources (lockdir : Dune_pkg.Lock_dir.t) =
+  let from_lockdir =
+    Dune_pkg.Lock_dir.Packages.to_pkg_list lockdir.packages
+    |> List.fold_left ~init:Path.Build.Map.empty ~f:(fun acc (package : Lock_dir.Pkg.t) ->
+      let sources =
+        let sources = package.info.extra_sources |> List.rev_map ~f:snd in
+        match package.info.source with
+        | None -> sources
+        | Some source -> source :: sources
       in
-      Per_context.list ()
-      >>= Memo.parallel_map ~f:(fun ctx_name ->
-        let* active = Lock_dir.lock_dir_active ctx_name in
-        match active with
-        | true -> Lock_dir.get ctx_name
-        | false ->
-          Memo.return
-          @@ Error
-               (User_message.make
-                  [ Pp.textf
-                      "Context %S has no lock dir"
-                      (Context_name.to_string ctx_name)
-                  ]))
-      >>| List.filter_map ~f:Result.to_option
-      >>| List.fold_left ~init ~f:add_checksums_and_urls)
+      List.fold_left sources ~init:acc ~f:(fun acc source ->
+        match Source.kind source with
+        | `Directory_or_archive _ -> acc
+        | `Fetch -> Path.Build.Map.set acc (make_target ~kind:Dir source) source))
   in
-  let find_url digest =
-    let+ _, urls = Memo.Lazy.force all in
-    match Digest.Map.find urls digest with
-    | Some x -> x
-    | None -> User_error.raise [ Pp.textf "unknown digest %s" (Digest.to_string digest) ]
-  in
-  let find_checksum checksum =
-    let+ checksums, _ = Memo.Lazy.force all in
-    match Checksum.Map.find checksums checksum with
-    | Some x -> x
-    | None ->
-      User_error.raise [ Pp.textf "unknown checksum %s" (Checksum.to_string checksum) ]
-  in
-  find_checksum, find_url
+  Path.Build.Map.superpose sources from_lockdir
 ;;
 
-let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
+let all_sources () =
+  let* init =
+    Memo.List.fold_left
+      Dune_pkg.Dev_tool.all
+      ~init:Path.Build.Map.empty
+      ~f:(fun acc dev_tool ->
+        let dir = Lock_dir.dev_tool_external_lock_dir dev_tool in
+        let exists =
+          (* Note we use [Fpath.exists] here rather than [Fs_memo] because a
+             tool's lockdir may be generated part way through a build. *)
+          Fpath.exists (Path.to_string (Path.external_ dir))
+        in
+        match exists with
+        | false -> Memo.return acc
+        | true -> Lock_dir.of_dev_tool dev_tool >>| add_sources acc)
+  in
+  Per_context.list ()
+  >>= Memo.parallel_map ~f:(fun ctx_name ->
+    Lock_dir.lock_dir_active ctx_name
+    >>= function
+    | false -> Memo.return None
+    | true -> Lock_dir.get ctx_name >>| Result.to_option)
+  >>| List.filter_opt
+  >>| List.fold_left ~init ~f:add_sources
+;;
+
+let gen_rules_for_source (source : Source.t) =
+  let { Source.url = loc_url, url; checksum } = source in
   let loc_url = Dune_pkg.Lock_dir.loc_in_source_tree loc_url in
-  let checksum_or_url =
-    match checksum with
-    | Some (_, checksum) -> `Checksum checksum
-    | None -> `Url url
+  (* CR-someday rgrinberg: it's possible to share the downloading step between the
+     directory and file actions. Though it's unlikely to be of any use in real
+     world situations. *)
+  let rule =
+    let info = Rule.Info.of_loc_opt (Some loc_url) in
+    fun { Action_builder.With_targets.build; targets } ->
+      Rules.Produce.rule (Rule.make ~info ~targets build)
   in
-  let directory_targets =
-    let target_dir = make_target ~kind:Dir checksum_or_url in
-    Path.Build.Map.singleton target_dir Loc.none
+  let make_target = make_target source in
+  let action =
+    let url =
+      let open Action_builder.O in
+      let* () = Action_builder.return () in
+      Action_builder.of_memo (resolve_url url)
+    in
+    fun ~target ~kind ->
+      Action_builder.with_no_targets
+        (let open Action_builder.O in
+         let+ url = url in
+         action ~url:(loc_url, url) ~checksum ~target ~kind
+         |> Action.Full.make ~can_go_in_shared_cache:true)
   in
-  let rules =
-    Rules.collect_unit
-    @@ fun () ->
-    (* CR-someday rgrinberg: it's possible to share the downloading step between the
-       directory and file actions. Though it's unlikely to be of any use in real
-       world situations. *)
-    let rule =
-      let info = Rule.Info.of_loc_opt (Some loc_url) in
-      fun { Action_builder.With_targets.build; targets } ->
-        Rules.Produce.rule (Rule.make ~info ~targets build)
-    in
-    let make_target = make_target checksum_or_url in
-    let action =
-      let url =
-        let open Action_builder.O in
-        let* () = Action_builder.return () in
-        Action_builder.of_memo (resolve_url url)
-      in
-      fun ~target ~kind ->
-        Action_builder.with_no_targets
-          (let open Action_builder.O in
-           let+ url = url in
-           action ~url:(loc_url, url) ~checksum ~target ~kind
-           |> Action.Full.make ~can_go_in_shared_cache:true)
-    in
-    let dir_rule =
-      let target = make_target ~kind:Dir in
-      action ~target ~kind:Dir
-      |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
-    in
-    let file_rule =
-      let target = make_target ~kind:File in
-      action ~target ~kind:File
-      |> Action_builder.With_targets.add ~file_targets:[ target ]
-    in
-    let+ () = rule dir_rule
-    and+ () = rule file_rule in
-    ()
+  let dir_rule =
+    let target = make_target ~kind:Dir in
+    action ~target ~kind:Dir
+    |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
   in
-  Gen_rules.make rules ~directory_targets
+  let file_rule =
+    let target = make_target ~kind:File in
+    action ~target ~kind:File |> Action_builder.With_targets.add ~file_targets:[ target ]
+  in
+  let+ () = rule dir_rule
+  and+ () = rule file_rule in
+  ()
 ;;
 
-let gen_rules ~dir ~components =
-  let components = Filename.L.to_string components in
-  match components with
+let gen_rules = function
   | [] ->
-    Subdir_set.of_list [ Filename.checksum; Filename.url ]
-    |> Gen_rules.make_empty ~dir
-    |> Memo.return
-  | [ ("url" | "checksum") ] -> Gen_rules.make_empty ~dir Subdir_set.all |> Memo.return
-  | [ "checksum"; checksum ] ->
-    let checksum = Dune_pkg.Checksum.parse_string_exn (Loc.none, checksum) in
-    let+ url, checksum = find_checksum checksum in
-    gen_rules_for_checksum_or_url url (Some checksum)
-  | [ "url"; digest ] ->
-    let+ url =
-      match Digest.from_hex digest with
-      | Some s -> find_url s
-      | None -> User_error.raise [ Pp.textf "invalid digest %s" digest ]
+    let+ sources = all_sources () in
+    let directory_targets = Path.Build.Map.map sources ~f:(fun _ -> Loc.none) in
+    let rules =
+      Rules.collect_unit (fun () ->
+        Path.Build.Map.values sources |> Memo.parallel_iter ~f:gen_rules_for_source)
     in
-    gen_rules_for_checksum_or_url url None
+    Gen_rules.make rules ~directory_targets
   | _ -> Memo.return Gen_rules.no_rules
 ;;
 
@@ -331,13 +275,7 @@ let fetch ~target kind (source : Source.t) =
   let src =
     match source_kind with
     | `Directory_or_archive p -> Path.external_ p
-    | `Fetch ->
-      let url_or_checksum =
-        match source.checksum with
-        | Some (_, checksum) -> `Checksum checksum
-        | None -> `Url (snd source.url)
-      in
-      Path.build (make_target ~kind url_or_checksum)
+    | `Fetch -> Path.build (make_target ~kind source)
   in
   let open Action_builder.With_targets.O in
   (* [Action_builder.copy] already adds this dependency for us,

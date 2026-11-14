@@ -50,7 +50,7 @@ let run ~print_ctrl_c_warning q : unit =
         let dump = Debug.dump () in
         Dune_trace.Event.debug dump)
     | Chld -> Event.Queue.send_job_completed_ready q
-    | Int | Quit | Term ->
+    | Hup | Int | Quit | Term ->
       Event.Queue.send_shutdown q (Signal signal);
       let now = Time.now () in
       Queue.push last_exit_signals now;

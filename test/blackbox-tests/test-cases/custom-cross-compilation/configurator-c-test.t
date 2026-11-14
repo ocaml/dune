@@ -5,6 +5,7 @@ Configurator.c_test should use the C compiler from the target context.
   $ external_findlib_path="$(ocamlfind printconf path | tr '\n' ':' | sed 's/:$//')"
 
   $ actual_ocamlc="$(command -v ocamlc)"
+  $ actual_ocamldep="$(command -v ocamldep)"
   $ actual_cc="$(command -v cc)"
 
 The host and target toolchains report different C compilers through
@@ -37,6 +38,16 @@ ocamlc -config.
   > fi
   > EOF
   $ chmod +x ocamlc-host ocamlc-target
+
+Dune resolves ocamldep next to ocamlc, so it must exist alongside the mock
+toolchains. Dependency analysis is toolchain-independent, so it delegates to
+the real ocamldep for both contexts.
+
+  $ cat >ocamldep <<EOF
+  > #!/usr/bin/env sh
+  > exec "$actual_ocamldep" "\$@"
+  > EOF
+  $ chmod +x ocamldep
 
 The host C compiler always fails. The target C compiler delegates to the real
 C compiler.

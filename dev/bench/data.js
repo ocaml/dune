@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794619410390,
+  "lastUpdate": 1794619682946,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -679295,6 +679295,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.235816453026667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "shon.feder@gmail.com",
+            "name": "Shon",
+            "username": "shonfeder"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a784979aec2a3afb7c827dc841fdb4aec1f74050",
+          "message": "Add `release-merge-main.sh` script  (#17032)\n\n## Description\n\nAdd a script to automate the post-release process of updating the `-rc`\nbranch so it is ready to be cleanly merged back into `main`.\n \nThis script automates merging main into a release candidate branch after\npublication of the release. It ensures all code changes are decided in\nfavour of `main` and that the changelog entries are carried over from\nthe release branch into main.\n\n## Related Issue and Motivation\n\nTested on completion of https://github.com/ocaml/dune/issues/15593\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-11-13T20:09:15-05:00",
+          "tree_id": "95dce3386c15dc51ac6cccf60b12151e45820c3d",
+          "url": "https://github.com/ocaml/dune/commit/a784979aec2a3afb7c827dc841fdb4aec1f74050"
+        },
+        "date": 1794619270484,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7819093042600005,
             "unit": "seconds"
           }
         ]

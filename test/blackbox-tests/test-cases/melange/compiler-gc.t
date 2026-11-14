@@ -1,4 +1,5 @@
-Melange compiler actions preserve runtime settings, including empty values.
+Melange source compilation uses a larger minor heap by default.
+Explicit runtime settings and JavaScript emission are preserved.
 
   $ cat > dune-project <<'EOF'
   > (lang dune 3.25)
@@ -34,8 +35,8 @@ Melange compiler actions preserve runtime settings, including empty values.
   >   sort -u log
   > }
   $ build defaults
-  cmi: ocaml=unset legacy=unset man=local
-  cmj: ocaml=unset legacy=unset man=local
+  cmi: ocaml=s=1M legacy=unset man=local
+  cmj: ocaml=s=1M legacy=unset man=local
   js: ocaml=unset legacy=unset man=local
 
   $ OCAMLRUNPARAM=s=123456 build explicit

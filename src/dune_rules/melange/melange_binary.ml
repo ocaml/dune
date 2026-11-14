@@ -19,6 +19,14 @@ let available sctx ~dir =
   Result.is_ok melc
 ;;
 
+let compilation_env_overrides sctx ~dir =
+  let+ env = Super_context.context_env_by_dir sctx ~dir in
+  let ocamlrunparam = Env.Var.of_string "OCAMLRUNPARAM" in
+  if Env.mem env ~var:ocamlrunparam || Env.mem env ~var:(Env.Var.of_string "CAMLRUNPARAM")
+  then Env.empty
+  else Env.add Env.empty ~var:ocamlrunparam ~value:"s=1M"
+;;
+
 let where =
   let impl bin =
     let* _ = Build_system.build_file bin in

@@ -121,9 +121,9 @@ the dependency needed to expand its package variable.
   > fi
   dependency-built-before-source-error
 
-Eager rule collection for directory-target discovery traverses unrelated
-package sources. The looping symlink in the external source masks the usual
-directory-target diagnostic. Neither package should be built.
+Inspecting a directory target must not traverse unrelated package sources.
+The external source contains a looping symlink, so traversing it would fail
+before the directory-target diagnostic. Neither package should be built.
 
   $ mkdir query-project query-source
   $ ln -s loop query-source/loop
@@ -144,6 +144,8 @@ directory-target diagnostic. Neither package should be built.
   > EOF
   $ target="$(get_build_pkg_dir requested)/target"
   $ dune describe targets --context _private "$target" 2>&1 | censor
-  Error:
-  stat($PWD/../query-source/loop): Too many levels of symbolic links
+  Error: Directory
+  _build/_private/default/.pkg/requested.dev-$DIGEST/target
+  is a directory target. This command does not support the inspection of
+  directory targets.
   $ test ! -d "$target"

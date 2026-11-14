@@ -32,7 +32,6 @@ let make
       ~default_env
       ~default_artifacts
       ~visible_packages
-      ~lockdir_bin_paths
   =
   let open Memo.O in
   let config = Dune_env.find config_stanza ~profile in
@@ -55,18 +54,9 @@ let make
     inherited ~field:base_env ~root:default_env (fun env ->
       Memo.return (Env.extend_env env config.env_vars))
   in
-  (* The lock directory [PATH] is added to each node's own [base_env] rather
-     than inherited: the visible packages differ per directory, so inheriting
-     it would widen a descendant's [PATH] back to its ancestor's. *)
-  let env_without_local_bins =
-    Memo.lazy_ ~name:"env-without-local-bins" (fun () ->
-      let* env = Memo.Lazy.force base_env in
-      let+ bin_paths = lockdir_bin_paths in
-      Env_path.cons_multi env ~dirs:bin_paths)
-  in
   let external_env =
     Memo.lazy_ ~name:"external-env" (fun () ->
-      let+ env = Memo.Lazy.force env_without_local_bins
+      let+ env = Memo.Lazy.force base_env
       and+ dirs = Memo.Lazy.force local_bin_dirs in
       Env_path.cons_multi env ~dirs)
   in
@@ -85,7 +75,7 @@ let make
   in
   { base_env
   ; local_bin_dirs
-  ; env_without_local_bins
+  ; env_without_local_bins = base_env
   ; external_env
   ; artifacts
   ; local_binaries

@@ -90,7 +90,10 @@ and t =
   ; installed_env : Env.t Memo.Lazy.t
   ; build_context : Build_context.t
   ; builder : builder
-  ; which : packages:Package.Name.Selection.t -> Filename.t -> Path.t option Memo.t
+  ; which_narrowed_to_packages :
+      packages:Package.Name.Selection.t
+      -> Filename.t
+      -> (Path.t * Package.Name.t) option Memo.t
   }
 
 let default_target_exec ~target_exec toolchain =
@@ -201,8 +204,20 @@ let cms_cmt_dependency t = t.builder.cms_cmt_dependency
 let equal x y = Context_name.equal x.builder.name y.builder.name
 let hash t = Context_name.hash t.builder.name
 let build_context t = t.build_context
-let which t fname = t.which ~packages:Package.Name.Selection.All fname
-let which_narrowed_to_packages t ~packages fname = t.which ~packages fname
+
+let which_narrowed_to_packages t ~packages fname =
+  t.which_narrowed_to_packages ~packages fname
+;;
+
+let which_in_path t fname = Which.which ~path:t.builder.path fname
+
+let which t fname =
+  which_narrowed_to_packages t ~packages:Package.Name.Selection.All fname
+  >>= function
+  | Some (p, _package) -> Memo.return (Some p)
+  | None -> which_in_path t fname
+;;
+
 let name t = t.builder.name
 let path t = t.builder.path
 let base_env t = t.builder.env
@@ -422,22 +437,26 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
               (Context_name.to_string builder.name))
           (fun () ->
              let+ current_env = builder.env
-             and+ pkg_env = Pkg_rules.exported_env builder.name in
-             (* [PATH] is not added here because it is contributed per
-                directory by [Env_node], where the set of narrowed lockdir
-                packages is known. *)
+             and+ pkg_env = Pkg_rules.exported_env builder.name
+             and+ compiler_bin_paths = Pkg_rules.compiler_bin_paths builder.name in
+             (* Actions must declare the executables they use from the lock dir
+                so that they are rerun when those change. We make an exception
+                for the compiler, as build scripts expect [ocamlc] and friends
+                to be the compiler of the build rather than the system
+                one. Actions do not depend on the compiler package for that
+                matter, so an action running the compiler through [PATH] without
+                declaring it is not rerun when the compiler changes. *)
              let pkg_env = Env.remove pkg_env ~var:Env_path.var in
-             Env_path.extend_env_concat_path current_env pkg_env)
+             Env_path.extend_env_concat_path current_env pkg_env
+             |> Env_path.cons_multi ~dirs:compiler_bin_paths)
         |> Memo.Lazy.force
       in
       { builder with env }
   in
   let which_outside_lockdir = Which.which ~path:builder.path in
-  let which =
+  let which_narrowed_to_packages =
     match kind with
-    (* There are no lock directory packages to narrow to outside of a [Lock]
-       context. *)
-    | Default | Opam _ -> fun ~packages:_ -> which_outside_lockdir
+    | Default | Opam _ -> fun ~packages:_ _ -> Memo.return None
     | Lock _ ->
       fun ~packages prog ->
         Memo.push_stack_frame
@@ -446,11 +465,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
               "looking up binary %S in context %S"
               (Filename.to_string prog)
               (Context_name.to_string builder.name))
-          (fun () ->
-             Pkg_rules.which ~packages builder.name prog
-             >>= function
-             | Some p -> Memo.return (Some p)
-             | None -> Which.which ~path:builder.path prog)
+          (fun () -> Pkg_rules.which ~packages builder.name prog)
   in
   let ocamlpath =
     Memo.lazy_
@@ -572,7 +587,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
         ocamlpath @ default_ocamlpath)
   ; default_ocamlpath
   ; build_context = Build_context.create ~name:builder.name
-  ; which
+  ; which_narrowed_to_packages
   }
 ;;
 

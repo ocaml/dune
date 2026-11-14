@@ -68,19 +68,17 @@ declaring any package dependencies:
   $ cat _build/default/mybin-output
   from provider
 
-The rule depends on the binary from the provider lockdir package:
+The rule depends on the binary from the provider lockdir package, and on the
+whole package:
 
   $ dune rules --format=json @test | jq_dune '.[] | ruleDepFilePaths' | censor
+  "_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target"
   "_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target/bin/mybin"
 
-All the packages' bin directories are added to $PATH:
+[(deps (package provider))] puts [provider]'s bin directory on $PATH:
 
   $ cat _build/default/system-mybin-output
   from provider
-
-  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
 
 With a package defined in the project, *without a dir field*, the behavior is
 the same.
@@ -98,14 +96,10 @@ the same.
   $ cat _build/default/mybin-output
   from provider
 
-All the packages' bin directories are added to $PATH:
+[(deps (package provider))] puts [provider]'s bin directory on $PATH:
 
   $ cat _build/default/system-mybin-output
   from provider
-
-  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
 
 With a package defined in the project, *with a dir field, but no dependencies*,
 the program mybin is not found in PATH or via the bin pform, since the rule for
@@ -164,13 +158,8 @@ the PATH.
   cat: _build/default/mybin-output: No such file or directory
   [1]
 
-The narrowed PATH does not include [provider], since it is not in [mypkg]'s
-dependencies. But the [@test-sys] rule declares [(deps (package provider))],
-which adds that package's install root to the action's environment, so the bare
-name resolves.
-
-  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST/target/bin
+The [@test-sys] rule declares [(deps (package provider))], which adds that
+package's install root to the action's environment, so the bare name resolves.
 
   $ cat _build/default/system-mybin-output
   from provider
@@ -234,14 +223,10 @@ the bin pform.
   $ cat _build/default/mybin-output
   from provider
 
-The bin directories of all the packages we depend on are added to $PATH:
+[(deps (package provider))] puts [provider]'s bin directory on $PATH:
 
   $ cat _build/default/system-mybin-output
   from provider
-
-  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
 
   $ cat >>dune <<'EOF'
   > (rule

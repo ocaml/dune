@@ -13,7 +13,6 @@ val make
   -> default_env:Env.t Memo.t
   -> default_artifacts:Artifacts.t Memo.t
   -> visible_packages:Package.Name.Selection.t Memo.t
-  -> lockdir_bin_paths:Path.t list Memo.t
   -> t
 
 val external_env : t -> Env.t Memo.t

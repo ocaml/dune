@@ -21,6 +21,13 @@ val unnamed_get_paths
   -> Dep_conf.t list
   -> Path.Set.t Action_builder.t * Sandbox_config.t option
 
+(** [packages ~expander requested] depends on the [requested] packages and
+    returns their environment, as [(deps (package ...))] does. *)
+val packages
+  :  expander:Expander.t
+  -> (Loc.t * Package.Name.t) list
+  -> Env.t Action_builder.t
+
 (** Evaluates named dependency specifications. The returned builder both
     registers the rule's dependencies and produces an [Env.t] augmentation,
     same convention as [unnamed]. The expander has the named bindings added

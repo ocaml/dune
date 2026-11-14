@@ -46,7 +46,8 @@ library by default:
   >   (parameters param_intf))
   > EOF
   $ cat > mylib/mylib.ml <<EOF
-  > let test () = Signature.do_something (module Param_intf.M)
+  > open Signature
+  > let test () = do_something (module Param_intf.M)
   > EOF
 
   $ dune build
@@ -58,9 +59,9 @@ Unless the dune-project disables transitive dependencies:
   > EOF
 
   $ dune build
-  File "mylib/mylib.ml", line 1, characters 14-36:
-  1 | let test () = Signature.do_something (module Param_intf.M)
-                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "mylib/mylib.ml", line 1, characters 5-14:
+  1 | open Signature
+           ^^^^^^^^^
   Error: Unbound module Signature
   [1]
 

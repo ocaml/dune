@@ -420,12 +420,20 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Read pinned OxCaml release
+        id: release
+        run: |
+          compiler=$(jq -r '.release | "ocaml-variants.\(.variant),oxcaml-compiler.\(.version)"' nix/oxcaml.json)
+          repository=$(jq -r .opamRepository.rev nix/oxcaml.json)
+          echo "compiler=$compiler" >> "$GITHUB_OUTPUT"
+          echo "repository=$repository" >> "$GITHUB_OUTPUT"
+
       - name: Install OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: ocaml-variants.5.2.0+ox
+          ocaml-compiler: ${{ steps.release.outputs.compiler }}
           opam-repositories: |
-            oxcaml: "git+https://github.com/oxcaml/opam-repository.git"
+            oxcaml: "git+https://github.com/oxcaml/opam-repository.git#${{ steps.release.outputs.repository }}"
             default: "git+https://github.com/ocaml/opam-repository.git"
           opam-pin: false
 
@@ -437,18 +445,50 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-ox-${{ hashFiles('**.opam') }}
+          key: opam-ox-${{ hashFiles('nix/oxcaml.json', 'nix/patches/**', '**.opam') }}
 
       - name: Install Node
         uses: actions/setup-node@v7
         with:
           node-version: latest
 
-      - name: Install odoc deps
-        run: opam install result
+      - name: Install test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tree
+          opam install -y binaryen-bin
+
+      - name: Pin compatible odoc
+        run: |
+          odoc="$RUNNER_TEMP/odoc"
+          patch="$RUNNER_TEMP/odoc-oxcaml.diff"
+          revision=$(jq -r .odoc.rev nix/oxcaml.json)
+          version=$(jq -r .odoc.version nix/oxcaml.json)
+          patch_revision=$(jq -r .odoc.patch.rev nix/oxcaml.json)
+          expected_hash=$(jq -r .odoc.patch.hash nix/oxcaml.json)
+          url="https://github.com/ocaml/odoc/compare/$revision...$patch_revision.diff"
+          curl --fail --location --retry 3 "$url" --output "$patch"
+          actual_hash="sha256-$(openssl dgst -sha256 -binary "$patch" | base64)"
+          test "$actual_hash" = "$expected_hash"
+          git init "$odoc"
+          git -C "$odoc" fetch --depth 1 https://github.com/ocaml/odoc.git "$revision"
+          git -C "$odoc" checkout --detach FETCH_HEAD
+          git -C "$odoc" apply "$patch"
+          opam pin add -yn --kind=path --with-version="$version" odoc-parser "$odoc"
+          opam pin add -yn --kind=path --with-version="$version" odoc "$odoc"
+          # Retain the guards while recognising our explicitly patched odoc.
+          guard="$RUNNER_TEMP/odoc-guard"
+          mkdir -p "$guard"
+          opam show --raw oxcaml-odoc-patches.enabled \
+            | sed "s/\"3\\.2\\.0+ox2\"/\"$version\"/" \
+            > "$guard/oxcaml-odoc-patches.opam"
+          opam pin add -yn --kind=path --with-version=enabled \
+            oxcaml-odoc-patches "$guard"
 
       - name: Install deps
-        run: opam install csexp pp re spawn uutf odoc ppx_expect ppx_inline_test wasm_of_ocaml-compiler
+        run: |
+          opam install -y csexp pp re spawn uutf lwt odoc ppx_expect \
+            ppx_inline_test menhir js_of_ocaml wasm_of_ocaml-compiler
 
       - name: Build dune
         run: opam exec -- make bootstrap
@@ -463,7 +503,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-ox-${{ hashFiles('**.opam') }}
+          key: opam-ox-${{ hashFiles('nix/oxcaml.json', 'nix/patches/**', '**.opam') }}
 
   nix-oxcaml:
     name: OxCaml Tests (Nix)

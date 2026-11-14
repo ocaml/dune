@@ -131,7 +131,8 @@ module V1 = struct
     in
     let output =
       Lwt_io.of_fd fd ~mode:Output ~close:(fun () ->
-        Lwt_unix.shutdown fd Unix.SHUTDOWN_SEND;
+        (try Lwt_unix.shutdown fd Unix.SHUTDOWN_SEND with
+         | Unix.Unix_error (ENOTCONN, _, _) -> ());
         Lwt.return_unit)
     in
     let input =

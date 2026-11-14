@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794619404446,
+  "lastUpdate": 1794619410390,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -487720,6 +487720,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 34.37312714898667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "shon.feder@gmail.com",
+            "name": "mefyl",
+            "username": "shonfeder"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a6b292d70bfbc26d3c2415d3e9f60e1cc523ef31",
+          "message": "Add a test showing that tools are picked from the PATH. (#17005)\n\nReproduction for issue #17004.\n\n## Checklist\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.",
+          "timestamp": "2026-11-13T20:07:03-05:00",
+          "tree_id": "4c4fa7c044d6b953a52af1b25e8bf1622b9883a4",
+          "url": "https://github.com/ocaml/dune/commit/a6b292d70bfbc26d3c2415d3e9f60e1cc523ef31"
+        },
+        "date": 1794619409592,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.36009394745333334,
             "unit": "seconds"
           }
         ]

@@ -12,6 +12,7 @@ depends: [
   "dune" {>= "3.26"}
   "dune-private-libs" {= version}
   "dune-build-info" {with-test}
+  "base-threads" {with-test}
   "odoc" {with-doc}
 ]
 dev-repo: "git+https://github.com/ocaml/dune.git"

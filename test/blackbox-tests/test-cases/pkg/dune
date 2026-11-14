@@ -48,12 +48,24 @@
  (deps %{bin:strace}))
 
 (cram
- (applies_to relocatable-compiler-sandbox)
+ (applies_to relocatable-compiler-sandbox.t)
  (deps %{bin:menhir}))
+
+(cram
+ (applies_to doc-new-with-locked-lib.t)
+ (deps %{bin:odoc}))
 
 (cram
  (deps %{bin:awk} %{bin:cmp})
  (applies_to git-repo.t))
+
+(cram
+ (deps %{bin:cmp})
+ (applies_to build-single-package.t bin-runtime-deps.t))
+
+(cram
+ (deps %{bin:diff})
+ (applies_to dependency-hash.t))
 
 (cram
  (deps ../../utils/fakegit.sh)
@@ -65,7 +77,15 @@
 
 (cram
  (deps %{bin:which})
- (applies_to pkg-deps.t))
+ (applies_to
+  curl-not-installed.t
+  default-exported-env.t
+  different-dune-in-path.t
+  openbsd-tar.t
+  opam-source-conversion.t
+  pkg-deps.t
+  withenv-path.t
+  zip-extract-fail.t))
 
 (cram
  (deps %{bin:cmp} %{bin:ocamlfind})

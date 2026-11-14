@@ -3,6 +3,10 @@
  (applies_to :whole_subtree))
 
 (cram
+ (applies_to ocamlformat-ignore.t ocamlformat-avoid-conflict-with-project.t)
+ (deps %{bin:which}))
+
+(cram
  (deps %{bin:curl})
  (applies_to ocamlformat-e2e.t))
 

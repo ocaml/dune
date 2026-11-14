@@ -2,6 +2,10 @@
  (setup_scripts helpers.sh)
  (applies_to :whole_subtree))
 
+(cram
+ (applies_to dev-tool-merlin-env.t)
+ (deps %{bin:which}))
+
 (rule
  (alias runtest)
  (deps helpers.sh)

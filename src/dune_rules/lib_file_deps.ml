@@ -53,8 +53,9 @@ let deps_of_lib (lib : Lib.t) ~groups =
     let dir = Group.obj_dir g obj_dir in
     let dirs =
       match g with
-      | Ocaml Cmi -> dir :: Obj_dir.all_cmis obj_dir
-      | Ocaml Cmx | Melange _ | Header -> [ dir ]
+      | Ocaml Cmi -> dir :: Obj_dir.all_cmis obj_dir ~for_:Ocaml
+      | Melange Cmi -> dir :: Obj_dir.all_cmis obj_dir ~for_:Melange
+      | Ocaml Cmx | Melange Cmj | Header -> [ dir ]
     in
     List.map dirs ~f:(fun dir ->
       Group.to_glob g |> File_selector.of_glob ~dir |> Dep.file_selector))

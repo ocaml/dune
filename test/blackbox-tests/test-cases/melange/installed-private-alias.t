@@ -37,15 +37,10 @@ Public aliases into installed private libraries should work in both modes.
   $ cd app
   $ echo 'let value = Foo.P.value' > entry.ml
 
-OCaml resolves the alias, but Melange omits the private library's hidden path.
+Both OCaml and Melange resolve the alias.
 
   $ dune build .entry.objs/byte/entry.cmo
   $ dune build .entry.objs/melange/entry.cmj
-  File "entry.ml", line 1, characters 12-17:
-  1 | let value = Foo.P.value
-                  ^^^^^
-  Error: The module Foo.P is an alias for module Priv, which is missing
-  [1]
 
 Direct references to the private library remain unavailable in both modes.
 

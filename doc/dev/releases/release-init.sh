@@ -64,7 +64,11 @@ DUNE_GIT_URL="https://github.com/${DUNE_REPO}.git"
 
 POST_RELEASE_STEPS="## Post-release
 
-- [ ] Merge release branch into \`main\`
+- [ ] Merge \`main\` into the \`-rc\` branch, as follows:
+  - checkout the \`-rc\` branch
+  - run \`./doc/dev/releases/release-merge-main.sh\`
+  - push the the update to the \`-rc\` pull request
+- [ ] Merge release branch pull request into \`main\`
 - [ ] Write a post about the release on Discuss: [link]
 - [ ] Open PR announcing release on ocaml.org: [link]
 - [ ] Store the revdeps error file in the [logs](https://github.com/ocaml/dune/wiki/Reverse-dependencies-CI-logs) as HTML

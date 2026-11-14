@@ -35,10 +35,12 @@ module Archive : sig
       -> mode:Mode.Select.t
       -> Path.Build.t
 
+    (** [suffix] is [Lib_config.stub_dll_suffix]. *)
     val dll_file
       :  t
       -> dir:Path.Build.t
       -> ext_dll:Filename.Extension.t
+      -> suffix:string option
       -> mode:Mode.Select.t
       -> Path.Build.t
   end
@@ -61,6 +63,7 @@ module Archive : sig
     :  archive:t
     -> dir:Path.Build.t
     -> ext_dll:Filename.Extension.t
+    -> suffix:string option
     -> mode:Mode.Select.t
     -> Path.Build.t
 end

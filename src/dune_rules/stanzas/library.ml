@@ -379,7 +379,7 @@ let foreign_lib_files t ~dir ~ext_lib ~for_mode =
   else Option.to_list stubs_archive
 ;;
 
-let foreign_dll_files t ~dir ~ext_dll =
+let foreign_dll_files t ~dir ~ext_dll ~suffix =
   let stubs_archive = stubs_archive t in
   let foreign_archives = foreign_archives t in
   let mode =
@@ -390,7 +390,9 @@ let foreign_dll_files t ~dir ~ext_dll =
       Mode.Select.Only Mode.Byte
     else Mode.Select.All
   in
-  let dll_file ~mode archive = Foreign.Archive.dll_file ~archive ~dir ~ext_dll ~mode in
+  let dll_file ~mode archive =
+    Foreign.Archive.dll_file ~archive ~dir ~ext_dll ~suffix ~mode
+  in
   let foreign_archives = List.map foreign_archives ~f:(dll_file ~mode:Mode.Select.All) in
   (* Stubs can have mode-dependent versions, not foreign archives *)
   match stubs_archive with
@@ -547,7 +549,10 @@ let to_lib_info
     then Lib_info.Files [ archive ]
     else Lib_info.Needs_module_info archive
   in
-  let foreign_dll_files = foreign_dll_files conf ~dir ~ext_dll in
+  let foreign_dll_files =
+    let suffix = Lib_config.stub_dll_suffix lib_config ~project:conf.project in
+    foreign_dll_files conf ~dir ~ext_dll ~suffix
+  in
   let exit_module = Option.bind conf.stdlib ~f:(fun x -> x.exit_module) in
   let foreign_objects = Lib_info.Source.Local in
   let archives, plugins =

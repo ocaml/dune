@@ -358,13 +358,16 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
     in
     let* () =
       let foreign_archives_deps =
-        let { Lib_config.ext_lib; ext_dll; _ } =
+        let ({ Lib_config.ext_lib; ext_dll; _ } as lib_config) =
           (Compilation_context.ocaml cctx).lib_config
+        in
+        let suffix =
+          Lib_config.stub_dll_suffix lib_config ~project:(Scope.project scope)
         in
         List.concat_map buildable.foreign_archives ~f:(fun (_loc, archive) ->
           let mode = Mode.Select.All in
           [ Foreign.Archive.lib_file ~mode ~archive ~dir ~ext_lib
-          ; Foreign.Archive.dll_file ~mode ~archive ~dir ~ext_dll
+          ; Foreign.Archive.dll_file ~mode ~archive ~dir ~ext_dll ~suffix
           ])
       in
       build_c_program

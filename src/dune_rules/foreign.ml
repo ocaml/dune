@@ -38,10 +38,11 @@ module Archive = struct
       Path.Build.relative dir (sprintf "%s%s%s" lib_file_prefix archive_name ext_lib)
     ;;
 
-    let dll_file archive_name ~dir ~ext_dll ~mode =
+    let dll_file archive_name ~dir ~ext_dll ~suffix ~mode =
       let archive_name = add_mode_suffix mode archive_name in
       let ext_dll = Filename.Extension.to_string ext_dll in
-      Path.Build.relative dir (sprintf "dll%s%s" archive_name ext_dll)
+      let suffix = Option.value suffix ~default:"" in
+      Path.Build.relative dir (sprintf "dll%s%s%s" archive_name suffix ext_dll)
     ;;
   end
 
@@ -73,9 +74,9 @@ module Archive = struct
     Name.lib_file archive.name ~dir ~ext_lib ~mode
   ;;
 
-  let dll_file ~archive ~dir ~ext_dll ~mode =
+  let dll_file ~archive ~dir ~ext_dll ~suffix ~mode =
     let dir = dir_path ~dir archive in
-    Name.dll_file archive.name ~dir ~ext_dll ~mode
+    Name.dll_file archive.name ~dir ~ext_dll ~suffix ~mode
   ;;
 end
 

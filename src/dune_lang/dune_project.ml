@@ -97,6 +97,7 @@ type t =
   ; pins : Pin_stanza.Project.t
   ; cram : bool
   ; expand_aliases_in_sandbox : bool
+  ; suffixed_stub_libraries : bool
   ; opam_file_location : [ `Relative_to_project | `Inside_opam_directory ]
   ; including_hidden_packages : Package.t Package.Name.Map.t
   }
@@ -175,6 +176,7 @@ let to_dyn
       ; pins
       ; cram
       ; expand_aliases_in_sandbox
+      ; suffixed_stub_libraries
       ; opam_file_location
       ; including_hidden_packages = _
       ; exclusive_dir_packages = _
@@ -209,6 +211,7 @@ let to_dyn
     ; "cram", bool cram
     ; "allow_approximate_merlin", opaque allow_approximate_merlin
     ; "expand_aliases_in_sandbox", bool expand_aliases_in_sandbox
+    ; "suffixed_stub_libraries", bool suffixed_stub_libraries
     ; ( "opam_file_location"
       , match opam_file_location with
         | `Relative_to_project -> variant "Relative_to_project" []
@@ -501,6 +504,7 @@ let accept_alternative_dune_file_name_default ~(lang : Lang.Instance.t) =
 
 let cram_default ~(lang : Lang.Instance.t) = lang.version >= (3, 0)
 let expand_aliases_in_sandbox_default ~lang:_ = false
+let suffixed_stub_libraries_default ~(lang : Lang.Instance.t) = lang.version >= (3, 26)
 
 let use_standard_c_and_cxx_flags_default ~(lang : Lang.Instance.t) =
   if lang.version >= (3, 0) then Some true else None
@@ -574,6 +578,7 @@ let infer ~dir info packages =
   let strict_package_deps = strict_package_deps_default ~lang in
   let cram = cram_default ~lang in
   let expand_aliases_in_sandbox = expand_aliases_in_sandbox_default ~lang in
+  let suffixed_stub_libraries = suffixed_stub_libraries_default ~lang in
   let root = dir in
   let opam_file_location = opam_file_location_default ~lang in
   { name
@@ -603,6 +608,7 @@ let infer ~dir info packages =
   ; strict_package_deps
   ; cram
   ; expand_aliases_in_sandbox
+  ; suffixed_stub_libraries
   ; opam_file_location
   ; including_hidden_packages = packages
   ; exclusive_dir_packages = make_exclusive_dir_packages packages
@@ -646,6 +652,7 @@ let encode : t -> Dune_sexp.t list =
       ; project_file = _
       ; root = _
       ; expand_aliases_in_sandbox
+      ; suffixed_stub_libraries
       ; opam_file_location = _
       ; including_hidden_packages = _
       ; exclusive_dir_packages = _
@@ -707,6 +714,10 @@ let encode : t -> Dune_sexp.t list =
           "expand_aliases_in_sandbox"
           expand_aliases_in_sandbox
           expand_aliases_in_sandbox_default
+      ; flag
+          "suffixed_stub_libraries"
+          suffixed_stub_libraries
+          suffixed_stub_libraries_default
       ]
   in
   let lang_stanza =
@@ -778,6 +789,7 @@ let dune_site_extension =
 let strict_package_deps t = t.strict_package_deps
 let allow_approximate_merlin t = t.allow_approximate_merlin
 let cram t = t.cram
+let suffixed_stub_libraries t = t.suffixed_stub_libraries
 let info t = t.info
 let pins t = t.pins
 
@@ -981,6 +993,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
   and+ cram = Toggle.field "cram" ~check:(Syntax.since Stanza.syntax (2, 7))
   and+ expand_aliases_in_sandbox =
     field_o_b "expand_aliases_in_sandbox" ~check:(Syntax.since Stanza.syntax (3, 0))
+  and+ suffixed_stub_libraries = field_o_b "suffixed_stub_libraries"
   and+ opam_file_location =
     field_o
       "opam_file_location"
@@ -1071,6 +1084,11 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
         expand_aliases_in_sandbox
         ~default:(expand_aliases_in_sandbox_default ~lang)
     in
+    let suffixed_stub_libraries =
+      Option.value
+        suffixed_stub_libraries
+        ~default:(suffixed_stub_libraries_default ~lang)
+    in
     let root = dir in
     let dialects =
       let dialects =
@@ -1109,6 +1127,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
     ; pins
     ; cram
     ; expand_aliases_in_sandbox
+    ; suffixed_stub_libraries
     ; opam_file_location
     ; including_hidden_packages = packages
     ; exclusive_dir_packages = make_exclusive_dir_packages packages

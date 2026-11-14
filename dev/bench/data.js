@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794654657781,
+  "lastUpdate": 1794654882429,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -487923,6 +487923,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4949475028533334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fd81710e22479e64e57c043e0eb34113dd0aa531",
+          "message": "refactor(pkg): return source validation errors explicitly (#17036)\n\nMake `Lock_dir.source_kind` return validation errors as a result rather\nthan raising them. Existing callers unwrap the result to preserve\nbehavior.\n\nThis prepares for deferring source-validation errors until the requested\npackage is built when package rules are loaded together.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-14T18:55:51+08:00",
+          "tree_id": "0e5291b6d6b530fb1fb2503e30b18c842f5a7f53",
+          "url": "https://github.com/ocaml/dune/commit/fd81710e22479e64e57c043e0eb34113dd0aa531"
+        },
+        "date": 1794654880541,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 42.59614128953999,
             "unit": "seconds"
           }
         ]

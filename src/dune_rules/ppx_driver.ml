@@ -213,6 +213,11 @@ let build_ppx_driver =
       let ctx = Super_context.context sctx in
       let+ ocaml = Context.ocaml ctx in
       [ Exe.Linkage.native_or_custom ocaml ]
+    and* link_args =
+      let+ { config = { Dune_config_file.Dune_config.ppx_driver_link_flags; _ }; _ } =
+        Workspace.workspace ()
+      in
+      Action_builder.return (Command.Args.As ppx_driver_link_flags)
     and+ cctx =
       let obj_dir = Obj_dir.for_pp ~dir in
       let requires_compile = Resolve.map driver_and_libs ~f:snd in
@@ -244,6 +249,7 @@ let build_ppx_driver =
         }
       in
       Exe.build_and_link
+        ~link_args
         ~program
         ~linkages
         cctx

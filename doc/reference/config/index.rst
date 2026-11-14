@@ -23,6 +23,7 @@ The ``config`` file can contain the following stanzas:
   display
   jobs
   pkg
+  ppx_driver_link_flags
   project_defaults
   sandboxing_preference
   terminal_persistence

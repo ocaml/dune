@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794674532229,
+  "lastUpdate": 1794676151799,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -679730,6 +679730,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.0809912727866666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e8c1d68352660356e696653abc15d6cc8e1e0e9c",
+          "message": "fix(rpc-lwt): tolerate disconnected sockets during channel close (#17039)\n\nWhen Dune disconnects from a rule plugin, closing the plugin’s output\nchannel can raise ENOTCONN from shutdown(SHUT_WR), notably on macOS.\nTreat this as an already-disconnected peer while preserving descriptor\ncleanup and reporting other shutdown errors.\n\nMake the Unix-socket close test wait for peer EOF, and add a TCP-reset\nregression that reproduces the same exception on Linux.\n\nThis addresses the uncaught shutdown exceptions in\nhttps://github.com/ocaml/dune/actions/runs/43606283947/job/132483862232.\nThe independent cancellation-test timeouts are addressed by #17040.\n\n---------\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-15T00:57:39+08:00",
+          "tree_id": "f81755ac4c528abe4ce8c14f4a2fdb3e93848745",
+          "url": "https://github.com/ocaml/dune/commit/e8c1d68352660356e696653abc15d6cc8e1e0e9c"
+        },
+        "date": 1794675921118,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.541055887513333,
             "unit": "seconds"
           }
         ]

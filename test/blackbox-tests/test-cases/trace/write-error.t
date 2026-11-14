@@ -16,8 +16,8 @@ both directly and through their process group.
   $ timeout="$timeout --foreground"
   $ LD_PRELOAD="$PWD/../../utils/fail_trace_write.so" \
   >   $timeout -s KILL 5 dune build result
-  Error: dune_trace_write(): No space left on device
-  [137]
+  Warning: Unable to write trace: No space left on device. Disabling tracing.
+  [1]
   $ test -f _build/default/result
   [1]
 
@@ -29,9 +29,8 @@ separately to check the build's exit status before filtering diagnostics.
   $ DUNE_ACTION_TRACE_DIR="$PWD/action-traces" \
   >   $timeout -s KILL 5 dune build --trace-file /dev/full \
   >   --action-runner result > initialization.log 2>&1
-  [1]
   $ grep -E '^(Error|Warning):' initialization.log
-  Error: dune_trace_write(): No space left on device
+  Warning: Unable to write trace: No space left on device. Disabling tracing.
 
 An incomplete trace must not be exported as an action trace.
 
@@ -45,21 +44,27 @@ A successful build does export a valid trace to the same directory.
   >   jq -r 'select(.name == "exit") | .name'
   exit
 
-A watch build still handles build and shutdown requests after a trace failure.
-The warning is reported only when the watch process exits.
+A first failure during scheduler cleanup must still be noticed after normal
+work has completed. Fail only the signal watcher's final SIGUSR1 event.
+
+  $ rm _build/default/result
+  $ DUNE_TRACE_FAIL_CLEANUP=1 \
+  >   LD_PRELOAD="$PWD/../../utils/fail_trace_write.so" \
+  >   $timeout -s KILL 5 dune build result > cleanup.log 2>&1
+  [1]
+  $ grep -E '^(Error|Warning):' cleanup.log
+  Warning: Unable to write trace: No space left on device. Disabling tracing.
+  $ test -f _build/default/result
+  $ test ! -s _build/.lock
+
+A watch build stops after a trace failure and exits unsuccessfully.
 
   $ LD_PRELOAD="$PWD/../../utils/fail_trace_write.so" start_dune
-  $ build result
-  Timed out
-  Error: dune_trace_write(): No space left on device
-  $ build result
-  Timed out
-  Error: dune_trace_write(): No space left on device
-  $ grep '^Warning:' .#dune-output
+  $ build result > watch-request.log 2>&1
   [1]
-  $ stop_dune_quiet
+  $ wait_for_dune_exit_with_timeout
   $ grep '^Warning:' .#dune-output
-  [1]
+  Warning: Unable to write trace: No space left on device. Disabling tracing.
   $ grep '^exit ' .#dune-output
   exit 1
 
@@ -72,5 +77,55 @@ exporting the incomplete trace.
   >   LD_PRELOAD="$PWD/../../utils/fail_trace_write.so" \
   >   $timeout -s KILL 5 dune build result > exit.log 2>&1
   $ grep -E '^(Warning:|\| Unix.Unix_error)' exit.log
-  | Unix.Unix_error(Unix.ENOSPC, "dune_trace_write", "")
+  Warning: Unable to write trace: No space left on device. Disabling tracing.
   $ ls exit-action-traces
+  $ test ! -s _build/.lock
+
+A trace failure before the console thread starts must not prevent the thread
+from starting. Keep the progress backend enabled despite redirected output.
+
+  $ INSIDE_EMACS=1 DUNE_CONFIG__THREADED_CONSOLE=enabled \
+  >   DUNE_TRACE=thread DUNE_TRACE_FAIL_CONSOLE=1 \
+  >   LD_PRELOAD="$PWD/../../utils/fail_trace_write.so" \
+  >   $timeout -s KILL 5 dune build --display progress result \
+  >   > console.log 2>&1
+  $ grep -o 'Warning: Unable to write trace:.*' console.log
+  Warning: Unable to write trace: No space left on device. Disabling tracing.
+  $ test ! -s _build/.lock
+
+A trace failure while another action is running must stop the build and clean up
+its process group. Arm the failure only after the long-running child has started.
+
+  $ marker="$TMPDIR/trace-failure-armed"
+  $ child_pid="$TMPDIR/trace-failure-child.pid"
+  $ cat > running.sh <<'EOF'
+  > sleep 60 &
+  > child=$!
+  > echo "$child" > "$1"
+  > touch "$2"
+  > wait "$child"
+  > touch "$3"
+  > EOF
+  $ cat > dune <<EOF
+  > (rule
+  >  (target running)
+  >  (deps running.sh)
+  >  (action (run bash %{dep:running.sh} "$child_pid" "$marker" %{target})))
+  > (rule
+  >  (target trigger)
+  >  (action
+  >   (bash "while ! test -f '$marker'; do sleep 0.01; done; touch trigger")))
+  > EOF
+  $ DUNE_TRACE_FAIL_AFTER="$marker" \
+  >   LD_PRELOAD="$PWD/../../utils/fail_trace_write.so" \
+  >   $timeout -k 2 3 dune build -j 2 running trigger \
+  >   > running.log 2>&1
+  [1]
+  $ grep -E '^(Error|Warning):' running.log
+  Warning: Unable to write trace: No space left on device. Disabling tracing.
+  $ test -s "$child_pid"
+  $ pid=$(cat "$child_pid")
+  $ if kill -0 "$pid" 2>/dev/null; then
+  >   kill -KILL "$pid"
+  >   echo "child survived shutdown"
+  > fi

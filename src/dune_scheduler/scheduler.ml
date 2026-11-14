@@ -606,6 +606,26 @@ let flush_file_watcher () =
           | Some timer -> Async_io.Task.cancel timer))
 ;;
 
+module Trace_failure = struct
+  type t =
+    { events : Event.Queue.t
+    ; mutable failed : bool
+    }
+
+  let mutex = Mutex.create ()
+  let active : t option ref = ref None
+
+  let () =
+    Fdecl.set Dune_trace.on_error (fun _ ->
+      Mutex.protect mutex (fun () ->
+        match !active with
+        | None -> ()
+        | Some ({ events; _ } as t) ->
+          t.failed <- true;
+          Event.Queue.send_shutdown events Failure))
+  ;;
+end
+
 module Run = struct
   exception Build_cancelled = Build_cancelled
 
@@ -623,37 +643,50 @@ module Run = struct
 
   let go (config : Config.t) ?timeout ?(file_watcher = No_watcher) run =
     let events = Event.Queue.create () in
-    let t =
-      let file_watcher =
-        match file_watcher with
-        | No_watcher -> None
-        | Automatic ->
-          Some
-            (File_watcher.create
-               ~event_queue:events
-               ~watch_exclusions:config.watch_exclusions
-               ())
-      in
-      prepare config ~events ~file_watcher
+    let trace_failure = { Trace_failure.events; failed = false } in
+    Mutex.protect Trace_failure.mutex (fun () ->
+      Trace_failure.active := Some trace_failure);
+    let result =
+      Exn.protect
+        ~finally:(fun () ->
+          Mutex.protect Trace_failure.mutex (fun () -> Trace_failure.active := None))
+        ~f:(fun () ->
+          let t =
+            let file_watcher =
+              match file_watcher with
+              | No_watcher -> None
+              | Automatic ->
+                Some
+                  (File_watcher.create
+                     ~event_queue:events
+                     ~watch_exclusions:config.watch_exclusions
+                     ())
+            in
+            prepare config ~events ~file_watcher
+          in
+          let run =
+            match timeout with
+            | None -> run
+            | Some timeout ->
+              fun () ->
+                let sleep = Async_io.sleep t.async_io timeout in
+                Fiber.fork_and_join_unit
+                  (fun () ->
+                     let+ res = Async_io.Task.await sleep in
+                     match res with
+                     | Ok () -> Event.Queue.send_shutdown t.events Timeout
+                     | Error `Cancelled -> ()
+                     | Error (`Exn _) -> assert false)
+                  (fun () ->
+                     Fiber.finalize run ~finally:(fun () -> Async_io.Task.cancel sleep))
+          in
+          Run_once.run_and_cleanup t run)
+    in
+    let result =
+      if trace_failure.failed then Error (Run_once.Shutdown_requested Failure) else result
     in
     match
-      let run =
-        match timeout with
-        | None -> run
-        | Some timeout ->
-          fun () ->
-            let sleep = Async_io.sleep t.async_io timeout in
-            Fiber.fork_and_join_unit
-              (fun () ->
-                 let+ res = Async_io.Task.await sleep in
-                 match res with
-                 | Ok () -> Event.Queue.send_shutdown t.events Timeout
-                 | Error `Cancelled -> ()
-                 | Error (`Exn _) -> assert false)
-              (fun () ->
-                 Fiber.finalize run ~finally:(fun () -> Async_io.Task.cancel sleep))
-      in
-      match Run_once.run_and_cleanup t run with
+      match result with
       | Ok a -> Result.Ok a
       | Error (Shutdown_requested reason) -> Error (Shutdown.E reason, None)
       | Error Already_reported -> Error (Dune_util.Report_error.Already_reported, None)
@@ -730,4 +763,88 @@ let sleep dur =
     (* cancellation mechanism isn't exposed to the user *)
     assert false
   | Error (`Exn _) -> assert false
+;;
+
+let%test_module "trace failure dispatcher" =
+  (module struct
+    let config =
+      { Config.concurrency = 1; print_ctrl_c_warning = false; watch_exclusions = [] }
+    ;;
+
+    let print_active () =
+      let active =
+        Mutex.protect Trace_failure.mutex (fun () -> Option.is_some !Trace_failure.active)
+      in
+      printfn "active: %b" active
+    ;;
+
+    let%expect_test "retirement across normal and exceptional runs" =
+      let previous_scheduler = !current in
+      let notify = Fdecl.get Dune_trace.on_error in
+      Exn.protect
+        ~finally:(fun () ->
+          current := previous_scheduler;
+          Mutex.protect Trace_failure.mutex (fun () -> Trace_failure.active := None))
+        ~f:(fun () ->
+          let retired =
+            Run.go config (fun () ->
+              Fiber.return (Option.value_exn !Trace_failure.active))
+          in
+          print_active ();
+          [%expect {| active: false |}];
+          notify Unix.ENOSPC;
+          printfn "retired run failed: %b" retired.failed;
+          [%expect {| retired run failed: false |}];
+          (match
+             Run.go config (fun () ->
+               shutdown `Failure;
+               Fiber.never)
+           with
+           | () -> print_endline "unexpected success"
+           | exception Shutdown.E Failure -> print_endline "shutdown failure");
+          print_active ();
+          [%expect
+            {|
+            shutdown failure
+            active: false
+            |}];
+          (match
+             Run.go
+               { config with watch_exclusions = [ "[" ] }
+               ~file_watcher:Automatic
+               (fun () -> Fiber.return ())
+           with
+           | () -> print_endline "unexpected success"
+           | exception Re.Posix.Parse_error -> print_endline "setup failure");
+          print_active ();
+          [%expect
+            {|
+            setup failure
+            active: false
+            |}];
+          notify Unix.ENOSPC;
+          (match
+             Run.go config (fun () ->
+               notify Unix.ENOSPC;
+               Fiber.return ())
+           with
+           | () -> print_endline "unexpected success"
+           | exception Shutdown.E Failure -> print_endline "trace failure");
+          print_active ();
+          [%expect
+            {|
+            trace failure
+            active: false
+            |}];
+          notify Unix.ENOSPC;
+          Run.go config (fun () -> Fiber.return ());
+          print_endline "next run completed";
+          print_active ();
+          [%expect
+            {|
+            next run completed
+            active: false
+            |}])
+    ;;
+  end)
 ;;

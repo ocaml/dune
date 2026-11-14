@@ -4,6 +4,8 @@ module Event = Event
 module File_watcher_event = File_watcher_event
 module Out = Out
 
+let on_error = Out.on_error
+
 type ownership =
   | Owned of Path.t
   | Borrowed
@@ -36,6 +38,15 @@ let capture_alloc_profile kind =
     Some (Event.alloc_summary ~phase ~run_id ~config ~exact ~minor ~major ~promoted)
 ;;
 
+let with_trace_closed out ~f =
+  match Out.close out with
+  | Some error ->
+    Printf.eprintf
+      "Warning: Unable to write trace: %s. Disabling tracing.\n%!"
+      (Unix.error_message error)
+  | None -> f ()
+;;
+
 let at_exit =
   At_exit.at_exit Global_lock.at_exit (fun () ->
     match !global with
@@ -45,25 +56,25 @@ let at_exit =
       let alloc_summary = capture_alloc_profile `Exit in
       Option.iter (Out.alloc out) ~f:Alloc.stop;
       Option.iter alloc_summary ~f:(Out.emit out);
-      Out.close out
+      with_trace_closed out ~f:Fun.id
     | Some { out; ownership = Owned path } ->
       Out.emit_runtime out;
       let alloc_summary = capture_alloc_profile `Exit in
       Option.iter (Out.alloc out) ~f:Alloc.stop;
       Option.iter alloc_summary ~f:(Out.emit out);
       Out.emit out (Event.exit ());
-      Out.close out;
-      (match Env.(get initial Var._DUNE_ACTION_TRACE_DIR) with
-       | None -> ()
-       | Some dir ->
-         let dir = Path.of_string dir in
-         Path.mkdir_p dir;
-         let dst =
-           Path.relative
-             (Temp.temp_dir ~parent_dir:dir ~prefix:"dune" ~suffix:"trace")
-             "trace.csexp"
-         in
-         Io.copy_file ~overwrite:true ~src:path ~dst ()))
+      with_trace_closed out ~f:(fun () ->
+        match Env.(get initial Var._DUNE_ACTION_TRACE_DIR) with
+        | None -> ()
+        | Some dir ->
+          let dir = Path.of_string dir in
+          Path.mkdir_p dir;
+          let dst =
+            Path.relative
+              (Temp.temp_dir ~parent_dir:dir ~prefix:"dune" ~suffix:"trace")
+              "trace.csexp"
+          in
+          Io.copy_file ~overwrite:true ~src:path ~dst ()))
 ;;
 
 let set_global_impl ~ownership out =
@@ -88,10 +99,7 @@ let duplicate_global_fd () =
   else (
     match global () with
     | None -> None
-    | Some out ->
-      let fd = Fd.dup (Out.fd out) in
-      Fd.clear_close_on_exec fd;
-      Some fd)
+    | Some out -> Out.duplicate_fd out)
 ;;
 
 let always_emit event =

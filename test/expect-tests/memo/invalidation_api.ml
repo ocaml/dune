@@ -83,7 +83,7 @@ let%expect_test "invalidate_caches preserves retained nodes" =
 ;;
 
 let%expect_test "changed_paths returns the deduplicated Path_changed reasons only" =
-  let inv reason = Memo.Invalidation.custom ~reason ~f:(fun () -> ()) in
+  let inv reason = Memo.Invalidation.invalidate_caches ~reason in
   let combined =
     List.fold_left
       ~init:Memo.Invalidation.empty

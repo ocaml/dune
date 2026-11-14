@@ -351,17 +351,6 @@ let reset invalidation =
   Run.restart ()
 ;;
 
-(* Like [reset], but a no-op when nothing can have changed: the [invalidation] is empty and
-   no non-reproducible error was computed in the current run. This lets a caller (e.g. a
-   file-watcher waking up with no relevant changes) avoid advancing the run and discarding
-   the whole cache. *)
-let reset_if_necessary invalidation =
-  if
-    (not (Invalidation.is_empty invalidation))
-    || Run.is_current !Exec.last_saw_non_reproducible_exn_at
-  then reset invalidation
-;;
-
 module For_tests = struct
   let get_deps (type i o) (t : (i, o) Table.t) inp =
     match Store.find t.cache inp with

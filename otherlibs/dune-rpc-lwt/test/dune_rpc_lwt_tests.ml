@@ -211,15 +211,10 @@ let%expect_test "closing channels after peer reset" =
                 | Unix.Unix_error (ECONNRESET, _, _) -> Lwt.return_unit
                 | exn -> Lwt.fail exn)
           in
-          Lwt.catch
-            (fun () ->
-               let+ () = Lwt_io.close input in
-               print_endline "closed")
-            (fun exn ->
-               print_endline (Printexc.to_string exn);
-               Lwt.return_unit))
+          let+ () = Lwt_io.close input in
+          print_endline "closed")
        (fun () -> Lwt_unix.close server));
-  [%expect {| Unix.Unix_error(Unix.ENOTCONN, "shutdown", "") |}]
+  [%expect {| closed |}]
 ;;
 
 module Logger = struct

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794654888637,
+  "lastUpdate": 1794674261825,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -679643,6 +679643,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.5910791728933336,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "06af9213d284334a91a165597dea8f06860e8cd5",
+          "message": "refactor(pkg): pass the source root to source_files (#17037)\n\nPass the local source root already discovered by `source_rules` to\n`source_files`, rather than passing a resolved package and classifying\nits source again.\n\nTraversal and error reporting remain unchanged. This decouples\nsource-file discovery from package resolution in preparation for loading\npackage rules together.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-15T00:23:26+08:00",
+          "tree_id": "71937dd00c4b657790d8e477c8584d75d290674c",
+          "url": "https://github.com/ocaml/dune/commit/06af9213d284334a91a165597dea8f06860e8cd5"
+        },
+        "date": 1794673942969,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.0809912727866666,
             "unit": "seconds"
           }
         ]

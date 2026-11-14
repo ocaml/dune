@@ -128,6 +128,23 @@ module Lock_dir = struct
     && List.equal Solver_env.equal solve_for_platforms t.solve_for_platforms
   ;;
 
+  let check_variable_overlap ~loc ~field_a variables_a ~field_b variables_b =
+    match
+      Package_variable_name.Set.inter variables_a variables_b
+      |> Package_variable_name.Set.choose
+    with
+    | None -> ()
+    | Some variable ->
+      User_error.raise
+        ~loc
+        [ Pp.textf
+            "Variable %S appears in both '%s' and '%s', which is not allowed."
+            (Package_variable_name.to_string variable)
+            field_a
+            field_b
+        ]
+  ;;
+
   let decode ~dir =
     let repositories_of_ordered_set ordered_set =
       Dune_lang.Ordered_set_lang.eval
@@ -153,25 +170,24 @@ module Lock_dir = struct
         field ~default:[] "constraints" (repeat Dune_lang.Package_dependency.decode)
       and+ depopts = field ~default:[] "depopts" (repeat (located Package.Name.decode))
       and+ pins = field ~default:[] "pins" (repeat (located string))
-      and+ solve_for_platforms =
+      and+ solve_for_platforms, solve_for_platforms_is_explicit =
         let+ loc, solve_for_platforms =
-          located
-          @@ field
-               ~default:Solver_env.popular_platform_envs
-               "solve_for_platforms"
-               (repeat @@ enter Solver_env.decode)
+          located @@ field_o "solve_for_platforms" (repeat @@ enter Solver_env.decode)
         in
-        if List.is_empty solve_for_platforms
-        then
-          User_error.raise
-            ~loc
-            [ Pp.text "No platforms were specified for solving dependencies." ]
-            ~hints:
-              [ Pp.text
-                  "Specify at least one platform here, or remove this field to solve for \
-                   the default platforms."
-              ];
-        solve_for_platforms
+        match solve_for_platforms with
+        | None -> Solver_env.popular_platform_envs, false
+        | Some solve_for_platforms ->
+          if List.is_empty solve_for_platforms
+          then
+            User_error.raise
+              ~loc
+              [ Pp.text "No platforms were specified for solving dependencies." ]
+              ~hints:
+                [ Pp.text
+                    "Specify at least one platform here, or remove this field to solve \
+                     for the default platforms."
+                ];
+          solve_for_platforms, true
       in
       Option.iter solver_env ~f:(fun solver_env ->
         Option.iter
@@ -188,9 +204,33 @@ module Lock_dir = struct
                        (Package_variable_name.to_string variable)
                    ])));
       let unset_solver_vars =
-        Option.map unset_solver_vars ~f:(fun x ->
-          List.map x ~f:snd |> Package_variable_name.Set.of_list)
+        Option.map unset_solver_vars ~f:(fun variables ->
+          List.map variables ~f:snd |> Package_variable_name.Set.of_list)
       in
+      if solve_for_platforms_is_explicit
+      then (
+        let solve_for_platform_variables =
+          List.fold_left
+            solve_for_platforms
+            ~init:Package_variable_name.Set.empty
+            ~f:(fun variables platform_env ->
+              Solver_env.variable_names platform_env
+              |> Package_variable_name.Set.union variables)
+        in
+        Option.iter solver_env ~f:(fun solver_env ->
+          check_variable_overlap
+            ~loc
+            ~field_a:"solver_env"
+            (Solver_env.variable_names solver_env)
+            ~field_b:"solve_for_platforms"
+            solve_for_platform_variables);
+        Option.iter unset_solver_vars ~f:(fun unset_solver_vars ->
+          check_variable_overlap
+            ~loc
+            ~field_a:"unset_solver_vars"
+            unset_solver_vars
+            ~field_b:"solve_for_platforms"
+            solve_for_platform_variables));
       { loc
       ; path
       ; solver_env

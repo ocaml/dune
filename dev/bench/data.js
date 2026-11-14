@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794676387364,
+  "lastUpdate": 1794676439576,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -488097,6 +488097,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.38361874400000007,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "437de4bbc803c2f159d100e51fbd10b863ceac1f",
+          "message": "test(rule-plugins): use SIGTERM to interrupt background builds (#17040)\n\nThe cancellation tests start Dune in the background and then send\nSIGINT. Bash starts asynchronous commands with SIGINT ignored, and macOS\nsigwait cannot observe ignored signals. The tests therefore hang or\neventually kill Dune without exercising scheduler cleanup.\n\nSend SIGTERM instead, which reaches the same shutdown path on both\nplatforms. Dune still returns its signal-interruption exit code of 130,\nand the assertions that plugins are terminated remain unchanged.\n\nThis addresses the cancellation timeouts in\nhttps://github.com/ocaml/dune/actions/runs/43606283947/job/132483862232.\nThe independent socket-shutdown exceptions are addressed by #17039.\n\nmacOS documents this behavior in\nhttps://github.com/apple-oss-distributions/Libc/blob/main/sys/sigwait.2.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-15T00:57:17+08:00",
+          "tree_id": "40f6d604e6828bd48f3fc50e2d2626cd5d8c3721",
+          "url": "https://github.com/ocaml/dune/commit/437de4bbc803c2f159d100e51fbd10b863ceac1f"
+        },
+        "date": 1794676438079,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 36.80078364576667,
             "unit": "seconds"
           }
         ]

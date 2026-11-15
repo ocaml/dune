@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794729661767,
+  "lastUpdate": 1794729716205,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -680542,6 +680542,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.6332260946333332,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "301903a9189a94b2374ee55fb7e1559bf106afd7",
+          "message": "refactor(pkg): defer package resolution until action evaluation (#17046)\n\nBuilds on the independent baseline test in #17048.\n\nDeclare package targets from lockfile metadata without resolving the\npackage. Resolve packages and expand build actions only when the package\naction is evaluated; rule loading remains per-package.\n\nCheck source-validation errors before resolving the requested package or\nexpanding its commands. The existing\nsource-error-before-dependency-building behavior and baseline cram\nexpectation remain unchanged. Further deferral of source dependencies is\nkept in a separate follow-up change.",
+          "timestamp": "2026-11-15T15:50:52+08:00",
+          "tree_id": "056406497893b507deb7f1fc9171f2185c507078",
+          "url": "https://github.com/ocaml/dune/commit/301903a9189a94b2374ee55fb7e1559bf106afd7"
+        },
+        "date": 1794729494857,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.5097352420266668,
             "unit": "seconds"
           }
         ]

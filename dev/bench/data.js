@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794764067317,
+  "lastUpdate": 1794764112906,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -488967,6 +488967,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5217821953733334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9f99fe963c7a8e30ab2e89f81275db1a857dfe55",
+          "message": "refactor(pkg): read install cookies directly (#17063)\n\nReplace the one-field `Pkg_installed` wrapper with\n`Install_cookie.read`, which returns the cookie action builder directly.\nUpdate dependency artifact discovery, toolchain loading, and\ninstalled-file lookup to use it.\n\nCookie dependencies, loading, and serialization are unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-16T01:10:02+08:00",
+          "tree_id": "5401113852bd91f3dbc5a06632f8aa9fbeb9ecc4",
+          "url": "https://github.com/ocaml/dune/commit/9f99fe963c7a8e30ab2e89f81275db1a857dfe55"
+        },
+        "date": 1794764110448,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 61.328562260880005,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794724906848,
+  "lastUpdate": 1794725086078,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -488329,6 +488329,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.3637606514066667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aa692e8c29f884e5c4a26c803336a3212cee0b59",
+          "message": "refactor(pkg): generate source rules from package metadata (#17043)\n\nPass paths and lockfile metadata directly to `source_rules` instead of a\nresolved `Pkg.t`, narrowing its inputs to the data it actually uses.\n\nPackage resolution, source validation, and rule loading remain at their\nexisting stages. This prepares source-rule generation to run\nindependently of package resolution.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-15T14:27:58+08:00",
+          "tree_id": "2c6ebe67c487f59c00cc8cd6c5f34d5ec398abe8",
+          "url": "https://github.com/ocaml/dune/commit/aa692e8c29f884e5c4a26c803336a3212cee0b59"
+        },
+        "date": 1794725085492,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 34.87067972342667,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794728056085,
+  "lastUpdate": 1794728062125,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -488532,6 +488532,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 35.71896140189333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6e895655001357b31e26d22c8dd29c1eeb1d0aa1",
+          "message": "refactor(pkg): remove redundant resolved package digest (#17047)\n\nConstruct package paths using the digest already passed to\n`setup_package_rules`, rather than reading it back from the resolved\npackage. Remove the redundant `Pkg.t.pkg_digest` field and its\ninitialization.\n\nPackage resolution and rule-loading timing remain unchanged. This\nisolates the field cleanup from the deferred-resolution change in\n#17046.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-15T15:17:38+08:00",
+          "tree_id": "a6f20c7470b6a08fdb16c7842ad75c697f767901",
+          "url": "https://github.com/ocaml/dune/commit/6e895655001357b31e26d22c8dd29c1eeb1d0aa1"
+        },
+        "date": 1794728061308,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.3777792574266667,
             "unit": "seconds"
           }
         ]

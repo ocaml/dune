@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794730073687,
+  "lastUpdate": 1794730208968,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -680774,6 +680774,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.135511377646667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0525b931b8bb6ebc5e709b10f37b807c69b04711",
+          "message": "refactor(pkg): defer source dependency validation (#17049)\n\nEvaluate source dependencies while recording action dependencies, rather\nthan before package resolution and command expansion.\n\nDependencies needed to expand a package variable can therefore be\ninstalled before a missing source is reported. Update the cram\nexpectation to explicitly record this ordering change.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-15T15:55:42+08:00",
+          "tree_id": "7438406920f630628f359e130291b0e7dddeb297",
+          "url": "https://github.com/ocaml/dune/commit/0525b931b8bb6ebc5e709b10f37b807c69b04711"
+        },
+        "date": 1794729883027,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.15658060886,
             "unit": "seconds"
           }
         ]

@@ -2178,18 +2178,16 @@ let source_rules (pkg : Pkg.t) =
   let extra_source_deps, extra_copy_rules =
     List.map pkg.info.extra_sources ~f:(fun (local, (fetch : Source.t)) ->
       let extra_source = Paths.extra_source_build pkg.write_paths local in
+      let loc = fst fetch.url in
       let rule =
-        let loc = fst fetch.url in
         (* We assume that [fetch] is always a file. Would be good
            to give a decent error message if it's not *)
         match Source.kind fetch with
         | `Directory_or_archive src ->
-          loc, Action_builder.copy ~src:(Path.external_ src) ~dst:extra_source
-        | `Fetch ->
-          let rule = Fetch_rules.fetch ~target:extra_source File fetch in
-          loc, rule
+          Action_builder.copy ~src:(Path.external_ src) ~dst:extra_source
+        | `Fetch -> Fetch_rules.fetch ~target:extra_source File fetch
       in
-      Path.build extra_source, rule)
+      Path.build extra_source, (loc, rule))
     |> List.unzip
   in
   let copy_rules = copy_rules @ extra_copy_rules in

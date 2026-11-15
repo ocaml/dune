@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794724181861,
+  "lastUpdate": 1794724406493,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -488271,6 +488271,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.46922826791333333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f9cb9bdf0de796b6ecbff42dfd091e246101a8cc",
+          "message": "refactor(pkg): simplify loc handling (#17042)\n\nThe same location is returned from both branches, so it can be hoisted\nup a scope.",
+          "timestamp": "2026-11-15T14:16:58+08:00",
+          "tree_id": "cc4242393bdbf0409797d46f4c0040cf067e025d",
+          "url": "https://github.com/ocaml/dune/commit/f9cb9bdf0de796b6ecbff42dfd091e246101a8cc"
+        },
+        "date": 1794724404782,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 41.29478698445333,
             "unit": "seconds"
           }
         ]

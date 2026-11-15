@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794727620626,
+  "lastUpdate": 1794727627544,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -488474,6 +488474,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.23039015266,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "31163baf63c0ca2503c5f9674cc5c2c523fdcb95",
+          "message": "refactor(pkg): return source discovery errors explicitly (#17045)\n\nReturn source-file discovery errors as results and propagate them\nthrough `source_rules` alongside source dependencies.\n\nKeep `User_error.ok_exn` in `gen_rules`, so these errors are still\nreported during rule generation. This separates the error-propagation\nrefactor from the later change to defer error reporting until action\nevaluation.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-15T15:02:25+08:00",
+          "tree_id": "1bd2d563adb8db52bc9fb965b016efb11d3042ce",
+          "url": "https://github.com/ocaml/dune/commit/31163baf63c0ca2503c5f9674cc5c2c523fdcb95"
+        },
+        "date": 1794727626712,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.51862495542,
             "unit": "seconds"
           }
         ]

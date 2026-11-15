@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794763795710,
+  "lastUpdate": 1794764060391,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -488909,6 +488909,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4791558990466667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ba7823a203439605555f4ca8bbd4664a69c0f571",
+          "message": "test(engine): reproduce workspace cache loss after SIGHUP (#17061)\n\nSend catchable SIGHUP during unrelated work after an ordinary rule has\ncompleted. Dune currently exits without persisting its workspace\ndatabase, so the next invocation reruns the completed rule with\nunchanged inputs and the same rule key.\n\nThe cram uses declared outputs and stable trace evidence, without\npackage management. No signal-handling fix is included.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-16T01:11:04+08:00",
+          "tree_id": "74fb8082d43757f320ee68b289d1a0367c5e77c0",
+          "url": "https://github.com/ocaml/dune/commit/ba7823a203439605555f4ca8bbd4664a69c0f571"
+        },
+        "date": 1794764058613,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 61.65218435774,
             "unit": "seconds"
           }
         ]

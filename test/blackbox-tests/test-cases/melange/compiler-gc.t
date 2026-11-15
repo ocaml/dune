@@ -1,4 +1,5 @@
-Melange source compilation uses a larger minor heap by default.
+Melange shares the OCaml compiler GC defaults for source compilation.
+The major-GC setting is enabled only when Melange's runtime supports it.
 Explicit runtime settings and JavaScript emission are preserved.
 
   $ cat > dune-project <<'EOF'
@@ -11,6 +12,12 @@ Explicit runtime settings and JavaScript emission are preserved.
   $ mkdir bin
   $ cat > bin/melc <<'EOF'
   > #!/bin/sh
+  > if [ "$1" = --version ] && [ "${OCAMLRUNPARAM-}" = Xhelp ]; then
+  >   if [ "${MELC_GC-yes}" = no ]; then exit 0; fi
+  >   echo 'small_heap_limit (initial value 262144)' >&2
+  >   if [ "${MELC_GC-yes}" = fail ]; then exit 1; fi
+  >   exit 0
+  > fi
   > previous=
   > for arg do
   >   if [ "$previous" = -o ]; then
@@ -35,8 +42,8 @@ Explicit runtime settings and JavaScript emission are preserved.
   >   sort -u log
   > }
   $ build defaults
-  cmi: ocaml=s=1M legacy=unset man=local
-  cmj: ocaml=s=1M legacy=unset man=local
+  cmi: ocaml=s=2M,Xsmall_heap_limit=16777216 legacy=unset man=local
+  cmj: ocaml=s=2M,Xsmall_heap_limit=16777216 legacy=unset man=local
   js: ocaml=unset legacy=unset man=local
 
   $ OCAMLRUNPARAM=s=123456 build explicit
@@ -55,6 +62,28 @@ Explicit runtime settings and JavaScript emission are preserved.
   cmi: ocaml=unset legacy= man=local
   cmj: ocaml=unset legacy= man=local
   js: ocaml=unset legacy= man=local
+
+Failed capability probes only enable the larger minor heap.
+
+  $ MELC_GC=fail build failed-probe
+  cmi: ocaml=s=2M legacy=unset man=local
+  cmj: ocaml=s=2M legacy=unset man=local
+  js: ocaml=unset legacy=unset man=local
+
+One compiler wrapper can have different runtime capabilities per directory.
+
+  $ mkdir unsupported
+  $ cat > unsupported/dune <<'EOF'
+  > (melange.emit (target output) (emit_stdlib false))
+  > (env (_ (env-vars (MELC_GC no))))
+  > EOF
+  $ touch unsupported/main.ml unsupported/main.mli
+  $ build mixed
+  cmi: ocaml=s=2M legacy=unset man=local
+  cmi: ocaml=s=2M,Xsmall_heap_limit=16777216 legacy=unset man=local
+  cmj: ocaml=s=2M legacy=unset man=local
+  cmj: ocaml=s=2M,Xsmall_heap_limit=16777216 legacy=unset man=local
+  js: ocaml=unset legacy=unset man=local
 
 Directory-local runtime settings are preserved too.
 

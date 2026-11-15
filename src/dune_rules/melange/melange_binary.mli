@@ -10,7 +10,7 @@ val melobjinfo
 
 val available : Super_context.t -> dir:Path.Build.t -> bool Memo.t
 
-(** Runtime defaults for source compilation, preserving inherited settings. *)
-val compilation_env_overrides : Super_context.t -> dir:Path.Build.t -> Env.t Memo.t
+(** Probe the linked runtime, which can differ from Melange's compiler version. *)
+val supports_small_heap_limit : Path.t -> dir:Path.Build.t -> env:Env.t -> bool Memo.t
 
 val where : Super_context.t -> loc:Loc.t option -> dir:Path.Build.t -> Path.t list Memo.t

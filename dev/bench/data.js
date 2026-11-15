@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794690747345,
+  "lastUpdate": 1794721996666,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -679991,6 +679991,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.163085227426667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "004833dd0b738353ea737c3a4f9aa14af3b7d510",
+          "message": "test(melange): cover generated emission flags (#17016)\n\nCover `melange.emit` flags generated inside its target directory. This\npasses on `main` and catches the dependency cycle introduced by the\n[shared-emission\nwork](https://github.com/ocaml/dune/compare/main...ahrefs:dune:louis/a/melange-shared-emit-main),\nrelated to #7017.\n\n01a1d391-6eb8-7990-b66f-fb8a2a36015f\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-14T21:38:36-08:00",
+          "tree_id": "4121685e99ee623609b94ea145ac3bf6ea47c90a",
+          "url": "https://github.com/ocaml/dune/commit/004833dd0b738353ea737c3a4f9aa14af3b7d510"
+        },
+        "date": 1794721677559,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.1579120828866665,
             "unit": "seconds"
           }
         ]

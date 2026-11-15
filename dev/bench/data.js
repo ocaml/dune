@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794745158128,
+  "lastUpdate": 1794745164673,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -488822,6 +488822,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 46.454877116906665,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b18bf4aec665080153d9637dae10864ee8ce6969",
+          "message": "refactor(pkg): load package rules together (#17038)\n\nGenerate dependency-package rules together at the `.pkg` root, with\ndescendant directories redirecting to their parent. Package paths and\nper-file local-source copy rules remain unchanged.\n\nDeclare targets from lockfile metadata and defer package resolution,\ncommand expansion, and source-validation failures until the requested\npackage is built. This avoids resolving unrelated packages while\nremoving package-digest parsing and redundant resolved-package state.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-15T19:59:11+08:00",
+          "tree_id": "4425d490a76ed223663c77252ea13e87d5777784",
+          "url": "https://github.com/ocaml/dune/commit/b18bf4aec665080153d9637dae10864ee8ce6969"
+        },
+        "date": 1794745163817,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.42296671981333334,
             "unit": "seconds"
           }
         ]

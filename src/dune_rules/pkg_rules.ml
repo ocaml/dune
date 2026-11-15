@@ -164,26 +164,6 @@ module Pkg_digest = struct
       (Dune_digest.to_string lockfile_and_dependency_digest)
   ;;
 
-  let of_string s =
-    let parse_error msg =
-      User_error.raise [ Pp.textf "Failed to parse %S as a package pkg digest." s; msg ]
-    in
-    match String.lsplit2 s ~on:'.' with
-    | None -> parse_error (Pp.text "Missing '.' between name and version.")
-    | Some (name, rest) ->
-      (match String.rsplit2 rest ~on:'-' with
-       | None -> parse_error (Pp.text "Missing '-' between version and lockfile digest.")
-       | Some (version, lockfile_and_dependency_digest) ->
-         (match Dune_digest.from_hex lockfile_and_dependency_digest with
-          | None ->
-            parse_error
-              (Pp.textf "Failed to parse %S as digest" lockfile_and_dependency_digest)
-          | Some lockfile_and_dependency_digest ->
-            let name = Package.Name.of_string name in
-            let version = Package_version.of_string version in
-            { name; version; lockfile_and_dependency_digest }))
-  ;;
-
   let create lockfile_pkg depends_pkg_digests =
     let lockfile_and_dependency_digest =
       Digest_feed.compute_digest
@@ -2470,36 +2450,12 @@ let setup_pkg_install_alias =
         rule
 ;;
 
-let setup_package_rules
-      ({ DB.pkg_digest_table; _ } as db)
-      ~package_universe
-      ~dir
-      ~pkg_digest
-  : Gen_rules.t Memo.t
-  =
-  let { DB.Pkg_table.pkg = { info; _ }; _ } =
-    Pkg_digest.Map.find_exn pkg_digest_table pkg_digest
+let setup_package_rules db ~package_universe pkg_digests : Gen_rules.t Memo.t =
+  let+ rules =
+    Rules.collect_unit (fun () ->
+      Memo.parallel_iter pkg_digests ~f:(gen_rules db ~package_universe))
   in
-  let paths = Paths.make pkg_digest package_universe ~relative:Path.Build.relative in
-  let+ directory_targets =
-    let map =
-      let target_dir = paths.target_dir in
-      Path.Build.Map.singleton target_dir Loc.none
-    in
-    match info.source with
-    | None -> Memo.return map
-    | Some source ->
-      Lock_dir.source_kind source
-      >>| (function
-       | Error _ | Ok (`Local (`Directory, _)) -> map
-       | Ok (`Local (`File, _) | `Fetch) ->
-         Path.Build.Map.add_exn map paths.source_dir (fst source.url))
-  in
-  let build_dir_only_sub_dirs =
-    Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty
-  in
-  let rules = Rules.collect_unit (fun () -> gen_rules db ~package_universe pkg_digest) in
-  Gen_rules.make ~directory_targets ~build_dir_only_sub_dirs rules
+  Gen_rules.make ~directory_targets:(Rules.directory_targets rules) (Memo.return rules)
 ;;
 
 let setup_rules ~components ~dir ctx =
@@ -2513,18 +2469,19 @@ let setup_rules ~components ~dir ctx =
     let pkg_name = Package.Name.of_string dev_tool_package_name in
     let dev_tool = Pkg_dev_tool.of_package_name pkg_name in
     let* db, pkg_digest = DB.of_dev_tool (Dune_pkg.Dev_tool.of_package_name pkg_name) in
-    setup_package_rules db ~package_universe:(Dev_tool dev_tool) ~dir ~pkg_digest
+    setup_package_rules db ~package_universe:(Dev_tool dev_tool) [ pkg_digest ]
   | true, [ ".dev-tool" ] -> Gen_rules.make_empty ~dir Subdir_set.all |> Memo.return
-  | _, [ ".pkg" ] -> Gen_rules.make_empty ~dir Subdir_set.all |> Memo.return
-  | _, [ ".pkg"; pkg_digest_string ] ->
+  | _, [ ".pkg" ] ->
     (* Only generate pkg rules if there is a lock dir for that context *)
     let* lock_dir_active = Lock_dir.lock_dir_active ctx in
     (match lock_dir_active with
      | false -> Memo.return @@ Gen_rules.make (Memo.return Rules.empty)
      | true ->
-       let pkg_digest = Pkg_digest.of_string pkg_digest_string in
        let* db = DB.of_ctx ctx ~allow_sharing:true in
-       setup_package_rules db ~package_universe:(Dependencies ctx) ~dir ~pkg_digest)
+       setup_package_rules
+         db
+         ~package_universe:(Dependencies ctx)
+         (Pkg_digest.Map.keys db.pkg_digest_table))
   | _, ".pkg" :: _ :: _ ->
     Memo.return (Gen_rules.Redirect_to_parent Gen_rules.Rules.empty)
   | true, ".dev-tool" :: _ :: _ :: _ ->

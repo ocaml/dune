@@ -2540,3 +2540,55 @@ let%expect_test "on_event fires Live and Validated" =
   print_events ();
   [%expect {| 1:live 1:validated |}]
 ;;
+
+let%expect_test "node_staged creates independent lazy nodes" =
+  let calls = ref 0 in
+  let module Input = struct
+    type t = int
+
+    let to_dyn = Repr.to_dyn Repr.int
+  end
+  in
+  let create =
+    Memo.node_staged
+      ~name:"staged"
+      ~input:(module Input)
+      (fun input ->
+         incr calls;
+         Memo.return (input * 2))
+    |> Staged.unstage
+  in
+  let first = create 1 in
+  let second = create 1 in
+  let third = create 2 in
+  printf "calls before reading: %d\n" !calls;
+  let show node = printf "value: %d\n" (run (Memo.Node.read node)) in
+  List.iter [ first; second; third; first; second ] ~f:show;
+  printf "calls: %d\n" !calls;
+  [%expect
+    {|
+    calls before reading: 0
+    value: 2
+    value: 2
+    value: 4
+    value: 2
+    value: 2
+    calls: 3
+    |}];
+  Memo.reset (Memo.Node.invalidate ~reason:Test second);
+  show first;
+  printf "calls: %d\n" !calls;
+  show second;
+  printf "calls: %d\n" !calls;
+  show third;
+  printf "calls: %d\n" !calls;
+  [%expect
+    {|
+    value: 2
+    calls: 3
+    value: 2
+    calls: 4
+    value: 4
+    calls: 4
+    |}]
+;;

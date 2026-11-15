@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794728062125,
+  "lastUpdate": 1794729661767,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -680513,6 +680513,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.2941384433466667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "852f7115d8372460cf400d2e17e01fd3e16ed2f7",
+          "message": "test(pkg): cover source errors before dependency expansion (#17048)\n\nRecord the current behavior when a package has a missing source and its\nbuild command references a dependency variable: the source error is\nreported without building that dependency.\n\nThis provides a baseline for making the source-error timing change in\n#17046 explicit.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-15T15:49:33+08:00",
+          "tree_id": "30fe2c533be61d3b6ed36d5b335cecda816b4d94",
+          "url": "https://github.com/ocaml/dune/commit/852f7115d8372460cf400d2e17e01fd3e16ed2f7"
+        },
+        "date": 1794729435887,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.6332260946333332,
             "unit": "seconds"
           }
         ]

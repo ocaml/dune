@@ -2609,9 +2609,7 @@ let exported_env context =
     Pp.textf "lock directory environment for context %S" (Context_name.to_string context))
   @@ fun () ->
   let+ all_project_deps = all_project_deps context in
-  let env = Pkg.build_env_of_deps all_project_deps in
-  let vars = Env.Map.map env ~f:Value_list_env.string_of_env_values in
-  Env.extend Env.empty ~vars
+  Pkg.build_env_of_deps all_project_deps |> Value_list_env.to_env
 ;;
 
 let lock_dir_package_env =
@@ -2630,11 +2628,7 @@ let lock_dir_package_env =
        | false -> Memo.return Env.empty
        | true ->
          let+ deps = project_deps ~packages context in
-         let vars =
-           Pkg.build_env_of_deps deps
-           |> Env.Map.map ~f:Value_list_env.string_of_env_values
-         in
-         Env.extend Env.empty ~vars)
+         Pkg.build_env_of_deps deps |> Value_list_env.to_env)
 ;;
 
 let env_for_packages ~(packages : Package.Name.Selection.t) context =

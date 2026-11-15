@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794727304132,
+  "lastUpdate": 1794727418949,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -488387,6 +488387,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.3601376662333333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7db2182e43e6728fb8f2f4ba025370cd803b2271",
+          "message": "test(pkg): cover lazy package directory-target inspection (#17044)\n\nAdd a regression test ensuring that inspecting a package directory\ntarget does not traverse unrelated package sources or build the queried\npackage.\n\nThe unrelated external source contains a looping symlink: eager\ntraversal would mask the expected directory-target inspection diagnostic\nwith a filesystem error.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-15T15:03:52+08:00",
+          "tree_id": "8e2f0f85c7dec8d2bb91441669fdbcebf3192e44",
+          "url": "https://github.com/ocaml/dune/commit/7db2182e43e6728fb8f2f4ba025370cd803b2271"
+        },
+        "date": 1794727416774,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 53.10837810291999,
             "unit": "seconds"
           }
         ]

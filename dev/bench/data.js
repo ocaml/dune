@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794729928279,
+  "lastUpdate": 1794730066797,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -488677,6 +488677,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.3522478232533333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f9401d65bfc381b1343903ecfd48029de06e3d26",
+          "message": "perf(source): share Memo specifications across source-tree children (#16915)\n\nAdd `Memo.node_staged` to create fresh nodes sharing one specification\nwithout a memoization table. Use it for physical and virtual source-tree\nchildren, preserving independent node identities and deferred\nvirtual-path construction. Leave the singleton root unchanged.\n\nThe incremental cram coverage landed separately in #16910.\n\n---------\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-15T15:48:33+08:00",
+          "tree_id": "99c27040de311a6f661cde6fef5fdc3335508ebc",
+          "url": "https://github.com/ocaml/dune/commit/f9401d65bfc381b1343903ecfd48029de06e3d26"
+        },
+        "date": 1794730063936,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 52.04568738814667,
             "unit": "seconds"
           }
         ]

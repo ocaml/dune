@@ -310,6 +310,13 @@ module Install_cookie = struct
   let dump path (t : t) =
     Persistent.dump path { t with files = Section.Map.to_list t.files }
   ;;
+
+  let read (paths : Path.t Paths.t) =
+    let open Action_builder.O in
+    let path = Paths.install_cookie paths in
+    let+ () = path |> Dep.file |> Action_builder.dep in
+    load_exn path
+  ;;
 end
 
 module Value_list_env = struct
@@ -527,20 +534,6 @@ module Pkg = struct
   ;;
 
   let exported_env t = Value_list_env.to_env @@ exported_value_env t
-end
-
-module Pkg_installed = struct
-  type t = { cookie : Install_cookie.t Action_builder.t }
-
-  let of_paths (paths : Path.t Paths.t) =
-    let cookie =
-      let open Action_builder.O in
-      let path = Paths.install_cookie paths in
-      let+ () = path |> Dep.file |> Action_builder.dep in
-      Install_cookie.load_exn path
-    in
-    { cookie }
-  ;;
 end
 
 module Action_expander = struct
@@ -1062,7 +1055,7 @@ module Action_expander = struct
 
     let of_closure closure =
       Memo.parallel_map closure ~f:(fun (pkg : Pkg.t) ->
-        let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+        let cookie = Install_cookie.read pkg.paths in
         Action_builder.evaluate_and_collect_facts cookie
         |> Memo.map ~f:(fun ((cookie : Install_cookie.t), _) -> pkg, cookie))
       |> Memo.map ~f:(fun (cookies : (Pkg.t * Install_cookie.t) list) ->
@@ -2506,7 +2499,7 @@ let ocaml_toolchain context =
           ~init:(Global.env (), Path.Set.empty)
           ~f:(fun (env, binaries) pkg ->
             let env = Env.extend_env env (Pkg.exported_env pkg) in
-            let+ cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+            let+ cookie = Install_cookie.read pkg.paths in
             let binaries =
               Section.Map.find cookie.files Bin
               |> Option.value ~default:[]
@@ -2679,7 +2672,7 @@ let resolve_installed_file ~loc ~context_name ~pkg_name ~section ~file =
   let* { paths; _ } =
     Action_builder.of_memo (resolve_pkg_dep context_name (loc, pkg_name))
   in
-  let* { files; _ } = (Pkg_installed.of_paths paths).cookie in
+  let* { files; _ } = Install_cookie.read paths in
   let section_dir =
     let install_paths = Lazy.force paths.install_paths in
     Install.Paths.get install_paths section

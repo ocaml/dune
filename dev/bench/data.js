@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794745164673,
+  "lastUpdate": 1794762447798,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -680948,6 +680948,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.7081027868199996,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4150d37f5205bd9e585dd4ca73b6d5042918cf6b",
+          "message": "refactor(pkg): remove the substitution expander forward reference (#17062)\n\nDefine the package expander before the substitution action so\nsubstitution can call `expand_pform` directly. Move the expander type\ninto `Action_expander.Expander` and nest `Substitute` after it, removing\nthe `Fdecl` and its initialization.\n\nSubstitution serialization and evaluation timing are unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-16T00:49:01+08:00",
+          "tree_id": "c435296843daf27703ee91cc41599c3dbda2af2b",
+          "url": "https://github.com/ocaml/dune/commit/4150d37f5205bd9e585dd4ca73b6d5042918cf6b"
+        },
+        "date": 1794761959925,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.4019382986066664,
             "unit": "seconds"
           }
         ]

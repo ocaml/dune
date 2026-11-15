@@ -2127,9 +2127,9 @@ let source_files root ~loc =
   loop Path.Local.Set.empty Path.Local.root
 ;;
 
-let source_rules (pkg : Pkg.t) =
+let source_rules (paths : Path.Build.t Paths.t) (info : Pkg_info.t) =
   let+ source_deps, copy_rules =
-    match pkg.info.source with
+    match info.source with
     | None -> Memo.return (Dep.Set.empty, [])
     | Some source ->
       let loc = fst source.url in
@@ -2138,19 +2138,19 @@ let source_rules (pkg : Pkg.t) =
       >>= (function
        | `Local (`File, _) | `Fetch ->
          let fetch =
-           Fetch_rules.fetch ~target:pkg.write_paths.source_dir Dir source
+           Fetch_rules.fetch ~target:paths.source_dir Dir source
            |> With_targets.map
                 ~f:
                   (Action.Full.map ~f:(fun action ->
                      let progress =
                        Pkg_build_progress.progress_action
-                         pkg.info.name
-                         pkg.info.version
+                         info.name
+                         info.version
                          `Downloading
                      in
                      Action.progn [ progress; action ]))
          in
-         Memo.return (Dep.Set.of_files [ pkg.paths.source_dir ], [ loc, fetch ])
+         Memo.return (Dep.Set.of_files [ Path.build paths.source_dir ], [ loc, fetch ])
        | `Local (`Directory, source_root) ->
          let+ source_files, rules =
            source_files source_root ~loc
@@ -2169,15 +2169,15 @@ let source_rules (pkg : Pkg.t) =
                   [Fetch.resolve_directory_symlinks]. *)
                source_files, rules
              else (
-               let dst = Path.Build.append_local pkg.write_paths.source_dir file in
+               let dst = Path.Build.append_local paths.source_dir file in
                let copy = loc, Action_builder.copy ~src ~dst in
                Path.build dst :: source_files, copy :: rules))
          in
          Dep.Set.of_files source_files, rules)
   in
   let extra_source_deps, extra_copy_rules =
-    List.map pkg.info.extra_sources ~f:(fun (local, (fetch : Source.t)) ->
-      let extra_source = Paths.extra_source_build pkg.write_paths local in
+    List.map info.extra_sources ~f:(fun (local, (fetch : Source.t)) ->
+      let extra_source = Paths.extra_source_build paths local in
       let loc = fst fetch.url in
       let rule =
         (* We assume that [fetch] is always a file. Would be good
@@ -2362,7 +2362,7 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
 ;;
 
 let gen_rules context_name (pkg : Pkg.t) =
-  let* source_deps, copy_rules = source_rules pkg in
+  let* source_deps, copy_rules = source_rules pkg.write_paths pkg.info in
   let* () = copy_rules
   and* build_rule = build_rule context_name pkg ~source_deps in
   rule ~loc:Loc.none (* TODO *) build_rule

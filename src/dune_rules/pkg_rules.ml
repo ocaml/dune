@@ -2099,13 +2099,15 @@ let source_files root ~loc =
     Fs_memo.dir_contents full_path
     >>= function
     | Error e ->
-      User_error.raise
-        ~loc
-        [ Pp.textf
-            "Unable to read %s"
-            (Path.Outside_build_dir.to_string_maybe_quoted full_path)
-        ; Unix_error.Detailed.pp e
-        ]
+      Memo.return
+        (Error
+           (User_error.make
+              ~loc
+              [ Pp.textf
+                  "Unable to read %s"
+                  (Path.Outside_build_dir.to_string_maybe_quoted full_path)
+              ; Unix_error.Detailed.pp e
+              ]))
     | Ok contents ->
       let files, dirs =
         let contents = Fs_memo.Dir_contents.to_list contents in
@@ -2121,8 +2123,12 @@ let source_files root ~loc =
       Memo.map_reduce
         dirs
         ~f:(loop Path.Local.Set.empty)
-        ~empty:acc
-        ~combine:Path.Local.Set.union
+        ~empty:(Ok acc)
+        ~combine:(fun left right ->
+          let open Result.O in
+          let* left = left in
+          let+ right = right in
+          Path.Local.Set.union left right)
   in
   loop Path.Local.Set.empty Path.Local.root
 ;;
@@ -2130,13 +2136,13 @@ let source_files root ~loc =
 let source_rules (paths : Path.Build.t Paths.t) (info : Pkg_info.t) =
   let+ source_deps, copy_rules =
     match info.source with
-    | None -> Memo.return (Dep.Set.empty, [])
+    | None -> Memo.return (Ok Dep.Set.empty, [])
     | Some source ->
       let loc = fst source.url in
       Lock_dir.source_kind source
-      >>| User_error.ok_exn
       >>= (function
-       | `Local (`File, _) | `Fetch ->
+       | Error error -> Memo.return (Error error, [])
+       | Ok (`Local (`File, _) | `Fetch) ->
          let fetch =
            Fetch_rules.fetch ~target:paths.source_dir Dir source
            |> With_targets.map
@@ -2150,30 +2156,36 @@ let source_rules (paths : Path.Build.t Paths.t) (info : Pkg_info.t) =
                      in
                      Action.progn [ progress; action ]))
          in
-         Memo.return (Dep.Set.of_files [ Path.build paths.source_dir ], [ loc, fetch ])
-       | `Local (`Directory, source_root) ->
-         let+ source_files, rules =
-           source_files source_root ~loc
-           >>|
-           let source_root = Path.outside_build_dir source_root in
-           Path.Local.Set.fold ~init:([], []) ~f:(fun file (source_files, rules) ->
-             let src = Path.append_local source_root file in
-             if Path.is_broken_symlink src
-             then
-               (* Don't copy broken symlinks into the build directory. Note
-                  that this only works for packages sourced from local
-                  directories. Packages whose source is extracted from an
-                  archive (possibly fetched over the web) have broken symlinks
-                  explicitly deleted immediately after the archive is
-                  extracted. This logic is implemented in
-                  [Fetch.resolve_directory_symlinks]. *)
-               source_files, rules
-             else (
-               let dst = Path.Build.append_local paths.source_dir file in
-               let copy = loc, Action_builder.copy ~src ~dst in
-               Path.build dst :: source_files, copy :: rules))
-         in
-         Dep.Set.of_files source_files, rules)
+         Memo.return
+           (Ok (Dep.Set.of_files [ Path.build paths.source_dir ]), [ loc, fetch ])
+       | Ok (`Local (`Directory, source_root)) ->
+         source_files source_root ~loc
+         >>| (function
+          | Error error -> Error error, []
+          | Ok files ->
+            let source_root = Path.outside_build_dir source_root in
+            let source_files, rules =
+              Path.Local.Set.fold
+                files
+                ~init:([], [])
+                ~f:(fun file (source_files, rules) ->
+                  let src = Path.append_local source_root file in
+                  if Path.is_broken_symlink src
+                  then
+                    (* Don't copy broken symlinks into the build directory. Note
+                       that this only works for packages sourced from local
+                       directories. Packages whose source is extracted from an
+                       archive (possibly fetched over the web) have broken symlinks
+                       explicitly deleted immediately after the archive is
+                       extracted. This logic is implemented in
+                       [Fetch.resolve_directory_symlinks]. *)
+                    source_files, rules
+                  else (
+                    let dst = Path.Build.append_local paths.source_dir file in
+                    let copy = loc, Action_builder.copy ~src ~dst in
+                    Path.build dst :: source_files, copy :: rules))
+            in
+            Ok (Dep.Set.of_files source_files), rules))
   in
   let extra_source_deps, extra_copy_rules =
     List.map info.extra_sources ~f:(fun (local, (fetch : Source.t)) ->
@@ -2191,7 +2203,10 @@ let source_rules (paths : Path.Build.t Paths.t) (info : Pkg_info.t) =
     |> List.unzip
   in
   let copy_rules = copy_rules @ extra_copy_rules in
-  let source_deps = Dep.Set.union source_deps (Dep.Set.of_files extra_source_deps) in
+  let source_deps =
+    Result.map source_deps ~f:(fun source_deps ->
+      Dep.Set.union source_deps (Dep.Set.of_files extra_source_deps))
+  in
   source_deps, Memo.parallel_iter copy_rules ~f:(fun (loc, copy) -> rule ~loc copy)
 ;;
 
@@ -2363,6 +2378,7 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
 
 let gen_rules context_name (pkg : Pkg.t) =
   let* source_deps, copy_rules = source_rules pkg.write_paths pkg.info in
+  let source_deps = User_error.ok_exn source_deps in
   let* () = copy_rules
   and* build_rule = build_rule context_name pkg ~source_deps in
   rule ~loc:Loc.none (* TODO *) build_rule

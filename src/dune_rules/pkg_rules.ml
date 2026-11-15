@@ -543,157 +543,22 @@ module Pkg_installed = struct
   ;;
 end
 
-module Expander0 = struct
-  include Expander0
-
-  type t =
-    { name : Dune_pkg.Package_name.t
-    ; paths : Path.t Paths.t
-    ; artifacts : Path.t Filename.Map.t Memo.t
-    ; depends :
-        (Variable.value Package_variable_name.Map.t * Path.t Paths.t) Package.Name.Map.t
-          Memo.t
-    ; depexts : Depexts.t list
-    ; context : Context_name.t
-    ; version : Package_version.t
-    ; env : Value.t list Env.Map.t
-    }
-
-  let expand_pform_fdecl
-    : (t
-       -> source:Dune_sexp.Template.Pform.t
-       -> Pform.t
-       -> (Value.t list, [ `Undefined_pkg_var of Package_variable_name.t ]) result Memo.t)
-        Fdecl.t
-    =
-    Fdecl.create Dyn.opaque
-  ;;
-end
-
-module Substitute = struct
-  include Substs.Make (Memo)
-  module Expander = Expander0
-
-  module Spec = struct
-    type ('src, 'dst) t =
-      { (* XXX it's not good to serialize the substitution map like this. We're
-           essentially implementing the same substitution procedure but in two
-           different places: action geeneration, and action execution.
-
-           The two implementations are bound to drift. Better would be to
-           reconstruct everything that is needed to call our one and only
-           substitution function. *)
-        expander : Expander.t
-      ; depends :
-          (Variable.value Package_variable_name.Map.t * Path.t Paths.t) Package.Name.Map.t
-      ; artifacts : Path.t Filename.Map.t
-      ; src : 'src
-      ; dst : 'dst
-      }
-
-    let name = "substitute"
-    let version = 4
-    let runs_process = false
-    let can_run_in_action_runner = false
-    let bimap t f g = { t with src = f t.src; dst = g t.dst }
-    let is_useful_to_memoize = true
-
-    let variable_value_repr =
-      Repr.variant
-        "pkg-variable-value"
-        [ Repr.case "B" Bool.repr ~proj:(function
-            | Variable.B x -> Some x
-            | _ -> None)
-        ; Repr.case "S" String.repr ~proj:(function
-            | Variable.S x -> Some x
-            | _ -> None)
-        ; Repr.case
-            "L"
-            Repr.(list String.repr)
-            ~proj:(function
-              | Variable.L x -> Some x
-              | _ -> None)
-        ]
-    ;;
-
-    let variable_map_repr =
-      Repr.view
-        Repr.(list (pair Package_variable_name.repr variable_value_repr))
-        ~to_:Package_variable_name.Map.to_list
-    ;;
-
-    let paths_repr = Repr.T3.repr Path.repr Path.repr Package.Name.repr
-
-    let hash_input_repr =
-      Repr.T4.repr
-        paths_repr
-        Repr.(list (pair Filename.repr Path.repr))
-        Repr.(list (pair variable_map_repr paths_repr))
-        Package_version.repr
-    ;;
-
-    let encode { expander; depends; artifacts; src; dst } input output : Sexp.t =
-      let e =
-        let paths (p : Path.t Paths.t) = p.source_dir, p.target_dir, p.name in
-        Digest.repr
-          hash_input_repr
-          ( paths expander.paths
-          , Filename.Map.to_list artifacts
-          , Package.Name.Map.to_list_map depends ~f:(fun _ (m, p) -> m, paths p)
-          , expander.version )
-        |> Digest.to_string_raw
-      in
-      List [ Atom e; input src; output dst ]
-    ;;
-
-    let action { expander; depends = _; artifacts = _; src; dst } ~ectx:_ ~eenv:_ =
-      let open Fiber.O in
-      let* () = Fiber.return () in
-      let env (var : Substs.Variable.t) =
-        let open Memo.O in
-        ((* TODO loc *)
-         let loc = Loc.none in
-         let source =
-           (* TODO it's rather ugly that we're going through the pform machinery
-              to do this *)
-           { Dune_sexp.Template.Pform.loc; name = ""; payload = None }
-         in
-         match
-           match var with
-           | Package var -> Some (Package_variable.to_pform var)
-           | Global n ->
-             Package_variable_name.to_string n
-             |> Pform.Var.of_opam_global_variable_name
-             |> Option.map ~f:(fun v -> Pform.Var v)
-         with
-         | None -> Memo.return @@ Variable.S ""
-         | Some pform ->
-           (Fdecl.get Expander.expand_pform_fdecl) expander ~source pform
-           >>| (function
-            | Error (`Undefined_pkg_var _) ->
-              (* these are opam's semantics as far as I understand. *)
-              Variable.S ""
-            | Ok v ->
-              let dir = Path.parent_exn src |> Path.drop_optional_sandbox_root in
-              Variable.of_values v ~dir))
-        >>| Option.some
-      in
-      subst env expander.paths.name ~src ~dst |> Memo.run
-    ;;
-  end
-
-  module A = Action_ext.Make (Spec)
-
-  let action (expander : Expander.t) ~src ~dst =
-    let+ depends = expander.depends
-    and+ artifacts = expander.artifacts in
-    A.action { Spec.expander; depends; artifacts; src; dst }
-  ;;
-end
-
 module Action_expander = struct
   module Expander = struct
     include Expander0
+
+    type t =
+      { name : Dune_pkg.Package_name.t
+      ; paths : Path.t Paths.t
+      ; artifacts : Path.t Filename.Map.t Memo.t
+      ; depends :
+          (Variable.value Package_variable_name.Map.t * Path.t Paths.t) Package.Name.Map.t
+            Memo.t
+      ; depexts : Depexts.t list
+      ; context : Context_name.t
+      ; version : Package_version.t
+      ; env : Value.t list Env.Map.t
+      }
 
     let map_exe _ x =
       (* TODO *)
@@ -846,8 +711,6 @@ module Action_expander = struct
       | _ -> Expander0.isn't_allowed_in_this_position ~source
     ;;
 
-    let () = Fdecl.set expand_pform_fdecl expand_pform
-
     let expand_pform_gen t =
       String_expander.Memo.expand ~dir:t.paths.source_dir ~f:(fun ~source pform ->
         expand_pform t ~source pform
@@ -936,6 +799,127 @@ module Action_expander = struct
                            ())))))
       in
       Result.map prog ~f:(map_exe t)
+    ;;
+  end
+
+  module Substitute = struct
+    include Substs.Make (Memo)
+
+    module Spec = struct
+      type ('src, 'dst) t =
+        { (* XXX it's not good to serialize the substitution map like this. We're
+             essentially implementing the same substitution procedure but in two
+             different places: action geeneration, and action execution.
+
+             The two implementations are bound to drift. Better would be to
+             reconstruct everything that is needed to call our one and only
+             substitution function. *)
+          expander : Expander.t
+        ; depends :
+            (Variable.value Package_variable_name.Map.t * Path.t Paths.t)
+              Package.Name.Map.t
+        ; artifacts : Path.t Filename.Map.t
+        ; src : 'src
+        ; dst : 'dst
+        }
+
+      let name = "substitute"
+      let version = 4
+      let runs_process = false
+      let can_run_in_action_runner = false
+      let bimap t f g = { t with src = f t.src; dst = g t.dst }
+      let is_useful_to_memoize = true
+
+      let variable_value_repr =
+        Repr.variant
+          "pkg-variable-value"
+          [ Repr.case "B" Bool.repr ~proj:(function
+              | Variable.B x -> Some x
+              | _ -> None)
+          ; Repr.case "S" String.repr ~proj:(function
+              | Variable.S x -> Some x
+              | _ -> None)
+          ; Repr.case
+              "L"
+              Repr.(list String.repr)
+              ~proj:(function
+                | Variable.L x -> Some x
+                | _ -> None)
+          ]
+      ;;
+
+      let variable_map_repr =
+        Repr.view
+          Repr.(list (pair Package_variable_name.repr variable_value_repr))
+          ~to_:Package_variable_name.Map.to_list
+      ;;
+
+      let paths_repr = Repr.T3.repr Path.repr Path.repr Package.Name.repr
+
+      let hash_input_repr =
+        Repr.T4.repr
+          paths_repr
+          Repr.(list (pair Filename.repr Path.repr))
+          Repr.(list (pair variable_map_repr paths_repr))
+          Package_version.repr
+      ;;
+
+      let encode { expander; depends; artifacts; src; dst } input output : Sexp.t =
+        let e =
+          let paths (p : Path.t Paths.t) = p.source_dir, p.target_dir, p.name in
+          Digest.repr
+            hash_input_repr
+            ( paths expander.paths
+            , Filename.Map.to_list artifacts
+            , Package.Name.Map.to_list_map depends ~f:(fun _ (m, p) -> m, paths p)
+            , expander.version )
+          |> Digest.to_string_raw
+        in
+        List [ Atom e; input src; output dst ]
+      ;;
+
+      let action { expander; depends = _; artifacts = _; src; dst } ~ectx:_ ~eenv:_ =
+        let open Fiber.O in
+        let* () = Fiber.return () in
+        let env (var : Substs.Variable.t) =
+          let open Memo.O in
+          ((* TODO loc *)
+           let loc = Loc.none in
+           let source =
+             (* TODO it's rather ugly that we're going through the pform machinery
+                to do this *)
+             { Dune_sexp.Template.Pform.loc; name = ""; payload = None }
+           in
+           match
+             match var with
+             | Package var -> Some (Package_variable.to_pform var)
+             | Global n ->
+               Package_variable_name.to_string n
+               |> Pform.Var.of_opam_global_variable_name
+               |> Option.map ~f:(fun v -> Pform.Var v)
+           with
+           | None -> Memo.return @@ Variable.S ""
+           | Some pform ->
+             Expander.expand_pform expander ~source pform
+             >>| (function
+              | Error (`Undefined_pkg_var _) ->
+                (* these are opam's semantics as far as I understand. *)
+                Variable.S ""
+              | Ok v ->
+                let dir = Path.parent_exn src |> Path.drop_optional_sandbox_root in
+                Variable.of_values v ~dir))
+          >>| Option.some
+        in
+        subst env expander.paths.name ~src ~dst |> Memo.run
+      ;;
+    end
+
+    module A = Action_ext.Make (Spec)
+
+    let action (expander : Expander.t) ~src ~dst =
+      let+ depends = expander.depends
+      and+ artifacts = expander.artifacts in
+      A.action { Spec.expander; depends; artifacts; src; dst }
     ;;
   end
 

@@ -444,7 +444,7 @@ module Pkg = struct
     ; paths : Path.t Paths.t
     ; write_paths : Path.Build.t Paths.t
     ; files_dir : Path.Build.t
-    ; mutable exported_env : string Env_update.t list
+    ; exported_env : string Env_update.t list
     }
 
   module Top_closure = Top_closure.Make (Id.Set) (Monad.Id)
@@ -1571,8 +1571,7 @@ end = struct
         in
         Memo.parallel_map exported_env ~f:(Action_expander.exported_env expander)
       in
-      t.exported_env <- exported_env;
-      Some t
+      Some { t with exported_env }
   ;;
 
   let resolve =

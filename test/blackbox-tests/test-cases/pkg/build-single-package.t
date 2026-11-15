@@ -97,3 +97,32 @@ its metadata or the payload size.
   payload-ok
   $ payload_dir=$(get_build_pkg_dir payload)
   $ cmp dune.lock/payload.files/sub/data "$payload_dir/target/share/payload/data"
+
+Inspecting a directory target must not traverse unrelated package sources.
+The external source contains a looping symlink, so traversing it would fail
+before the directory-target diagnostic. Neither package should be built.
+
+  $ mkdir query-project query-source
+  $ ln -s loop query-source/loop
+  $ cd query-project
+  $ make_dune_project 3.25
+  $ make_lockdir
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.20)
+  > (pkg enabled)
+  > EOF
+  $ make_lockpkg requested <<EOF
+  > (version dev)
+  > (build (run false))
+  > EOF
+  $ make_lockpkg unrelated <<EOF
+  > (version dev)
+  > (source (copy "$PWD/../query-source"))
+  > EOF
+  $ target="$(get_build_pkg_dir requested)/target"
+  $ dune describe targets --context _private "$target" 2>&1 | censor
+  Error: Directory
+  _build/_private/default/.pkg/requested.dev-$DIGEST/target
+  is a directory target. This command does not support the inspection of
+  directory targets.
+  $ test ! -d "$target"

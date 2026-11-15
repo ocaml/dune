@@ -98,6 +98,29 @@ its metadata or the payload size.
   $ payload_dir=$(get_build_pkg_dir payload)
   $ cmp dune.lock/payload.files/sub/data "$payload_dir/target/share/payload/data"
 
+A missing source is rejected before expanding the build command, which would
+otherwise install a dependency to expand its package variable.
+
+  $ make_lockpkg source-error-dep <<EOF
+  > (version dev)
+  > (build (run echo dependency-built))
+  > EOF
+  $ make_lockpkg source-error <<EOF
+  > (version dev)
+  > (depends source-error-dep)
+  > (source (copy "$PWD/missing-source"))
+  > (build (run echo %{pkg:source-error-dep:version}))
+  > EOF
+  $ build_pkg source-error > source-error.log 2>&1
+  [1]
+  $ grep -q 'does not exist' source-error.log
+  $ if test -d "$(get_build_pkg_dir source-error-dep)/target"; then
+  >   echo dependency-built-before-source-error
+  > else
+  >   echo source-rejected-first
+  > fi
+  source-rejected-first
+
 Inspecting a directory target must not traverse unrelated package sources.
 The external source contains a looping symlink, so traversing it would fail
 before the directory-target diagnostic. Neither package should be built.

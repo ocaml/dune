@@ -2049,7 +2049,7 @@ let source_files root ~loc =
     | _ -> false
   in
   let skip_file = String.starts_with ~prefix:".#" in
-  let rec loop acc path =
+  let rec loop path =
     let full_path = Path.Outside_build_dir.append_local root path in
     Fs_memo.dir_contents full_path
     >>= function
@@ -2074,18 +2074,17 @@ let source_files root ~loc =
           | S_DIR -> if skip_dir name_s then Skip else Right relative
           | _ -> if skip_file name_s then Skip else Left relative)
       in
-      let acc = Path.Local.Set.of_list files |> Path.Local.Set.union acc in
       Memo.map_reduce
         dirs
-        ~f:(loop Path.Local.Set.empty)
-        ~empty:(Ok acc)
+        ~f:loop
+        ~empty:(Ok (Path.Local.Set.of_list files))
         ~combine:(fun left right ->
           let open Result.O in
           let* left = left in
           let+ right = right in
           Path.Local.Set.union left right)
   in
-  loop Path.Local.Set.empty Path.Local.root
+  loop Path.Local.root
 ;;
 
 let source_rules (paths : Path.Build.t Paths.t) (info : Pkg_info.t) =

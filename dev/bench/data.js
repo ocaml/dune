@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794853272679,
+  "lastUpdate": 1794853278522,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -489692,6 +489692,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 39.47065550169334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0c26cc56cabfc2dccfcc35559ae5a85b8c4e2c8f",
+          "message": "test(pkg): reproduce platform-order package rebuilds (#17041)\n\nAdd an end-to-end cram reproduction showing that reordering supported\nplatforms unnecessarily changes an ordinary package’s build key. Cover\nboth `solved_for_platforms` and alternatives in an explicit platform\ncondition.\n\nThe test uses a package named `foo`, no-op actions, and Dune language\n3.26. Filtered trace output shows the new target-rule misses without\nunstable paths, digests, or external counters. Expected output records\nthe current bug; no fix is included.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-17T02:03:14+08:00",
+          "tree_id": "6856f8451f860d294e4f7b2e00baeeebc2bfd91e",
+          "url": "https://github.com/ocaml/dune/commit/0c26cc56cabfc2dccfcc35559ae5a85b8c4e2c8f"
+        },
+        "date": 1794853277937,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.40123425992,
             "unit": "seconds"
           }
         ]

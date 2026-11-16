@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794809734682,
+  "lastUpdate": 1794809741601,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -489286,6 +489286,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 51.64841418674666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b96f5bff7181f0a07d312d5ebb626a0e231f6d36",
+          "message": "fix(merlin): include hidden Melange dependency interfaces (#16942)\n\nInclude private Melange dependency interfaces as hidden Merlin paths, matching the OCaml behavior from #16629.\n\nFixes the merged regression tests from #16935 and #16936.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-15T21:56:26-08:00",
+          "tree_id": "3ec8f10e7c4c1291810d55b326559d3c3d8ee86a",
+          "url": "https://github.com/ocaml/dune/commit/b96f5bff7181f0a07d312d5ebb626a0e231f6d36"
+        },
+        "date": 1794809740750,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.47252202575333335,
             "unit": "seconds"
           }
         ]

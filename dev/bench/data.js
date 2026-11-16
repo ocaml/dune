@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794811344750,
+  "lastUpdate": 1794832096444,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -681731,6 +681731,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.7296762487600006,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a39ded341c41f09fdf3e4256b7169f473cc3ae2e",
+          "message": "refactor(pkg): remove the unused source traversal accumulator (#17065)\n\nRemove the accumulator argument from the recursive traversal in\n`source_files`: both initial and recursive calls always pass an empty\nset. Use each directory's file set directly as the initial reduction\nvalue and combine recursive results as before.\n\nTraversal, filtering, and error handling are unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-16T20:10:18+08:00",
+          "tree_id": "569f4f37dc22c44bdaa4ebbafe95a23115a79364",
+          "url": "https://github.com/ocaml/dune/commit/a39ded341c41f09fdf3e4256b7169f473cc3ae2e"
+        },
+        "date": 1794831671385,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.192116433406667,
             "unit": "seconds"
           }
         ]

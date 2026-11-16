@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794853002711,
+  "lastUpdate": 1794853011020,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -489634,6 +489634,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 63.38738453096,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cdd0eab64ce2495170639aa42a98cf042fe91912",
+          "message": "test(pkg): reproduce rebuilds after job-count changes (#17051)\n\nAdd an end-to-end cram showing an unchanged ordinary package action\nrerunning when only `-j` or `DUNE_JOBS` changes. Cover direct,\ninterpolated, and concatenated job arguments, while retaining positive\ncontrols for source edits, literal arguments, and jobs-dependent\nbranches.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-17T01:52:24+08:00",
+          "tree_id": "f375f48d75ebf85048722c8958238aa954b60ede",
+          "url": "https://github.com/ocaml/dune/commit/cdd0eab64ce2495170639aa42a98cf042fe91912"
+        },
+        "date": 1794853009777,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5712812920266667,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794807099331,
+  "lastUpdate": 1794807298762,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -489141,6 +489141,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.48880709918,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2e72d234840b1ab0ee04adb71f346adce4d52676",
+          "message": "test(merlin): demonstrate missing transitive Melange includes (#16936)\n\nDemonstrate the missing private CMI directory in Merlin configurations for hidden transitive Melange dependencies. Related to #16629; regression for #16942.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-15T21:17:28-08:00",
+          "tree_id": "b4ad9035570345171d581841918d19c56823b894",
+          "url": "https://github.com/ocaml/dune/commit/2e72d234840b1ab0ee04adb71f346adce4d52676"
+        },
+        "date": 1794807298212,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 38.07437201068,
             "unit": "seconds"
           }
         ]

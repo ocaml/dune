@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794807329020,
+  "lastUpdate": 1794807335923,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -489228,6 +489228,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 52.350599950673335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "56ebb90be70c24792af505ff3385c5bc2ce908ba",
+          "message": "test(merlin): demonstrate missing private Melange includes (#16935)\n\nDemonstrate the missing hidden CMI directory in Merlin configurations for direct Melange dependencies with private modules. Related to #16629; regression for #16942.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-15T21:16:31-08:00",
+          "tree_id": "9b170bac67f8abeeb2d90f1a6c40a72da2775bb8",
+          "url": "https://github.com/ocaml/dune/commit/56ebb90be70c24792af505ff3385c5bc2ce908ba"
+        },
+        "date": 1794807334997,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.47990427779333333,
             "unit": "seconds"
           }
         ]

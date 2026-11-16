@@ -37,6 +37,7 @@ module Rule_plugin_runner = Rule_plugin_runner
 module Artifact_substitution = Artifact_substitution
 module Dune_load = Dune_load
 module Opam_create = Opam_create
+module Packages = Packages
 module Link_mode = Link_mode
 module Utop = Utop
 module Setup = Setup

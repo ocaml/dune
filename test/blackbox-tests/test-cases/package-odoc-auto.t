@@ -24,17 +24,12 @@ Before lang 3.26, the default is still (odoc true):
 (odoc auto) can be set explicitly. An empty package has no documentation:
 
   $ gen 3.22 '(odoc auto)'
-  File "dune-project", line 4, characters 40-44:
-  4 | (package (name foo) (allow_empty) (odoc auto))
-                                              ^^^^
-  Error: Unknown value auto
-  [1]
+  no odoc
 
 From lang 3.26, with the unreleased extension, (odoc auto) is the default:
 
   $ gen 3.26 ''
-    "odoc" {with-doc}
-      "@doc" {with-doc}
+  no odoc
 
 (odoc true) still forces the documentation:
 
@@ -49,8 +44,7 @@ An executable is not documented:
   > EOF
   $ touch foo.ml
   $ gen 3.26 ''
-    "odoc" {with-doc}
-      "@doc" {with-doc}
+  no odoc
 
 A public library is documented:
 
@@ -68,8 +62,7 @@ A private library without a package field is not documented, as only
   > (library (name foo))
   > EOF
   $ gen 3.26 ''
-    "odoc" {with-doc}
-      "@doc" {with-doc}
+  no odoc
 
 A private library attached to the package is documented:
 
@@ -138,8 +131,6 @@ dune describe opam-files does not need a context named default:
   $ dune describe opam-files > out 2>&1
   $ grep -o -e 'Internal error' -e opam-version -e '{with-doc}' out
   opam-version
-  {with-doc}
-  {with-doc}
   $ rm dune-workspace
 
 The opam file written by dune init matches the one generated afterwards:
@@ -225,5 +216,6 @@ So are those of a dynamic include:
   $ dune build --only-packages foo foo.opam && grep -c with-doc _build/default/foo.opam
   2
   $ dune build --only-packages bar bar.opam && grep -c with-doc _build/default/bar.opam
-  2
+  0
+  [1]
   $ cd ..

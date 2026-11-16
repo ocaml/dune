@@ -18,6 +18,7 @@ end
 
 type t =
   { dune_files : Dune_file.t list Per_context.t
+  ; documented_packages : Package.Name.Set.t Memo.Lazy.t
   ; packages : Package.t Package.Name.Map.t
   ; projects : Dune_project.t list
   ; projects_by_root : Dune_project.t Path.Source.Map.t
@@ -127,42 +128,57 @@ let load () =
     Package.Name.Map.map ~f:fst all_packages |> Only_packages.filter_packages mask
   in
   let projects = List.rev_map projects ~f:snd in
+  let without_ctx =
+    Memo.lazy_ ~name:"dune-files-eval" (fun () ->
+      let (_ : Package.Name.t Path.Source.Map.t) =
+        match
+          Package.Name.Map.values all_packages
+          |> List.filter_map ~f:(fun (pkg, _) ->
+            match Package.exclusive_dir pkg with
+            | None -> None
+            | Some d -> Some (d, pkg))
+          |> Path.Source.Map.of_list_map ~f:(fun ((_loc, d), pkg) -> d, Package.name pkg)
+        with
+        | Ok s -> s
+        | Error (dir, ((loc, _), p1), (_, p2)) ->
+          let name p = Package.Name.to_string (Package.name p) in
+          User_error.raise
+            ~loc
+            [ Pp.textf
+                "Directory %s cannot belong to package %s"
+                (Path.Source.to_string_maybe_quoted dir)
+                (name p1)
+            ; Pp.textf "It already belongs to package %s" (name p2)
+            ]
+      in
+      Dune_file.eval dune_files mask)
+  in
   let dune_files =
-    let without_ctx =
-      Memo.lazy_ ~name:"dune-files-eval" (fun () ->
-        let (_ : Package.Name.t Path.Source.Map.t) =
-          match
-            Package.Name.Map.values all_packages
-            |> List.filter_map ~f:(fun (pkg, _) ->
-              match Package.exclusive_dir pkg with
-              | None -> None
-              | Some d -> Some (d, pkg))
-            |> Path.Source.Map.of_list_map ~f:(fun ((_loc, d), pkg) ->
-              d, Package.name pkg)
-          with
-          | Ok s -> s
-          | Error (dir, ((loc, _), p1), (_, p2)) ->
-            let name p = Package.Name.to_string (Package.name p) in
-            User_error.raise
-              ~loc
-              [ Pp.textf
-                  "Directory %s cannot belong to package %s"
-                  (Path.Source.to_string_maybe_quoted dir)
-                  (name p1)
-              ; Pp.textf "It already belongs to package %s" (name p2)
-              ]
-        in
-        Dune_file.eval dune_files mask)
-    in
     Per_context.create_by_name ~name:"dune-files" (fun ctx ->
       Memo.Lazy.create ~name:"dune-files-for-context" (fun () ->
-        let* f = Memo.Lazy.force without_ctx in
+        let* _, f = Memo.Lazy.force without_ctx in
         f ctx)
       |> Memo.Lazy.force)
     |> Staged.unstage
   in
+  let documented_packages =
+    Memo.lazy_ ~name:"documented-packages" ~cutoff:Package.Name.Set.equal (fun () ->
+      let+ unmasked, _ = Memo.Lazy.force without_ctx in
+      List.concat_map unmasked ~f:(function
+        | Dune_file.Unmasked.Known stanzas ->
+          List.filter_map stanzas ~f:(fun stanza ->
+            match Stanza.repr stanza with
+            | Library.T { visibility = Public public; _ } ->
+              Some (Package.name (Public_lib.package public))
+            | Library.T { visibility = Private (Some package); _ }
+            | Documentation.T { package; _ } -> Some (Package.name package)
+            | _ -> None)
+        | Unknown project -> Dune_project.packages project |> Package.Name.Map.keys)
+      |> Package.Name.Set.of_list)
+  in
   let dune_file_by_dir = Dune_file_db.per_context dune_files |> Staged.unstage in
   { dune_files
+  ; documented_packages
   ; mask
   ; dune_file_by_dir
   ; packages
@@ -209,6 +225,11 @@ let packages () =
 let dune_files context =
   let* t = load () in
   t.dune_files context
+;;
+
+let documented_packages () =
+  let* t = load () in
+  Memo.Lazy.force t.documented_packages
 ;;
 
 let projects_by_root () =

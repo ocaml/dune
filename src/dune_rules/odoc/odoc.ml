@@ -685,8 +685,12 @@ module Toplevel_index = struct
 end
 
 let setup_toplevel_index_rule sctx output =
-  let* packages = Dune_load.packages () in
-  let packages = Package.Name.Map.filter packages ~f:Package.odoc in
+  let* packages =
+    let* packages = Dune_load.packages () in
+    Package.Name.Map.to_list packages
+    |> Memo.List.filter ~f:(fun (_, pkg) -> Packages.odoc_enabled pkg)
+    >>| Package.Name.Map.of_list_exn
+  in
   let index = Toplevel_index.of_packages packages output in
   let content = Toplevel_index.content output index in
   let ctx = Super_context.context sctx in
@@ -1164,11 +1168,12 @@ let setup_package_odoc_rules sctx ~pkg =
 
 let gen_project_rules sctx project =
   Dune_project.packages project
-  |> Dune_lang.Package_name.Map.filter ~f:Package.odoc
   |> Dune_lang.Package_name.Map.to_seq
   |> Memo.parallel_iter_seq ~f:(fun (_, (pkg : Package.t)) ->
-    (* setup @doc to build the correct html for the package *)
-    setup_package_aliases sctx pkg)
+    let* odoc_enabled = Packages.odoc_enabled pkg in
+    Memo.when_ odoc_enabled (fun () ->
+      (* setup @doc to build the correct html for the package *)
+      setup_package_aliases sctx pkg))
 ;;
 
 let setup_private_library_doc_alias sctx ~scope ~dir (l : Library.t) =

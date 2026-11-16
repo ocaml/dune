@@ -56,7 +56,7 @@ type t =
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Section.t Site.Map.t
   ; allow_empty : bool
-  ; odoc : bool
+  ; odoc : bool option
   ; original_opam_file : original_opam_file option
   ; exclusive_dir : (Loc.t * Path.Source.t) option
   ; duplicate_dep_warnings : User_message.t list
@@ -131,7 +131,16 @@ let encode
             (Name.Map.keys deprecated_package_names)
         ; field_l "sites" (pair Site.encode Section.encode) (Site.Map.to_list sites)
         ; field_b "allow_empty" allow_empty
-        ; field "odoc" bool ~default:true odoc
+        ; (* [(odoc true)] is left implicit, as it is the default without the
+             unreleased extension, which [Dune_project.encode] does not
+             encode. *)
+          field_o
+            "odoc"
+            Fun.id
+            (match odoc with
+             | Some true -> None
+             | Some false -> Some (bool false)
+             | None -> Some (string "auto"))
         ; field_o
             "dir"
             (fun (_, dir) ->
@@ -226,9 +235,22 @@ let decode =
            Section.to_string
            "Site location name"
        and+ allow_empty = field_b "allow_empty" ~check:(Syntax.since Stanza.syntax (3, 0))
-       and+ odoc = field "odoc" (Unreleased.since () >>> bool) ~default:true
+       and+ odoc =
+         field_o
+           "odoc"
+           (Unreleased.since ()
+            >>> enum [ "true", Some true; "false", Some false; "auto", None ])
+       and+ unreleased = get (Syntax.key Unreleased.syntax)
        and+ lang_version = Syntax.get_exn Stanza.syntax in
        let allow_empty = lang_version < (3, 0) || allow_empty in
+       let odoc =
+         match odoc with
+         | Some odoc -> odoc
+         | None ->
+           (match unreleased with
+            | Some (Active _) when lang_version >= (3, 26) -> None
+            | _ -> Some true)
+       in
        let duplicate_dep_warnings =
          List.concat
            [ collect_duplicate_deps depends_with_locs Depends
@@ -310,7 +332,7 @@ let to_dyn
     ; "deprecated_package_names", Name.Map.to_dyn Loc.to_dyn_hum deprecated_package_names
     ; "sites", Site.Map.to_dyn Section.to_dyn sites
     ; "allow_empty", Bool allow_empty
-    ; "odoc", Bool odoc
+    ; "odoc", (option bool) odoc
     ; "enabled_if", (option Blang.to_dyn) enabled_if
     ]
 ;;
@@ -356,7 +378,7 @@ let create
   ; deprecated_package_names
   ; sites
   ; allow_empty
-  ; odoc = true
+  ; odoc = Some true
   ; opam_file = Name.file name ~dir
   ; original_opam_file
   ; exclusive_dir =

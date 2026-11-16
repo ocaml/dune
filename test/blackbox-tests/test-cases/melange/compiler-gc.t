@@ -1,4 +1,5 @@
-Melange compiler actions preserve runtime settings, including empty values.
+Melange tunes source compilation when its runtime supports small_heap_limit.
+Explicit runtime settings and JavaScript emission are preserved.
 
   $ cat > dune-project <<'EOF'
   > (lang dune 3.25)
@@ -10,6 +11,12 @@ Melange compiler actions preserve runtime settings, including empty values.
   $ mkdir bin
   $ cat > bin/melc <<'EOF'
   > #!/bin/sh
+  > if [ "$1" = --version ] && [ "${OCAMLRUNPARAM-}" = Xhelp ]; then
+  >   if [ "${MELC_GC-yes}" = no ]; then exit 0; fi
+  >   echo 'small_heap_limit (initial value 262144)' >&2
+  >   if [ "${MELC_GC-yes}" = fail ]; then exit 1; fi
+  >   exit 0
+  > fi
   > previous=
   > for arg do
   >   if [ "$previous" = -o ]; then
@@ -34,8 +41,8 @@ Melange compiler actions preserve runtime settings, including empty values.
   >   sort -u log
   > }
   $ build defaults
-  cmi: ocaml=unset legacy=unset man=local
-  cmj: ocaml=unset legacy=unset man=local
+  cmi: ocaml=Xsmall_heap_limit=16777216 legacy=unset man=local
+  cmj: ocaml=Xsmall_heap_limit=16777216 legacy=unset man=local
   js: ocaml=unset legacy=unset man=local
 
   $ OCAMLRUNPARAM=s=123456 build explicit
@@ -54,6 +61,28 @@ Melange compiler actions preserve runtime settings, including empty values.
   cmi: ocaml=unset legacy= man=local
   cmj: ocaml=unset legacy= man=local
   js: ocaml=unset legacy= man=local
+
+Failed capability probes leave the compiler's defaults unchanged.
+
+  $ MELC_GC=fail build failed-probe
+  cmi: ocaml=unset legacy=unset man=local
+  cmj: ocaml=unset legacy=unset man=local
+  js: ocaml=unset legacy=unset man=local
+
+One compiler wrapper can have different runtime capabilities per directory.
+
+  $ mkdir unsupported
+  $ cat > unsupported/dune <<'EOF'
+  > (melange.emit (target output) (emit_stdlib false))
+  > (env (_ (env-vars (MELC_GC no))))
+  > EOF
+  $ touch unsupported/main.ml unsupported/main.mli
+  $ build mixed
+  cmi: ocaml=Xsmall_heap_limit=16777216 legacy=unset man=local
+  cmi: ocaml=unset legacy=unset man=local
+  cmj: ocaml=Xsmall_heap_limit=16777216 legacy=unset man=local
+  cmj: ocaml=unset legacy=unset man=local
+  js: ocaml=unset legacy=unset man=local
 
 Directory-local runtime settings are preserved too.
 

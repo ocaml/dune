@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794851599391,
+  "lastUpdate": 1794851914427,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -489431,6 +489431,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.48539053232000007,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "084f70f1bc78a4e5d0f0aee039c7d4e77271d1fd",
+          "message": "refactor(pkg): keep resolved package environments immutable (#17068)\n\nMake the package record's `exported_env` field immutable. Return a\nrecord update after expansion instead of assigning to the provisional\nrecord.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-17T01:35:10+08:00",
+          "tree_id": "26030cf97352a47644e978d190d2685b70726617",
+          "url": "https://github.com/ocaml/dune/commit/084f70f1bc78a4e5d0f0aee039c7d4e77271d1fd"
+        },
+        "date": 1794851913103,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 61.10471549666667,
             "unit": "seconds"
           }
         ]

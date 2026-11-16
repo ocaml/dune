@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794793993932,
+  "lastUpdate": 1794794001199,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -489054,6 +489054,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 52.64042935072666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d9ef9f936807b7baad175f18afd49dd29f882bcf",
+          "message": "fix(scheduler): preserve workspace cache on terminal hangup (#17064)\n\nHandle SIGHUP through the normal scheduler shutdown path, alongside\nSIGINT and SIGTERM. This lets exit hooks persist the workspace database\ninstead of losing completed rule records after a terminal hangup.\n\nUpdate the regression from #17061 to expect handled interruption, a\npreserved database, and no target-rule cache miss on the next build.\nSIGKILL behavior is unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-16T09:33:47+08:00",
+          "tree_id": "b760976ca58f8b6f0b3d8a21647334ddb12f967f",
+          "url": "https://github.com/ocaml/dune/commit/d9ef9f936807b7baad175f18afd49dd29f882bcf"
+        },
+        "date": 1794794000302,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.48407187813333336,
             "unit": "seconds"
           }
         ]

@@ -446,7 +446,7 @@ and combined_package_deps_builder expander pkgs =
              ~packages:(Package.Name.Selection.Only lockdir_package_names)
              context.name)
       in
-      Install.Roots.extend_env_concat_path_vars lockdir_env local_env
+      Site_env.extend_env ~base:lockdir_env local_env
   in
   let dune_version = Expander.project expander |> Dune_project.dune_version in
   let+ () =
@@ -582,7 +582,7 @@ and named_paths_builder ~expander l =
       let open Action_builder.O in
       let+ acc = acc
       and+ env = env in
-      Install.Roots.extend_env_concat_path_vars acc env)
+      Site_env.extend_env ~base:acc env)
   in
   let builder = List.rev builders |> Action_builder.all >>| List.concat in
   builder, bindings, action_env
@@ -647,7 +647,7 @@ let unnamed sandbox ~expander l =
       let open Action_builder.O in
       let+ acc = acc
       and+ env = env in
-      Install.Roots.extend_env_concat_path_vars acc env)
+      Site_env.extend_env ~base:acc env)
   in
   let action_env =
     Action_builder.memoize
@@ -662,7 +662,7 @@ let unnamed sandbox ~expander l =
              ())
        and+ package_env = package_env
        and+ bin_env = bin_env in
-       Env_path.extend_env_concat_path package_env bin_env)
+       Site_env.extend_env_concat_path ~base:package_env bin_env)
   in
   action_env, List.fold_left l ~init:sandbox ~f:add_sandbox_config
 ;;

@@ -31,6 +31,8 @@ A package dependency should make a plugin available without building @install.
 
   $ dune build @with-plugin
   plugin site configured: true
+  plugin1
+  Registration of Plugin1
   $ dune build @without-plugin
   plugin site configured: true
 

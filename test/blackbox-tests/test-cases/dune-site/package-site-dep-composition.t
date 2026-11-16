@@ -21,10 +21,9 @@ dependencies and dependencies in nested includes.
   $ cat > checks/sites.t <<'EOF'
   > Read files from all three packages.
   >   $ main foo.txt addon.txt leaf.txt
-  >   foo.txt: missing
-  >   addon.txt: missing
-  >   leaf.txt: missing
-  >   [1]
+  >   foo.txt: foo
+  >   addon.txt: addon
+  >   leaf.txt: leaf
   > EOF
   $ dune runtest
 
@@ -51,10 +50,10 @@ files themselves and the action stay the same.
   > EOF
   $ dune build chosen
   $ cat _build/default/chosen
-  choice.txt: missing
+  choice.txt: addon
   $ dune_cmd subst 'addon.sexp\) \(include leaf.sexp' \
   >   'leaf.sexp) (include addon.sexp' < dune > reordered
   $ mv reordered dune
   $ dune build chosen
   $ cat _build/default/chosen
-  choice.txt: missing
+  choice.txt: leaf

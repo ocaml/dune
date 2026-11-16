@@ -48,9 +48,8 @@ package's sites without also installing that package's own files.
   >   if not (nested && root && tool && not owner) then exit 1
   > EOF
   $ dune runtest > output 2>&1
-  [1]
   $ grep -E '^(nested\.txt|root\.txt|tool|owner\.txt):' output
-  nested.txt: missing
-  root.txt: missing
-  tool: missing
+  nested.txt: nested
+  root.txt: root
+  tool: tool
   owner.txt: missing

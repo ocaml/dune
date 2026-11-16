@@ -177,9 +177,9 @@ let extend_action_env t ~dir action =
   in
   (* Cons path-like vars from the action's environment (bin-layout PATH,
      package-layout OCAMLPATH/etc.) onto the directory env so that both layout
-     and system entries remain visible. Other vars from the action's environment
-     overwrite dir env. *)
-  let env = Install.Roots.extend_env_concat_path_vars env action.props.env in
+     and system entries remain visible. Scoped site locations precede inherited
+     ones. Other vars from the action's environment overwrite dir env. *)
+  let env = Site_env.extend_env ~base:env action.props.env in
   (* [(env (binaries ...))] is the most specific contributor to [PATH], so it is
      added last: a binary staged by [(deps (package ...))] must not shadow one
      the user bound explicitly. *)
@@ -281,7 +281,7 @@ let make_default_env_node
             make ~inherit_from:None ~config_stanza:env_nodes.workspace |> Memo.return)))
 ;;
 
-let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
+let create ~(context : Context.t) ~(host : t option) =
   let context_name = Context.name context in
   let env =
     Memo.lazy_ ~name:"super-context-environment" (fun () ->
@@ -295,7 +295,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
            | None -> Env.remove base ~var:Env_path.var
            | Some value -> Env.add base ~var:Env_path.var ~value)
       in
-      Site_env.add_packages_env context_name ~base stanzas packages)
+      Site_env.add_packages_env context ~base)
     |> Memo.Lazy.force
   in
   let artifacts = Artifacts_db.get context in
@@ -345,8 +345,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
 
 let all =
   Memo.lazy_ ~name:"Super_context.all" (fun () ->
-    let* packages = Dune_load.packages ()
-    and* contexts = Context.DB.all () in
+    let* contexts = Context.DB.all () in
     let rec sctxs =
       lazy
         (Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
@@ -364,10 +363,8 @@ let all =
           in
           Some sctx
       in
-      let* host, stanzas =
-        Memo.fork_and_join host (fun () -> Dune_load.dune_files (Context.name context))
-      in
-      create ~host ~context ~packages ~stanzas
+      let* host = host () in
+      create ~host ~context
     in
     Lazy.force sctxs
     |> Context_name.Map.to_list

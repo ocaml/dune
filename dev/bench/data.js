@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794852597334,
+  "lastUpdate": 1794852604403,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -489518,6 +489518,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 51.7655828476,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "50da4e6f7ecfd3eeca4b9bd778b93c6e41728a5a",
+          "message": "test(pkg): reproduce rebuilds from non-build metadata (#17054)\n\nShow that changing only `(avoid)` or a system-package hint changes an\nordinary package's build key and reruns its unchanged no-op action.\n\nThe cram prints stable target-rule miss reasons and includes a\nnull-build control. It records the current behavior without changing\nsolver metadata or implementing a fix.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-17T01:48:24+08:00",
+          "tree_id": "21b738d6cd7dbc58efb60eb0b22ce760fa6086a0",
+          "url": "https://github.com/ocaml/dune/commit/50da4e6f7ecfd3eeca4b9bd778b93c6e41728a5a"
+        },
+        "date": 1794852603586,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.49672372290000005,
             "unit": "seconds"
           }
         ]

@@ -1199,7 +1199,15 @@ module Unprocessed = struct
           ~expander
           preprocessor_deps
       in
-      ppx_deps_of_builder (Action_builder.ignore env)
+      let* _, deps =
+        Action_builder.of_memo (Action_builder.evaluate_and_collect_deps env)
+      in
+      if
+        Dep.Set.for_all deps ~f:(function
+          | File _ | File_selector _ -> true
+          | Env _ | Alias _ | Universe -> false)
+      then ppx_deps_of_builder (Action_builder.ignore env)
+      else Action_builder.return ((), None)
     in
     let pp_deps = Processed.union_pp_deps pp_config_deps preprocessor_deps in
     let+ config, indexes_digest =

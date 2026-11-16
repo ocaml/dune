@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794853278522,
+  "lastUpdate": 1794853406271,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -682253,6 +682253,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.3707441869666668,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5a68b1910384be91a56b8f99046b00db6b87b8ab",
+          "message": "test(pkg): reproduce platform-dependent package key problems (#17053)\n\nAdd cram reproductions of package identity problems across platforms:\ndifferent operating systems or architectures can incorrectly share a key\nand stale artifacts, while inactive-platform edits and equivalent lock\nrepresentations cause unnecessary builds.\n\nUse an ordinary package with a small platform artifact and no-op build\nactions. The expected results describe the current faults; no identity\nchanges are included.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-17T02:08:29+08:00",
+          "tree_id": "386913eb8dcdce09db7f81b17b9412a59b65ec79",
+          "url": "https://github.com/ocaml/dune/commit/5a68b1910384be91a56b8f99046b00db6b87b8ab"
+        },
+        "date": 1794853064292,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.157553482493333,
             "unit": "seconds"
           }
         ]

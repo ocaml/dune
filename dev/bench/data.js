@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794806583763,
+  "lastUpdate": 1794806590497,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -489112,6 +489112,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 53.039811110686664,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "503123ca8ae1ca4cdbe9829414fe338cd7d77320",
+          "message": "perf(melange): reuse compiler GC defaults for source compilation (#17022)\n\nReuse #16914's minor-heap and major-GC defaults for Melange source\ncompilation, preserving explicit runtime settings.\n\nSupersedes #16955 and uses the coverage from #16958.\n\n01a1d391-6eb8-7990-b66f-fb8a2a36015f\n\n---------\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-15T21:04:07-08:00",
+          "tree_id": "fe44e04c318bcf17266c01389e20c61d5ee5546c",
+          "url": "https://github.com/ocaml/dune/commit/503123ca8ae1ca4cdbe9829414fe338cd7d77320"
+        },
+        "date": 1794806589685,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.48880709918,
             "unit": "seconds"
           }
         ]

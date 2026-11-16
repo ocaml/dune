@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794811336419,
+  "lastUpdate": 1794811344750,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -489344,6 +489344,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.5704149376,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fc3ada5e56e7299f75442f2f595bf7ac79b8031d",
+          "message": "fix(merlin): avoid building uncacheable preprocessor dependencies (#17006)\n\nSkip non-file preprocessor dependencies before collecting Merlin PPX\ncache facts, preventing Melange-only aliases from running during OCaml\nbuilds or Merlin configuration generation.\n\nFixes the regression from #16460 and re-enables the test from #16947.\n\n01a1b8f2-7469-7990-90da-c0049284abf1\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-15T22:18:35-08:00",
+          "tree_id": "d7255a9076be8a14bcb441ac368c45f518422c89",
+          "url": "https://github.com/ocaml/dune/commit/fc3ada5e56e7299f75442f2f595bf7ac79b8031d"
+        },
+        "date": 1794811343574,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.52938995798,
             "unit": "seconds"
           }
         ]

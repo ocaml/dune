@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794852323987,
+  "lastUpdate": 1794852534059,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -681934,6 +681934,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.12983225126,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f948bf28a6ed0286fb66f95fbfd4ea5615dd5003",
+          "message": "refactor(pkg): reuse value-list environment conversion (#17075)\n\nReuse `Value_list_env.to_env` in the context and selected-package\nenvironment helpers instead of duplicating value encoding and\nenvironment construction.\n\nEnvironment contents and evaluation timing are unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-17T01:49:01+08:00",
+          "tree_id": "9733657ccd62b4d576f830213892be907b3ee024",
+          "url": "https://github.com/ocaml/dune/commit/f948bf28a6ed0286fb66f95fbfd4ea5615dd5003"
+        },
+        "date": 1794852120009,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.2326676822800002,
             "unit": "seconds"
           }
         ]

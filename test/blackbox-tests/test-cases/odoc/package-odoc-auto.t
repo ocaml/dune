@@ -22,24 +22,20 @@ documentation stanza.
   $ find _build/default/_doc/_html -name index.html | sort
   _build/default/_doc/_html/bar/Bar/index.html
   _build/default/_doc/_html/bar/index.html
-  _build/default/_doc/_html/foo/index.html
   _build/default/_doc/_html/index.html
   $ grep -o 'href="[a-z]*/index.html"' _build/default/_doc/_html/index.html
   href="bar/index.html"
-  href="foo/index.html"
 
   $ dune build @doc-json
   $ cat _build/default/_doc/_html/index.html.json
-  {"packages":[{"name":"bar","version":null,"link":"bar/index.html"},{"name":"foo","version":null,"link":"foo/index.html"}]}
+  {"packages":[{"name":"bar","version":null,"link":"bar/index.html"}]}
 
   $ dune build @doc-markdown
   $ find _build/default/_doc/_markdown -name index.md | sort
   _build/default/_doc/_markdown/bar/index.md
-  _build/default/_doc/_markdown/foo/index.md
   _build/default/_doc/_markdown/index.md
   $ grep -o '([a-z]*/index.md)' _build/default/_doc/_markdown/index.md
   (bar/index.md)
-  (foo/index.md)
 
 A package with only a documentation stanza, or only a private library, is
 documented:

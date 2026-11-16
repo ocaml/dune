@@ -16,32 +16,36 @@ let term =
   Build_system.run_exn
   @@ fun () ->
   let open Memo.O in
-  let+ project = Source_tree.root () >>| Source_tree.Dir.project in
+  let* project = Source_tree.root () >>| Source_tree.Dir.project in
   let packages = Dune_project.packages project |> Package.Name.Map.values in
   let opam_file_to_dyn pkg =
     let opam_file = Path.source (Package.opam_file pkg) in
-    let contents =
+    let+ contents =
       if Dune_project.generate_opam_files project
-      then (
+      then
+        let+ doc = Dune_rules.Packages.odoc_enabled pkg in
         let template_file = Dune_rules.Opam_create.template_file opam_file in
         let template =
           if Fpath.exists (Path.to_string template_file)
           then Some (template_file, Io.read_file_exn template_file)
           else None
         in
-        Dune_rules.Opam_create.generate project pkg ~template)
-      else Io.read_file_exn opam_file
+        Dune_rules.Opam_create.generate project pkg ~doc ~template
+      else Memo.return (Io.read_file_exn opam_file)
     in
     Dyn.Tuple [ String (Path.to_string opam_file); String contents ]
   in
   if filenames_only
   then
-    Console.print
-      [ Pp.vbox
-          (Pp.concat_map ~sep:Pp.cut packages ~f:(fun pkg ->
-             Package.opam_file pkg |> Path.source |> Path.pp))
-      ]
-  else packages |> Dyn.list opam_file_to_dyn |> Describe_format.print_dyn format
+    Memo.return
+      (Console.print
+         [ Pp.vbox
+             (Pp.concat_map ~sep:Pp.cut packages ~f:(fun pkg ->
+                Package.opam_file pkg |> Path.source |> Path.pp))
+         ])
+  else
+    let+ opam_files = Memo.List.map packages ~f:opam_file_to_dyn in
+    Describe_format.print_dyn format (Dyn.list Fun.id opam_files)
 ;;
 
 let command =

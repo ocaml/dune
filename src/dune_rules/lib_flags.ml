@@ -151,11 +151,7 @@ module L = struct
       let use_hidden =
         Ocaml.Version.supports_hidden_includes ocaml && not mode.melange_emit
       in
-      let for_ : Compilation_mode.t =
-        match mode.lib_mode with
-        | Ocaml _ -> Ocaml
-        | Melange -> Melange
-      in
+      let for_ = Compilation_mode.of_lib_mode mode.lib_mode in
       match visible_cmi with
       | false ->
         if use_hidden

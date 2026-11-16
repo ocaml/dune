@@ -17,95 +17,178 @@ let dune_sites_env ~default_ocamlpath ~stdlib =
   |> Env.of_string_map
 ;;
 
-let add_packages_env context ~base stanzas packages =
+let package_sites context stanzas packages =
+  let add_site m pkg site section =
+    Package.Name.Map.update m pkg ~f:(fun sections ->
+      let sections = Option.value sections ~default:Section.Map.empty in
+      let sites =
+        Option.value (Section.Map.find sections section) ~default:Site.Set.empty
+      in
+      Some (Section.Map.set sections section (Site.Set.add sites site)))
+  in
+  let+ package_sites =
+    let* package_db = Package_db.create context in
+    Dune_file.Memo_fold.fold_static_stanzas
+      stanzas
+      ~init:Package.Name.Map.empty
+      ~f:(fun _ stanza acc ->
+        match Stanza.repr stanza with
+        | Install_conf.T { section = _, Site { pkg; site; loc }; _ }
+        | Plugin.T { site = loc, (pkg, site); _ } ->
+          Package_db.find_package package_db pkg
+          >>| (function
+           | None -> acc
+           | Some package ->
+             let section = Package_db.section_of_any_package_site package pkg loc site in
+             add_site acc pkg site section)
+        | _ -> Memo.return acc)
+  in
+  Package.Name.Map.foldi
+    packages
+    ~init:package_sites
+    ~f:(fun package_name (package : Package.t) acc ->
+      Package.sites package
+      |> Site.Map.foldi ~init:acc ~f:(fun site section acc ->
+        add_site acc package_name site section))
+;;
+
+let sites_by_context =
+  Memo.create
+    "site-package-sites"
+    ~input:(module Context_name)
+    (fun context ->
+       let* stanzas = Dune_load.dune_files context
+       and* packages = Dune_load.packages () in
+       package_sites context stanzas packages)
+  |> Memo.exec
+;;
+
+let set_locations env = function
+  | [] -> env
+  | entries ->
+    Env.add
+      env
+      ~var:dune_dir_locations_env_var
+      ~value:(Dune_site_private.encode_dune_dir_locations entries)
+;;
+
+let entry_parents ~root entries =
+  let rec add_parents dir parents =
+    if Path.Build.equal dir root || Path.Build.Set.mem parents dir
+    then parents
+    else add_parents (Path.Build.parent_exn dir) (Path.Build.Set.add parents dir)
+  in
+  Path.Build.Map.foldi
+    entries
+    ~init:Path.Build.Set.empty
+    ~f:(fun dst (entry : _ Install.Entry.Expanded.t) parents ->
+      let { Install.Entry.kind; _ } = entry in
+      let dir =
+        match kind with
+        | File -> Path.Build.parent_exn dst
+        | Directory -> dst
+      in
+      add_parents dir parents)
+;;
+
+type layout =
+  | Staging
+  | Scoped of Path.t Install.Entry.Expanded.t Path.Build.Map.t
+
+let locations ~root layout package_sites =
+  let populated =
+    match layout with
+    | Staging -> fun _ _ -> true
+    | Scoped entries ->
+      let parents = entry_parents ~root entries in
+      let rec covered_by_directory dir =
+        match Path.Build.Map.find entries dir with
+        | Some { Install.Entry.kind = Directory; _ } -> true
+        | _ ->
+          (not (Path.Build.equal dir root))
+          && covered_by_directory (Path.Build.parent_exn dir)
+      in
+      fun dir sites ->
+        Site.Set.exists sites ~f:(fun site ->
+          let site_dir = Path.Build.relative dir (Site.to_string site) in
+          Path.Build.Set.mem parents site_dir || covered_by_directory site_dir)
+  in
+  let roots = Install.Roots.opam_from_prefix root ~relative:Path.Build.relative in
+  Package.Name.Map.foldi package_sites ~init:[] ~f:(fun package_name sections acc ->
+    let paths =
+      Install.Paths.make ~relative:Path.Build.relative ~package:package_name ~roots
+    in
+    Section.Map.foldi sections ~init:acc ~f:(fun section sites acc ->
+      let dir = Install.Paths.get paths section in
+      if populated dir sites
+      then (
+        let package = Package.Name.to_string package_name in
+        let dir = Path.to_absolute_filename (Path.build dir) in
+        { Dune_site_private.package; dir; section } :: acc)
+      else acc))
+;;
+
+let install_env context ~root ~entries =
+  let open Action_builder.O in
+  let* site_locations =
+    Action_builder.of_memo
+      (let open Memo.O in
+       let+ sites = sites_by_context context in
+       if Package.Name.Map.is_empty sites
+       then []
+       else locations ~root (Scoped entries) sites)
+  in
+  match site_locations with
+  | [] -> Action_builder.return Env.empty
+  | _ :: _ ->
+    let+ () = Action_builder.env_var dune_dir_locations_env_var in
+    set_locations Env.empty site_locations
+;;
+
+let add_fallbacks ~base env =
+  match
+    Env.get env dune_dir_locations_env_var, Env.get base dune_dir_locations_env_var
+  with
+  | Some locations, Some fallback ->
+    Env.add
+      env
+      ~var:dune_dir_locations_env_var
+      ~value:(locations ^ String.make 1 Dune_site_private.path_sep ^ fallback)
+  | _ -> env
+;;
+
+let extend_env ~base env =
+  Install.Roots.extend_env_concat_path_vars base (add_fallbacks ~base env)
+;;
+
+let extend_env_concat_path ~base env =
+  Env_path.extend_env_concat_path base (add_fallbacks ~base env)
+;;
+
+let add_packages_env context ~base =
   let* base =
-    let* context = Context.DB.get context in
-    let* ocaml = Context.ocaml context in
-    let+ default_ocamlpath = Context.default_ocamlpath context in
+    let+ ocaml = Context.ocaml context
+    and+ default_ocamlpath = Context.default_ocamlpath context in
     Env.extend_env
       base
       (dune_sites_env ~default_ocamlpath ~stdlib:ocaml.lib_config.stdlib_dir)
   in
-  let+ env_dune_dir_locations =
-    let init =
-      match Stdune.Env.get base dune_dir_locations_env_var with
-      | None -> []
-      | Some var ->
-        (match Dune_site_private.decode_dune_dir_locations var with
-         | Some s -> s
-         | None ->
-           User_error.raise
-             [ Pp.textf
-                 "Invalid env var %s=%S"
-                 Dune_site_private.dune_dir_locations_env_var
-                 var
-             ])
-    in
-    let+ package_sections =
-      (* Add the section of the site mentioned in stanzas (it could be a site
-         of an external package) *)
-      let add_in_package_section m pkg section =
-        Package.Name.Map.update m pkg ~f:(function
-          | None -> Some (Section.Set.singleton section)
-          | Some s -> Some (Section.Set.add s section))
-      in
-      let+ package_sections =
-        let* package_db = Package_db.create context in
-        Dune_file.Memo_fold.fold_static_stanzas
-          stanzas
-          ~init:Package.Name.Map.empty
-          ~f:(fun _ stanza acc ->
-            let add_in_package_sites pkg_name site loc =
-              Package_db.find_package package_db pkg_name
-              >>| function
-              | None ->
-                (* Really ugly to suppress errors like this. Instead,
-                   executables that rely on sites should declare that
-                   in their dependencies *)
-                acc
-              | Some pkg ->
-                let section =
-                  Package_db.section_of_any_package_site pkg pkg_name loc site
-                in
-                add_in_package_section acc pkg_name section
-            in
-            match Stanza.repr stanza with
-            | Install_conf.T { section = _loc, Site { pkg; site; loc }; _ } ->
-              add_in_package_sites pkg site loc
-            | Plugin.T { site = loc, (pkg, site); _ } -> add_in_package_sites pkg site loc
-            | _ -> Memo.return acc)
-      in
-      (* Add the site of the local package: it should only useful for making
-         sure that at least one location is given to the site of local package
-         because if the site is used it should already be in
-         [packages_sections] *)
-      Package.Name.Map.foldi
-        packages
-        ~init:package_sections
-        ~f:(fun package_name (package : Package.t) acc ->
-          Package.sites package
-          |> Site.Map.fold ~init:acc ~f:(fun section acc ->
-            add_in_package_section acc package_name section))
-    in
-    let roots =
-      Install.Context.dir ~context
-      |> Path.build
-      |> Install.Roots.opam_from_prefix ~relative:Path.relative
-    in
-    Package.Name.Map.foldi ~init package_sections ~f:(fun package_name sections init ->
-      let paths =
-        Install.Paths.make ~relative:Path.relative ~package:package_name ~roots
-      in
-      Section.Set.fold sections ~init ~f:(fun section acc ->
-        let package = Package.Name.to_string package_name in
-        let dir = Path.to_absolute_filename (Install.Paths.get paths section) in
-        { Dune_site_private.package; dir; section } :: acc))
+  let init =
+    match Env.get base dune_dir_locations_env_var with
+    | None -> []
+    | Some var ->
+      (match Dune_site_private.decode_dune_dir_locations var with
+       | Some s -> s
+       | None ->
+         User_error.raise
+           [ Pp.textf
+               "Invalid env var %s=%S"
+               Dune_site_private.dune_dir_locations_env_var
+               var
+           ])
   in
-  if List.is_empty env_dune_dir_locations
-  then base
-  else
-    Stdune.Env.add
-      base
-      ~var:dune_dir_locations_env_var
-      ~value:(Dune_site_private.encode_dune_dir_locations env_dune_dir_locations)
+  let context = Context.name context in
+  let+ sites = sites_by_context context in
+  let root = Install.Context.dir ~context in
+  set_locations base (locations ~root Staging sites @ init)
 ;;

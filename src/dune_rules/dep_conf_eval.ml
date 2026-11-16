@@ -171,7 +171,7 @@ let merge_include_envs outer include_envs =
   List.fold_left include_envs ~init:outer ~f:(fun acc env ->
     let+ acc = acc
     and+ env = env in
-    Install.Roots.extend_env_concat_path_vars acc env)
+    Site_env.extend_env ~base:acc env)
 ;;
 
 let package_dep_swvs (dep : Dep_conf.t) =
@@ -453,7 +453,7 @@ and combined_package_deps_builder expander pkgs =
              ~packages:(Package.Name.Selection.Only lockdir_package_names)
              context.name)
       in
-      Install.Roots.extend_env_concat_path_vars lockdir_env local_env
+      Site_env.extend_env ~base:lockdir_env local_env
   in
   let dune_version = Expander.project expander |> Dune_project.dune_version in
   let+ () =
@@ -659,7 +659,7 @@ let unnamed sandbox ~expander l =
              ())
        and+ package_env = package_env
        and+ bin_env = bin_env in
-       Env_path.extend_env_concat_path package_env bin_env)
+       Site_env.extend_env_concat_path ~base:package_env bin_env)
   in
   action_env, List.fold_left l ~init:sandbox ~f:add_sandbox_config
 ;;

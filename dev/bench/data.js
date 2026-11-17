@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794931623816,
+  "lastUpdate": 1794931926323,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -490011,6 +490011,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.52606520534,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "18995da9cbd0489490dd2e663874fa3a027c3d76",
+          "message": "test(engine): characterize silent rule invalidation by output policy (#17081)\n\nChanging successful-output policy currently invalidates an otherwise\nunchanged, silent rule. Add a plain-rule cram covering stdout/stderr\nswallowing and `must-be-empty`, with filtered target-rule cache-miss\nreasons and null-build controls.\n\nThis records current behavior, not a proposed fix. In particular,\n`must-be-empty` is validation rather than presentation, and any identity\nchange must preserve that validation for actions that emit output.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-17T23:48:29+08:00",
+          "tree_id": "a93fd1dd39086d8732c490c5f89e2c957107d558",
+          "url": "https://github.com/ocaml/dune/commit/18995da9cbd0489490dd2e663874fa3a027c3d76"
+        },
+        "date": 1794931923829,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.31814978836667,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794931605957,
+  "lastUpdate": 1794931616508,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -489953,6 +489953,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.39929459980666665,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d0abde0c29423a0d85889703e12db9582053bcf9",
+          "message": "test(engine): reproduce stale external directory dependency digests (#17058)\n\nA plain path in `(deps)` uses file-dependency tracking even when it\nnames an external directory. The directory is initially hashed\nrecursively, but its cached digest is validated using only the directory\ninode’s own stats. Editing an existing child leaves those stats\nunchanged, so the rule can reuse stale output.\n\nContrast this with `(source_tree inputs)`, which tracks the child files\nand detects the same edit. Filtered target-rule misses and the two\noutput contents demonstrate the stale result; waiting for the filesystem\nclock does not prevent it. No fix is included.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-17T23:46:38+08:00",
+          "tree_id": "ccb3a285ca2946d266ca5c108ea17e30dfe684dc",
+          "url": "https://github.com/ocaml/dune/commit/d0abde0c29423a0d85889703e12db9582053bcf9"
+        },
+        "date": 1794931613542,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 55.121825078906674,
             "unit": "seconds"
           }
         ]

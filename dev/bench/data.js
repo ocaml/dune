@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794923253853,
+  "lastUpdate": 1794923661311,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -682514,6 +682514,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.773540988986667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "70ce71450e1021d14b138b1ae8aa7e56d38fb654",
+          "message": "refactor(pkg): specialize package path construction (#17080)\n\nSupply `Path.Build.relative` inside `Paths.make` instead of passing it\nat every call site. Package roots are always build paths, and all\ncallers already supply this same function.\n\nPath construction and evaluation timing are unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-17T21:39:57+08:00",
+          "tree_id": "4cc26f96bc27cb7d12bc7acb5ea04e5f986ed5a0",
+          "url": "https://github.com/ocaml/dune/commit/70ce71450e1021d14b138b1ae8aa7e56d38fb654"
+        },
+        "date": 1794923365703,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.4839931691799997,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794945856855,
+  "lastUpdate": 1794949932137,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -683036,6 +683036,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.371128392706667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "51d6214a4ad0a103ee411ef77ed42a772dc5f0a3",
+          "message": "test(pkg): reproduce missing source-tree package materialization (#17079)\n\nRecord that a package dependency stages ordinary files but omits\nsource-tree installs, while `@install` makes the same tree available in\nthe flat installation. No production behavior changes.",
+          "timestamp": "2026-11-17T21:57:50+01:00",
+          "tree_id": "47455cd61261df5949675316dc22758f3d3c4520",
+          "url": "https://github.com/ocaml/dune/commit/51d6214a4ad0a103ee411ef77ed42a772dc5f0a3"
+        },
+        "date": 1794949605185,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.1577422134133335,
             "unit": "seconds"
           }
         ]

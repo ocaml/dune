@@ -2,8 +2,12 @@ A rule using a locked executable must be invalidated when runtime data installed
 beside that executable changes.
 
   $ make_lockdir
+  $ make_lockpkg runtime <<'EOF'
+  > (version 0.0.1)
+  > EOF
   $ make_lockpkg provider <<'EOF'
   > (version 0.0.1)
+  > (depends runtime)
   > (install
   >  (progn
   >   (run cp mybin %{pkg-self:bin}/mybin)
@@ -13,6 +17,7 @@ beside that executable changes.
 
   $ make_dune_project 3.24
   $ provider_target="$(get_build_pkg_dir provider)/target"
+  $ runtime_target="$(get_build_pkg_dir runtime)/target"
   $ provider_data="$PWD/$provider_target/share/provider/data.txt"
 
   $ make_lockpkg_file provider mybin <<EOF
@@ -28,9 +33,26 @@ beside that executable changes.
   >  (action
   >   (with-stdout-to %{target}
   >    (run %{bin:mybin}))))
+  > (rule
+  >  (target literal-out)
+  >  (action
+  >   (with-stdout-to %{target} (run mybin))))
   > EOF
 
-  $ dune build out
+Both lookups depend on the executable, but not its runtime installation or
+transitive dependencies. Check the graph directly: lock digests can change
+the executable path and invalidate the rule without these dependencies.
+
+  $ dune build out literal-out
+  $ dune rules --format=json out literal-out |
+  >   jq_dune -c --arg provider "$provider_target" \
+  >     --arg runtime "$runtime_target" '
+  >     .[] | { executable: ruleHasDepFile($provider + "/bin/mybin"),
+  >             provider: ruleHasDepFile($provider),
+  >             runtime: ruleHasDepFile($runtime) }'
+  {"executable":true,"provider":false,"runtime":false}
+  {"executable":true,"provider":false,"runtime":false}
+
   $ cat _build/default/out
   one
   $ cp "$provider_target/bin/mybin" mybin.before

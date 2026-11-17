@@ -169,37 +169,107 @@ being checked here: PATH is explicitly exported by the host package.
   >                         path: (index({Env: "PATH"}) != null) }'
   {"host":false,"target":false,"path":false}
 
-A later export can clear a merged binding on Windows. Explicit package
-dependencies still supply their selected exports, and the directory's narrowed
-PATH must also be tracked.
+A later host export can clear a merged binding on Windows. Explicit package
+dependencies still supply their selected exports.
 
   $ cat >host.lock/suppressor.pkg <<'EOF'
   > (version 0.0.1)
   > (depends provider)
   > (exported_env (= HOST_ONLY "") (= PATH ""))
   > EOF
-  $ cat >target.lock/suppressor.pkg <<'EOF'
-  > (version 0.0.1)
-  > (depends provider)
-  > (exported_env (= PATH ""))
-  > EOF
-  $ cat >>dune <<'EOF'
-  > (rule
-  >  (enabled_if (= %{context_name} target))
-  >  (target implicit-path)
-  >  (action
-  >   (with-stdout-to %{target}
-  >    (system "case $PATH in *host-export*) echo host-path ;; esac"))))
-  > EOF
-  $ dune build _build/target/exports _build/target/implicit-path
-  $ cat _build/target/exports _build/target/implicit-path
+  $ dune build _build/target/exports
+  $ cat _build/target/exports
   host/target
-  host-path
   host-path
   $ dune rules --format=json _build/target/exports |
   >   jq -c '.[] | .deps | { host: (index({Env: "HOST_ONLY"}) != null),
   >                         path: (index({Env: "PATH"}) != null) }'
   {"host":false,"path":false}
+
+With no owning package, the directory sees all host packages. The suppressor
+clears their PATH. Neither the implicit action nor an explicit dependency on
+the suppressor should track the inherited PATH.
+
+  $ make_dune_project 3.25
+  $ rm target.lock/provider.pkg
+  $ cat >dune <<'EOF'
+  > (rule
+  >  (action (with-stdout-to implicit-path
+  >   (system "case $PATH in *host-export*) echo host ;; *) echo ambient ;; esac"))))
+  > (rule
+  >  (deps (package suppressor))
+  >  (action (with-stdout-to explicit-path (system "echo $PATH"))))
+  > EOF
+  $ PATH="$PWD/ambient-bin:$PATH" dune build _build/target/explicit-path \
+  >   _build/target/implicit-path
+  $ grep -qF "$PWD/ambient-bin" _build/target/explicit-path
+  $ cat _build/target/implicit-path
+  ambient
   $ dune rules --format=json _build/target/implicit-path |
   >   jq '.[] | .deps | index({Env: "PATH"}) != null'
+  false
+  $ dune rules --format=json _build/target/explicit-path |
+  >   jq '.[] | .deps | index({Env: "PATH"}) != null'
+  false
+
+Removing the suppressor leaves the host as the only source of package bins.
+
+  $ rm host.lock/suppressor.pkg
+  $ dune build _build/target/implicit-path
+  $ cat _build/target/implicit-path
+  ambient
+  $ dune rules --format=json _build/target/implicit-path |
+  >   jq '.[] | .deps | index({Env: "PATH"}) != null'
+  false
+
+Moving the same package to the target leaves no package PATH to track.
+
+  $ mv host.lock/provider.pkg target.lock/
+  $ dune build _build/target/implicit-path
+  $ cat _build/target/implicit-path
+  ambient
+  $ dune rules --format=json _build/target/implicit-path |
+  >   jq '.[] | .deps | index({Env: "PATH"}) != null'
+  false
+
+An opam switch's generated toolchain context uses the ambient FOO, not the
+export from dune.lock.
+
+  $ cd ..
+  $ mkdir mock-bin
+  $ cat >mock-bin/opam <<'EOF'
+  > #!/bin/sh
+  > case "$1" in
+  >   --version) echo 2.3.0 ;;
+  >   config) echo '((OPAM_SWITCH_PREFIX "/switch"))' ;;
+  >   *) exit 1 ;;
+  > esac
+  > EOF
+  $ chmod +x mock-bin/opam
+  $ export PATH="$PWD/mock-bin:$PATH" FOO=ambient
+  $ cat >dune-workspace <<'EOF'
+  > (lang dune 3.25)
+  > (context (default))
+  > (context (opam (name sw) (switch mock) (targets tc)))
+  > EOF
+  $ dune build _build/sw.tc/implicit-output
+  $ cat _build/sw.tc/implicit-output
+  ambient
+  $ dune rules --format=json _build/sw.tc/implicit-output |
+  >   jq '.[] | .deps | index({Env: "FOO"}) != null'
+  false
+
+Conversely, an explicitly selected lock context injects FOO even when package
+management is disabled. Its rule should track that value.
+
+  $ cat >dune-workspace <<'EOF'
+  > (lang dune 3.25)
+  > (pkg disabled)
+  > (context (default (lock_dir dune.lock)))
+  > EOF
+  $ dune build implicit-output
+  $ cat _build/default/implicit-output
+  baz
+  $ dune rules --format=json implicit-output |
+  >   jq '.[] | .deps | index({Env: "FOO"}) != null'
   false

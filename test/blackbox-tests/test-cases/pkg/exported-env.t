@@ -1,7 +1,8 @@
 Packages can export environment variables.
 
 Inspect the recipe's final rule as well as its output: a change to a package's
-installation path can cause a rebuild without an environment dependency.
+installation path can cause a rebuild without an environment dependency, so
+the output alone does not show that the exports are tracked.
 
   $ export UNRELATED_ENV=present
   $ make_lockdir
@@ -41,16 +42,20 @@ installation path can cause a rebuild without an environment dependency.
   OPAMSWITCH=dune
   $ cat "$(get_build_pkg_dir usetest)/target/environment"
   bar/1.2.3
+  $ dune rules --format=json "$(get_build_pkg_dir usetest)/target" \
+  >   | jq '.[] | .deps | index({Env: "FOO"}) != null'
+  true
 
-Only test's explicit exports (FOO and BAR) are package metadata. The recipe
-also receives standard install paths and the shell environment.
+Only test's explicit exports (FOO and BAR) are tracked as environment
+dependencies. The recipe also receives standard install paths and the shell
+environment, which are not.
 
   $ dune rules --format=json "$(get_build_pkg_dir usetest)/target" \
   >   | jq -c '[.[].deps[] | .Env? // empty] | sort'
-  []
+  ["BAR","FOO"]
 
-Changing FOO should update the installed consumer. Known regression: without
-an environment dependency, only a fresh build sees the new value.
+Changing FOO rebuilds the installed consumer, so the incremental build agrees
+with a fresh one.
 
   $ make_lockpkg test <<EOF
   > (version 0.0.1)
@@ -63,14 +68,14 @@ an environment dependency, only a fresh build sees the new value.
   $ build_pkg usetest > /dev/null 2>&1
   $ target=$(get_build_pkg_dir usetest)/target
   $ cat "$target/environment"
-  bar/1.2.3
+  baz/1.2.3
   $ fresh=_fresh/${target#_build/}
   $ dune build --build-dir _fresh "$fresh" > /dev/null 2>&1
   $ cat "$fresh/environment"
   baz/1.2.3
   $ dune rules --format=json "$target" \
   >   | jq '.[] | .deps | index({Env: "FOO"}) != null'
-  false
+  true
 
 Changing the package version also invalidates the build.
 
@@ -107,10 +112,10 @@ declaring it as an input.
   baz
   $ dune rules --format=json workspace-output \
   >   | jq '.[] | .deps | index({Env: "FOO"}) != null'
-  false
+  true
   $ dune rules --format=json implicit-output \
   >   | jq '.[] | .deps | index({Env: "FOO"}) != null'
-  false
+  true
 
 An explicit declaration distinguishes a present environment dependency
 from an absent one.
@@ -180,7 +185,7 @@ PATH here includes an explicit host export, not just installation paths.
   >   jq -c '.[] | .deps | { host: (index({Env: "HOST_ONLY"}) != null),
   >                         target: (index({Env: "TARGET_ONLY"}) != null),
   >                         path: (index({Env: "PATH"}) != null) }'
-  {"host":false,"target":false,"path":false}
+  {"host":true,"target":true,"path":true}
 
 A later host export can clear a merged binding on Windows. Explicit package
 dependencies still supply their selected exports.
@@ -197,11 +202,11 @@ dependencies still supply their selected exports.
   $ dune rules --format=json _build/target/exports |
   >   jq -c '.[] | .deps | { host: (index({Env: "HOST_ONLY"}) != null),
   >                         path: (index({Env: "PATH"}) != null) }'
-  {"host":false,"path":false}
+  {"host":true,"path":true}
 
-With no owning package, the directory sees all host packages. The suppressor
-clears their PATH. Neither the implicit action nor an explicit dependency on
-the suppressor should track the inherited PATH.
+An action only gets the PATH of the packages it depends on. The suppressor
+clears the host's PATH, so neither the implicit action nor an explicit
+dependency on the suppressor tracks the inherited PATH.
 
   $ make_dune_project 3.25
   $ rm target.lock/provider.pkg
@@ -225,7 +230,8 @@ the suppressor should track the inherited PATH.
   >   jq '.[] | .deps | index({Env: "PATH"}) != null'
   false
 
-Removing the suppressor leaves the host as the only source of package bins.
+Removing the suppressor does not add host package bins to the implicit
+action's PATH, so it still sees the ambient PATH and tracks nothing.
 
   $ rm host.lock/suppressor.pkg
   $ dune build _build/target/implicit-path
@@ -235,7 +241,7 @@ Removing the suppressor leaves the host as the only source of package bins.
   >   jq '.[] | .deps | index({Env: "PATH"}) != null'
   false
 
-Moving the same package to the target leaves no package PATH to track.
+Moving the same package to the target changes nothing for the implicit action.
 
   $ mv host.lock/provider.pkg target.lock/
   $ dune build _build/target/implicit-path
@@ -285,4 +291,4 @@ management is disabled. The rule does not declare an environment read.
   baz
   $ dune rules --format=json implicit-output |
   >   jq '.[] | .deps | index({Env: "FOO"}) != null'
-  false
+  true

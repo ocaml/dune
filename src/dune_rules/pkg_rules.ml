@@ -458,6 +458,14 @@ module Pkg = struct
       ]
   ;;
 
+  (* Variables explicitly set by [(exported_env ...)] of the dependencies of [t] *)
+  let exported_vars t =
+    deps_closure t
+    |> List.concat_map ~f:(fun dep ->
+      List.map dep.exported_env ~f:(fun { Env_update.var; _ } -> var))
+    |> Env.Var.Set.of_list
+  ;;
+
   (* [exported_value_env t] returns the complete env that will be used
      to build the package [t] *)
   let exported_value_env t =
@@ -2092,6 +2100,10 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
      let+ source_deps = source_deps in
      let deps = Dep.Set.union source_deps (Pkg.package_deps pkg) in
      let deps =
+       Env.Var.Set.fold (Pkg.exported_vars pkg) ~init:deps ~f:(fun var deps ->
+         Dep.Set.add deps (Dep.env var))
+     in
+     let deps =
        match pkg.depends_on_dune with
        | false -> deps
        | true -> Dep.Set.add deps (Lazy.force dune_dep)
@@ -2099,7 +2111,6 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
      (), deps
    in
    Action_builder.with_no_targets (Action_builder.dyn_deps deps))
-  (* TODO should we add env deps on these? *)
   >>> add_env (Pkg.exported_env pkg) build_action
   |> Action_builder.With_targets.map ~f:(fun action ->
     Action.Full.add_sandbox (Sandbox_mode.Set.singleton Sandbox_mode.copy) action
@@ -2367,14 +2378,6 @@ let dev_tool_env tool =
   Pkg.exported_env pkg
 ;;
 
-let exported_env context =
-  Memo.push_stack_frame ~human_readable_description:(fun () ->
-    Pp.textf "lock directory environment for context %S" (Context_name.to_string context))
-  @@ fun () ->
-  let+ all_project_deps = all_project_deps context in
-  Pkg.build_env_of_deps all_project_deps |> Value_list_env.to_env
-;;
-
 let lock_dir_package_env =
   Memo.create
     "lock-directory-package-env"
@@ -2386,16 +2389,17 @@ let lock_dir_package_env =
            (describe_packages packages)
            (Context_name.to_string context)))
     (fun (context, packages) ->
-       lock_dir_active context
-       >>= function
-       | false -> Memo.return Env.empty
-       | true ->
-         let+ deps = project_deps ~packages context in
-         Pkg.build_env_of_deps deps |> Value_list_env.to_env)
+       let+ deps = project_deps ~packages context in
+       Pkg.build_env_of_deps deps |> Value_list_env.to_env)
 ;;
 
-let env_for_packages ~(packages : Package.Name.Selection.t) context =
-  Memo.exec lock_dir_package_env (context, packages)
+let exported_env context = Memo.exec lock_dir_package_env (context, All)
+
+let env_for_packages ~packages context =
+  let* active = lock_dir_active context in
+  if active
+  then Memo.exec lock_dir_package_env (context, packages)
+  else Memo.return Env.empty
 ;;
 
 let bin_paths_for_packages ~packages context =

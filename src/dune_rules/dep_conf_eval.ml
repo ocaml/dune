@@ -440,11 +440,20 @@ and combined_package_deps_builder expander pkgs =
     if Package.Name.Set.is_empty lockdir_package_names
     then Action_builder.return local_env
     else
-      let+ lockdir_env =
+      let* lockdir_env =
         Action_builder.of_memo
           (Pkg_rules.env_for_packages
              ~packages:(Package.Name.Selection.Only lockdir_package_names)
              context.name)
+      in
+      let vars = Env.vars lockdir_env in
+      let vars =
+        match Env_path.path lockdir_env with
+        | [] -> Env.Var.Set.remove vars Env_path.var
+        | _ :: _ -> vars
+      in
+      let+ () =
+        Action_builder.List.iter (Env.Var.Set.to_list vars) ~f:Action_builder.env_var
       in
       Install.Roots.extend_env_concat_path_vars lockdir_env local_env
   in

@@ -18,15 +18,9 @@ val make
 
 val external_env : t -> Env.t Memo.t
 
-(** [external_env] without the directories holding the binaries bound by
-    [(env (binaries ...))]. An action merges its own environment into this and
-    then adds [local_bin_dirs] on top, so that nothing staged by [(deps ...)]
-    shadows a binary the user bound explicitly. *)
-val env_without_local_bins : t -> Env.t Memo.t
-
-(** Directories holding the binaries bound by [(env (binaries ...))], most
-    specific first. *)
-val local_bin_dirs : t -> Path.t list Memo.t
+(** The directory environment and the local binary directories to prepend
+    after merging the action's own environment. *)
+val action_env : t -> (Env.t * Path.t list) Action_builder.t
 
 (** Binaries that are symlinked in the associated .bin directory of [dir]. *)
 val local_binaries : t -> File_binding.Expanded.t list Memo.t

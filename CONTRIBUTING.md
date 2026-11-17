@@ -12,11 +12,12 @@ you don't find a preexisting issue discussing your topic, then please [file a
 new issue][file an issue].
 
 For other kinds of support, feedback, or questions, please contribute to our
-[discussions][discussions].
+[discussions][discussions] or join [our channel on the OCaml Zulip][zulip].
 
 [file an issue]: https://github.com/ocaml/dune/issues/new/choose
 [issues]: https://github.com/ocaml/dune/issues
 [discussions]: https://github.com/ocaml/dune/discussions
+[zulip]: https://ocaml.zulipchat.com/#narrow/channel/527834-dune
 
 Developing Dune
 ===============
@@ -32,6 +33,7 @@ Our development process is as follows:
   - This design should be reviewed by at least one other party.
   - GitHub issues are an appropriate venue for most design discussions, but more
     involved design work may warrant an RFC or ADR.
+  - Large projects are planned via [road maps](https://github.com/ocaml/dune/wiki#active-roadmaps)
 - GitHub is the preferred venue for discussing architectural and design decisions.
   Exchanges in meetings and chat are valuable, but we insist on deliberating and
   recording the what and why of our work in the persistent record of GitHub.

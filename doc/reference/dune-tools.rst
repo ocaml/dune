@@ -19,8 +19,9 @@ provides a Language Server Protocol implementation for OCaml, and `utop
 <https://github.com/ocaml-community/utop>`_ an improved toplevel (REPL).
 
 Dune can automatically resolve, lock, build, and run these tools using package
-management. Each tool is managed in its own lock directory separate from the
-project.
+management. Each tool has its own lock directory and package build targets.
+Even when a tool selects the same compiler version as the project or another
+tool, it does not reuse their package targets.
 
 Supported Tools
 ---------------

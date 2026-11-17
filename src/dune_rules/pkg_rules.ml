@@ -54,13 +54,7 @@ module Variable = struct
 end
 
 module Package_universe = struct
-  (* A type of group of packages that are co-installed. Multiple different
-     versions of a package may be co-installed into the same universe.
-
-     Note that a dev tool universe just contains the package for the dev tool
-     itself and not its dependencies, which are installed into the
-     [Dependencies _] universe for the default context so they may be
-     shared with the project's dependencies. *)
+  (* A context or dev tool owns the targets for every package in its lock. *)
   type t =
     | Dependencies of Context_name.t
     | Dev_tool of Dune_pkg.Dev_tool.t
@@ -235,7 +229,11 @@ module Paths = struct
         Path.Build.L.relative
           Private_context.t.build_dir
           [ Context_name.to_string ctx; ".pkg"; Pkg_digest.to_string pkg_digest ]
-      | Dev_tool dev_tool -> Pkg_dev_tool.universe_install_path dev_tool
+      | Dev_tool dev_tool ->
+        let root = Pkg_dev_tool.universe_install_path dev_tool in
+        if Package.Name.equal pkg_digest.name (Pkg_dev_tool.package_name dev_tool)
+        then root
+        else Path.Build.L.relative root [ ".pkg"; Pkg_digest.to_string pkg_digest ]
     in
     of_root pkg_digest.name ~root ~relative:Path.Build.relative
   ;;
@@ -1235,62 +1233,6 @@ module DB = struct
       |> Package.Name.Map.values
       |> Pkg_digest.Map.of_list_map_exn ~f:(fun entry -> entry.pkg_digest, entry)
     ;;
-
-    (* Helper which is called when both tables have an entry with the same
-       digest. This happens when two lock directories have a package in common
-       and the transitive dependency closure of the package is identical in both
-       lock directories. Here we assert that the packages and their immediate
-       dependencies are identical as a sanity check. *)
-    let union_check
-          pkg_digest
-          ({ pkg = pkg_a; deps = deps_a; has_dune_dep = _; pkg_digest = _ } as entry)
-          { pkg = pkg_b; deps = deps_b; has_dune_dep = _; pkg_digest = _ }
-      =
-      if not (Pkg.equal (Pkg.remove_locs pkg_a) (Pkg.remove_locs pkg_b))
-      then
-        Code_error.raise
-          "Two packages with the same pkg digest differ in their fields"
-          [ "pkg_digest", Pkg_digest.to_dyn pkg_digest
-          ; "pkg_a", Pkg.to_dyn pkg_a
-          ; "pkg_b", Pkg.to_dyn pkg_b
-          ];
-      List.combine deps_a deps_b
-      |> List.iter ~f:(fun (dep_a, dep_b) ->
-        if not (Pkg.equal (Pkg.remove_locs dep_a.dep_pkg) (Pkg.remove_locs dep_b.dep_pkg))
-        then
-          Code_error.raise
-            "Two packages with the same pkg digest differ in their dependencies"
-            [ "pkg_digest", Pkg_digest.to_dyn pkg_digest
-            ; "pkg_a", Pkg.to_dyn pkg_a
-            ; "pkg_b", Pkg.to_dyn pkg_b
-            ; "dep_of_a", Pkg.to_dyn dep_a.dep_pkg
-            ; "dep_of_b", Pkg.to_dyn dep_b.dep_pkg
-            ]);
-      Some entry
-    ;;
-
-    let empty = Pkg_digest.Map.empty
-    let union = Pkg_digest.Map.union ~f:union_check
-    let union_all = Pkg_digest.Map.union_all ~f:union_check
-
-    let of_dev_tool_deps_if_lock_dir_exists dev_tool ~platform ~system_provided =
-      let+ lock_dir_opt = Lock_dir.of_dev_tool_if_lock_dir_exists dev_tool in
-      Option.map lock_dir_opt ~f:(of_lock_dir ~platform ~system_provided)
-    ;;
-
-    let all_existing_dev_tools =
-      Memo.lazy_ ~name:"all-existing-dev-tools" (fun () ->
-        let* platform = Lock_dir.Sys_vars.solver_env in
-        let+ xs =
-          Memo.List.map
-            Pkg_dev_tool.all
-            ~f:
-              (of_dev_tool_deps_if_lock_dir_exists
-                 ~platform
-                 ~system_provided:default_system_provided)
-        in
-        List.filter_opt xs |> union_all)
-    ;;
   end
 
   module Id = Id.Make ()
@@ -1316,41 +1258,25 @@ module DB = struct
   ;;
 
   let of_ctx =
-    let of_ctx_memo =
+    let memo =
       Memo.create
         "pkg-db"
-        ~input:
-          (module struct
-            type t = Context_name.t * bool
-
-            let to_dyn = Tuple.T2.to_dyn Context_name.to_dyn Dyn.bool
-            let hash = Tuple.T2.hash Context_name.hash Bool.hash
-            let equal = Tuple.T2.equal Context_name.equal Bool.equal
-          end)
-        (fun (ctx, allow_sharing) ->
+        ~input:(module Context_name)
+        (fun ctx ->
            Per_context.valid ctx
            >>= function
            | false ->
              Code_error.raise "invalid context" [ "context", Context_name.to_dyn ctx ]
            | true ->
-             (* Dev tools are built in the default context, so allow their
-                dependencies to be shared with the project's if it too is being
-                built in the default context. *)
-             let allow_sharing = allow_sharing && Context_name.is_default ctx in
-             (* Is this value anything other than [default_system_provided]? *)
              let system_provided = default_system_provided in
-             let+ pkg_digest_table =
-               let* lock_dir = Lock_dir.get_exn ctx
-               and* platform = Lock_dir.Sys_vars.solver_env in
-               (if allow_sharing
-                then Memo.Lazy.force Pkg_table.all_existing_dev_tools
-                else Memo.return Pkg_table.empty)
-               >>| Pkg_table.union
-                     (Pkg_table.of_lock_dir lock_dir ~platform ~system_provided)
+             let+ lock_dir = Lock_dir.get_exn ctx
+             and+ platform = Lock_dir.Sys_vars.solver_env in
+             let pkg_digest_table =
+               Pkg_table.of_lock_dir lock_dir ~platform ~system_provided
              in
              create ~pkg_digest_table ~system_provided)
     in
-    fun ctx ~allow_sharing -> Memo.exec of_ctx_memo (ctx, allow_sharing)
+    fun ctx -> Memo.exec memo ctx
   ;;
 
   (* Returns the db for the given context and the digest of the given package
@@ -1358,38 +1284,33 @@ module DB = struct
   let of_project_pkg ctx pkg_name =
     let* lock_dir = Lock_dir.get_exn ctx
     and* platform = Lock_dir.Sys_vars.solver_env in
-    let+ t = of_ctx ctx ~allow_sharing:true in
+    let+ t = of_ctx ctx in
     t, pkg_digest_of_name lock_dir platform pkg_name ~system_provided:t.system_provided
   ;;
 
-  (* Returns the db for all dev tools combined with the default context, and
-     the digest for the dev tool's package. *)
   let of_dev_tool =
-    let system_provided = default_system_provided in
-    let inactive_lockdir =
-      Memo.lazy_ ~name:"inactive-lockdir-package-db" (fun () ->
-        let+ pkg_digest_table = Memo.Lazy.force Pkg_table.all_existing_dev_tools in
-        create ~pkg_digest_table ~system_provided)
+    let memo =
+      Memo.create
+        "pkg-db-dev-tool"
+        ~input:(module Dune_pkg.Dev_tool)
+        (fun dev_tool ->
+           let system_provided = default_system_provided in
+           let+ lock_dir = Lock_dir.of_dev_tool dev_tool
+           and+ platform = Lock_dir.Sys_vars.solver_env in
+           let pkg_digest_table =
+             Pkg_table.of_lock_dir lock_dir ~platform ~system_provided
+           in
+           let db = create ~pkg_digest_table ~system_provided in
+           let pkg_digest =
+             pkg_digest_of_name
+               lock_dir
+               platform
+               (Pkg_dev_tool.package_name dev_tool)
+               ~system_provided
+           in
+           db, pkg_digest)
     in
-    let of_dev_tool_memo =
-      Memo.create "pkg-db-dev-tool" ~input:(module Dune_pkg.Dev_tool)
-      @@ fun dev_tool ->
-      let+ lock_dir = Lock_dir.of_dev_tool dev_tool
-      and+ platform = Lock_dir.Sys_vars.solver_env in
-      pkg_digest_of_name
-        lock_dir
-        platform
-        (Pkg_dev_tool.package_name dev_tool)
-        ~system_provided
-    in
-    fun dev_tool ->
-      let+ db =
-        Lock_dir.lock_dir_active Context_name.default
-        >>= function
-        | false -> Memo.Lazy.force inactive_lockdir
-        | true -> of_ctx Context_name.default ~allow_sharing:true
-      and+ pkg_digest = Memo.exec of_dev_tool_memo dev_tool in
-      db, pkg_digest
+    fun dev_tool -> Memo.exec memo dev_tool
   ;;
 end
 
@@ -1480,15 +1401,6 @@ end = struct
         Memo.parallel_map
           deps
           ~f:(fun { DB.Pkg_table.dep_pkg = _; dep_loc; dep_pkg_digest } ->
-            let package_universe =
-              match package_universe with
-              | Dev_tool _ ->
-                (* The dependencies of dev tools are installed into the default
-                 context so they may be shared with the project's
-                 dependencies. *)
-                Package_universe.Dependencies Context_name.default
-              | _ -> package_universe
-            in
             resolve db dep_loc dep_pkg_digest package_universe)
       and+ files_dir =
         let+ lock_dir_path =
@@ -2375,7 +2287,7 @@ let setup_pkg_install_alias =
     let* pkg_digests =
       Action_builder.of_memo
         (let open Memo.O in
-         let+ db = DB.of_ctx ctx_name ~allow_sharing:true in
+         let+ db = DB.of_ctx ctx_name in
          Pkg_digest.Map.values db.pkg_digest_table
          |> List.map ~f:(fun { DB.Pkg_table.pkg_digest; _ } -> pkg_digest))
     in
@@ -2426,8 +2338,11 @@ let setup_rules ~components ~dir ctx =
   | true, [ ".dev-tool"; dev_tool_package_name ] ->
     let pkg_name = Package.Name.of_string dev_tool_package_name in
     let dev_tool = Pkg_dev_tool.of_package_name pkg_name in
-    let* db, pkg_digest = DB.of_dev_tool (Dune_pkg.Dev_tool.of_package_name pkg_name) in
-    setup_package_rules db ~package_universe:(Dev_tool dev_tool) [ pkg_digest ]
+    let* db, _pkg_digest = DB.of_dev_tool (Dune_pkg.Dev_tool.of_package_name pkg_name) in
+    setup_package_rules
+      db
+      ~package_universe:(Dev_tool dev_tool)
+      (Pkg_digest.Map.keys db.pkg_digest_table)
   | true, [ ".dev-tool" ] -> Gen_rules.make_empty ~dir Subdir_set.all |> Memo.return
   | _, [ ".pkg" ] ->
     (* Only generate pkg rules if there is a lock dir for that context *)
@@ -2435,7 +2350,7 @@ let setup_rules ~components ~dir ctx =
     (match lock_dir_active with
      | false -> Memo.return @@ Gen_rules.make (Memo.return Rules.empty)
      | true ->
-       let* db = DB.of_ctx ctx ~allow_sharing:true in
+       let* db = DB.of_ctx ctx in
        setup_package_rules
          db
          ~package_universe:(Dependencies ctx)
@@ -2499,10 +2414,7 @@ let ocaml_toolchain context =
 let all_deps universe =
   let* db =
     match (universe : Package_universe.t) with
-    | Dependencies ctx ->
-      (* Disallow sharing so that the only packages in the DB are the ones from
-         the universe's respective lock directory. *)
-      DB.of_ctx ctx ~allow_sharing:false
+    | Dependencies ctx -> DB.of_ctx ctx
     | Dev_tool tool -> DB.of_dev_tool tool >>| fst
   in
   Pkg_digest.Map.values db.pkg_digest_table
@@ -2698,7 +2610,7 @@ let all_filtered_depexts context =
 ;;
 
 let pkg_digest_of_project_dependency ctx package_name =
-  let+ db = DB.of_ctx ctx ~allow_sharing:false in
+  let+ db = DB.of_ctx ctx in
   Pkg_digest.Map.keys db.pkg_digest_table
   |> List.find ~f:(fun (pkg_digest : Pkg_digest.t) ->
     Package.Name.equal pkg_digest.name package_name)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794945658027,
+  "lastUpdate": 1794945851269,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -490185,6 +490185,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5364822851933333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "shon.feder@gmail.com",
+            "name": "Shon",
+            "username": "shonfeder"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "12f554aa90d31d6833b835f1000c7c5af94208aa",
+          "message": "doc(contributing): link zulip from contributing (#17087)\n\n## Description\n\nWe didn't have public documentation of the zulip channel, but now we do.\nThis also links our active roadmaps to the wiki, so that is discoverable\nfor new contributors.",
+          "timestamp": "2026-11-17T14:47:01-05:00",
+          "tree_id": "0c2080145939a2371f7e087b8b4f0531cc675bde",
+          "url": "https://github.com/ocaml/dune/commit/12f554aa90d31d6833b835f1000c7c5af94208aa"
+        },
+        "date": 1794945850698,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 37.23065578348666,
             "unit": "seconds"
           }
         ]

@@ -4,6 +4,11 @@
   (package dune-configurator)))
 
 (cram
+ (applies_to pkg-config-env.t)
+ (enabled_if
+  (= %{ocaml-config:system} macosx)))
+
+(cram
  (applies_to pkg-config-quoting.t)
  (deps %{bin:pkg-config}))
 

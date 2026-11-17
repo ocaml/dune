@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794922872464,
+  "lastUpdate": 1794922880305,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -489808,6 +489808,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.21489698429334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "71457a08ac9b5e0d4cdd6202c8a4e168dfc7691f",
+          "message": "test(pkg): reproduce directory-order-dependent autolocking (#17059)\n\nDemonstrate unnecessary auto-locking after recreating byte-identical\nrepository directories. The trace fields `lock` and `package` count\ncache misses for the auto-lock and package build rules separately.\n\n- Changed enumeration order: `{\"lock\":1,\"package\":0}` — the bug is\nreproduced: auto-locking reruns, but the package stays cached.\n- Preserved enumeration order: `{\"lock\":0,\"package\":0}` — only a\ncontrol; this filesystem did not exercise the bug.\n\nThe test compares the filtered trace with the applicable literal JSON\nexpectation. Repository contents and the generated lock remain\nidentical. No fix is included.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-17T21:17:30+08:00",
+          "tree_id": "e072a8c9662af4f1a999feee380f30339d57f3f5",
+          "url": "https://github.com/ocaml/dune/commit/71457a08ac9b5e0d4cdd6202c8a4e168dfc7691f"
+        },
+        "date": 1794922879349,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.6148695605866666,
             "unit": "seconds"
           }
         ]

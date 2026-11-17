@@ -541,8 +541,7 @@ module Action_expander = struct
     include Expander0
 
     type t =
-      { name : Dune_pkg.Package_name.t
-      ; paths : Path.t Paths.t
+      { paths : Path.t Paths.t
       ; artifacts : Path.t Filename.Map.t Memo.t
       ; depends :
           (Variable.value Package_variable_name.Map.t * Path.t Paths.t) Package.Name.Map.t
@@ -675,15 +674,7 @@ module Action_expander = struct
     ;;
 
     let expand_pform
-          { name = _
-          ; env = _
-          ; paths
-          ; artifacts = _
-          ; context
-          ; depends
-          ; version = _
-          ; depexts = _
-          }
+          { env = _; paths; artifacts = _; context; depends; version = _; depexts = _ }
           ~source
           (pform : Pform.t)
       : (Value.t list, [ `Undefined_pkg_var of Package_variable_name.t ]) result Memo.t
@@ -959,7 +950,7 @@ module Action_expander = struct
          let ocamlfind_destdir = (Lazy.force expander.paths.install_roots).lib_root in
          Run_with_path.action
            ~depexts
-           ~pkg:(expander.name, prog_loc)
+           ~pkg:(expander.paths.name, prog_loc)
            exe
            args
            ~ocamlfind_destdir)
@@ -1111,7 +1102,6 @@ module Action_expander = struct
       binaries
     in
     { Expander.paths = pkg.paths
-    ; name = pkg.info.name
     ; artifacts
     ; context
     ; depends

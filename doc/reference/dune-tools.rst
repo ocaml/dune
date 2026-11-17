@@ -135,10 +135,10 @@ Flags:
 .. code-block:: console
 
    $ dune tools which ocamlformat
-   _build/.dev-tools.locks/ocamlformat/ocamlformat/target/bin/ocamlformat
+   _build/_private/default/.dev-tool/ocamlformat/ocamlformat/target/bin/ocamlformat
 
-   $ dune tools which merlin --allow-not-installed
-   _build/.dev-tools.locks/merlin/merlin/target/bin/ocamlmerlin
+   $ dune tools which ocamlmerlin --allow-not-installed
+   _build/_private/default/.dev-tool/merlin/merlin/target/bin/ocamlmerlin
 
 ``dune tools env``
 ~~~~~~~~~~~~~~~~~~

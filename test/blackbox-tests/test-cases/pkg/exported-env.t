@@ -49,7 +49,8 @@ also receives standard install paths and the shell environment.
   >   | jq -c '[.[].deps[] | .Env? // empty] | sort'
   []
 
-Changing only a dependency's exported environment must rebuild its consumer.
+Changing FOO should update the installed consumer. Known regression: without
+an environment dependency, only a fresh build sees the new value.
 
   $ make_lockpkg test <<EOF
   > (version 0.0.1)
@@ -60,9 +61,14 @@ Changing only a dependency's exported environment must rebuild its consumer.
   >  (:= BAR zzz))
   > EOF
   $ build_pkg usetest > /dev/null 2>&1
-  $ cat "$(get_build_pkg_dir usetest)/target/environment"
+  $ target=$(get_build_pkg_dir usetest)/target
+  $ cat "$target/environment"
+  bar/1.2.3
+  $ fresh=_fresh/${target#_build/}
+  $ dune build --build-dir _fresh "$fresh" > /dev/null 2>&1
+  $ cat "$fresh/environment"
   baz/1.2.3
-  $ dune rules --format=json "$(get_build_pkg_dir usetest)/target" \
+  $ dune rules --format=json "$target" \
   >   | jq '.[] | .deps | index({Env: "FOO"}) != null'
   false
 

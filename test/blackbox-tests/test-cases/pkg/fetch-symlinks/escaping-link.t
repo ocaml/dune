@@ -39,7 +39,7 @@ We then delete it silently.
   {
     "args": {
       "message": "Deleted broken symlink from fetched archive",
-      "full_name": "_build/_private/default/.pkg/foo.0.0.1-$DIGEST/source/link_to_outside"
+      "full_name": "_build/_private/default/.pkg/foo/source/link_to_outside"
     }
   }
 
@@ -63,8 +63,8 @@ Case 2 relative directory link that is still valid after extraction
 This fails correctly, the link isn't allowed to go outside
   $ build_pkg foo 2>&1 | censor | tail -3
   Error: Unable to resolve symlink
-  _build/_private/default/.pkg/foo.0.0.1-$DIGEST/source/link_to_outside:
-  its target _outside_sources is outside the source directory
+  _build/_private/default/.pkg/foo/source/link_to_outside: its target
+  _outside_sources is outside the source directory
   [1]
 
 Case 3: absolute directory link
@@ -76,10 +76,9 @@ Case 3: absolute directory link
   $ tar czf _src.tar.gz _src
 
 This fails correctly
-  $ build_pkg foo 2>&1 | censor | tail -5
+  $ build_pkg foo 2>&1 | censor | dune_cmd print-from 'Error:'
   Error: Unable to resolve symlink
-  _build/_private/default/.pkg/foo.0.0.1-$DIGEST/source/link_to_outside:
-  its target
+  _build/_private/default/.pkg/foo/source/link_to_outside: its target
   $PWD/_outside_sources
   is outside the source directory
   [1]
@@ -108,7 +107,7 @@ The symlink is correctly deleted because it goes outside the sources.
   {
     "args": {
       "message": "Deleted broken symlink from fetched archive",
-      "full_name": "_build/_private/default/.pkg/foo.0.0.1-$DIGEST/source/link_to_secret"
+      "full_name": "_build/_private/default/.pkg/foo/source/link_to_secret"
     }
   }
 
@@ -129,10 +128,9 @@ Case 5: absolute file links
   $ tar czf _src.tar.gz _src
 
 This fails correctly
-  $ build_pkg foo 2>&1 | censor | tail -5
+  $ build_pkg foo 2>&1 | censor | dune_cmd print-from 'Error:'
   Error: Unable to resolve symlink
-  _build/_private/default/.pkg/foo.0.0.1-$DIGEST/source/link_to_secret:
-  its target
+  _build/_private/default/.pkg/foo/source/link_to_secret: its target
   $PWD/_outside_sources/file.txt
   is outside the source directory
   [1]

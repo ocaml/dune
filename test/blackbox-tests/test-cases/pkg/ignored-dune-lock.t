@@ -43,5 +43,5 @@ dune.lock):
 Building fails as the patch cannot be found anymore
 
   $ build_pkg test
-  Error: Lock directory is not active for context "default".
+  Error: Don't know how to build _build/_private/default/.pkg/test/target
   [1]

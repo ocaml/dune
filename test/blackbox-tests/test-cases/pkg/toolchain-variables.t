@@ -85,5 +85,5 @@ fix the problem, it shows the sandbox path
   $ XDG_CACHE_HOME=$PWD/fake-cache dune build @pkg-install 2>&1 \
   > | dune_cmd subst '[[:alnum:]]{32}' '<hash>' \
   > | dune_cmd subst '[^ ]*_build' '$TESTCASE_ROOT/_build'
-  $TESTCASE_ROOT/_build/.sandbox/<hash>/_private/default/.pkg/ocaml-base-compiler.1-<hash>/target/share/ocaml-base-compiler
+  $TESTCASE_ROOT/_build/.sandbox/<hash>/_private/default/.pkg/ocaml-base-compiler/target/share/ocaml-base-compiler
 

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794923243668,
+  "lastUpdate": 1794923253853,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -489866,6 +489866,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.938826105980006,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3719aa74bf316c327b0b2c58ee6666c24346bbca",
+          "message": "refactor(pkg): use the package name from expander paths (#17076)\n\nRemove the duplicate `name` field from `Action_expander.Expander.t`. The\npackage paths already carry the same name; read `Paths.name` locally\nwhen constructing `Run_with_path` metadata.\n\nPackage naming, action serialization, and execution behavior are\nunchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-17T21:23:57+08:00",
+          "tree_id": "8a0c0138c9a97f5060a9391095f27c80c7923463",
+          "url": "https://github.com/ocaml/dune/commit/3719aa74bf316c327b0b2c58ee6666c24346bbca"
+        },
+        "date": 1794923252936,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5698468901333335,
             "unit": "seconds"
           }
         ]

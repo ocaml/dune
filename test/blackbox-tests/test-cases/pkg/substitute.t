@@ -126,7 +126,7 @@ It is also possible to use variables of your dependencies:
   > EOF
   $ build_pkg test 2>&1 | censor
   There is also some paths set:
-  '%{dependency:lib}%' is '../../dependency.0.0.1-$DIGEST/target/lib/dependency'
+  '%{dependency:lib}%' is '../../dependency/target/lib/dependency'
 
 The substitute action should not observe the environment:
 

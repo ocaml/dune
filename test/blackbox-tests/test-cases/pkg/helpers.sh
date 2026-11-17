@@ -25,15 +25,7 @@ default_repo_path() {
 # Prints the directory containing the package target and source dirs within the
 # _build directory.
 get_build_pkg_dir() {
-  local package_name=$1
-  local digest
-  digest=$($dune pkg print-digest "$package_name")
-  local status=$?
-  if [ "$status" -eq "0" ]; then
-    echo "$pkg_root/$digest"
-  else
-    return 1
-  fi
+  echo "$pkg_root/$1"
 }
 
 build_pkg() {

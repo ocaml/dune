@@ -36,10 +36,9 @@ Dune reuses the previous build.
   $ write_pkg b a
   $ target=$(get_build_pkg_dir foo)/target
   $ test "$previous" = "$target"
-  [1]
   $ dune build "$target"
   $ misses
-  ["never seen this target before"]
+  ["rule or dependencies changed"]
 
 Changing an input's contents must still invalidate the build.
 

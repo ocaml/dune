@@ -98,8 +98,8 @@ narrowing kicks in):
 The package [other] was *not* built:
 
   $ dune trace cat | jq 'select(.cat == "process" and .name == "finish" and .args.target_dirs[]?) | .args.target_dirs[]' | sort -u | censor
-  "_build/_private/default/.pkg/direct.0.0.1-$DIGEST1/target"
-  "_build/_private/default/.pkg/transitive.0.0.1-$DIGEST2/target"
+  "_build/_private/default/.pkg/direct/target"
+  "_build/_private/default/.pkg/transitive/target"
 
 Narrowing shrinks the build-dependency set, not just the visibility and PATH
 shown above. Previously, expanding a %{bin:X}/%{bin-available:X} pform forced

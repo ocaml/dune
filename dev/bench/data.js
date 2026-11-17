@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794931934457,
+  "lastUpdate": 1794933393100,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -682775,6 +682775,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.690192715586667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "09e585c19e02679da28534436c0c3cdf7f8ffe31",
+          "message": "test(pkg): reproduce invalidation from identical lockfile inputs (#17052)\n\nCopy identical lockfile-adjacent inputs into another lock directory and\nselect that copy without changing the package key. The rule currently\ngets invalidated despite identical input contents.\n\nUse an ordinary package with a no-op action, stable trace miss reasons,\nand a real-input-change control. Switching identical locks without\nadjacent inputs is a negative control. This is a reproduction only,\nwithout the staging-path fix.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-18T00:18:29+08:00",
+          "tree_id": "5a737ba4de7809d00964873dcf6069b2ea027dea",
+          "url": "https://github.com/ocaml/dune/commit/09e585c19e02679da28534436c0c3cdf7f8ffe31"
+        },
+        "date": 1794932986172,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.8036493530200004,
             "unit": "seconds"
           }
         ]

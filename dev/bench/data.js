@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794943966605,
+  "lastUpdate": 1794944286671,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -490127,6 +490127,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5511209555733334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b315a5a2d15603df958fd8fb0d2bac3824ec3b04",
+          "message": "test(pkg): expose missing environment and runtime dependency edges (#17086)\n\nInspect final rules for missing package-export environment inputs and\nlocked executable runtime dependencies, covering managed packages,\nworkspace actions, and both executable lookup forms. Record missing\nedges even when digest-qualified paths already force rebuilds; no\nproduction behavior changes.\n\nCoverage prerequisite for #16292.",
+          "timestamp": "2026-11-17T20:14:47+01:00",
+          "tree_id": "4bbf826cf71e95c14530074278b6b8babb7ca117",
+          "url": "https://github.com/ocaml/dune/commit/b315a5a2d15603df958fd8fb0d2bac3824ec3b04"
+        },
+        "date": 1794944285166,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 61.882918498533336,
             "unit": "seconds"
           }
         ]

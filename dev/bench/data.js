@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794952020420,
+  "lastUpdate": 1794952028134,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -490330,6 +490330,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 53.54487535105333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0b0a43ad9d784cce6cecdd7f7ed60b9bedc56270",
+          "message": "test(pkg): expose untracked host-context package exports (#17089)\n\nInspect final-rule dependencies for exports contributed by distinct host\nand target lockdirs, including an explicit host `PATH` export. Record\nthe current missing edges without changing production behavior.\n\nCoverage prerequisite for #17088.",
+          "timestamp": "2026-11-17T22:27:26+01:00",
+          "tree_id": "2c749924bb8b00726a39937ca5d6d6b72aafcbe4",
+          "url": "https://github.com/ocaml/dune/commit/0b0a43ad9d784cce6cecdd7f7ed60b9bedc56270"
+        },
+        "date": 1794952026937,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4623211058266667,
             "unit": "seconds"
           }
         ]

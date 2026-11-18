@@ -1,5 +1,6 @@
 Dune terminates a plugin process that has not connected when the build is
-interrupted.
+interrupted. Use SIGTERM because the shell starts background jobs with SIGINT
+ignored, which macOS sigwait cannot observe.
 
   $ cat > dune-project <<'EOF'
   > (lang dune 3.26)
@@ -31,7 +32,7 @@ interrupted.
   $ DUNE_PID=$!
   $ with_timeout dune_cmd wait-for-file-to-appear plugin/started
   $ PLUGIN_PID=$(cat plugin/started)
-  $ kill -INT "$DUNE_PID"
+  $ kill -TERM "$DUNE_PID"
   $ wait_for_pid_to_exit_with_timeout "$DUNE_PID" 200 || \
   >   (kill -KILL "$DUNE_PID" "$PLUGIN_PID" 2>/dev/null; false)
   $ wait "$DUNE_PID"

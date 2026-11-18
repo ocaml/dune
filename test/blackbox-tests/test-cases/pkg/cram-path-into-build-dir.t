@@ -5,12 +5,12 @@ dependency on. They are then rerun when those binaries change.
   $ make_lockdir
   $ make_lockpkg provider <<'EOF'
   > (version 0.0.1)
-  > (build
+  > (install
   >  (progn
-  >   (system "printf '#!/bin/sh\necho v1\n' > helper")
-  >   (system "chmod +x helper")
-  >   (system "echo 'bin: [ \"helper\" ]' > provider.install")))
+  >   (run cp helper %{pkg-self:bin}/helper)
+  >   (run chmod +x %{pkg-self:bin}/helper)))
   > EOF
+  $ printf '#!/bin/sh\necho v1\n' | make_lockpkg_file provider helper
   $ make_dune_project 3.22
   $ cat >> dune-project <<EOF
   > (package (name mypkg) (allow_empty) (depends provider))
@@ -43,9 +43,14 @@ Declaring the dependency makes the binary available:
   +  v1
   [1]
 
-When the package changes, it is rebuilt and the test is rerun:
+Change the helper source without editing the lock entry. The package is
+rebuilt and the test is rerun:
 
-  $ sed -i.bak 's/v1/v2/' ${default_lock_dir}/provider.pkg
+  $ helper="$(get_build_pkg_dir provider)/target/bin/helper"
+  $ printf '#!/bin/sh\necho v2\n' | make_lockpkg_file provider helper
+  $ build_pkg provider
+  $ "$helper"
+  v2
   $ dune test
   File "t.t", line 1, characters 0-0:
   --- t.t

@@ -471,6 +471,16 @@ end
     memoized function. *)
 val node : ('i, 'o) Table.t -> 'i -> ('i, 'o) Node.t
 
+(** Create a staged constructor for nodes sharing one specification of [f].
+    Each application of the constructor creates a fresh node, even for equal
+    inputs. Nodes are not stored in a memoization table, and [f] runs only when
+    a node is read. *)
+val node_staged
+  :  name:string
+  -> input:(module Store.Input with type t = 'i)
+  -> ('i -> 'o t)
+  -> ('i -> ('i, 'o) Node.t) Staged.t
+
 (** Names passed to lazy-node constructors must be string literals so that creating a
     node does not allocate its name. *)
 val lazy_node

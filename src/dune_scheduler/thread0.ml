@@ -11,7 +11,7 @@ let signal_watcher_debug : Signal.t = Usr2
 (* These are the signals that will make the scheduler attempt to terminate dune
    or signal to dune to reap a process *)
 let interrupt_signals : Signal.t list =
-  [ signal_watcher_interrupt; signal_watcher_debug; Chld; Int; Quit; Term ]
+  [ signal_watcher_interrupt; signal_watcher_debug; Chld; Hup; Int; Quit; Term ]
 ;;
 
 (* In addition, the scheduler also blocks some other signals so that only

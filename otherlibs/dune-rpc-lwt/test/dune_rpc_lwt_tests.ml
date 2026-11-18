@@ -175,10 +175,46 @@ let%expect_test "closing input channel closes output channel" =
          Lwt_unix.close client
        in
        let* input, output = connect_chan (`Unix socket_path) in
+       let* () = server_conn in
+       let* eof = Lwt_io.read_char_opt input in
+       printfn "input eof: %b" (Option.is_none eof);
        let* () = Lwt_io.close input in
        printfn "output closed: %b" (Lwt_io.is_closed output);
-       server_conn));
-  [%expect {| output closed: true |}]
+       Lwt.return_unit));
+  [%expect
+    {|
+    input eof: true
+    output closed: true |}]
+;;
+
+let%expect_test "closing channels after peer reset" =
+  Lwt_main.run
+    (let server = Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
+     Lwt.finalize
+       (fun () ->
+          let* () = Lwt_unix.bind server (Unix.ADDR_INET (Unix.inet_addr_loopback, 0)) in
+          Lwt_unix.listen server 1;
+          let port =
+            match Lwt_unix.getsockname server with
+            | Unix.ADDR_INET (_, port) -> port
+            | Unix.ADDR_UNIX _ -> Code_error.raise "expected TCP socket" []
+          in
+          let* chan = connect_chan (`Ip (`Host "127.0.0.1", `Port port)) in
+          let* peer, (_ : Unix.sockaddr) = Lwt_unix.accept server in
+          Lwt_unix.setsockopt_optint peer Unix.SO_LINGER (Some 0);
+          let* () = Lwt_unix.close peer in
+          let input, _ = chan in
+          let* () =
+            Lwt.catch
+              (fun () -> Lwt_io.read_char_opt input |> Lwt.map (fun _ -> ()))
+              (function
+                | Unix.Unix_error (ECONNRESET, _, _) -> Lwt.return_unit
+                | exn -> Lwt.fail exn)
+          in
+          let+ () = Lwt_io.close input in
+          print_endline "closed")
+       (fun () -> Lwt_unix.close server));
+  [%expect {| closed |}]
 ;;
 
 module Logger = struct

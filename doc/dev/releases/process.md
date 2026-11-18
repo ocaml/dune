@@ -87,15 +87,9 @@ opam-ci to check for integration with the wider ocaml ecosystem.
       $ RELEASE_KIND=prerelease ./doc/dev/releases/release-cut.sh
       ```
 
-      The alpha number is derived from the existing tags, starting at
-      `X.Y.Z~alpha0`. The script verifies that the branch is fit to release,
-      prints the changelog it is about to commit for review, and then commits
-      it, pushes, and publishes. Passing `DRY_RUN=true` stops short of every
-      mutating step, so the same checks and the same changelog preview can be
-      seen without cutting anything.
+      Passing `DRY_RUN=true` will run checks and non-mutating updates, but will
+      not write, commit, or push any changes.
 
-      The GitHub release is marked as a pre-release and the opam repository
-      pull request is opened as a draft, both automatically.
     - Wait for the `opam-ci` results
     - Review the results:
         - Any build or test failures in dune's own packages require fixes
@@ -117,10 +111,6 @@ opam-ci to check for integration with the wider ocaml ecosystem.
   $ RELEASE_KIND=release ./doc/dev/releases/release-cut.sh
   ```
 
-  The changelog section for `X.Y.Z` is regenerated from the change fragments,
-  which have been accumulating across the alphas rather than being consumed by
-  them, so the entries from every alpha are combined into one section dated the
-  day of the release. The fragments are consumed only now.
 - Add a comment on the opam repo PR linking back to the release tracker issues
  and explaining that all triage is completed, and ask the opam repo maintainers
  to bypass the opam-ci.
@@ -198,32 +188,31 @@ pushed, or published at that point.
 ### Resuming an interrupted release
 
 Publication is a sequence of steps that is not transactional, so a failure part
-way through leaves the earlier steps done — a failure at `opam submit` leaves a
-pushed tag and a published GitHub release behind. Rerunning `release-cut.sh` in
-that state is refused, because the tag now exists.
+way through leaves the earlier steps completed.
 
-Resume from the step that failed instead, using the individual targets:
+You can resume an aborted `dune-release` from a failed step that failed using
+theses individual make targets:
 
 ```
-$ make opam-release-tag
-$ make opam-release-distrib
-$ make opam-release-publish
-$ make opam-release-opam-pkg
-$ make opam-release-opam-submit
+$ RELEASE_KIND=<kind> make opam-release-tag
+$ RELEASE_KIND=<kind> make opam-release-distrib
+$ RELEASE_KIND=<kind> make opam-release-publish
+$ RELEASE_KIND=<kind> make opam-release-opam-pkg
+$ RELEASE_KIND=<kind> make opam-release-opam-submit
 ```
-
-Use the `opam-release-` targets rather than the `dune-release-` ones they wrap:
-like `opam-release`, they run the step under the dune being released, instead of
-whichever dune executable happens to be on `PATH`.
 
 Pass the same `RELEASE_KIND` that the release was started with, so that an alpha
 is still published as a pre-release and still submitted to opam as a draft.
 
+##
+
 ## Decisions
 
 - Release cadence:
-  - we aim for a minor release weekly or fortnightly.
-  - we do point releases only for the latest release minor version.
+  - we aspire to a minor release weekly or fortnightly.
+  - we do point releases only for the latest release minor version, and only
+    when a regression or critical bug is discovered before the next minor
+    release is cut.
 
 - Release Go/No Go after alpha:
   - the goal is to determine, once the known blockers are fixed, if we need an

@@ -176,8 +176,9 @@ closed and completes after the gate is released.
   rule-plugin-request-start 1
   rule-plugin-spawn 1
 
-Interrupting normal build cleanup reaps the plugin blocked in its exit handler.
-The exit-handler gate stays closed throughout shutdown.
+Terminating Dune during cleanup reaps the plugin blocked in its exit handler.
+The exit-handler gate stays closed throughout shutdown. Use SIGTERM because the
+shell starts background jobs with SIGINT ignored.
 
   $ rm -f "$PLUGIN_TEST_DIR/.exiting"
   $ echo '(plugin.generate)' > use/dune
@@ -187,7 +188,7 @@ The exit-handler gate stays closed throughout shutdown.
   $ wait_for_trace_jq_true 'any(.[]; .name == "rule-plugin-spawn")'
   $ PLUGIN_PID=$(trace_jq '
   >   first(.[] | select(.name == "rule-plugin-spawn")) | .args.pid')
-  $ kill -INT "$DUNE_PID"
+  $ kill -TERM "$DUNE_PID"
   $ wait "$DUNE_PID"
   [130]
   $ wait_for_pid_to_exit_with_timeout "$PLUGIN_PID" 200

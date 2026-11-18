@@ -3,3 +3,8 @@
  (enabled_if
   (= %{system} linux))
  (deps %{bin:strace}))
+
+(cram
+ (applies_to hangup-cache.t)
+ (enabled_if
+  (<> %{os_type} Win32)))

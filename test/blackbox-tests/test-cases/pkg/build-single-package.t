@@ -97,3 +97,53 @@ its metadata or the payload size.
   payload-ok
   $ payload_dir=$(get_build_pkg_dir payload)
   $ cmp dune.lock/payload.files/sub/data "$payload_dir/target/share/payload/data"
+
+The build command is expanded before a missing source is reported, installing
+the dependency needed to expand its package variable.
+
+  $ make_lockpkg source-error-dep <<EOF
+  > (version dev)
+  > (build (run echo dependency-built))
+  > EOF
+  $ make_lockpkg source-error <<EOF
+  > (version dev)
+  > (depends source-error-dep)
+  > (source (copy "$PWD/missing-source"))
+  > (build (run echo %{pkg:source-error-dep:version}))
+  > EOF
+  $ build_pkg source-error > source-error.log 2>&1
+  [1]
+  $ grep -q 'does not exist' source-error.log
+  $ if test -d "$(get_build_pkg_dir source-error-dep)/target"; then
+  >   echo dependency-built-before-source-error
+  > else
+  >   echo source-rejected-first
+  > fi
+  dependency-built-before-source-error
+
+Eager rule collection for directory-target discovery traverses unrelated
+package sources. The looping symlink in the external source masks the usual
+directory-target diagnostic. Neither package should be built.
+
+  $ mkdir query-project query-source
+  $ ln -s loop query-source/loop
+  $ cd query-project
+  $ make_dune_project 3.25
+  $ make_lockdir
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.20)
+  > (pkg enabled)
+  > EOF
+  $ make_lockpkg requested <<EOF
+  > (version dev)
+  > (build (run false))
+  > EOF
+  $ make_lockpkg unrelated <<EOF
+  > (version dev)
+  > (source (copy "$PWD/../query-source"))
+  > EOF
+  $ target="$(get_build_pkg_dir requested)/target"
+  $ dune describe targets --context _private "$target" 2>&1 | censor
+  Error:
+  stat($PWD/../query-source/loop): Too many levels of symbolic links
+  $ test ! -d "$target"

@@ -32,7 +32,7 @@ Git
   and the repository exists.
   Error: Failed to run external command:
   'git ls-remote "file://$PWD/dummy"'
-  -> required by _build/_fetch/url/$DIGEST1/dir
+  -> required by _build/_fetch/url-$DIGEST1-dir
   -> required by
      _build/_private/default/.pkg/foo.dev-$DIGEST2/source
   -> required by

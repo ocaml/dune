@@ -1199,7 +1199,15 @@ module Unprocessed = struct
           ~expander
           preprocessor_deps
       in
-      ppx_deps_of_builder (Action_builder.ignore env)
+      let* _, deps =
+        Action_builder.of_memo (Action_builder.evaluate_and_collect_deps env)
+      in
+      if
+        Dep.Set.for_all deps ~f:(function
+          | File _ | File_selector _ -> true
+          | Env _ | Alias _ | Universe -> false)
+      then ppx_deps_of_builder (Action_builder.ignore env)
+      else Action_builder.return ((), None)
     in
     let pp_deps = Processed.union_pp_deps pp_config_deps preprocessor_deps in
     let+ config, indexes_digest =
@@ -1249,11 +1257,8 @@ module Unprocessed = struct
       let+ flags = flags
       and+ indexes, indexes_digest = Ocaml_index.context_indexes context ~for_
       and+ use_hidden_includes =
-        match for_ with
-        | Melange -> Action_builder.return false
-        | Ocaml ->
-          let+ ocaml = Action_builder.of_memo (Context.ocaml context) in
-          Ocaml.Version.supports_hidden_includes ocaml.version
+        let+ ocaml = Action_builder.of_memo (Context.ocaml context) in
+        Ocaml.Version.supports_hidden_includes ocaml.version
       and+ deps_src_dirs, deps_obj_dirs, deps_cmt_dirs =
         add_lib_dirs sctx ~for_ requires_compile
       and+ hidden_src_dirs, hidden_obj_dirs, hidden_cmt_dirs =

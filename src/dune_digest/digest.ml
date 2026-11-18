@@ -518,7 +518,9 @@ let path_with_stats_internal
       Unix_error.Detailed.catch
         (fun path ->
            let contents = Path.to_string path |> Unix.readlink |> string_digest in
-           path_with_executable_bit ~executable:stats.executable ~content_digest:contents)
+           path_with_executable_bit_pooled
+             ~executable:stats.executable
+             ~content_digest:contents)
         path
       |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)
     | S_REG ->

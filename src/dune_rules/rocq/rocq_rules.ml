@@ -719,7 +719,6 @@ let generic_rocq_args
       ~theories_deps
       ~theory_dirs
       ~package_ocamlpath
-      rocq_module
   =
   let+ rocq_stanza_flags =
     rocq_stanza_flags
@@ -744,15 +743,7 @@ let generic_rocq_args
   let file_flags =
     rocqc_file_flags ~dir ~theories_deps ~wrapper_name ~package_ocamlpath
   in
-  match rocq_prog with
-  | `Rocqc ->
-    [ rocq_stanza_flags
-    ; rocq_native_flags
-    ; Dyn boot_flags
-    ; S file_flags
-    ; Dep (Rocq_module.source rocq_module)
-    ]
-  | `Rocqtop -> [ rocq_stanza_flags; rocq_native_flags; Dyn boot_flags; S file_flags ]
+  [ rocq_stanza_flags; rocq_native_flags; Dyn boot_flags; S file_flags ]
 ;;
 
 module Per_file = struct
@@ -805,6 +796,8 @@ let setup_rocqc_rule
       ~stanza_flags
       ~rocq_lang_version
       ~modules_flags
+      ~timing
+      ~profiling
       ~theories_deps
       ~mode
       ~wrapper_name
@@ -820,6 +813,7 @@ let setup_rocqc_rule
   (* TODO: merge with boot_type *)
   let per_file_flags = Per_file.match_ modules_flags rocq_module in
   let* rocq = rocq ~loc ~dir ~sctx in
+  let* expander = Super_context.expander sctx ~dir in
   let obj_files =
     Rocq_module.obj_files
       ~wrapper_name
@@ -838,6 +832,31 @@ let setup_rocqc_rule
     let targets = Option.to_list output_file @ obj_files in
     Command.Args.Hidden_targets targets
   in
+  let enabled stanza get =
+    match stanza with
+    | Some condition -> Expander.eval_blang expander condition
+    | None ->
+      Env_stanza_db.value ~default:Blang.false_ ~dir ~f:(fun (config : Dune_env.config) ->
+        Memo.return (get config.rocq))
+      >>= Expander.eval_blang expander
+  in
+  let* timing_args =
+    let+ timing = enabled timing Rocq_env.timing
+    and+ profiling = enabled profiling Rocq_env.profiling in
+    Command.Args.S
+      [ (if timing
+         then
+           S [ A "-time-file"; Target (Rocq_module.timing_file rocq_module ~obj_dir:dir) ]
+         else Command.Args.empty)
+      ; (if profiling
+         then
+           S
+             [ A "-profile"
+             ; Target (Rocq_module.profile_file rocq_module ~obj_dir:dir ~mode)
+             ]
+         else Command.Args.empty)
+      ]
+  in
   let* args =
     generic_rocq_args
       ~sctx
@@ -851,7 +870,6 @@ let setup_rocqc_rule
       ~mode
       ~rocq_prog:`Rocqc
       ~package_ocamlpath
-      rocq_module
   in
   let deps_of = deps_of ~dir ~boot_type ~wrapper_name ~mode rocq_module in
   let cflag = Command.Args.A "compile" in
@@ -869,7 +887,12 @@ let setup_rocqc_rule
               ?stdout_to:output_file
               ~sandbox:Sandbox_config.no_sandboxing
               rocq
-              (cflag :: targets :: args))
+              [ cflag
+              ; targets
+              ; S args
+              ; timing_args
+              ; Dep (Rocq_module.source rocq_module)
+              ])
 ;;
 
 let rocq_modules_of_theory ~sctx lib =
@@ -1112,6 +1135,8 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
       ~stanza_flags
       ~rocq_lang_version
       ~modules_flags
+      ~timing:s.timing
+      ~profiling:s.profiling
       ~rocqc_dir
       ~theories_deps
       ~mode
@@ -1163,7 +1188,6 @@ let rocqtop_args_theory ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) rocq
     ~theories_deps
     ~theory_dirs
     ~package_ocamlpath
-    rocq_module
 ;;
 
 (******************************************************************************)
@@ -1285,6 +1309,8 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Extraction.
         ~stanza_flags:s.buildable.flags
         ~rocq_lang_version
         ~modules_flags
+        ~timing:None
+        ~profiling:None
         ~sctx
         ~loc
         ~rocqc_dir:dir
@@ -1324,7 +1350,6 @@ let rocqtop_args_extraction ~sctx ~dir (s : Rocq_stanza.Extraction.t) rocq_modul
     ~theories_deps
     ~theory_dirs:Path.Build.Set.empty
     ~package_ocamlpath
-    rocq_module
 ;;
 
 (* Version for export *)

@@ -73,6 +73,8 @@ The Rocq theory stanza is very similar in form to the OCaml
      (rocqdoc_flags <rocqdoc_flags>)
      (rocqdoc_header <rocqdoc_header>)
      (rocqdoc_footer <rocqdoc_footer>)
+     (timing <blang expression>)
+     (profiling <blang expression>)
      (no_corelib)
      (mode <rocq_build_mode>)
      (theories <rocq_theories>))
@@ -167,6 +169,15 @@ The semantics of the fields are:
 - ``<rocqdoc_footer>`` is a file passed to ``rocq doc`` using the
   ``--with-footer`` option, to configure a custom HTML footer for the
   generated HTML pages.
+
+- ``(timing <blang expression>)`` and ``(profiling <blang expression>)``
+  enable per-command timing and profiling information, respectively, when
+  their :doc:`Boolean expressions </reference/boolean-language>` evaluate to
+  ``true``. These fields take precedence over the corresponding fields in the
+  active ``env`` profile. If omitted, the ``env`` values are used, defaulting
+  to ``false``. See :ref:`rocq-env` for the output file names and details.
+
+  .. versionadded:: 3.26
 
 - ``(no_corelib)`` disables Dune's automatic ``Corelib`` handling. When this
   field is present, ``Corelib`` is not added as an implicit dependency and
@@ -934,3 +945,36 @@ with the following values for ``<rocq_fields>``:
 - ``(rocqdoc_footer <file>)``: The default HTML footer passed to ``rocq doc``
   via the ``--with-footer`` flag. Values set here become the ``:standard``
   value in the ``(rocq.theory (rocqdoc_footer <file>))`` field.
+- ``(timing <blang expression>)`` controls whether ``rocq compile`` writes
+  per-command timing information for ``foo.v`` to ``foo.v.timing``, using
+  ``-time-file``. The default is ``false``.
+
+  .. versionadded:: 3.26
+
+- ``(profiling <blang expression>)`` controls whether ``rocq compile`` writes
+  profiling information for ``foo.v`` to ``foo.vo.prof.json``
+  (``foo.vos.prof.json`` in ``vos`` mode), using ``-profile``. The default is
+  ``false``.
+
+  .. versionadded:: 3.26
+
+Both fields use the :doc:`/reference/boolean-language` and allow
+:doc:`/concepts/variables` in their expressions. An omitted field inherits the
+setting from the enclosing environment; setting it to ``false`` overrides an
+inherited setting. The corresponding fields in ``rocq.theory`` take precedence
+when present. When enabled, these fields take precedence over conflicting Rocq
+flags.
+
+The output files are targets of the rule compiling ``foo.v``. You can build
+them directly, and Dune keeps them in the build directory. Set these fields in
+``dune-workspace``, or in a workspace file selected by ``DUNE_WORKSPACE``, to
+provide defaults for the entire workspace, including when building packages
+with ``dune build -p``. For example, to enable profiling only when the
+``ROCQ_PROFILING`` environment variable is set to ``true``:
+
+.. code:: dune
+
+   (env
+    (_
+     (rocq
+      (profiling (= %{env:ROCQ_PROFILING=false} true)))))

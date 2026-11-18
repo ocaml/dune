@@ -1,4 +1,4 @@
-A plugin's site should be visible only to the action that depends on it.
+A package dependency should make a plugin available without building @install.
 
   $ unset DUNE_DIR_LOCATIONS
   $ write_sites_plugin_app_dune 3.20 '(package app)'
@@ -7,6 +7,7 @@ A plugin's site should be visible only to the action that depends on it.
   > let () =
   >   let module Plugins = Sites.Plugins.Plugins in
   >   Printf.printf "plugin site configured: %b\n%!" (Plugins.paths <> []);
+  >   List.iter print_endline (Plugins.list ());
   >   Plugins.load_all ()
   > EOF
   $ mkdir plugin
@@ -32,3 +33,18 @@ A plugin's site should be visible only to the action that depends on it.
   plugin site configured: true
   $ dune build @without-plugin
   plugin site configured: true
+
+A prebuilt install tree must not make the same plugin appear twice.
+
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target plugin-list)
+  >  (deps (package app) (package plugin1))
+  >  (action (with-stdout-to %{target} (run app))))
+  > EOF
+  $ dune build @install
+  $ dune build plugin-list
+  $ cat _build/default/plugin-list
+  plugin site configured: true
+  plugin1
+  Registration of Plugin1

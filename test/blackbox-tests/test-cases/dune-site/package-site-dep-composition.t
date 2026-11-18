@@ -27,3 +27,34 @@ dependencies and dependencies in nested includes.
   >   [1]
   > EOF
   $ dune runtest
+
+Reordering two includes changes which copy of a file is visible. The
+files themselves and the action stay the same.
+
+  $ echo '((package addon))' > addon.sexp
+  $ echo '((package leaf))' > leaf.sexp
+  $ cat >> dune <<'EOF'
+  > (install
+  >  (package addon)
+  >  (section (site (foo data)))
+  >  (files (addon.txt as choice.txt)))
+  > (install
+  >  (package leaf)
+  >  (section (site (foo data)))
+  >  (files (leaf.txt as choice.txt)))
+  > (rule
+  >  (target chosen)
+  >  (deps (include addon.sexp) (include leaf.sexp))
+  >  (action
+  >   (with-stdout-to %{target}
+  >    (with-accepted-exit-codes (or 0 1) (run ./main.exe choice.txt)))))
+  > EOF
+  $ dune build chosen
+  $ cat _build/default/chosen
+  choice.txt: missing
+  $ dune_cmd subst 'addon.sexp\) \(include leaf.sexp' \
+  >   'leaf.sexp) (include addon.sexp' < dune > reordered
+  $ mv reordered dune
+  $ dune build chosen
+  $ cat _build/default/chosen
+  choice.txt: missing

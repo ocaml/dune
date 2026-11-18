@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795019944364,
+  "lastUpdate": 1795020077640,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -490881,6 +490881,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4891621700866667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "db8ebf59270e6ba830768ac0fa834db8658d796f",
+          "message": "test(ppx): reproduce stale dependency scans after environment changes (#17092)\n\nA staged PPX chooses between modules `A` and `B`. After a package export\nswitches to `B`, the incremental scan still reports `a.cmi` while a\nfresh scan reports `b.cmi`. Changing the same variable in a directory\n`env_vars` stanza also leaves the executable printing `1` instead of\n`2`.",
+          "timestamp": "2026-11-18T17:19:03+01:00",
+          "tree_id": "412f9d21480446ab6eded627335826333ec8406e",
+          "url": "https://github.com/ocaml/dune/commit/db8ebf59270e6ba830768ac0fa834db8658d796f"
+        },
+        "date": 1795020075858,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 39.11579528364667,
             "unit": "seconds"
           }
         ]

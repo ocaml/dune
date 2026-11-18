@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794986501771,
+  "lastUpdate": 1794986509193,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -490446,6 +490446,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 51.41324996652666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8cb938acf5bca324b3d3c6819aa4c4c2258eed33",
+          "message": "test(melange): expose missing CMJ metadata with private modules (#17069)\n\nDemonstrate that private modules hide CMJ optimization metadata from\nconsumers of workspace libraries (#17020). The regression also\nreproduces with #16941.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-17T23:02:01-08:00",
+          "tree_id": "8be9425097bdec0b917ffdbddd58a1a93b9338bd",
+          "url": "https://github.com/ocaml/dune/commit/8cb938acf5bca324b3d3c6819aa4c4c2258eed33"
+        },
+        "date": 1794986508169,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.45974901804000007,
             "unit": "seconds"
           }
         ]

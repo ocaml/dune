@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794986509193,
+  "lastUpdate": 1794994334787,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -683384,6 +683384,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.167503390306667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "77cea1c8ab46561e20c74e70345fcd8eaf505714",
+          "message": "test(pkg): cover package environment dependencies across contexts (#17090)\n\nReproduce stale output after the host package `PATH` changes, and check\nwhich environment variables rules track in opam toolchain and explicit\nlock contexts. Keep the Cram helper at a fixed install path so a path\nchange cannot mask a missing file dependency.\n\nRegression coverage for #17088.",
+          "timestamp": "2026-11-18T10:17:05+01:00",
+          "tree_id": "2b9af2a3add84518453d43d88ee71ebdfbceb37c",
+          "url": "https://github.com/ocaml/dune/commit/77cea1c8ab46561e20c74e70345fcd8eaf505714"
+        },
+        "date": 1794994012167,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.96601887536,
             "unit": "seconds"
           }
         ]

@@ -57,3 +57,23 @@ dependencies.
   >    | {kind: "glob", dir: (.dir | basename), predicate}
   >    ]) | unique'
   [{"kind":"glob","dir":"ctypes","predicate":"*.h"}]
+
+Ctypes 0.4 introduces link dependencies and requires the final link to be
+sandboxed.
+
+  $ sed -i.bak 's/(using ctypes 0.3)/(using ctypes 0.4)/' dune-project
+  $ sed -i.bak 's/; LINK_DEPS/(link_deps (source_tree vendor))/' dune
+  $ rm dune-project.bak dune.bak
+  $ DYLD_LIBRARY_PATH="$TARGET" LD_LIBRARY_PATH="$TARGET" dune exec ./example.exe
+  4
+  $ dune trace cat | jq_dune -sc '
+  >   [ .[]
+  >   | processes
+  >   | select((.args.target_files // [])
+  >            | index("_build/default/example.exe"))
+  >   | { sandbox: (.args.dir | contains(".sandbox"))
+  >     , example_flags:
+  >         ([.args.process_args[] | select(. == "-lexample")] | length)
+  >     }
+  >   ][0]'
+  {"sandbox":true,"example_flags":1}

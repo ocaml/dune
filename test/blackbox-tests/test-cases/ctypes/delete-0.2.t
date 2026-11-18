@@ -10,6 +10,6 @@ Version 0.2 is deleted.
   2 | (using ctypes 0.2)
                     ^^^
   Error: Version 0.2 of the ctypes extension has been deleted in Dune 3.11.
-  Please port this project to a newer version of the extension, such as 0.3.
+  Please port this project to a newer version of the extension, such as 0.4.
   Hint: You will also need to upgrade to (lang dune 3.7).
   [1]

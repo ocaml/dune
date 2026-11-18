@@ -9,6 +9,12 @@ package build rules. This bug reruns auto-locking, not the package build.
   > EOF
   $ mkpkg bar <<'EOF'
   > EOF
+
+Include symlinks to exercise their executable-bit hashing as well as regular
+file and directory hashing. The solver ignores these metadata links.
+
+  $ ln -s opam "$mock_packages/foo/foo.1/metadata"
+  $ ln -s opam "$mock_packages/bar/bar.0.0.1/metadata"
   $ add_mock_repo_if_needed
   $ enable_pkg
   $ cat > dune-project <<'EOF'
@@ -46,7 +52,7 @@ does not exercise the bug.
   $ mv mock-opam-repository/packages saved-packages
   $ mkdir mock-opam-repository/packages
   $ for package in bar foo; do
-  >   cp -R "saved-packages/$package" mock-opam-repository/packages/
+  >   cp -RP "saved-packages/$package" mock-opam-repository/packages/
   > done
   $ find mock-opam-repository/packages/. ! -name . -prune -print > order.after
   $ if cmp -s order.before order.after; then

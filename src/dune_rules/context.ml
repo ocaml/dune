@@ -91,9 +91,7 @@ and t =
   ; build_context : Build_context.t
   ; builder : builder
   ; which_narrowed_to_packages :
-      packages:Package.Name.Selection.t
-      -> Filename.t
-      -> (Path.t * Package.Name.t) option Memo.t
+      packages:Package.Name.Selection.t -> Filename.t -> Path.t option Memo.t
   }
 
 let default_target_exec ~target_exec toolchain =
@@ -214,7 +212,7 @@ let which_in_path t fname = Which.which ~path:t.builder.path fname
 let which t fname =
   which_narrowed_to_packages t ~packages:Package.Name.Selection.All fname
   >>= function
-  | Some (p, _package) -> Memo.return (Some p)
+  | Some p -> Memo.return (Some p)
   | None -> which_in_path t fname
 ;;
 

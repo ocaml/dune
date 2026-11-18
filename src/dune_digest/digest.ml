@@ -461,11 +461,6 @@ let path_with_executable_bit_with string_digest =
 let path_with_executable_bit = path_with_executable_bit_with string
 let path_with_executable_bit_pooled = path_with_executable_bit_with string_pooled
 
-let file_with_executable_bit_sync ~executable path =
-  let content_digest = file path in
-  path_with_executable_bit ~content_digest ~executable
-;;
-
 let file_with_executable_bit_pooled ~executable path =
   let content_digest = file path in
   path_with_executable_bit_pooled ~content_digest ~executable
@@ -567,9 +562,9 @@ let path_with_stats_internal
 let path_with_stats ~allow_dirs path stats =
   path_with_stats_internal
     ~allow_dirs
-    ~string_digest:string
-    ~directory_digest:(directory_digest_with repr)
-    ~file_with_executable_bit:file_with_executable_bit_sync
+    ~string_digest:string_pooled
+    ~directory_digest:(directory_digest_with repr_pooled)
+    ~file_with_executable_bit:file_with_executable_bit_pooled
     path
     stats
 ;;

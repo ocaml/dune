@@ -82,5 +82,5 @@ See :doc:`reference/config/display` for a description of all status-line
 components.
 
 .. _lwt: https://github.com/ocsigen/lwt
-.. _Dune_rpc: https://github.com/ocaml/dune/blob/main/otherlibs/dune-rpc/dune_rpc.mli
+.. _Dune_rpc: https://github.com/ocaml/dune/blob/main/otherlibs/dune-rpc/v1.mli
 .. _rpc_client_example: https://github.com/ocaml/dune/tree/main/otherlibs/dune-rpc-lwt/examples/rpc_client

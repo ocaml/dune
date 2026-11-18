@@ -2319,8 +2319,6 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
   (* TODO should we add env deps on these? *)
   >>> add_env (Pkg.exported_env pkg) build_action
   |> Action_builder.With_targets.map ~f:Action.Full.disable_sandbox_policy
-  |> Action_builder.With_targets.add_directories
-       ~directory_targets:[ pkg.write_paths.target_dir ]
 ;;
 
 let gen_rules ({ DB.pkg_digest_table; _ } as db) ~package_universe pkg_digest =

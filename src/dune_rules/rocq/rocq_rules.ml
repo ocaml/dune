@@ -830,13 +830,14 @@ let setup_rocqc_rule
     Command.Args.Hidden_targets targets
   in
   let* timing_args =
-    let+ timing =
-      Env_stanza_db.value ~default:false ~dir ~f:(fun (config : Dune_env.config) ->
-        Memo.return (Rocq_env.timing config.rocq))
-    and+ profiling =
-      Env_stanza_db.value ~default:false ~dir ~f:(fun (config : Dune_env.config) ->
-        Memo.return (Rocq_env.profiling config.rocq))
+    let* expander = Super_context.expander sctx ~dir in
+    let enabled get =
+      Env_stanza_db.value ~default:Blang.false_ ~dir ~f:(fun (config : Dune_env.config) ->
+        Memo.return (get config.rocq))
+      >>= Expander.eval_blang expander
     in
+    let+ timing = enabled Rocq_env.timing
+    and+ profiling = enabled Rocq_env.profiling in
     Command.Args.S
       [ (if timing
          then

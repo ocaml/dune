@@ -26,16 +26,19 @@ By default, no timing or profiling outputs are produced:
   $ dune build @all
   $ list_outputs
 
-Enabling them in the workspace:
+Enabling them in the workspace only for the dev profile:
 
   $ cat > dune-workspace <<EOF
   > (lang dune 3.26)
   > (env
   >  (_
   >   (rocq
-  >    (timing true)
-  >    (profiling true))))
+  >    (timing (= %{profile} dev))
+  >    (profiling (= %{profile} dev)))))
   > EOF
+
+  $ dune build --profile release @all
+  $ list_outputs
 
   $ dune build @all
   $ list_outputs

@@ -20,8 +20,8 @@ type t =
   ; rocqdoc_flags : Ordered_set_lang.Unexpanded.t
   ; rocqdoc_header : String_with_vars.t option
   ; rocqdoc_footer : String_with_vars.t option
-  ; timing : bool option
-  ; profiling : bool option
+  ; timing : Blang.t option
+  ; profiling : Blang.t option
   }
 
 let default =
@@ -68,9 +68,10 @@ let decode =
           field_o
             "rocqdoc_footer"
             (Syntax.since Stanza.syntax (3, 21) >>> String_with_vars.decode)
-        and+ timing = field_o "timing" (Syntax.since Stanza.syntax (3, 26) >>> bool)
+        and+ timing =
+          field_o "timing" (Syntax.since Stanza.syntax (3, 26) >>> Blang.decode)
         and+ profiling =
-          field_o "profiling" (Syntax.since Stanza.syntax (3, 26) >>> bool)
+          field_o "profiling" (Syntax.since Stanza.syntax (3, 26) >>> Blang.decode)
         in
         { flags
         ; rocqdep_flags
@@ -98,6 +99,6 @@ let equal
   && Ordered_set_lang.Unexpanded.equal rocqdoc_flags t.rocqdoc_flags
   && Option.equal String_with_vars.equal rocqdoc_header t.rocqdoc_header
   && Option.equal String_with_vars.equal rocqdoc_footer t.rocqdoc_footer
-  && Option.equal Bool.equal timing t.timing
-  && Option.equal Bool.equal profiling t.profiling
+  && Option.equal Blang.equal timing t.timing
+  && Option.equal Blang.equal profiling t.profiling
 ;;

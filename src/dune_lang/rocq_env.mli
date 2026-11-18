@@ -37,10 +37,10 @@ val rocqdoc_header : t -> String_with_vars.t option
 val rocqdoc_footer : t -> String_with_vars.t option
 
 (** Whether to output per-command timing for each file ([-time-file]). *)
-val timing : t -> bool option
+val timing : t -> Blang.t option
 
 (** Whether to output profiling information for each file ([-profile]). *)
-val profiling : t -> bool option
+val profiling : t -> Blang.t option
 
 (** Parser for env stanza. *)
 val decode : t Decoder.fields_parser

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795020503161,
+  "lastUpdate": 1795020527486,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -490939,6 +490939,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.38148472988666676,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7e3b024bfd73ffa00f557e0997f75b8cf3a08158",
+          "message": "test(pkg): reproduce symlink-order-dependent autolocking (#17099)\n\nExtend the existing directory-order reproduction with two metadata\nsymlinks and preserve them when copying the package directories. With\nunchanged repository contents and a changed enumeration order, the\ncurrent code produces an unnecessary auto-lock miss:\n`{\"lock\":1,\"package\":0}`. The generated lock stays identical and the\npackage itself remains cached.\n\nThis still reproduces with the regular-file/directory hashing fix from\n#17097: symlink executable-bit hashing continues to use the shared\nsingleton. The test asserts the current faulty behavior; it does not\ncontain a fix. As in the existing reproduction, an order-preserving\nfilesystem exercises only the zero-miss control.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-19T00:24:26+08:00",
+          "tree_id": "6965872793991ea8e0499f880fde43f3f604fbcc",
+          "url": "https://github.com/ocaml/dune/commit/7e3b024bfd73ffa00f557e0997f75b8cf3a08158"
+        },
+        "date": 1795020526205,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 40.163457069020005,
             "unit": "seconds"
           }
         ]

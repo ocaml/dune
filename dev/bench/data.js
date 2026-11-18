@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794966073972,
+  "lastUpdate": 1794966398067,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -490359,6 +490359,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4623211058266667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "shon.feder@gmail.com",
+            "name": "Shon",
+            "username": "shonfeder"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3bb703476eaf5cea87022c50933aee7db6b9ad87",
+          "message": "doc(rpc): fix the dead Dune_rpc interface link (#17091)\n\n## Description\n\n`doc/rpc.rst` says \"what requests are available is in Dune_rpc_\", and\nthat link points to\nhttps://github.com/ocaml/dune/blob/main/otherlibs/dune-rpc/dune_rpc.mli,\nwhich returns 404. The file was removed in #11967 (\"remove one layer of\nnesting in dune_rpc mli\"); the documented public interface (the protocol\ndescription, sessions, requests, notifications) now lives in\n`otherlibs/dune-rpc/v1.mli`, and `dune_rpc.ml` only re-exports it as\n`module V1 = V1`.\n\nThis points the link at `otherlibs/dune-rpc/v1.mli` (200).\n\n## Related Issue and Motivation\n\nNo issue; trivial docs fix for a dead link.\n\n## Checklist\n\n- [x] Tests added, if applicable. (not applicable, docs only)\n- [x] Change log entry added for any user-facing changes. (not\napplicable, docs link only)\n- [x] Documentation added for any user-facing changes.\n\nThe commit is signed off (DCO). I used an AI assistant (Claude) to find\nthis and checked the links with `curl`.",
+          "timestamp": "2026-11-17T20:23:01-05:00",
+          "tree_id": "d4abd384da2445d48e0d3c24f99c18fe2152af03",
+          "url": "https://github.com/ocaml/dune/commit/3bb703476eaf5cea87022c50933aee7db6b9ad87"
+        },
+        "date": 1794966396443,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.795092333839996,
             "unit": "seconds"
           }
         ]

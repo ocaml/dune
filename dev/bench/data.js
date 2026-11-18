@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795020577445,
+  "lastUpdate": 1795020705572,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -684225,6 +684225,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8863546299533334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "921cead9262fde8c5d545bde896d90654c59131a",
+          "message": "fix(digest): isolate synchronous path hashing from active digests (#17097)\n\nUse pooled hashers for synchronous regular-file and directory hashing so\nnested filesystem hashing does not reset an already-active singleton\nhasher. This also pools the initial symlink-target string hash, but does\nnot yet fix its executable-bit wrapper.\n\nThe symlink regression from #17099 is now on main. Its faulty\nexpectation is deliberately unchanged here: symlink executable-bit\nhashing is fixed in the following change, which updates the test to\nrequire zero lock misses. This is not general reentrancy support for all\n`Manual`, string, or representation hashing.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-19T00:33:23+08:00",
+          "tree_id": "b88a8b8b00d09942ff2358b76c267f19fca8281d",
+          "url": "https://github.com/ocaml/dune/commit/921cead9262fde8c5d545bde896d90654c59131a"
+        },
+        "date": 1795020290392,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.8824150616133335,
             "unit": "seconds"
           }
         ]

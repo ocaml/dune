@@ -1,5 +1,5 @@
 Per-file timing (rocq compile -time-file) and profiling (rocq compile
--profile) outputs, enabled through the env stanza.
+-profile) outputs, enabled through the env stanza or rocq.theory stanza.
 
   $ make_rocq_project 3.26 0.11
 
@@ -96,6 +96,24 @@ A nearer env stanza overrides the workspace one:
   _build/default/bar.v.timing
   _build/default/foo.v.timing
 
+The rocq.theory fields take precedence over the env stanza:
+
+  $ cat > dune <<EOF
+  > (env
+  >  (_
+  >   (rocq
+  >    (profiling false))))
+  > (rocq.theory
+  >  (name basic)
+  >  (timing (= %{profile} release))
+  >  (profiling (= %{profile} dev)))
+  > EOF
+
+  $ dune build @all
+  $ list_outputs
+  _build/default/bar.vo.prof.json
+  _build/default/foo.vo.prof.json
+
 The fields require dune 3.26:
 
   $ cat > dune-workspace <<EOF
@@ -110,6 +128,27 @@ The fields require dune 3.26:
   File "dune-workspace", line 5, characters 3-16:
   5 |    (timing true))))
          ^^^^^^^^^^^^^
+  Error: 'timing' is only available since version 3.26 of the dune language.
+  Please update your dune-project file to have (lang dune 3.26).
+  [1]
+
+This also applies to the fields in the rocq.theory stanza:
+
+  $ rm dune-workspace
+  $ cat > dune-project <<EOF
+  > (lang dune 3.25)
+  > (using rocq 0.11)
+  > EOF
+  $ cat > dune <<EOF
+  > (rocq.theory
+  >  (name basic)
+  >  (timing true))
+  > EOF
+
+  $ dune build @all
+  File "dune", line 3, characters 1-14:
+  3 |  (timing true))
+       ^^^^^^^^^^^^^
   Error: 'timing' is only available since version 3.26 of the dune language.
   Please update your dune-project file to have (lang dune 3.26).
   [1]

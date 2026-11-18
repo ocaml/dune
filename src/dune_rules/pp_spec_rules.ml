@@ -289,7 +289,12 @@ let pp_one_module
                  expander
                  (Ppx_driver.Driver.as_ppx_flags driver)
                  ~standard:(Action_builder.return [ "--as-ppx" ])
-             and* () = preprocessor_deps in
+             and* () = preprocessor_deps
+             and* () =
+               (* Both ocamldep and the compiler run the rewriter with these flags. *)
+               Action_builder.of_memo (Super_context.env_node sctx ~dir)
+               >>= Env_node.env_deps
+             in
              Command.expand_no_targets
                ~dir:command_dir
                (S [ Dep (Path.build exe); As driver_flags; As flags ])

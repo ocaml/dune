@@ -10,13 +10,17 @@ val make
   -> config_stanza:Dune_env.t
   -> profile:Profile.t
   -> expander:Expander.t Memo.t
-  -> default_env:Env.t Memo.t
+  -> default_env:(Dep.Set.t * Env.t) Memo.t
   -> default_artifacts:Artifacts.t Memo.t
   -> visible_packages:Package.Name.Selection.t Memo.t
   -> lockdir_bin_paths:Path.t list Memo.t
   -> t
 
 val external_env : t -> Env.t Memo.t
+
+(** Record the environment variables supplied by packages and [env] stanzas
+    to actions in this directory, not the rest of the inherited environment. *)
+val env_deps : t -> unit Action_builder.t
 
 (** [external_env] without the directories holding the binaries bound by
     [(env (binaries ...))]. An action merges its own environment into this and

@@ -2588,14 +2588,6 @@ let dev_tool_env tool =
   Pkg.exported_env pkg
 ;;
 
-let exported_env context =
-  Memo.push_stack_frame ~human_readable_description:(fun () ->
-    Pp.textf "lock directory environment for context %S" (Context_name.to_string context))
-  @@ fun () ->
-  let+ all_project_deps = all_project_deps context in
-  Pkg.build_env_of_deps all_project_deps |> Value_list_env.to_env
-;;
-
 let lock_dir_package_env =
   Memo.create
     "lock-directory-package-env"
@@ -2607,16 +2599,17 @@ let lock_dir_package_env =
            (describe_packages packages)
            (Context_name.to_string context)))
     (fun (context, packages) ->
-       lock_dir_active context
-       >>= function
-       | false -> Memo.return Env.empty
-       | true ->
-         let+ deps = project_deps ~packages context in
-         Pkg.build_env_of_deps deps |> Value_list_env.to_env)
+       let+ deps = project_deps ~packages context in
+       Pkg.build_env_of_deps deps |> Value_list_env.to_env)
 ;;
 
-let env_for_packages ~(packages : Package.Name.Selection.t) context =
-  Memo.exec lock_dir_package_env (context, packages)
+let exported_env context = Memo.exec lock_dir_package_env (context, All)
+
+let env_for_packages ~packages context =
+  let* active = lock_dir_active context in
+  if active
+  then Memo.exec lock_dir_package_env (context, packages)
+  else Memo.return Env.empty
 ;;
 
 let bin_paths_for_packages ~packages context =

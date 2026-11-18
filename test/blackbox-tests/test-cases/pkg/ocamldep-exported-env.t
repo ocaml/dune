@@ -53,7 +53,7 @@ Switch the export to B without changing the consumer or the PPX.
 
   $ choose B
   $ inputs _build
-  {"a":true,"b":false}
+  {"a":false,"b":true}
   $ test ! -e "_build/default/$obj/consumer.cmo"
 
 A fresh scan of the same sources reports B.
@@ -82,10 +82,10 @@ unrelated variables inherited from the shell are not implicit inputs.
   1
   $ configure B
   $ inputs _build
-  {"a":true,"b":false}
+  {"a":false,"b":true}
   $ dune exec ./app/main.exe
-  1
+  2
   $ dune rules --format=json "_build/default/$obj/consumer.cmo" |
   >   jq -c '.[] | .deps | {configured: (index({Env:"DEP_MODULE"}) != null),
   >                         ambient: (index({Env:"AMBIENT_ONLY"}) != null)}'
-  {"configured":false,"ambient":false}
+  {"configured":true,"ambient":false}

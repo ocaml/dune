@@ -2,9 +2,10 @@ open Import
 
 type t =
   { local_binaries : File_binding.Expanded.t list Memo.Lazy.t
-  ; base_env : Env.t Memo.Lazy.t
+  ; base_env : (Dep.Set.t * Env.t) Memo.Lazy.t
+  ; stanza_deps : Dep.Set.t Memo.Lazy.t
   ; local_bin_dirs : Path.t list Memo.Lazy.t
-  ; env_without_local_bins : Env.t Memo.Lazy.t
+  ; env_without_local_bins : (Dep.Set.t * Env.t) Memo.Lazy.t
   ; external_env : Env.t Memo.Lazy.t
   ; artifacts : Artifacts.t Memo.Lazy.t
   }
@@ -12,7 +13,17 @@ type t =
 let local_binaries t = Memo.Lazy.force t.local_binaries
 let base_env t = Memo.Lazy.force t.base_env
 let local_bin_dirs t = Memo.Lazy.force t.local_bin_dirs
-let env_without_local_bins t = Memo.Lazy.force t.env_without_local_bins
+let env_without_local_bins t = Memo.map (Memo.Lazy.force t.env_without_local_bins) ~f:snd
+let stanza_deps t = Memo.Lazy.force t.stanza_deps
+
+let env_deps t =
+  Action_builder.dyn_memo_deps
+    (let open Memo.O in
+     let+ package_deps, _ = Memo.Lazy.force t.env_without_local_bins
+     and+ stanza_deps = stanza_deps t in
+     Dep.Set.union package_deps stanza_deps, ())
+;;
+
 let external_env t = Memo.Lazy.force t.external_env
 let artifacts t = Memo.Lazy.force t.artifacts
 
@@ -52,21 +63,35 @@ let make
          | _ :: _ -> (Artifacts.local_bin dir |> Path.build) :: dirs))
   in
   let base_env =
-    inherited ~field:base_env ~root:default_env (fun env ->
-      Memo.return (Env.extend_env env config.env_vars))
+    inherited ~field:base_env ~root:default_env (fun (deps, env) ->
+      Memo.return (deps, Env.extend_env env config.env_vars))
+  in
+  let stanza_deps =
+    inherited ~field:stanza_deps ~root:(Memo.return Dep.Set.empty) (fun deps ->
+      let deps =
+        match config_binaries with
+        | [] -> deps
+        | _ :: _ -> Dep.Set.add deps (Dep.env Env_path.var)
+      in
+      Memo.return
+        (Env.Var.Set.fold (Env.vars config.env_vars) ~init:deps ~f:(fun var deps ->
+           Dep.Set.add deps (Dep.env var))))
   in
   (* The lock directory [PATH] is added to each node's own [base_env] rather
      than inherited: the visible packages differ per directory, so inheriting
      it would widen a descendant's [PATH] back to its ancestor's. *)
   let env_without_local_bins =
     Memo.lazy_ ~name:"env-without-local-bins" (fun () ->
-      let* env = Memo.Lazy.force base_env in
+      let* deps, env = Memo.Lazy.force base_env in
       let+ bin_paths = lockdir_bin_paths in
-      Env_path.cons_multi env ~dirs:bin_paths)
+      match bin_paths with
+      | [] -> deps, env
+      | _ :: _ ->
+        Dep.Set.add deps (Dep.env Env_path.var), Env_path.cons_multi env ~dirs:bin_paths)
   in
   let external_env =
     Memo.lazy_ ~name:"external-env" (fun () ->
-      let+ env = Memo.Lazy.force env_without_local_bins
+      let+ _, env = Memo.Lazy.force env_without_local_bins
       and+ dirs = Memo.Lazy.force local_bin_dirs in
       Env_path.cons_multi env ~dirs)
   in
@@ -84,6 +109,7 @@ let make
       Memo.Lazy.force artifacts >>= Artifacts.local_binaries)
   in
   { base_env
+  ; stanza_deps
   ; local_bin_dirs
   ; env_without_local_bins
   ; external_env

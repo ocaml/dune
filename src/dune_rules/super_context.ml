@@ -3,7 +3,7 @@ open Memo.O
 
 type t =
   { context : Context.t
-  ; context_env : Env.t Memo.t
+  ; context_env : (Dep.Set.t * Env.t) Memo.t
     (** context env with additional variables, but doesn't contain the lockdir
         packages in PATH. Use context_env_by_dir with ~dir. *)
   ; default_env : Env_node.t Memo.Lazy.t
@@ -298,6 +298,19 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
       Site_env.add_packages_env context_name ~base stanzas packages)
     |> Memo.Lazy.force
   in
+  let context_env =
+    let+ env = env
+    and+ deps =
+      match Context.kind context with
+      | Default | Opam _ -> Memo.return Dep.Set.empty
+      | Lock _ ->
+        let+ exports = Pkg_rules.exported_env context_name in
+        (* Context.base_env leaves package PATH to the directory's env node. *)
+        let vars = Env.Var.Set.remove (Env.vars exports) Env_path.var in
+        Dep.Set.of_list_map (Env.Var.Set.to_list vars) ~f:Dep.env
+    in
+    deps, env
+  in
   let artifacts = Artifacts_db.get context in
   let+ root_expander =
     let public_libs = Scope.DB.public_libs context_name in
@@ -330,17 +343,11 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
         (Context.build_context context)
         (Context.profile context)
         (Context.env_nodes context)
-        ~root_env:env
+        ~root_env:context_env
         ~artifacts
       |> Memo.return)
   in
-  create
-    ~context
-    ~default_env
-    ~host_env_tree:host
-    ~root_expander
-    ~artifacts
-    ~context_env:env
+  create ~context ~default_env ~host_env_tree:host ~root_expander ~artifacts ~context_env
 ;;
 
 let all =

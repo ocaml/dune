@@ -63,7 +63,7 @@ requested directly:
   _build/default/foo.v.timing
   _build/default/foo.vo.prof.json
 
-Rocq's raw timing and profiling flags can override Dune's output paths:
+Managed timing and profiling outputs take precedence over raw Rocq flags:
 
   $ cat > dune <<EOF
   > (rocq.theory
@@ -72,12 +72,10 @@ Rocq's raw timing and profiling flags can override Dune's output paths:
   >  (modules_flags (foo (:standard -profile custom.prof.json))))
   > EOF
 
-  $ dune build ./foo.v.timing > build.log 2>&1
-  [1]
-  $ grep -A2 '^Error:' build.log
-  Error: Rule failed to generate the following targets:
-  - foo.v.timing
-  - foo.vo.prof.json
+  $ dune build ./foo.v.timing
+  $ list_outputs
+  _build/default/foo.v.timing
+  _build/default/foo.vo.prof.json
 
 A nearer env stanza overrides the workspace one:
 

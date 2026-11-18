@@ -719,7 +719,6 @@ let generic_rocq_args
       ~theories_deps
       ~theory_dirs
       ~package_ocamlpath
-      rocq_module
   =
   let+ rocq_stanza_flags =
     rocq_stanza_flags
@@ -744,15 +743,7 @@ let generic_rocq_args
   let file_flags =
     rocqc_file_flags ~dir ~theories_deps ~wrapper_name ~package_ocamlpath
   in
-  match rocq_prog with
-  | `Rocqc ->
-    [ rocq_stanza_flags
-    ; rocq_native_flags
-    ; Dyn boot_flags
-    ; S file_flags
-    ; Dep (Rocq_module.source rocq_module)
-    ]
-  | `Rocqtop -> [ rocq_stanza_flags; rocq_native_flags; Dyn boot_flags; S file_flags ]
+  [ rocq_stanza_flags; rocq_native_flags; Dyn boot_flags; S file_flags ]
 ;;
 
 module Per_file = struct
@@ -873,7 +864,6 @@ let setup_rocqc_rule
       ~mode
       ~rocq_prog:`Rocqc
       ~package_ocamlpath
-      rocq_module
   in
   let deps_of = deps_of ~dir ~boot_type ~wrapper_name ~mode rocq_module in
   let cflag = Command.Args.A "compile" in
@@ -891,7 +881,12 @@ let setup_rocqc_rule
               ?stdout_to:output_file
               ~sandbox:Sandbox_config.no_sandboxing
               rocq
-              (cflag :: targets :: timing_args :: args))
+              [ cflag
+              ; targets
+              ; S args
+              ; timing_args
+              ; Dep (Rocq_module.source rocq_module)
+              ])
 ;;
 
 let rocq_modules_of_theory ~sctx lib =
@@ -1185,7 +1180,6 @@ let rocqtop_args_theory ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) rocq
     ~theories_deps
     ~theory_dirs
     ~package_ocamlpath
-    rocq_module
 ;;
 
 (******************************************************************************)
@@ -1346,7 +1340,6 @@ let rocqtop_args_extraction ~sctx ~dir (s : Rocq_stanza.Extraction.t) rocq_modul
     ~theories_deps
     ~theory_dirs:Path.Build.Set.empty
     ~package_ocamlpath
-    rocq_module
 ;;
 
 (* Version for export *)

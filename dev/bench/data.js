@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795015652625,
+  "lastUpdate": 1795017414845,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -683732,6 +683732,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.4082021209133333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "003966e1b19d9a48f332a6864b648e973b1d7db8",
+          "message": "test(pkg): check recipe edits after repository directory recreation (#17098)\n\nExtend the existing directory-order regression with a real package\nrecipe edit. The filtered trace must show both auto-locking and the\npackage build invalidated, followed by a cached repeated invocation.\n\nThis is the preparatory test-only change for #17097, ensuring that the\nhashing fix preserves invalidation for genuine input changes. It passes\nwithout the fix.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-18T23:45:18+08:00",
+          "tree_id": "7b5e317fb0def4d894909bf6d58c607a5c68f774",
+          "url": "https://github.com/ocaml/dune/commit/003966e1b19d9a48f332a6864b648e973b1d7db8"
+        },
+        "date": 1795017190867,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.4984148802733332,
             "unit": "seconds"
           }
         ]

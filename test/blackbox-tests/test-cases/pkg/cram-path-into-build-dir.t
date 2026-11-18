@@ -6,12 +6,12 @@ when those binaries change, and reports stale output.
   $ make_lockdir
   $ make_lockpkg provider <<'EOF'
   > (version 0.0.1)
-  > (build
+  > (install
   >  (progn
-  >   (system "printf '#!/bin/sh\necho v1\n' > helper")
-  >   (system "chmod +x helper")
-  >   (system "echo 'bin: [ \"helper\" ]' > provider.install")))
+  >   (run cp helper %{pkg-self:bin}/helper)
+  >   (run chmod +x %{pkg-self:bin}/helper)))
   > EOF
+  $ printf '#!/bin/sh\necho v1\n' | make_lockpkg_file provider helper
   $ make_dune_project 3.22
   $ cat >> dune-project <<EOF
   > (package (name mypkg) (allow_empty) (depends provider))
@@ -59,12 +59,13 @@ that the outcome depends on what happens to be built:
      $ true
   [1]
 
-The package changes and is rebuilt, but the test is not rerun and reports
-stale output:
+Change the helper source without editing the lock entry. The rebuilt helper
+prints v2 at the same path, but the test still reports v1:
 
-  $ sed -i.bak 's/v1/v2/' ${default_lock_dir}/provider.pkg
+  $ helper="$(get_build_pkg_dir provider)/target/bin/helper"
+  $ printf '#!/bin/sh\necho v2\n' | make_lockpkg_file provider helper
   $ build_pkg provider
-  $ $(get_build_pkg_dir provider)/target/bin/helper
+  $ "$helper"
   v2
   $ dune test
   File "t.t", line 1, characters 0-0:

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795020833814,
+  "lastUpdate": 1795020905504,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -491055,6 +491055,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5269582256800001,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6150590b5a5797dadd62660c13d8cfeff9b0f109",
+          "message": "test(site): reproduce package site lookup regression (#17077)\n\nRecord the dune-site lookup failure when a rule depends on a package:\nthe data is installed in a scoped layout while `DUNE_DIR_LOCATIONS`\nstill points at the flat install tree. Show that prebuilding `@install`\nmasks the failure, without changing production behavior.\n\nRefs #17031.",
+          "timestamp": "2026-11-18T17:30:47+01:00",
+          "tree_id": "0f401dcc2200e29ce68c2e6f0423dfc6fc3c2774",
+          "url": "https://github.com/ocaml/dune/commit/6150590b5a5797dadd62660c13d8cfeff9b0f109"
+        },
+        "date": 1795020902768,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 63.47330879228,
             "unit": "seconds"
           }
         ]

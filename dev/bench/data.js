@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795013753309,
+  "lastUpdate": 1795014608527,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -683558,6 +683558,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.308676593606666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c0ba52397620ba4c210b6ca2593b95efdab44f0b",
+          "message": "refactor(pkg): remove the duplicate package build target (#17082)\n\nRemove the target-directory declaration from `build_rule`. `gen_rules`\nalready discards the helper's target metadata and declares the directory\nwhen registering the rule.\n\nThe helper's return type, caller, and deferred action evaluation are\nunchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-18T22:55:35+08:00",
+          "tree_id": "4ac1a82efbf1069ec3a8a1fbb12bac9f34233dd1",
+          "url": "https://github.com/ocaml/dune/commit/c0ba52397620ba4c210b6ca2593b95efdab44f0b"
+        },
+        "date": 1795014282144,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.2068979724999997,
             "unit": "seconds"
           }
         ]

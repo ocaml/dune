@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795019597540,
+  "lastUpdate": 1795019654687,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -683848,6 +683848,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.1544547794866666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d4389c559fdc7c9ca703fdc087af6bb7c5df4cc7",
+          "message": "test(engine): eliminate the SIGHUP cache test race (#17096)\n\nIn the [macOS CI\nfailure](https://github.com/ocaml/dune/actions/runs/44125838547/job/134195795807?pr=17083),\nthe action can exit without producing its target before the scheduler\nhandles SIGHUP. Dune then returns 1 instead of 130.\n\nBlock the action on a FIFO with no writer so it stays alive until Dune\nshuts it down. The timeout only fails a hung test. The exit status and\ncache assertions are unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-19T00:19:24+08:00",
+          "tree_id": "61928aea32db3e5c305d396cc2e40286c87684e8",
+          "url": "https://github.com/ocaml/dune/commit/d4389c559fdc7c9ca703fdc087af6bb7c5df4cc7"
+        },
+        "date": 1795019325522,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.182154312466667,
             "unit": "seconds"
           }
         ]

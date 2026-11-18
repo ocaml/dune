@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795019654687,
+  "lastUpdate": 1795019860996,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -490765,6 +490765,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.3844518928866667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "69f9ce50dea845774fba20c002adaeca25f4d570",
+          "message": "test(pkg): reproduce stale output from locked ocamlformat (#17093)\n\nChanging only an export from a locked ocamlformat dependency leaves\n`@fmt` accepting the old output. A new file with identical contents gets\nthe expected correction from the same formatter executable.",
+          "timestamp": "2026-11-18T17:18:40+01:00",
+          "tree_id": "0595bd772ed737dd2078428490947ccfb3c4aa00",
+          "url": "https://github.com/ocaml/dune/commit/69f9ce50dea845774fba20c002adaeca25f4d570"
+        },
+        "date": 1795019858600,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 50.159673442073334,
             "unit": "seconds"
           }
         ]

@@ -61,3 +61,15 @@ does not exercise the bug.
   $ dune build @pkg-install > final-output 2>&1
   $ misses
   {"lock":0,"package":0}
+
+A real change to the package's recipe must still relock and rebuild it.
+
+  $ mkpkg foo 1 <<'EOF'
+  > build: [ [ "sh" "-c" "true" ] ]
+  > EOF
+  $ dune build @pkg-install > changed-output 2>&1
+  $ misses
+  {"lock":1,"package":1}
+  $ dune build @pkg-install > unchanged-output 2>&1
+  $ misses
+  {"lock":0,"package":0}

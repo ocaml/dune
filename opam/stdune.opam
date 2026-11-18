@@ -19,6 +19,8 @@ depends: [
   "ordering" {= version}
   "pp" {>= "2.0.0"}
   "top-closure" {= version}
+  "base-threads"
+  "ppx_expect" {with-test}
   "odoc" {with-doc}
 ]
 dev-repo: "git+https://github.com/ocaml/dune.git"

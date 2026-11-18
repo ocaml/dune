@@ -26,6 +26,37 @@ license: "MIT"
 homepage: "https://github.com/ocaml/dune"
 doc: "https://dune.readthedocs.io/"
 bug-reports: "https://github.com/ocaml/dune/issues"
+depends: [
+  "ocaml" {>= "4.14" & (!with-test | >= "5.5.0")}
+  "base-unix"
+  "base-threads"
+  "lwt" {with-test & os != "win32"}
+  "cinaps" {with-test}
+  "core_bench" {with-test & os != "win32"}
+  "csexp" {with-test & >= "1.3.0"}
+  "js_of_ocaml" {with-test & >= "6.4" & os != "win32"}
+  "js_of_ocaml-compiler" {with-test & >= "6.4" & os != "win32"}
+  "mdx" {with-test & >= "2.3.0" & os != "win32"}
+  "menhir" {with-test & os != "win32"}
+  "ocamlfind" {with-test & os != "win32"}
+  "odoc" {with-test & >= "3.2.0" & os != "win32"}
+  "ppx_bench" {with-test & os != "win32"}
+  "ppx_expect" {with-test & >= "v0.17" & os != "win32"}
+  "ppx_optcomp" {with-test}
+  "spawn" {with-test}
+  "ppx_inline_test" {with-test & os != "win32"}
+  "ppxlib" {with-test & >= "0.37.0" & os != "win32"}
+  "ctypes" {with-test & os != "win32"}
+  "utop" {with-test & >= "2.6.0" & os != "win32"}
+  "melange" {with-test & >= "7.0.0" & os != "win32"}
+  "conf-bash" {with-test}
+  "conf-diffutils" {with-test}
+  "conf-jq" {with-test}
+  "conf-pkg-config" {with-test}
+  "conf-which" {with-test}
+  "conf-git-daemon" {with-test}
+  "odoc" {with-doc}
+]
 conflicts: [
   "merlin" {< "3.4.0"}
   "ocaml-lsp-server" {< "1.3.0"}
@@ -40,31 +71,4 @@ x-maintenance-intent: ["(latest)"]
 build: [
   ["ocaml" "boot/bootstrap.ml" "-j" jobs]
   ["./_boot/dune.exe" "build" "dune.install" "--release" "--profile" "dune-bootstrap" "-j" jobs]
-]
-depends: [
-  # Please keep the lower bound in sync with .github/workflows/workflow.yml,
-  # dune-project and min_ocaml_version in bootstrap.ml
-  ("ocaml" {>= "4.14"} | ("ocaml" {>= "4.02" & < "4.14~~"} & "ocamlfind-secondary" & "ocaml-secondary-compiler" {>= "4.14"}))
-  "base-unix"
-  "base-threads"
-  "lwt" { with-dev-setup & os != "win32" }
-  "cinaps" { with-dev-setup }
-  "csexp" { with-dev-setup & >= "1.3.0" }
-  "js_of_ocaml" { with-dev-setup & >= "6.4" & os != "win32" }
-  "js_of_ocaml-compiler" { with-dev-setup & >= "6.4" & os != "win32" }
-  "mdx" { with-dev-setup & >= "2.3.0" & os != "win32" }
-  "menhir" { with-dev-setup & os != "win32" }
-  "ocamlfind" { with-dev-setup & os != "win32" }
-  "odoc" { with-dev-setup & >= "3.2.0" & os != "win32" }
-  "ppx_expect" { with-dev-setup & >= "v0.17" & os != "win32" }
-  "ppx_optcomp" {with-dev-setup}
-  "spawn" { with-dev-setup }
-  "ppx_inline_test" { with-dev-setup & os != "win32" }
-  "ppxlib" { with-dev-setup & >= "0.37.0" & os != "win32" }
-  "ctypes" { with-dev-setup & os != "win32" }
-  "utop" { with-dev-setup & >= "2.6.0" & os != "win32" }
-  "melange" { with-dev-setup & >= "7.0.0" & os != "win32" }
-  # the rev store negotiation test launches a git daemon, needs it to be
-  # installed on some distributions
-  "conf-git-daemon" { with-test }
 ]

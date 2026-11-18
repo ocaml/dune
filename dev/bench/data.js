@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795021056404,
+  "lastUpdate": 1795021981943,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -684428,6 +684428,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8824150616133335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8ebdafaa6d50ec997ccf27a39777db5789a3953c",
+          "message": "fix(digest): isolate symlink executable-bit hashing (#17100)\n\nComplete #17097 by using the pooled helper when combining a symlink\ntarget digest with its executable bit. Although the target string was\nalready hashed independently, this final step still reused the singleton\nand could corrupt an active outer hash.\n\nUpdate the existing regression from #17099 to require zero auto-lock\nmisses after recreating identical repository directories. Real recipe\nchanges still invalidate locking and the package build. The changelog is\ncombined with the existing #17097 entry.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-19T00:53:14+08:00",
+          "tree_id": "77210152469f59452b783a645b7bd51f22aaf694",
+          "url": "https://github.com/ocaml/dune/commit/8ebdafaa6d50ec997ccf27a39777db5789a3953c"
+        },
+        "date": 1795021570822,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.2334118501,
             "unit": "seconds"
           }
         ]

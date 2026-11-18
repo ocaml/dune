@@ -3,6 +3,10 @@
  (applies_to :whole_subtree))
 
 (cram
+ (deps %{bin:cmp})
+ (applies_to ocamlformat-exported-env.t))
+
+(cram
  (deps %{bin:curl})
  (applies_to ocamlformat-e2e.t))
 

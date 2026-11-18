@@ -796,6 +796,8 @@ let setup_rocqc_rule
       ~stanza_flags
       ~rocq_lang_version
       ~modules_flags
+      ~timing
+      ~profiling
       ~theories_deps
       ~mode
       ~wrapper_name
@@ -811,6 +813,7 @@ let setup_rocqc_rule
   (* TODO: merge with boot_type *)
   let per_file_flags = Per_file.match_ modules_flags rocq_module in
   let* rocq = rocq ~loc ~dir ~sctx in
+  let* expander = Super_context.expander sctx ~dir in
   let obj_files =
     Rocq_module.obj_files
       ~wrapper_name
@@ -829,15 +832,17 @@ let setup_rocqc_rule
     let targets = Option.to_list output_file @ obj_files in
     Command.Args.Hidden_targets targets
   in
-  let* timing_args =
-    let* expander = Super_context.expander sctx ~dir in
-    let enabled get =
+  let enabled stanza get =
+    match stanza with
+    | Some condition -> Expander.eval_blang expander condition
+    | None ->
       Env_stanza_db.value ~default:Blang.false_ ~dir ~f:(fun (config : Dune_env.config) ->
         Memo.return (get config.rocq))
       >>= Expander.eval_blang expander
-    in
-    let+ timing = enabled Rocq_env.timing
-    and+ profiling = enabled Rocq_env.profiling in
+  in
+  let* timing_args =
+    let+ timing = enabled timing Rocq_env.timing
+    and+ profiling = enabled profiling Rocq_env.profiling in
     Command.Args.S
       [ (if timing
          then
@@ -1130,6 +1135,8 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
       ~stanza_flags
       ~rocq_lang_version
       ~modules_flags
+      ~timing:s.timing
+      ~profiling:s.profiling
       ~rocqc_dir
       ~theories_deps
       ~mode
@@ -1302,6 +1309,8 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Extraction.
         ~stanza_flags:s.buildable.flags
         ~rocq_lang_version
         ~modules_flags
+        ~timing:None
+        ~profiling:None
         ~sctx
         ~loc
         ~rocqc_dir:dir

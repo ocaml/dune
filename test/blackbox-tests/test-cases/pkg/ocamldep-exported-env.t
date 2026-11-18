@@ -49,7 +49,7 @@ export. Inspect the consumer's dependencies without compiling it.
   $ inputs _build
   {"a":true,"b":false}
 
-After switching the export to B, the incremental scan still reports A.
+Switch the export to B without changing the consumer or the PPX.
 
   $ choose B
   $ inputs _build
@@ -61,3 +61,31 @@ A fresh scan of the same sources reports B.
   $ inputs _fresh
   {"a":false,"b":true}
   $ test ! -e "_fresh/default/$obj/consumer.cmo"
+
+The directory can also configure the rewriter without a lock context.
+Changing a binding in the parent directory should update the scan, while
+unrelated variables inherited from the shell are not implicit inputs.
+
+  $ cat >dune-workspace <<'EOF'
+  > (lang dune 3.25)
+  > (pkg disabled)
+  > EOF
+  $ export AMBIENT_ONLY=present
+  $ mkdir app
+  $ echo '(executable (name main) (libraries consumer_lib))' >app/dune
+  $ echo 'let () = print_int Consumer.n; print_newline ()' >app/main.ml
+  $ configure() { printf '(env (_ (env_vars (DEP_MODULE %s))))\n' "$1" >dune; }
+  $ configure A
+  $ inputs _build
+  {"a":true,"b":false}
+  $ dune exec ./app/main.exe
+  1
+  $ configure B
+  $ inputs _build
+  {"a":true,"b":false}
+  $ dune exec ./app/main.exe
+  1
+  $ dune rules --format=json "_build/default/$obj/consumer.cmo" |
+  >   jq -c '.[] | .deps | {configured: (index({Env:"DEP_MODULE"}) != null),
+  >                         ambient: (index({Env:"AMBIENT_ONLY"}) != null)}'
+  {"configured":false,"ambient":false}

@@ -37,6 +37,16 @@ changed if desired.
 
       It consists of a sequence of ``(<name> <value>)`` pairs.
 
+      The ``with-test``, ``with-doc`` and ``with-dev-setup`` variables select
+      which optional dependencies are locked. By default, test dependencies of
+      local packages are locked, but doc and dev-setup dependencies are not.
+      ``with-doc`` and ``with-dev-setup`` apply to all packages. ``with-test``
+      only applies to local packages, as test dependencies of non-local
+      packages are never locked. Setting it to ``true`` here is an error, as
+      this would apply to all packages. The ``--with-test``, ``--with-doc`` and
+      ``--with-dev-setup`` options of ``dune pkg lock`` override these
+      variables.
+
    .. describe:: (unset_variables <name list>)
 
       A list of variables that are used in solving that are deliberately unset

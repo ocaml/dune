@@ -96,6 +96,7 @@ let solve ~dev_tool ~local_packages =
        ~lock_dirs:[ lock_dir ]
        ~print_perf_stats:false
        ~portable_lock_dir:false
+       ~dependency_flags:Pkg.Lock.Dependency_flags_arg.none
 ;;
 
 (* Some dev tools must be built with the same version of the ocaml compiler as

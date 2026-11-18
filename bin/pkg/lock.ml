@@ -6,6 +6,79 @@ module Lock_dir = Dune_pkg.Lock_dir
 module Pin_stanza = Dune_lang.Pin_stanza
 module Pin = Dune_pkg.Pin
 module Solver_env = Dune_pkg.Solver_env
+module Package_variable_name = Dune_lang.Package_variable_name
+module Variable_value = Dune_pkg.Variable_value
+
+module Dependency_flags_arg = struct
+  type t =
+    { with_test : bool option
+    ; with_doc : bool option
+    ; with_dev_setup : bool option
+    }
+
+  let none = { with_test = None; with_doc = None; with_dev_setup = None }
+
+  let term =
+    let flag name ~doc =
+      Arg.(
+        value
+        & opt ~vopt:(Some true) (some bool) None
+        & info [ name ] ~doc:(Some doc) ~docv:"BOOL")
+    in
+    let+ with_test =
+      flag
+        "with-test"
+        ~doc:
+          "Whether to include the test dependencies of local packages in the lock \
+           directory. This overrides the \"with-test\" variable of the solver \
+           environment. Test dependencies of non-local packages are never included."
+    and+ with_doc =
+      flag
+        "with-doc"
+        ~doc:
+          "Set the \"with-doc\" variable of the solver environment, overriding the \
+           workspace. This includes the documentation dependencies of all packages, \
+           local or not, in the lock directory."
+    and+ with_dev_setup =
+      flag
+        "with-dev-setup"
+        ~doc:
+          "Set the \"with-dev-setup\" variable of the solver environment, overriding \
+           the workspace. This includes the development setup dependencies of all \
+           packages, local or not, in the lock directory."
+    in
+    { with_test; with_doc; with_dev_setup }
+  ;;
+
+  let set variable value solver_env =
+    match value with
+    | None -> solver_env
+    | Some value ->
+      Solver_env.set
+        solver_env
+        variable
+        (if value then Variable_value.true_ else Variable_value.false_)
+  ;;
+
+  (* Setting "with-test" to "true" in the solver environment is not supported,
+     as it would apply to non-local packages. Since test dependencies of local
+     packages are included when the variable is unset, unset it instead. *)
+  let set_with_test value solver_env =
+    match value with
+    | None | Some false -> set Package_variable_name.with_test value solver_env
+    | Some true ->
+      Solver_env.unset_multi
+        solver_env
+        (Package_variable_name.Set.singleton Package_variable_name.with_test)
+  ;;
+
+  let apply { with_test; with_doc; with_dev_setup } solver_env =
+    solver_env
+    |> set_with_test with_test
+    |> set Package_variable_name.with_doc with_doc
+    |> set Package_variable_name.with_dev_setup with_dev_setup
+  ;;
+end
 
 module Progress_indicator = struct
   module Per_lockdir = struct
@@ -164,6 +237,7 @@ let solve_lock_dir
       ~project_pins
       ~print_perf_stats
       ~portable_lock_dir
+      ~dependency_flags
       version_preference
       solver_env_from_current_system
       lock_dir_path
@@ -190,12 +264,16 @@ let solve_lock_dir
       ~solver_env_from_current_system
       ~unset_solver_vars_from_context:
         (unset_solver_vars_of_workspace workspace ~lock_dir_path)
+    |> Dependency_flags_arg.apply dependency_flags
   in
   let solve_for_platforms =
     match portable_lock_dir with
     | true ->
       (match solver_env_from_context with
        | Some solver_env_from_context ->
+         let solver_env_from_context =
+           Dependency_flags_arg.apply dependency_flags solver_env_from_context
+         in
          List.map solve_for_platforms ~f:(fun platform_env ->
            Solver_env.extend solver_env_from_context platform_env)
        | None -> solve_for_platforms)
@@ -289,6 +367,7 @@ let solve
       ~lock_dirs
       ~print_perf_stats
       ~portable_lock_dir
+      ~dependency_flags
   =
   let open Fiber.O in
   (* a list of thunks that will perform all the file IO side
@@ -310,6 +389,7 @@ let solve
                 ~project_pins
                 ~print_perf_stats
                 ~portable_lock_dir
+                ~dependency_flags
                 version_preference
                 solver_env_from_current_system
                 lockdir_path
@@ -360,7 +440,13 @@ let project_pins =
   Dune_rules.Dune_load.projects () >>| Pin.Project.collect_all
 ;;
 
-let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir =
+let lock
+      ~version_preference
+      ~lock_dirs_arg
+      ~print_perf_stats
+      ~portable_lock_dir
+      ~dependency_flags
+  =
   let open Fiber.O in
   let* solver_env_from_current_system =
     poll_solver_env_from_current_system () >>| Option.some
@@ -386,12 +472,14 @@ let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir
     ~lock_dirs
     ~print_perf_stats
     ~portable_lock_dir
+    ~dependency_flags
 ;;
 
 let term =
   let+ builder = Common.Builder.term
   and+ version_preference = Version_preference.term
   and+ lock_dirs_arg = Pkg_common.Lock_dirs_arg.term
+  and+ dependency_flags = Dependency_flags_arg.term
   (* CR-someday Alizter: document this option *)
   and+ print_perf_stats = Arg.(value & flag & info [ "print-perf-stats" ] ~doc:None) in
   let builder = Common.Builder.forbid_builds builder in
@@ -405,7 +493,12 @@ let term =
       | `Enabled -> true
       | `Disabled -> false
     in
-    lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir)
+    lock
+      ~version_preference
+      ~lock_dirs_arg
+      ~print_perf_stats
+      ~portable_lock_dir
+      ~dependency_flags)
 ;;
 
 let info =

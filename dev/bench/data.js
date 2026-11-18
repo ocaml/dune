@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795014889684,
+  "lastUpdate": 1795015449483,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -683645,6 +683645,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.2068979724999997,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "315f0db5e352e84e95a6cf094299944815f0708e",
+          "message": "test(pkg): reproduce rebuilds from extra-source declaration order (#17083)\n\nReordering two extra-source declarations currently changes a package’s\nbuild key and triggers another build, despite identical input bytes and\nan unchanged no-op action.\n\nThe cram uses two ordinary files and filtered target-rule cache-miss\nreasons. A real input-content edit remains an invalidation control. No\npatching, makefile, install step, or extra tool dependencies are needed;\nno fix is included.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-18T23:02:25+08:00",
+          "tree_id": "310c3dee66bf2e48fe85f2f62f017f9a96bf3d59",
+          "url": "https://github.com/ocaml/dune/commit/315f0db5e352e84e95a6cf094299944815f0708e"
+        },
+        "date": 1795015155617,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.4082021209133333,
             "unit": "seconds"
           }
         ]

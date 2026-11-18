@@ -21,18 +21,16 @@ The rule depends on the lock-file package cookie and the resolved file:
   >  (action (with-stdout-to %{target} (echo %{pkg:lockpkg:share:data.txt}))))
   > EOF
 
-CR-someday alizter: dune rules --deps requires a prior build because
+CR-someday alizter: inspecting the rule requires a prior build because
 Install_cookie.load_exn runs eagerly during dep evaluation.
 
   $ dune build _build/default/output 2>&1
 
-  $ dune rules --deps _build/default/output 2>&1 | censor
-  ((File
-    (In_build_dir
-     _build/_private/default/.pkg/lockpkg.0.0.1-$DIGEST/target/cookie))
-   (File
-    (In_build_dir
-     _build/_private/default/.pkg/lockpkg.0.0.1-$DIGEST/target/share/lockpkg/data.txt)))
+  $ prefix="$(get_build_pkg_dir lockpkg)/target/"
+  $ dune rules --format=json _build/default/output |
+  >   jq_dune -r --arg prefix "$prefix" '.[] | ruleDepFilePaths | ltrimstr($prefix)'
+  cookie
+  share/lockpkg/data.txt
 
 Requesting a file that doesn't exist in the lock-file package is rejected:
 

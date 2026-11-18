@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794994617094,
+  "lastUpdate": 1795013467013,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -683471,6 +683471,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.96601887536,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a072cee0736e1384db5c85acaa9b0f1b6a715fe4",
+          "message": "test(lib-name): cover missing final-character validation (#17084)\n\nExtend the existing invalid library-name test with an unwrapped library\nnamed `foo-`. The test records the current behavior: the trailing `-`\nreaches module-name validation instead of being rejected as part of the\nlibrary name.\n\nThis is a baseline regression test; it does not change validation\nbehavior.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-18T22:36:31+08:00",
+          "tree_id": "b9a0fa87bad308c859d829fafc2e5d6d8af6c845",
+          "url": "https://github.com/ocaml/dune/commit/a072cee0736e1384db5c85acaa9b0f1b6a715fe4"
+        },
+        "date": 1795013140632,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.308676593606666,
             "unit": "seconds"
           }
         ]

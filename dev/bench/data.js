@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795090023352,
+  "lastUpdate": 1795090029659,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -491432,6 +491432,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.869710273446664,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5176afff345068dea18f53786a5a39c38fcdf234",
+          "message": "feat(formatting): format OCaml Cinaps corrections (#16209)\n\nRun OCamlFormat on Cinaps-generated OCaml corrections before comparison\nor\npromotion, avoiding a separate formatting pass after promotion. Respect\nthe\nsource's formatting configuration and use the locked OCamlFormat dev\ntool when\navailable.\n\nOpt in with `(using cinaps 1.4)`, available since Dune 3.26. Earlier\nextension\nversions retain their existing behavior, and explicitly disabled\nformatting\npreserves the raw generated output.\n\nThe first commit extracts shared formatter configuration without\nchanging\n`@fmt`; the second adds OCaml formatting for Cinaps. Formatting `dune`\nand\n`dune-project` files, user-written `diff?` actions, and other internal\ncorrection\nproducers remains separate follow-up work.\n\n---------\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-19T19:47:33+08:00",
+          "tree_id": "e74dacb964b98e5226985194215ba5e9626b53c8",
+          "url": "https://github.com/ocaml/dune/commit/5176afff345068dea18f53786a5a39c38fcdf234"
+        },
+        "date": 1795090027135,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 44.06555700974667,
             "unit": "seconds"
           }
         ]

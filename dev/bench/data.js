@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795103435766,
+  "lastUpdate": 1795104837371,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -685124,6 +685124,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.770980416866667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "34de26f7a8c5027519dd97c145db22b4e519405b",
+          "message": "feat(formatting): format user diff corrections during expansion (#17110)\n\nExtend generated-correction formatting to user-written `(diff? ...)`\nactions\nstarting with Dune 3.26. Format text corrections according to the\noriginal\nsource's formatting configuration before comparison or promotion. Older\nprojects, non-optional diffs, and binary diffs retain their existing\nbehavior.\n\nConstruct formatter actions directly during expansion, reusing the\nformatting\nsupport from #16209 and #17109. Preserve formatter dependencies,\nenvironments,\nand sandbox requirements when composing the surrounding action.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-19T23:59:15+08:00",
+          "tree_id": "729110755d1566d1504d7d68006997668e382ae7",
+          "url": "https://github.com/ocaml/dune/commit/34de26f7a8c5027519dd97c145db22b4e519405b"
+        },
+        "date": 1795104510542,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.1963971226533334,
             "unit": "seconds"
           }
         ]

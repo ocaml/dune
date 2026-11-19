@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795047064349,
+  "lastUpdate": 1795047071283,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -491258,6 +491258,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 51.17676992140667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d0695d3d02b4063c64b47b01c1ea9ab2e4f12748",
+          "message": "test(engine): reproduce rule hash pollution after a digest failure (#17103)\n\nA repository-hashing error leaves pending input in the singleton-backed\nmanual hasher. An unrelated rule can complete during that failed build\nwith a contaminated digest, then unnecessarily rerun on the next\nunchanged build.\n\nReproduce this with an unsupported repository entry and a plain\nfile-producing rule. The trace records the spurious \"rule or\ndependencies changed\" miss, followed by a cached invocation. This\ntest-only change asserts the current faulty behavior; it does not\ninclude a fix or demonstrate rebuilding after a wholly successful build.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-19T07:51:51+08:00",
+          "tree_id": "651784d492368cb3b46af74ff75dc59aca049da9",
+          "url": "https://github.com/ocaml/dune/commit/d0695d3d02b4063c64b47b01c1ea9ab2e4f12748"
+        },
+        "date": 1795047070507,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4670565337333333,
             "unit": "seconds"
           }
         ]

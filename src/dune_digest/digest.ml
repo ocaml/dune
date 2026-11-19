@@ -104,16 +104,25 @@ module Hasher = struct
          [Hasher.with_singleton], which is not allowed."
         []
     else (
-      (* [Manual] shares this hasher, so preserve the ordering of pending input
-         before using it for a nested digest computation. *)
-      Scratch.flush ();
-      singleton_in_use := true;
       let hasher = Lazy.force singleton in
-      f hasher x;
-      let digest = Blake3_mini.digest hasher in
-      Blake3_mini.reset hasher;
-      singleton_in_use := false;
-      digest)
+      singleton_in_use := true;
+      match
+        (* [Manual] shares this hasher, so preserve the ordering of pending input
+           before using it for a nested digest computation. *)
+        Scratch.flush ();
+        f hasher x;
+        Blake3_mini.digest hasher
+      with
+      | digest ->
+        Blake3_mini.reset hasher;
+        singleton_in_use := false;
+        digest
+      | exception exn ->
+        let exn = Exn_with_backtrace.capture exn in
+        Scratch.pos := 0;
+        Blake3_mini.reset hasher;
+        singleton_in_use := false;
+        Exn_with_backtrace.reraise exn)
   ;;
 
   let pool = ref []

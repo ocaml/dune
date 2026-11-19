@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795048992712,
+  "lastUpdate": 1795049177520,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -684689,6 +684689,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.723299909646667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0876944deb0f47e69db62c44b56a32b946fb8a74",
+          "message": "fix(engine): discard partial rule digests on error (#17105)\n\nIf action encoding raises while computing a rule digest, discard the\npartial input in the shared manual hasher and re-raise the original\nexception with its backtrace. Successful rule digests are unchanged.\n\nIn the regression from #17103, a local repository hashing error no\nlonger causes an unrelated completed rule to rerun on the next unchanged\nbuild.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-19T08:23:48+08:00",
+          "tree_id": "3961491d723c098e4e0824afb16e54b7a924cb02",
+          "url": "https://github.com/ocaml/dune/commit/0876944deb0f47e69db62c44b56a32b946fb8a74"
+        },
+        "date": 1795048886679,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.365465684206667,
             "unit": "seconds"
           }
         ]

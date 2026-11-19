@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795098266816,
+  "lastUpdate": 1795098273943,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -491548,6 +491548,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 51.00578100108667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "056e8d736ea4b9134667077f275469bd25bcd9a1",
+          "message": "fix(melange): resolve aliases through hidden private interfaces (#16941)\n\nResolve Melange aliases into local private modules and installed private\nlibraries using hidden CMI paths and sandbox dependencies. Assume\nMelange 6+ and reuse the OCaml version check for hidden includes.\n\nUses the merged regressions from #16931, #16932, #16933, and #16934;\nfollows #16939. Updates #16940’s test for the Melange 6+ assumption.\n\n01a12d8e-c091-7010-b0cd-3fdc40400e80\n\n---------\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-19T06:05:25-08:00",
+          "tree_id": "ab5c5cb6779be76173cbc24e1fb107d5d0099e4a",
+          "url": "https://github.com/ocaml/dune/commit/056e8d736ea4b9134667077f275469bd25bcd9a1"
+        },
+        "date": 1795098273175,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4820667747733334,
             "unit": "seconds"
           }
         ]

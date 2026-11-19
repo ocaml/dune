@@ -1,6 +1,10 @@
 open Import
 open Memo.O
 
+type t =
+  | Dune of Dune_lang.Syntax.Version.t
+  | Ocamlformat of Ml_kind.t
+
 let rec subdirs_until_root dir =
   match Path.parent dir with
   | None -> [ dir ]
@@ -77,10 +81,17 @@ let for_source ~dir source =
      | false -> Memo.return None
      | true ->
        let+ config = format_config ~dir in
-       dialect_formatter config ~dialects:(Dune_project.dialects project) source
-       |> Option.bind ~f:(function
-         | kind, Dialect.Format.Ocamlformat -> Some kind
-         | _, Action _ -> None))
+       let name = Path.Source.basename source_path in
+       if Filename.equal name Filename.dune || Filename.equal name Filename.dune_project
+       then
+         Option.some_if
+           (Format_config.includes config Format_config.Language.Dune)
+           (Dune (Dune_project.dune_version project))
+       else
+         dialect_formatter config ~dialects:(Dune_project.dialects project) source
+         |> Option.bind ~f:(function
+           | kind, Dialect.Format.Ocamlformat -> Some (Ocamlformat kind)
+           | _, Action _ -> None))
 ;;
 
 let ocamlformat_action ~expander ~dir ~source ~target kind =
@@ -123,12 +134,21 @@ let ocamlformat_action ~expander ~dir ~source ~target kind =
 
 let format_diff sctx ~dir ~source ~target ~diff =
   let open Action_builder.O in
+  let with_diff formatter =
+    Action.Full.map formatter ~f:(fun formatter ->
+      Action.progn [ Action.if_file_exists (Path.build target) formatter; diff ])
+  in
   Action_builder.of_memo (for_source ~dir source)
   >>= function
   | None -> Action_builder.return (Action.Full.make diff)
-  | Some kind ->
+  | Some (Dune version) ->
+    Format_dune_file.action_stdout ~version (Path.build target)
+    |> Action.with_stdout_to_atomic target
+    |> Action.Full.make
+    |> with_diff
+    |> Action_builder.return
+  | Some (Ocamlformat kind) ->
     let* expander = Action_builder.of_memo (Super_context.expander sctx ~dir) in
     let+ formatter = ocamlformat_action ~expander ~dir ~source ~target kind in
-    Action.Full.map formatter ~f:(fun formatter ->
-      Action.progn [ Action.if_file_exists (Path.build target) formatter; diff ])
+    with_diff formatter
 ;;

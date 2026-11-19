@@ -1,4 +1,4 @@
-(** Select OCamlFormat for a generated correction. *)
+(** Select an in-place formatter for a generated correction. *)
 
 open Import
 

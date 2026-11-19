@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795048669308,
+  "lastUpdate": 1795048985413,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -491287,6 +491287,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4670565337333333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bde3c56b81de9b4931d5e8ac1856f703ccb9f3e0",
+          "message": "fix(pkg): exclude runtime job counts from command hashes (#17095)\n\nPreserve `%{jobs}` as a typed runtime argument through package command\nexpansion. Encode a stable marker in the action identity instead of the\ncurrent numeric count, while still passing that count to commands when\nthey execute.\n\nUpdate the regression from #17051 so changing only `-j` or `DUNE_JOBS`\npreserves package reuse, including interpolated and concatenated\narguments. Real source changes, literal argument edits, and\njobs-dependent argument selection still invalidate the action.\n\nFixes #12103.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-19T08:19:57+08:00",
+          "tree_id": "9aca141f2cdad4361e2c38108a3284e783f13f02",
+          "url": "https://github.com/ocaml/dune/commit/bde3c56b81de9b4931d5e8ac1856f703ccb9f3e0"
+        },
+        "date": 1795048984067,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 61.175367858946665,
             "unit": "seconds"
           }
         ]

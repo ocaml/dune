@@ -568,6 +568,10 @@ module Full = struct
     make_from_children (Concurrent (action_values children)) children
   ;;
 
+  let pipe outputs children =
+    make_from_children (Pipe (outputs, action_values children)) children
+  ;;
+
   let add_env env t =
     if Env.is_empty env then t else { t with props = Props.add_env t.props env }
   ;;

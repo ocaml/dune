@@ -165,6 +165,7 @@ module Full : sig
   val map : t -> f:(action -> action) -> t
   val progn : t list -> t
   val concurrent : t list -> t
+  val pipe : Stdune.Action_types.Outputs.t -> t list -> t
 
   (** The various [add_xxx] functions merge the given value with the existing
       field of the action. *)

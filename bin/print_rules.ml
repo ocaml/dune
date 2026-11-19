@@ -68,6 +68,8 @@ let rec encode_action ~dir (t : Action.t) : Dune_lang.t =
       ; target fn
       ; encode r
       ]
+  | Redirect_out_atomic (fn, action) ->
+    List [ atom "with-stdout-to-atomic"; target fn; encode action ]
   | Redirect_in (inputs, fn, r) ->
     List [ atom (sprintf "with-%s-from" (Inputs.to_string inputs)); path fn; encode r ]
   | Ignore (outputs, r) ->

@@ -431,6 +431,11 @@ module Manual = struct
     Blake3_mini.reset hasher;
     res
   ;;
+
+  let reset () =
+    Hasher.Scratch.pos := 0;
+    Blake3_mini.reset (Lazy.force Hasher.singleton)
+  ;;
 end
 
 let string s = Feed.compute_digest Feed.string s

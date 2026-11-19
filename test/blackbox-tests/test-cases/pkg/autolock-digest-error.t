@@ -1,6 +1,5 @@
-A failed repository digest must not affect unrelated rules. Currently, failing
-while hashing an unsupported repository entry leaves the rule hasher dirty.
-An unrelated rule completes, but its next build unnecessarily reruns it.
+Failing to hash an unsupported repository entry must not change the digest of
+an unrelated rule.
 
   $ export DUNE_TRACE=+cache
   $ mkrepo
@@ -33,12 +32,8 @@ An unrelated rule completes, but its next build unnecessarily reruns it.
   $ misses
   ["never seen this target before"]
 
-The completed rule has no changed inputs, but its digest differs from the one
-computed after the failed repository digest. The following build is cached.
+The completed rule has no changed inputs and stays cached.
 
-  $ dune build completed
-  $ misses
-  ["rule or dependencies changed"]
   $ dune build completed
   $ misses
   []

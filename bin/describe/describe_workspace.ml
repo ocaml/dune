@@ -668,7 +668,7 @@ module Crawl = struct
       (match Resolve.peek requires with
        | Error () -> None
        | Ok libs ->
-         let include_dirs = Obj_dir.all_cmis obj_dir in
+         let include_dirs = Obj_dir.all_cmis obj_dir ~for_ in
          let exe_descr =
            { Descr.Exe.names = Nonempty_list.to_list_map exes.names ~f:snd
            ; public_names =
@@ -735,7 +735,7 @@ module Crawl = struct
           let dune_file = dune_file_of_loc (Lib_info.loc info) in
           modules ~options ~obj_dir ~dune_file ~parser_gen_origins ~deps_of modules_
       in
-      let include_dirs = Obj_dir.all_cmis obj_dir in
+      let include_dirs = Obj_dir.all_cmis obj_dir ~for_ in
       let lib_descr =
         { Descr.Lib.name
         ; public_name

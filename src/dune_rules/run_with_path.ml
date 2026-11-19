@@ -164,6 +164,7 @@ module Spec = struct
   type 'path chunk =
     | String of string
     | Path of 'path
+    | Jobs of int
 
   type 'path arg = 'path chunk Array.Immutable.t
 
@@ -176,13 +177,13 @@ module Spec = struct
     }
 
   let name = "run-with-path"
-  let version = 2
+  let version = 3
   let runs_process = true
   let can_run_in_action_runner = true
 
   let map_arg arg ~f =
     Array.Immutable.map arg ~f:(function
-      | String _ as s -> s
+      | (String _ | Jobs _) as s -> s
       | Path p -> Path (f p))
   ;;
 
@@ -207,7 +208,8 @@ module Spec = struct
         Sexp.List
           (Array.Immutable.to_list_map x ~f:(function
              | String s -> Sexp.Atom s
-             | Path p -> path p)))
+             | Path p -> path p
+             | Jobs _ -> Sexp.List [ Atom "jobs" ])))
     in
     List [ List ([ prog ] @ args); path ocamlfind_destdir ]
   ;;
@@ -226,7 +228,8 @@ module Spec = struct
         Array.Immutable.to_list_map args ~f:(fun arg ->
           Array.Immutable.to_list_map arg ~f:(function
             | String s -> s
-            | Path p -> Path.to_absolute_filename p)
+            | Path p -> Path.to_absolute_filename p
+            | Jobs jobs -> Int.to_string jobs)
           |> String.concat ~sep:"")
       in
       let metadata =

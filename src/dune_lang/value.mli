@@ -4,6 +4,7 @@ type t =
   | String of string
   | Dir of Path.t
   | Path of Path.t
+  | Jobs of int
 
 val compare : t -> t -> Ordering.t
 val equal : t -> t -> bool

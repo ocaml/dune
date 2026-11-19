@@ -44,7 +44,8 @@ let check_filename =
   fun ~kind ~error_loc ~dir -> function
     | Value.String ("." | "..") ->
       User_error.raise ~loc:error_loc [ Pp.text "'.' and '..' are not valid targets" ]
-    | String s ->
+    | (String _ | Jobs _) as value ->
+      let s = Value.to_string value ~dir:(Path.build dir) in
       if Filename.dirname s <> Filename.current_dir_name
       then not_in_dir ~kind ~error_loc s;
       Path.Build.relative ~error_loc dir s

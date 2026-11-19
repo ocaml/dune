@@ -86,7 +86,8 @@ and eval_to_bool (t : Slang.t) ~dir ~f =
     match result with
     | [ x ] when Value.(equal true_ x) -> true
     | [ x ] when Value.(equal false_ x) -> false
-    | [ Value.String other ] ->
+    | [ ((Value.String _ | Jobs _) as value) ] ->
+      let other = Value.to_string value ~dir in
       User_error.raise
         ~loc:(Slang.loc t)
         [ Pp.textf

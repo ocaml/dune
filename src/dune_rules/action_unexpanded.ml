@@ -420,7 +420,8 @@ end = struct
                   (Path.to_string_maybe_quoted p)
               ]
           | Path p -> Action_builder.return (Ok p)
-          | String s ->
+          | (String _ | Jobs _) as value ->
+            let s = Value.to_string value ~dir in
             (match Filename.analyze_program_name s with
              | Relative_to_current_dir | Absolute ->
                Action_builder.return (Ok (Path.relative dir s))

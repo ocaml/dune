@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795098273943,
+  "lastUpdate": 1795103095531,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -685037,6 +685037,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.1568095457666665,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "546b7bb85e6965476d45759ee6ad36f3e45300fb",
+          "message": "feat(formatting): format Cinaps Dune configuration corrections (#17109)\n\nFollow up on #16209 by formatting Cinaps-generated `dune` and\n`dune-project`\ncorrections with Dune's built-in formatter when Dune formatting is\nenabled.\nOCaml-only formatting leaves these corrections untouched.\n\nUse atomic stdout replacement so the formatter can read the correction\nbefore\nreplacing it. Focused coverage exercises both filenames under Dune-only\nand\nOCaml-only settings, reusing the existing extension-version and\nglobal-disable\ncoverage. The test uses real Cinaps with explicit OCaml comment syntax\nfor these\nextensionless filenames.",
+          "timestamp": "2026-11-19T23:26:31+08:00",
+          "tree_id": "c25e69146bffd29813495e366bbb5bc2112fe52d",
+          "url": "https://github.com/ocaml/dune/commit/546b7bb85e6965476d45759ee6ad36f3e45300fb"
+        },
+        "date": 1795102680279,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.770980416866667,
             "unit": "seconds"
           }
         ]

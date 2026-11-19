@@ -166,7 +166,10 @@ and ('a, _) ivar_state =
 and value = ..
 
 and context =
-  { parent : context
+  { mutable parent : context
+    (* Never mutated. [mutable] so that the [let rec] in [Scheduler.start], which
+       makes the root context its own parent, doesn't build a cycle made only of
+       immutable blocks. *)
   ; on_error : error_handler
   ; vars : Var_map.t
   ; map_reduce_context : map_reduce_context
@@ -178,7 +181,7 @@ and error_handler =
   | Collect_errors
 
 and ('a, 'b) map_reduce_context' =
-  { ctx : context
+  { mutable ctx : context (* [mutable] for the same reason as [context.parent]. *)
   ; k : ('a, 'b) result continuation
   ; on_error : Exn_with_backtrace.t -> 'b t
   ; combine : 'b -> 'b -> 'b

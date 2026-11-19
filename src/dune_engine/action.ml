@@ -51,6 +51,7 @@ type t =
   | Redirect_out of Outputs.t * Path.Build.t * File_perm.t * t
   | Redirect_in of Inputs.t * Path.t * t
   | Ignore of Outputs.t * t
+  | If_file_exists of Path.t * t
   | Progn of t list
   | Concurrent of t list
   | Echo of string list
@@ -85,6 +86,7 @@ let with_outputs_to ?(perm = File_perm.Normal) path t =
 
 let progn ts = Progn ts
 let concurrent ts = Concurrent ts
+let if_file_exists path t = If_file_exists (path, t)
 let echo s = Echo s
 let cat ps = Cat ps
 let copy a b = Copy (a, b)
@@ -240,6 +242,10 @@ let digest =
     | System command ->
       int d 22;
       string d command
+    | If_file_exists (path, t) ->
+      int d 23;
+      digest_path d ~dir path;
+      loop d t ~dir
   in
   fun d t -> loop d t ~dir:Path.root
 ;;
@@ -251,6 +257,7 @@ let fold_one_step t ~init:acc ~f =
   | Redirect_out (_, _, _, t)
   | Redirect_in (_, _, t)
   | Ignore (_, t)
+  | If_file_exists (_, t)
   | With_accepted_exit_codes (_, t) -> f acc t
   | Progn l | Pipe (_, l) | Concurrent l -> List.fold_left l ~init:acc ~f
   | Run _
@@ -296,6 +303,7 @@ let exists t ~leaf ~extension =
     | Redirect_out (_, _, _, t)
     | Redirect_in (_, _, t)
     | Ignore (_, t)
+    | If_file_exists (_, t)
     | With_accepted_exit_codes (_, t) -> loop t
     | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:loop
     | Extension extension_ -> extension extension_
@@ -335,6 +343,7 @@ let sandbox t sandbox =
       Redirect_out (outputs, target fn, perm, loop t)
     | Redirect_in (inputs, fn, t) -> Redirect_in (inputs, path fn, loop t)
     | Ignore (outputs, t) -> Ignore (outputs, loop t)
+    | If_file_exists (p, t) -> If_file_exists (path p, loop t)
     | Progn l -> Progn (List.map l ~f:loop)
     | Concurrent l -> Concurrent (List.map l ~f:loop)
     | (Echo _ | System _ | Bash _) as t -> t
@@ -371,7 +380,7 @@ let is_useful_to_memoize t =
     | Setenv (_, _, t) -> loop t
     | Redirect_out _ -> true
     | Redirect_in (_, _, t) -> loop t
-    | Ignore (_, t) | With_accepted_exit_codes (_, t) -> loop t
+    | Ignore (_, t) | If_file_exists (_, t) | With_accepted_exit_codes (_, t) -> loop t
     | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:loop
     | Echo _ -> false
     | Cat _ -> true
@@ -526,6 +535,29 @@ module Full = struct
   ;;
 
   let map t ~f = { t with action = f t.action }
+
+  let make_from_children action children =
+    let props =
+      List.fold_left
+        children
+        ~init:
+          (Props.make
+             ~env:Env.empty
+             ~locks:[]
+             ~can_go_in_shared_cache:!Clflags.can_go_in_shared_cache_default
+             ~sandbox:Sandbox_config.default
+             ~corrections:None)
+        ~f:(fun props child -> Props.combine props child.props)
+    in
+    { action; props }
+  ;;
+
+  let action_values children = List.map children ~f:(fun child -> child.action)
+  let progn children = make_from_children (Progn (action_values children)) children
+
+  let concurrent children =
+    make_from_children (Concurrent (action_values children)) children
+  ;;
 
   let add_env env t =
     if Env.is_empty env then t else { t with props = Props.add_env t.props env }

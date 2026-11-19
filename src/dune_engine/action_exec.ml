@@ -76,6 +76,10 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
     redirect_out t ~ectx ~eenv outputs ~perm fn
   | Redirect_in (inputs, fn, t) -> redirect_in t ~ectx ~eenv inputs fn
   | Ignore (outputs, t) -> redirect_out t ~ectx ~eenv ~perm:Normal outputs Dev_null.path
+  | If_file_exists (path, t) ->
+    (match Path.Untracked.stat path with
+     | Ok { st_kind = S_REG; _ } -> exec t ~ectx ~eenv
+     | Ok _ | Error _ -> Fiber.return ())
   | Progn ts -> exec_list ts ~ectx ~eenv
   | Concurrent ts ->
     Fiber.parallel_iter ts ~f:(fun t ->

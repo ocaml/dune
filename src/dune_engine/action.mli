@@ -50,6 +50,7 @@ type t =
   | Redirect_out of Outputs.t * Path.Build.t * File_perm.t * t
   | Redirect_in of Inputs.t * Path.t * t
   | Ignore of Outputs.t * t
+  | If_file_exists of Path.t * t
   | Progn of t list
   | Concurrent of t list
   | Echo of string list
@@ -77,6 +78,7 @@ val with_stdout_to : ?perm:File_perm.t -> Path.Build.t -> t -> t
 val with_outputs_to : ?perm:File_perm.t -> Path.Build.t -> t -> t
 val progn : t list -> t
 val concurrent : t list -> t
+val if_file_exists : Path.t -> t -> t
 val echo : string list -> t
 val cat : Path.t list -> t
 val copy : Path.t -> Path.Build.t -> t
@@ -159,6 +161,8 @@ module Full : sig
     -> t
 
   val map : t -> f:(action -> action) -> t
+  val progn : t list -> t
+  val concurrent : t list -> t
 
   (** The various [add_xxx] functions merge the given value with the existing
       field of the action. *)

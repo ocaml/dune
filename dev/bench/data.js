@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795090029659,
+  "lastUpdate": 1795090034949,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -491461,6 +491461,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 44.06555700974667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "997dc7a2b1ceb67cb4a522ce6d050169bff7d7cf",
+          "message": "fix(digest): reset the singleton hasher on exceptions (#17106)\n\nIf digest computation raises inside `Hasher.with_singleton`, the shared\nhasher can retain partial input and remain marked in use, causing later\ncalls to fail. Clear the buffered input, reset the hasher and its guard,\nand re-raise with the original backtrace.\n\nThis is defensive hardening: successful digest values and the existing\nnesting restriction are unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-19T19:41:36+08:00",
+          "tree_id": "2e08e4670b8f4095685c95768b9c9305be497ba4",
+          "url": "https://github.com/ocaml/dune/commit/997dc7a2b1ceb67cb4a522ce6d050169bff7d7cf"
+        },
+        "date": 1795090029849,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5163897553533334,
             "unit": "seconds"
           }
         ]

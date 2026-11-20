@@ -40,26 +40,10 @@ module Local = struct
                 | _ -> None)))
       ;;
 
-      let of_string_opt (name : string) =
-        match name with
-        | "" -> None
-        | (s : string) ->
-          if s.[0] = '.'
-          then None
-          else (
-            let len = String.length s in
-            let rec loop warn i =
-              if i = len - 1
-              then if warn then None else Some s
-              else (
-                let c = String.unsafe_get s i in
-                if valid_char c
-                then loop warn (i + 1)
-                else if c = '.'
-                then loop true (i + 1)
-                else None)
-            in
-            loop false 0)
+      let of_string_opt name =
+        Option.some_if
+          ((not (String.is_empty name)) && String.for_all name ~f:valid_char)
+          name
       ;;
     end) :
       Stringlike with type t := t)

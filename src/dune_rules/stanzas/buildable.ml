@@ -261,7 +261,8 @@ let has_foreign t =
 
 let has_foreign_cxx t =
   List.exists
-    ~f:(fun stub -> Foreign_language.(equal Cxx stub.Foreign.Stubs.language))
+    ~f:(fun { Foreign.Stubs.languages; _ } ->
+      List.exists (Nonempty_list.to_list languages) ~f:Foreign_language.(equal Cxx))
     t.foreign_stubs
 ;;
 

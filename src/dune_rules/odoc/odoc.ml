@@ -309,23 +309,17 @@ let run_odoc sctx ~dir command ~quiet ~flags_for args =
         [ A command; Dyn base_flags; S args ]
 ;;
 
-let module_deps sctx (m : Module.t) ~odoc_dir ~obj_dir ~modules ~for_ =
-  (* When a module has no .mli, use the dependencies for the .ml *)
-  let ml_kind : Ml_kind.t = if Module.has m ~ml_kind:Intf then Intf else Impl in
-  let sandbox = Compilation_mode.default_sandbox in
+let module_deps (m : Module.t) ~odoc_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
   Action_builder.dyn_paths_unit
     (let open Action_builder.O in
      let+ deps =
-       Dep_rules.read_deps_of
-         ~sandbox
-         ~sctx
-         ~obj_dir
-         ~modules
-         ~impl:Virtual_rules.no_implements
-         ~dir:(Obj_dir.dir obj_dir)
-         ~for_
-         ~ml_kind
-         m
+       let graphs =
+         if Module.has m ~ml_kind:Intf then
+           dep_graphs.intf
+         else
+           dep_graphs.impl
+       in
+       Dep_graph.deps_of graphs m
      in
      List.map deps ~f:(fun m -> Path.build (module_odoc_file ~odoc_dir m)))
 ;;
@@ -336,7 +330,7 @@ let compile_module
       ~obj_dir
       (m : Module.t)
       ~includes:(file_deps, iflags)
-      ~modules
+      ~dep_graphs
       ~pkg_or_lnu
       ~for_
   =
@@ -371,8 +365,7 @@ let compile_module
       in
       let open Action_builder.With_targets.O in
       Action_builder.with_no_targets file_deps
-      >>> Action_builder.with_no_targets
-            (module_deps sctx m ~odoc_dir ~obj_dir ~modules ~for_)
+      >>> Action_builder.with_no_targets (module_deps m ~odoc_dir ~dep_graphs)
       >>> run_odoc
     in
     add_rule sctx action_with_targets
@@ -450,30 +443,26 @@ let link_odoc_rules sctx (odoc_file : Artifact.t) ~pkg ~requires =
 let setup_library_odoc_rules sctx (local_lib : Lib.Local.t) =
   (* Using the proper package name doesn't actually work since odoc assumes that
      a package contains only 1 library *)
-  let lib = Lib.Local.to_lib local_lib in
-  let pkg_or_lnu = Odoc_scope.pkg_or_lnu lib in
+  let pkg_or_lnu = Odoc_scope.pkg_or_lnu (Lib.Local.to_lib local_lib) in
   let ctx = Super_context.context sctx in
   let info = Lib.Local.info local_lib in
-  let obj_dir = Lib.Local.obj_dir local_lib in
   let odoc_dir = Paths.odocs ctx (Lib local_lib) in
   let for_ =
     Lib_info.modes info
     |> Compilation_mode.Set.of_lib_mode_set
     |> Compilation_mode.Set.for_merlin
   in
-  let* modules = Dir_contents.modules_of_local_lib sctx local_lib ~for_ in
-  let modules_with_vlib = Modules.With_vlib.modules modules in
+  let* cctx = Lib_rules.compile_context_of_local_lib sctx local_lib ~for_ in
+  let obj_dir = Compilation_context.obj_dir cctx in
   let* includes =
-    let+ requires =
-      Resolve.Memo.bind (Lib.requires lib ~for_) ~f:(fun direct ->
-        Lib.closure direct ~linking:false ~for_)
-    in
+    let+ requires = Compilation_context.requires_compile cctx in
     let package = Lib_info.package info in
     let odoc_include_flags =
       Command.Args.memo (odoc_include_flags ctx package requires)
     in
     Dep.deps ctx package requires, odoc_include_flags
   in
+  let modules = Compilation_context.modules cctx |> Modules.With_vlib.drop_vlib in
   modules
   |> Modules.fold ~init:[] ~f:(fun m acc ->
     let compiled =
@@ -482,7 +471,7 @@ let setup_library_odoc_rules sctx (local_lib : Lib.Local.t) =
         ~odoc_dir
         ~obj_dir
         ~includes
-        ~modules:modules_with_vlib
+        ~dep_graphs:(Compilation_context.dep_graphs cctx)
         ~pkg_or_lnu
         ~for_
         m
@@ -493,10 +482,32 @@ let setup_library_odoc_rules sctx (local_lib : Lib.Local.t) =
   >>= Dep.setup_deps ctx (Lib local_lib)
 ;;
 
+let is_documentation_relevant lib =
+  (* Filter out implementations of virtual modules. *)
+  match Lib.implements lib with
+  | None -> Memo.return true
+  | Some implements ->
+    let+ implements = implements in
+    (match Resolve.peek implements with
+     | Error () -> false
+     | Ok implements ->
+       (match Lib.info implements |> Lib_info.kind with
+        | Parameter -> true
+        | Virtual | Dune_file _ -> false))
+;;
+
 let setup_lib_odoc_rules_in_dir sctx ~dir lib =
   let ctx = Super_context.context sctx in
   if Path.Build.equal (Paths.odocs ctx (Lib lib)) dir
-  then setup_library_odoc_rules sctx lib
+  then
+    is_documentation_relevant (Lib.Local.to_lib lib)
+    >>= function
+    | true -> setup_library_odoc_rules sctx lib
+    | false ->
+      (* Libraries that depend on this one depend on its odoc alias. The
+         modules of the virtual library it implements are documented, and
+         depended upon, through the virtual library itself. *)
+      Dep.setup_deps ctx (Lib lib) Path.Set.empty
   else Memo.return ()
 ;;
 
@@ -736,20 +747,6 @@ let setup_toplevel_index_rule sctx output =
   let ctx = Super_context.context sctx in
   let path = Output_format.toplevel_index_path output ctx in
   add_rule sctx (Action_builder.write_file path content)
-;;
-
-let is_documentation_relevant lib =
-  (* Filter out implementations of virtual modules. *)
-  match Lib.implements lib with
-  | None -> Memo.return true
-  | Some implements ->
-    let+ implements = implements in
-    (match Resolve.peek implements with
-     | Error () -> false
-     | Ok implements ->
-       (match Lib.info implements |> Lib_info.kind with
-        | Parameter -> true
-        | Virtual | Dune_file _ -> false))
 ;;
 
 let libs_of_pkg ctx ~pkg =

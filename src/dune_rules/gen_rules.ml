@@ -134,7 +134,8 @@ end = struct
       in
       if_available
         (fun () ->
-           let+ cctx_merlins = Lib_rules.rules lib ~sctx ~scope ~dir_contents ~expander in
+           let+ cctx_merlins = Lib_rules.rules lib ~sctx ~scope ~dir_contents ~expander
+           and+ () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir lib in
            match cctx_merlins.ocaml, cctx_merlins.melange with
            | None, None -> empty_none
            | Some cctx_merlin, None | None, Some cctx_merlin ->

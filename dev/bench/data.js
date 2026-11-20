@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795105113804,
+  "lastUpdate": 1795139442927,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -685211,6 +685211,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.1963971226533334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2dfefda7f66e989902ac802a94debb4947135bfe",
+          "message": "fix(pkg): canonicalize platform disjunction hashes (#17111)\n\nPlatform disjunction equality ignores alternative order, but the\nstructural hash and digest representation did not. Use the same sorted\norder for all three, without changing lockfile encoding or platform\nselection.\n\nUpdate the regression from #17041: reordering equivalent alternatives\nkeeps the package key stable and reuses the build.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-20T09:36:05+08:00",
+          "tree_id": "0a5b4364215babbfca9852fdcb095c1dd34a21c0",
+          "url": "https://github.com/ocaml/dune/commit/2dfefda7f66e989902ac802a94debb4947135bfe"
+        },
+        "date": 1795139115304,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.19986469222,
             "unit": "seconds"
           }
         ]

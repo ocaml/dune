@@ -125,11 +125,9 @@ Swap the two providers without changing their files or the consuming recipe.
   $ selected=$(cat "$target/selected")
   $ test "$selected" = "$(cat "$fresh/selected")"
 
-The current search path follows the spelling of the lock entry, so a mere
-permutation can still change the selected command.
+Merely reordering siblings does not change the selected command.
 
   $ test "$selected" = "$first"
-  [1]
 
 Adding a dependency edge between the same two providers really changes the
 graph. Even if neither helper changes, incremental and fresh builds must agree.

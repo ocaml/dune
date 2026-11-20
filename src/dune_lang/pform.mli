@@ -93,6 +93,7 @@ module Var : sig
     | Oxcaml_supported
     | Dune_warnings
     | Git_sha
+    | Stub_dll_suffix
 
   val compare : t -> t -> Ordering.t
   val to_dyn : t -> Dyn.t

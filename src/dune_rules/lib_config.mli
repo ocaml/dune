@@ -14,6 +14,7 @@ type t =
   ; ccomp_type : Ocaml_config.Ccomp_type.t
   ; ocaml_version_string : string
   ; ocaml_version : Ocaml.Version.t
+  ; stub_dll_suffix : string option
   }
 
 val allowed_in_enabled_if : (string * Dune_lang.Syntax.Version.t) list
@@ -27,3 +28,7 @@ val to_dyn : t -> Dyn.t
 val cc_g : t -> string list
 
 val create : Ocaml_config.t -> ocamlopt:(_, _) result -> stdlib_dir:Path.t -> t
+
+(** [Some "-<target>-<bytecode_runtime_id>"] when the compiler supports suffixed
+    stub DLLs and [project] enables them. *)
+val stub_dll_suffix : t -> project:Dune_project.t -> string option

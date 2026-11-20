@@ -1981,6 +1981,53 @@ let files path =
   Dep.Set.of_source_files ~files ~empty_directories, files
 ;;
 
+module Prepare_source = struct
+  module A = Action_ext.Make (struct
+      type ('path, 'target) t = 'path
+
+      let name = "prepare-package-source"
+      let version = 1
+      let runs_process = false
+      let can_run_in_action_runner = false
+      let is_useful_to_memoize = false
+      let bimap dir f _ = f dir
+      let encode dir path _ = path dir
+
+      let action source_dir ~ectx:_ ~eenv:_ =
+        Fiber.Temp.with_temp_dir
+          ~parent_dir:(Path.parent_exn source_dir)
+          ~prefix:".dune"
+          ~suffix:"copy"
+          ~f:(fun tmp ->
+            let tmp = Result.ok_exn tmp in
+            Async.async (fun () ->
+              let tmp = Path.relative tmp "source" in
+              let make_writable = Permissions.add Permissions.write in
+              let copy ~dir file () =
+                let path = Path.relative_fname (Path.relative source_dir dir) file in
+                Io.copy_file ~overwrite:false ~chmod:make_writable ~src:path ~dst:tmp ();
+                Fpath.rename_exn (Path.to_string tmp) (Path.to_string path)
+              in
+              Fpath.traverse
+                ~dir:(Path.to_string source_dir)
+                ~init:()
+                ~on_file:copy
+                ~on_symlink:
+                  (`Call
+                      (fun ~dir file () ->
+                        copy ~dir file ();
+                        (), None))
+                ()))
+      ;;
+    end)
+
+  let action dir =
+    A.action dir
+    |> Action.Full.make ~sandbox:Sandbox_config.needs_sandboxing
+    |> Action_builder.With_targets.return
+  ;;
+end
+
 let dune_dep =
   lazy (Sys.executable_name |> Path.External.of_string |> Path.external_ |> Dep.file)
 ;;
@@ -2077,7 +2124,13 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
       |> Action_builder.return
       |> Action_builder.with_no_targets
     in
-    [ copy_action
+    let prepare_source =
+      match pkg.build_command, pkg.install_command with
+      | Some (Action _), _ | _, Some _ -> [ Prepare_source.action pkg.paths.source_dir ]
+      | (None | Some Dune), None -> []
+    in
+    [ prepare_source
+    ; copy_action
     ; [ progress_building ]
     ; build_action
     ; install_action

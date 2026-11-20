@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795193633991,
+  "lastUpdate": 1795194408474,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -686081,6 +686081,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8843633964333333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f5103f3e737e8c1a456d495789adf7f4edd199d2",
+          "message": "test(pkg): record source and dependency copying in package builds (#17124)\n\nAdd a cram test that records current package sandboxing behavior: even\nwhen hardlink mode is preferred, Dune copies both the installed\ndependency and the package’s own sources. The test also verifies that an\nin-place edit leaves the staged source unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-21T00:52:12+08:00",
+          "tree_id": "a97f4623a3f48661e56f0cc3731e2b1bfe96285b",
+          "url": "https://github.com/ocaml/dune/commit/f5103f3e737e8c1a456d495789adf7f4edd199d2"
+        },
+        "date": 1795193995114,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7612745089133335,
             "unit": "seconds"
           }
         ]

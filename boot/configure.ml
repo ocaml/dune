@@ -18,8 +18,7 @@ let out =
 ;;
 
 let default_toggles : (string * [ `Disabled | `Enabled ]) list =
-  [ "toolchains", `Enabled
-  ; "lock_dev_tool", `Disabled
+  [ "lock_dev_tool", `Disabled
   ; "bin_dev_tools", `Disabled
   ; "portable_lock_dir", `Enabled
   ]
@@ -92,10 +91,6 @@ let () =
       , Arg.String (set_dir datadir)
       , "DIR where files for the share_root section are installed for the default build \
          context" )
-    ; ( "--toolchains"
-      , toggle "toolchains"
-      , " Enable the toolchains behaviour, allowing dune to install the compiler in a \
-         user-wide directory." )
     ; ( "--lock-dev-tool"
       , toggle "lock_dev_tool"
       , " Enable ocamlformat dev-tool, allows 'dune fmt' to build ocamlformat and use \

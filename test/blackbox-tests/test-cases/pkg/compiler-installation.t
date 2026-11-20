@@ -23,17 +23,15 @@ whether its installed files are available to dependent packages.
   >  (run cp %{pkg:ocaml-base-compiler:bin}/ocamlc %{share}/consumer/compiler))
   > EOF
 
-The compiler is installed outside the workspace:
+The compiler is installed in the workspace, without using a separate cache:
 
   $ build_pkg ocaml-base-compiler
-  $ find "$DUNE_CACHE_ROOT/toolchains" -type f -name ocamlc -exec cat {} \;
+  $ cat "$(get_build_pkg_dir ocaml-base-compiler)/target/bin/ocamlc"
   mock ocamlc
-  $ test -f "$(get_build_pkg_dir ocaml-base-compiler)/target/bin/ocamlc"
-  [1]
+  $ test ! -e "$DUNE_CACHE_ROOT/toolchains"
 
-The dependent package looks for the compiler inside the workspace instead:
+The dependent package can read the installed compiler:
 
-  $ build_pkg consumer > consumer.log 2>&1
-  [1]
-  $ grep -o 'target/bin/ocamlc' consumer.log
-  target/bin/ocamlc
+  $ build_pkg consumer
+  $ cat "$(get_build_pkg_dir consumer)/target/share/consumer/compiler"
+  mock ocamlc

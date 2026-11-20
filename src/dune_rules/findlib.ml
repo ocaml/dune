@@ -640,10 +640,10 @@ let create_with_paths ~paths context_name =
      lock-package names, and only fall back to findlib names outside
      lock directories. *)
   let* lock_dir_active = Pkg_rules.lock_dir_active (Context.name context) in
-  let* prefixes = Pkg_rules.package_prefixes (Context.name context) in
+  let* prefixes = Pkg_rules.target_dirs (Context.name context) in
   let package_of_dir dir =
     List.find_map prefixes ~f:(fun (prefix, package) ->
-      match Path.drop_prefix dir ~prefix with
+      match Path.drop_prefix dir ~prefix:(Path.build prefix) with
       | None -> None
       | Some _ -> Some package)
   in

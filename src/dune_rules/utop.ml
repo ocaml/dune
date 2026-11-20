@@ -148,17 +148,15 @@ let utop_findlib_conf =
 ;;
 
 (* The lib directory of the utop package and of each of its dependencies within
-   the _build directory (or the toolchains directory in the case of the OCaml
-   compiler). *)
+   the _build directory. *)
 let utop_ocamlpath =
   Memo.Lazy.create ~name:"utop-ocamlpath" (fun () -> Pkg_rules.dev_tool_ocamlpath Utop)
 ;;
 
 (* Creates a rule that generates a custom findlib.conf containing the path to
-   the utop library as well as all of its dependencies in the _build directory
-   (or the toolchains directory in the case of the OCaml compiler). Utop uses
-   findlib to locate libraries at runtime. When utop is running as a devtool,
-   libraries are not in the location suggested by the default findlib.conf
+   the utop library as well as all of its dependencies in the _build directory.
+   Utop uses findlib to locate libraries at runtime. When utop runs as a dev
+   tool, libraries are not in the location suggested by the default findlib.conf
    (there may not even be a default findlib.conf on the current system) and so
    we need to tell findlib where to look for libraries by means of a custom
    findlib.conf file. *)

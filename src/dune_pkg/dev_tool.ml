@@ -127,7 +127,7 @@ let needs_to_build_with_same_compiler_as_project = function
 
 (* Package names that are considered compiler packages. When these are pinned
    in the project, the pins should be propagated to dev tools that need to be
-   built with the same compiler. This list is also used by pkg_toolchain. *)
+   built with the same compiler. *)
 let compiler_package_names =
   List.map
     ~f:Package_name.of_string

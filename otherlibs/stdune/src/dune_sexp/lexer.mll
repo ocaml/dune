@@ -5,6 +5,7 @@ module Token = struct
   type t =
     | Atom of Atom.t
     | Quoted_string of string
+    | Block_string of Block_string.t
     | Lparen
     | Rparen
     | Eof
@@ -47,10 +48,6 @@ let eval_hex_char c =
 
 let eval_hex_escape c1 c2 = (eval_hex_char c1 * 16) + eval_hex_char c2
 
-type block_string_line_kind =
-  | With_escape_sequences
-  | Raw
-
 module Template = struct
   include Template
 
@@ -81,53 +78,129 @@ module Template = struct
     val add_var : Part.t -> unit
     val add_text : string -> unit
     val add_text_c : char -> unit
+    val add_char : char -> unit
+    val add_newline : string -> unit
+    val begin_block : Block_string.Kind.t -> unit
+    val start_block_line : Block_string.Kind.t -> unit
   end = struct
     type state =
       | String
       | Template of Part.t list
+      | Block_string of
+          { current_kind : Block_string.Kind.t
+          ; current_line_started : bool
+          ; current_line_parts : Part.t list
+          ; lines : Block_string.t
+          }
 
     let text_buf = Buffer.create 256
+    let state = ref String
 
-    let new_token () = Buffer.clear text_buf
+    let new_token () =
+      Buffer.clear text_buf;
+      state := String
+    ;;
 
     let take_buf () =
       let contents = Buffer.contents text_buf in
       Buffer.clear text_buf;
       contents
-
-    let state = ref String
+    ;;
 
     let add_buf_to_parts parts =
       match take_buf () with
       | "" -> parts
-      | t -> add_text parts t
+      | text -> add_text parts text
+    ;;
+
+    let begin_block kind =
+      state
+      := Block_string
+           { current_kind = kind
+           ; current_line_started = true
+           ; current_line_parts = []
+           ; lines = []
+           }
+    ;;
+
+    let start_block_line kind =
+      match !state with
+      | Block_string ({ current_line_started = false; _ } as block) ->
+        state
+        := Block_string { block with current_kind = kind; current_line_started = true }
+      | String | Template _ | Block_string _ -> ()
+    ;;
+
+    let finish_block_line () =
+      match !state with
+      | Block_string { current_kind; current_line_parts; lines; _ } ->
+        let parts = add_buf_to_parts current_line_parts in
+        let line = current_kind, List.rev parts in
+        state
+        := Block_string
+             { current_kind
+             ; current_line_started = false
+             ; current_line_parts = []
+             ; lines = line :: lines
+             }
+      | String | Template _ -> Buffer.add_char text_buf '\n'
+    ;;
+
+    let add_text text = Buffer.add_string text_buf text
+    let add_text_c char = Buffer.add_char text_buf char
+
+    let add_char char =
+      match !state, char with
+      | Block_string _, '\n' -> finish_block_line ()
+      | Block_string block, _ ->
+        Buffer.add_char text_buf char;
+        if not block.current_line_started
+        then state := Block_string { block with current_line_started = true }
+      | (String | Template _), _ -> Buffer.add_char text_buf char
+    ;;
+
+    let add_newline newline =
+      match !state with
+      | Block_string _ -> String.iter newline ~f:add_char
+      | String | Template _ -> add_text newline
+    ;;
 
     let get () =
       match !state with
       | String -> Token.Quoted_string (take_buf ())
+      | Block_string { current_kind; current_line_parts; lines; _ } ->
+        let final_parts = add_buf_to_parts current_line_parts in
+        let final_line = current_kind, List.rev final_parts in
+        state := String;
+        Token.Block_string (List.rev (final_line :: lines))
       | Template parts ->
         state := String;
-        begin match add_buf_to_parts parts with
-        | [] -> assert false
-        | [Text s] -> Quoted_string s
-        | parts ->
-          Token.Template
-            { quoted = true
-            ; loc = dummy_loc
-            ; parts = List.rev parts
-            }
-        end
+        (match add_buf_to_parts parts with
+         | [] -> assert false
+         | [ Text s ] -> Quoted_string s
+         | parts ->
+           Token.Template
+             { quoted = true
+             ; loc = dummy_loc
+             ; parts = List.rev parts
+             })
+    ;;
 
-    let add_var v =
+    let add_var var =
       match !state with
-      | String ->
-        state := Template (v :: add_buf_to_parts []);
+      | String -> state := Template (var :: add_buf_to_parts [])
+      | Block_string block ->
+        let current_line_parts = add_buf_to_parts block.current_line_parts in
+        state
+        := Block_string
+             { block with
+               current_line_started = true
+             ; current_line_parts = var :: current_line_parts
+             }
       | Template parts ->
         let parts = add_buf_to_parts parts in
-        state := Template (v::parts)
-
-    let add_text s = Buffer.add_string text_buf s
-    let add_text_c c = Buffer.add_char text_buf c
+        state := Template (var :: parts)
+    ;;
   end
 end
 }
@@ -160,7 +233,7 @@ rule token with_comments = parse
   | '"'
     { let start = Lexing.lexeme_start_p lexbuf in
       Template.Buffer.new_token ();
-      let token = start_quoted_string lexbuf in
+      let token = start_quoted_string with_comments lexbuf in
       lexbuf.lex_start_p <- start;
       token
     }
@@ -187,23 +260,29 @@ and atom acc start = parse
   | ""
     { Template.token acc ~quoted:false ~start lexbuf }
 
-and start_quoted_string = parse
+and start_quoted_string preserve_block_syntax = parse
   | "\\|"
-    { block_string_start With_escape_sequences lexbuf }
+    { if preserve_block_syntax
+      then Template.Buffer.begin_block Block_string.Kind.Escaped;
+      block_string_start Block_string.Kind.Escaped lexbuf
+    }
   | "\\>"
-    { block_string_start Raw lexbuf }
+    { if preserve_block_syntax
+      then Template.Buffer.begin_block Block_string.Kind.Raw;
+      block_string_start Block_string.Kind.Raw lexbuf
+    }
   | ""
     { quoted_string lexbuf }
 
 and block_string_start kind = parse
-  | newline as s
+  | newline as newline
     { Lexing.new_line lexbuf;
-      Template.Buffer.add_text s;
+      Template.Buffer.add_newline newline;
       block_string_after_newline lexbuf
     }
   | ' '
     { match kind with
-      | With_escape_sequences -> block_string lexbuf
+      | Block_string.Kind.Escaped -> block_string lexbuf
       | Raw -> raw_block_string lexbuf
     }
   | eof
@@ -213,23 +292,22 @@ and block_string_start kind = parse
     }
 
 and block_string = parse
-  | newline as s
+  | newline as newline
     { Lexing.new_line lexbuf;
-      Template.Buffer.add_text s;
+      Template.Buffer.add_newline newline;
       block_string_after_newline lexbuf
     }
   | '\\'
     { match escape_sequence lexbuf with
       | Newline -> block_string_after_newline lexbuf
-      | Other   -> block_string               lexbuf
+      | Other -> block_string lexbuf
     }
-  | "%{" {
-      let var = template_variable lexbuf in
-      Template.Buffer.add_var var;
+  | "%{"
+    { Template.Buffer.add_var (template_variable lexbuf);
       block_string lexbuf
     }
-  | _ as c
-    { Template.Buffer.add_text_c c;
+  | _ as char
+    { Template.Buffer.add_char char;
       block_string lexbuf
     }
   | eof
@@ -238,21 +316,25 @@ and block_string = parse
 
 and block_string_after_newline = parse
   | blank* "\"\\|"
-    { block_string_start With_escape_sequences lexbuf }
+    { Template.Buffer.start_block_line Block_string.Kind.Escaped;
+      block_string_start Block_string.Kind.Escaped lexbuf
+    }
   | blank* "\"\\>"
-    { block_string_start Raw lexbuf }
+    { Template.Buffer.start_block_line Block_string.Kind.Raw;
+      block_string_start Block_string.Kind.Raw lexbuf
+    }
   | ""
     { Template.Buffer.get ()
     }
 
 and raw_block_string = parse
-  | newline as s
+  | newline as newline
     { Lexing.new_line lexbuf;
-      Template.Buffer.add_text s;
+      Template.Buffer.add_newline newline;
       block_string_after_newline lexbuf
     }
-  | _ as c
-    { Template.Buffer.add_text_c c;
+  | _ as char
+    { Template.Buffer.add_char char;
       raw_block_string lexbuf
     }
   | eof
@@ -289,7 +371,7 @@ and escape_sequence = parse
     { Lexing.new_line lexbuf;
       Newline }
   | '%'
-    { Template.Buffer.add_text_c '%';
+    { Template.Buffer.add_char '%';
       Other
     }
   | ['\\' '\'' '"' 'n' 't' 'b' 'r'] as c
@@ -301,7 +383,7 @@ and escape_sequence = parse
         | 't' -> '\t'
         | _   -> c
       in
-      Template.Buffer.add_text_c c;
+      Template.Buffer.add_char c;
       Other
     }
   | (digit as c1) (digit as c2) (digit as c3)
@@ -309,7 +391,7 @@ and escape_sequence = parse
       if v > 255 then
         error lexbuf "escape sequence in quoted string out of range"
           ~delta:(-1);
-      Template.Buffer.add_text_c (Char.chr v);
+      Template.Buffer.add_char (Char.chr v);
       Other
     }
   | digit digit digit
@@ -320,7 +402,7 @@ and escape_sequence = parse
     }
   | 'x' (hexdigit as c1) (hexdigit as c2)
     { let v = eval_hex_escape c1 c2 in
-      Template.Buffer.add_text_c (Char.chr v);
+      Template.Buffer.add_char (Char.chr v);
       Other
     }
   | 'x' hexdigit?

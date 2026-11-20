@@ -47,7 +47,7 @@ also receives standard install paths and the shell environment.
 
   $ dune rules --format=json "$(get_build_pkg_dir usetest)/target" \
   >   | jq -c '[.[].deps[] | .Env? // empty] | sort'
-  []
+  ["BAR","FOO"]
 
 Changing only a dependency's exported environment must rebuild its consumer.
 
@@ -64,7 +64,7 @@ Changing only a dependency's exported environment must rebuild its consumer.
   baz/1.2.3
   $ dune rules --format=json "$(get_build_pkg_dir usetest)/target" \
   >   | jq '.[] | .deps | index({Env: "FOO"}) != null'
-  false
+  true
 
 Changing the package version also invalidates the build.
 

@@ -2024,8 +2024,17 @@ module Install_action = struct
   ;;
 end
 
-let add_env env action =
-  Action_builder.With_targets.map action ~f:(Action.Full.add_env env)
+let add_recipe_env (pkg : Pkg.t) action =
+  let open Action_builder.With_targets.O in
+  let+ action = action
+  and+ () =
+    Pkg.deps_closure pkg
+    |> Action_builder.List.iter ~f:(fun (dep : Pkg.t) ->
+      Action_builder.List.iter dep.exported_env ~f:(fun { Env_update.var; _ } ->
+        Action_builder.env_var var))
+    |> Action_builder.with_no_targets
+  in
+  Action.Full.add_env (Pkg.exported_env pkg) action
 ;;
 
 let rule ?loc { Action_builder.With_targets.build; targets } =
@@ -2319,8 +2328,7 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
      (), deps
    in
    Action_builder.with_no_targets (Action_builder.dyn_deps deps))
-  (* TODO should we add env deps on these? *)
-  >>> add_env (Pkg.exported_env pkg) build_action
+  >>> add_recipe_env pkg build_action
   |> Action_builder.With_targets.map ~f:Action.Full.disable_sandbox_policy
 ;;
 

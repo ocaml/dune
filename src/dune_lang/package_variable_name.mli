@@ -45,6 +45,11 @@ val absent_package_value : for_string_interp:bool -> t -> Slang.t option
     the current platform. *)
 val platform_specific : Set.t
 
+(** The set of variable names which only apply to local packages: they are
+    "true" unless set to "false" for local packages, and always "false" for
+    other packages. *)
+val local_only : Set.t
+
 module Project : sig
   val encode : t Encoder.t
   val decode : t Decoder.t

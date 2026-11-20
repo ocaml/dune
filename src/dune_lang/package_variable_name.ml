@@ -65,6 +65,8 @@ let platform_specific =
   Set.of_list [ arch; os; os_version; os_distribution; os_family; sys_ocaml_version ]
 ;;
 
+let local_only = Set.of_list [ with_test; with_doc; with_dev_setup ]
+
 (* Users are free to refer to arbitrarily-named variables, but these are the
    common variables that are widely in circulation. *)
 let all_known =

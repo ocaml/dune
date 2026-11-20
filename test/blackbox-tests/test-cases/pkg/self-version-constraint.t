@@ -63,6 +63,7 @@ of the dune-project:
   $ grep '^version' x.opam
   version: "1.0.0"
 
+  $ mkpkg odoc
   $ mkpkg dune 3.11
   $ solve_project <<EOF
   > (lang dune 3.11)
@@ -70,3 +71,4 @@ of the dune-project:
   Solution for dune.lock:
   - bar.1.0.0
   - foo.1.0.0
+  - odoc.0.0.1

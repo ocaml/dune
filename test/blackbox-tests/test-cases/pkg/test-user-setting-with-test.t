@@ -69,7 +69,8 @@ test dependencies in the solution.
   Dependencies common to all supported platforms:
   - foo.0.0.1
 
-Setting the value of with-test to true would fail:
+Setting the value of with-test to true is the same as the default: test
+dependencies of local packages are included:
 
   $ cat >dune-workspace <<EOF
   > (lang dune 3.21)
@@ -84,13 +85,12 @@ Setting the value of with-test to true would fail:
   > EOF
 
   $ dune pkg lock
-  File "dune-workspace", line 6, characters 2-18:
-  6 |   (with-test true)))
-        ^^^^^^^^^^^^^^^^
-  Error: Setting the "with-test" solver variable to 'true' is not currently
-  supported. Dune already uses "with-test" for local packages, but it cannot be
-  applied to transitive dependencies.
-  [1]
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - bar.0.0.1
+  - foo.0.0.1
+
 Now change workspace to with-test to default value again:
 
   $ cat >dune-workspace <<EOF

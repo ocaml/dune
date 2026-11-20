@@ -28,7 +28,9 @@ let local_package_dependencies
   let packages = Package_name.Map.set packages Dune_dep.name dune_version in
   Resolve_opam_formula.filtered_formula_to_package_names
     ~env
-    ~with_test
+    ~default_with_dev_setup:true
+    ~default_with_doc:true
+    ~default_with_test:with_test
     ~packages
     (Dependency_formula.to_filtered_formula local_package.dependencies)
   |> Result.map ~f:(fun { Resolve_opam_formula.regular; post = _ } ->
@@ -56,12 +58,11 @@ let simplify_filter get_solver_var =
     match OpamVariable.Full.scope var with
     | Global ->
       let name = OpamVariable.Full.variable var |> Package_variable_name.of_opam in
-      if Package_variable_name.equal name Package_variable_name.with_test
+      if Package_variable_name.Set.mem Package_variable_name.local_only name
       then
         (* We don't generate lockfiles for local packages, and we don't include
-           test dependencies for non-local packages, so "with-test" always
-           evaluates to "false" even if the solver environment is set to true.
-           *)
+           test, doc or dev-setup dependencies for non-local packages, so these
+           variables always evaluate to "false". *)
         Some (B false)
       else get_solver_var name |> Option.map ~f:Variable_value.to_opam_variable_contents
     | _ -> None)
@@ -534,7 +535,9 @@ let opam_package_to_lock_file_pkg_single
   let depends =
     let resolve what =
       Resolve_opam_formula.filtered_formula_to_package_names
-        ~with_test:false
+        ~default_with_dev_setup:false
+        ~default_with_doc:false
+        ~default_with_test:false
         ~packages:version_by_package_name
         ~env:
           (add_self_to_filter_env

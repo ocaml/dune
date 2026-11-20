@@ -4,7 +4,6 @@ open Import
     current system and variables taken from the current context, with priority
     being given to the latter. Some variables are initialized to default values
     (which can be overridden by the arguments to this function):
-    - "with-doc" is set to "false"
     - "opam-version" is set to the version of opam vendored in dune *)
 val solver_env
   :  solver_env_from_current_system:Dune_pkg.Solver_env.t option

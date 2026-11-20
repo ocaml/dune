@@ -34,22 +34,15 @@ let is_subset =
     Variable_value.equal value of_)
 ;;
 
-let validate t ~loc =
-  match Package_variable_name.Map.find t Package_variable_name.with_test with
-  | Some v ->
-    if Variable_value.equal v Variable_value.true_
-    then
-      User_error.raise
-        ?loc
-        [ Pp.textf
-            "Setting the %S solver variable to 'true' is not currently supported. Dune \
-             already uses %S for local packages, but it cannot be applied to transitive \
-             dependencies."
-            Package_variable_name.(to_string with_test)
-            Package_variable_name.(to_string with_test)
-        ]
-    else ()
-  | None -> ()
+(* "with-test", "with-doc" and "with-dev-setup" only apply to local packages,
+   for which they are enabled unless set to "false". Setting them to "true" is
+   the same as leaving them unset, which keeps them disabled for other
+   packages. *)
+let normalize t =
+  Package_variable_name.Map.filteri t ~f:(fun variable value ->
+    not
+      (Package_variable_name.Set.mem Package_variable_name.local_only variable
+       && Variable_value.equal value Variable_value.true_))
 ;;
 
 let encode t =
@@ -64,9 +57,7 @@ let decode =
     located (repeat (pair Package_variable_name.decode Variable_value.decode))
   in
   match Package_variable_name.Map.of_list bindings with
-  | Ok t ->
-    validate t ~loc:(Some loc);
-    t
+  | Ok t -> normalize t
   | Error (duplicate_key, a, b) ->
     User_error.raise
       ~loc
@@ -79,9 +70,7 @@ let decode =
 ;;
 
 let set t variable_name variable_value =
-  let t = Package_variable_name.Map.set t variable_name variable_value in
-  validate t ~loc:None;
-  t
+  Package_variable_name.Map.set t variable_name variable_value |> normalize
 ;;
 
 let get = Package_variable_name.Map.find
@@ -91,8 +80,6 @@ let contains = Package_variable_name.Map.mem
 let with_defaults =
   [ ( Package_variable_name.opam_version
     , OpamVersion.to_string OpamVersion.current |> Variable_value.string )
-  ; Package_variable_name.with_doc, Variable_value.false_
-  ; Package_variable_name.with_dev_setup, Variable_value.false_
   ; Package_variable_name.post, Variable_value.true_
   ]
   |> List.fold_left ~init:empty ~f:(fun acc (name, value) -> set acc name value)

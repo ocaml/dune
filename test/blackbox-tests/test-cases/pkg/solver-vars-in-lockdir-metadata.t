@@ -215,7 +215,7 @@ Changing only the system environment must update the solution.
 Explicitly assigning an inherited default does not change the effective inputs
 and should reuse the cached solve.
 
-  $ write_solver_workspace '(with-doc false)'
+  $ write_solver_workspace '(post true)'
   $ DUNE_CONFIG__SYS_OCAML_VERSION=second dune build @pkg-install
   $ dune trace cat | jq -s 'include "dune"; any(.[] | actionNames; . == "lock")'
   false

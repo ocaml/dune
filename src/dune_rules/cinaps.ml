@@ -265,18 +265,10 @@ let gen_rules sctx t ~dir ~scope =
             Path.Build.extend_basename source ~suffix:Filename.cinaps_corrected
           in
           let source = Path.build source in
+          let diff = Action.diff ~optional:true source target in
           if t.cinaps_version < (1, 4)
-          then
-            Action.diff ~optional:true source target
-            |> Action.Full.make
-            |> Action_builder.return
-          else
-            Action_unexpanded.format_generated_diff
-              sctx
-              ~dir
-              ~source
-              ~target
-              ~optional:true)
+          then Action_builder.return (Action.Full.make diff)
+          else Format_generated.format_diff sctx ~dir ~source ~target ~diff)
         |> Action_builder.all
       in
       let+ () =

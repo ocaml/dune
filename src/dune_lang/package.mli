@@ -38,6 +38,11 @@ val synopsis : t -> string option
 val info : t -> Package_info.t
 val description : t -> string option
 val enabled_if : t -> Blang.t option
+
+(** [Some b] when the package explicitly enables or disables its
+    documentation, [None] when this is to be detected from its stanzas. *)
+val odoc : t -> bool option
+
 val id : t -> Id.t
 
 val set_version_and_info

@@ -13,6 +13,12 @@ let stanzas t = Memo.Lazy.force t.stanzas
 let static_stanzas t = t.static_stanzas
 let project t = t.project
 
+module Unmasked = struct
+  type t =
+    | Known of Stanza.t list
+    | Unknown of Dune_project.t
+end
+
 module Mask = struct
   type 'a t =
     | True
@@ -164,18 +170,19 @@ let parse_stanzas ~file ~(eval : eval) sexps =
           | Drop -> loop stanzas dynamic env rest
           | Convert stanza -> loop (stanza :: stanzas) dynamic env rest))
   in
-  let stanzas, dynamic = loop [] [] false stanzas in
+  let masked, dynamic = loop [] [] false stanzas in
   let+ () = Warning_emit.Bag.emit_all warnings in
-  stanzas, dynamic
+  masked, stanzas, dynamic
 ;;
 
 let parse sexps ~file ~(eval : eval) =
-  let+ stanzas, dynamic = parse_stanzas sexps ~file ~eval in
+  let+ stanzas, unmasked, dynamic = parse_stanzas sexps ~file ~eval in
   ( { dir = eval.dir
     ; project = eval.project
     ; static_stanzas = stanzas
     ; stanzas = Memo.Lazy.of_val stanzas
     }
+  , unmasked
   , dynamic )
 ;;
 
@@ -404,7 +411,7 @@ let check_dynamic_stanza =
 
 module Eval = struct
   type script =
-    | Literal of eval * t * dynamic list
+    | Literal of eval * t * Stanza.t list * dynamic list
     | Script of Script.t
 
   open Memo.O
@@ -414,8 +421,8 @@ module Eval = struct
     let static = Source.Dune_file.get_static_sexp dune_file in
     match Source.Dune_file.kind dune_file with
     | Plain ->
-      let+ dune_file, dynamic = parse static ~file ~eval in
-      Literal (eval, dune_file, dynamic)
+      let+ dune_file, unmasked, dynamic = parse static ~file ~eval in
+      Literal (eval, dune_file, unmasked, dynamic)
     | Ocaml_script ->
       Memo.return
         (Script
@@ -465,7 +472,7 @@ module Eval = struct
       stanzas @ rest
 
   and collect_result eval ~registry ~context include_context ast =
-    let* stanzas, dynamic = parse_stanzas ast ~file:None ~eval in
+    let* stanzas, _, dynamic = parse_stanzas ast ~file:None ~eval in
     let+ nested = collect_dynamic eval ~registry ~context include_context dynamic in
     stanzas @ nested
   ;;
@@ -517,35 +524,48 @@ module Eval = struct
         let eval = { dir; project; mask } in
         context_independent ~eval dune_file)
       >>| List.partition_map ~f:(function
-        | Literal (eval, t, dynamic) -> Left (eval, t, dynamic)
+        | Literal (eval, t, unmasked, dynamic) -> Left (eval, t, unmasked, dynamic)
         | Script s -> Right s)
     in
-    fun context ->
-      let+ ocaml_syntax =
-        Memo.parallel_map ocaml_syntax ~f:(fun script ->
-          let+ dune_file, dynamic =
-            Memo.push_stack_frame
-              ~human_readable_description:(fun () ->
-                Pp.textf
-                  "- evaluating dune file %S in OCaml syntax"
-                  (Path.Source.to_string script.file))
-              (fun () -> Script.eval_one ~context script)
-          in
-          script.eval, dune_file, dynamic)
-      in
-      let set_dynamic_stanzas =
-        let registry = registry (List.rev_append dune_syntax ocaml_syntax) in
-        set_dynamic_stanzas ~registry ~context
-      in
-      let ocaml_syntax =
-        List.rev_map ocaml_syntax ~f:(fun (eval, t, dynamic) ->
-          set_dynamic_stanzas t ~eval ~dynamic)
-      in
-      let dune_syntax =
-        List.rev_map dune_syntax ~f:(fun (eval, t, dynamic) ->
-          set_dynamic_stanzas t ~eval ~dynamic)
-      in
-      List.rev_append dune_syntax ocaml_syntax
+    let unmasked =
+      List.rev_append
+        (List.rev_map dune_syntax ~f:(fun (eval, _, unmasked, dynamic) ->
+           match dynamic with
+           | [] -> Unmasked.Known unmasked
+           | _ :: _ -> Unknown eval.project))
+        (List.map ocaml_syntax ~f:(fun (script : Script.t) ->
+           Unmasked.Unknown script.eval.project))
+    in
+    let dune_syntax =
+      List.map dune_syntax ~f:(fun (eval, t, _, dynamic) -> eval, t, dynamic)
+    in
+    ( unmasked
+    , fun context ->
+        let+ ocaml_syntax =
+          Memo.parallel_map ocaml_syntax ~f:(fun script ->
+            let+ dune_file, _, dynamic =
+              Memo.push_stack_frame
+                ~human_readable_description:(fun () ->
+                  Pp.textf
+                    "- evaluating dune file %S in OCaml syntax"
+                    (Path.Source.to_string script.file))
+                (fun () -> Script.eval_one ~context script)
+            in
+            script.eval, dune_file, dynamic)
+        in
+        let set_dynamic_stanzas =
+          let registry = registry (List.rev_append dune_syntax ocaml_syntax) in
+          set_dynamic_stanzas ~registry ~context
+        in
+        let ocaml_syntax =
+          List.rev_map ocaml_syntax ~f:(fun (eval, t, dynamic) ->
+            set_dynamic_stanzas t ~eval ~dynamic)
+        in
+        let dune_syntax =
+          List.rev_map dune_syntax ~f:(fun (eval, t, dynamic) ->
+            set_dynamic_stanzas t ~eval ~dynamic)
+        in
+        List.rev_append dune_syntax ocaml_syntax )
   ;;
 end
 

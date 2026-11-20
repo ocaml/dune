@@ -41,3 +41,11 @@ let mlds sctx pkg =
   let+ map = mlds_by_package sctx in
   Package.Name.Map.find map pkg |> Option.value ~default:[]
 ;;
+
+let odoc_enabled pkg =
+  match Package.odoc pkg with
+  | Some odoc -> Memo.return odoc
+  | None ->
+    let+ documented = Dune_load.documented_packages () in
+    Package.Name.Set.mem documented (Package.name pkg)
+;;

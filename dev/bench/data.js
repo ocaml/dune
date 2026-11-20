@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795182671011,
+  "lastUpdate": 1795186487803,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -685820,6 +685820,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.776965919426667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cbe4950c58b6655cb39c83359be3381a66f0e7d4",
+          "message": "refactor(formatting): prepare internal correction action builders (#17121)\n\nSeparate the inline-test run from its correction diffs as full actions,\nand share the plain correction diff builder between PPX preprocessing\nand linting. This separates the action assembly from the formatting\nchange in #17120 without changing execution order or formatting\nbehavior.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-20T22:43:12+08:00",
+          "tree_id": "7ba8d1a4588ba2df621a096f8f92be12a378556a",
+          "url": "https://github.com/ocaml/dune/commit/cbe4950c58b6655cb39c83359be3381a66f0e7d4"
+        },
+        "date": 1795186161295,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.1578359034266668,
             "unit": "seconds"
           }
         ]

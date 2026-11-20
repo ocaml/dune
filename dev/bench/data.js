@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795163241024,
+  "lastUpdate": 1795163565187,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -491809,6 +491809,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5487412325733335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "646e9620c31abdef15e5605d0ceb7830d3c27a26",
+          "message": "test(formatting): cover a missing diff correction (#17114)\n\nRecord the current behavior of `diff?`: when no correction exists, it\nsucceeds even if the configured dialect formatter refers to an input\nwith no build rule. This establishes the baseline for #17113 without\nchanging behavior.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-20T16:13:07+08:00",
+          "tree_id": "dd35f29a463b77b02f1e7f9dd0852b69180e344e",
+          "url": "https://github.com/ocaml/dune/commit/646e9620c31abdef15e5605d0ceb7830d3c27a26"
+        },
+        "date": 1795163563535,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.668978886160005,
             "unit": "seconds"
           }
         ]

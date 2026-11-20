@@ -336,6 +336,7 @@ module Value_list_env = struct
   let string_of_env_values values =
     List.map values ~f:(function
       | Value.String s -> s
+      | Jobs jobs -> Int.to_string jobs
       | Dir s | Path s -> Path.to_absolute_filename s)
     |> Bin.encode_strings
   ;;
@@ -611,7 +612,7 @@ module Action_expander = struct
       | Build -> Memo.return [ Value.Dir paths.source_dir ]
       | Prefix -> Memo.return [ Value.Dir paths.prefix ]
       | User -> Memo.return [ Value.String (Unix.getlogin ()) ]
-      | Jobs -> Memo.return [ Value.String (Int.to_string !Clflags.concurrency) ]
+      | Jobs -> Memo.return [ Value.Jobs !Clflags.concurrency ]
       | Arch -> sys_poll_var (fun { arch; _ } -> arch)
       | Group ->
         let group = Unix.getgid () |> Unix.getgrgid in
@@ -748,7 +749,8 @@ module Action_expander = struct
                 (Path.to_string_maybe_quoted p)
             ]
         | Path p -> Memo.return @@ Ok p
-        | String program ->
+        | (String _ | Jobs _) as value ->
+          let program = Value.to_string value ~dir:t.paths.source_dir in
           (match Filename.analyze_program_name program with
            | Relative_to_current_dir | Absolute ->
              let dir = t.paths.source_dir in
@@ -945,7 +947,8 @@ module Action_expander = struct
              |> Array.Immutable.of_list_map ~f:(fun (arg : Value.t) ->
                match arg with
                | String s -> Run_with_path.Spec.String s
-               | Path p | Dir p -> Path p))
+               | Path p | Dir p -> Path p
+               | Jobs jobs -> Jobs jobs))
          in
          let ocamlfind_destdir = (Lazy.force expander.paths.install_roots).lib_root in
          Run_with_path.action
@@ -2319,8 +2322,6 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
   (* TODO should we add env deps on these? *)
   >>> add_env (Pkg.exported_env pkg) build_action
   |> Action_builder.With_targets.map ~f:Action.Full.disable_sandbox_policy
-  |> Action_builder.With_targets.add_directories
-       ~directory_targets:[ pkg.write_paths.target_dir ]
 ;;
 
 let gen_rules ({ DB.pkg_digest_table; _ } as db) ~package_universe pkg_digest =
@@ -2570,7 +2571,8 @@ let ocamlpath universe =
   |> Option.value ~default:[]
   |> List.map ~f:(function
     | Value.Dir p | Path p -> p
-    | String s -> Path.of_filename_relative_to_initial_cwd s)
+    | String s -> Path.of_filename_relative_to_initial_cwd s
+    | Jobs jobs -> Path.of_filename_relative_to_initial_cwd (Int.to_string jobs))
 ;;
 
 let project_ocamlpath context = ocamlpath (Dependencies context)

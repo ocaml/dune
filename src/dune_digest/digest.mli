@@ -49,6 +49,9 @@ module Manual : sig
   val repr : t -> 'a Repr.t -> 'a -> unit
   val digest : t -> digest -> unit
   val get : t -> digest
+
+  (** Discard an unfinished digest, including any buffered input. *)
+  val reset : t -> unit
 end
 
 include Comparable_intf.S with type key := t

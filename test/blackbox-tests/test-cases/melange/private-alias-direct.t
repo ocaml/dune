@@ -18,15 +18,10 @@ A public alias needs the CMI of its private Melange target.
   > EOF
   $ echo 'let answer = Dep.Api.P.answer' > consumer/consumer.ml
 
-The public alias currently fails to resolve its private target.
+The public alias resolves its private target.
 
   $ dune build --sandbox copy --cache=disabled \
   >   consumer/.consumer.objs/melange/consumer.cmj
-  File "consumer/consumer.ml", line 1, characters 13-22:
-  1 | let answer = Dep.Api.P.answer
-                   ^^^^^^^^^
-  Error: The module Dep.Api.P is an alias for module Dep__Private, which is missing
-  [1]
 
 The internal compilation-unit name remains unavailable.
 

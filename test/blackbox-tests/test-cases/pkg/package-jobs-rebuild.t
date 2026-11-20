@@ -28,13 +28,13 @@ arguments from its process-start trace, without producing execution logs.
   []
   $ dune build -j 2 "$target"
   $ arguments
-  [["2","-j2","n2","2"]]
+  []
 
-DUNE_JOBS currently causes the same unnecessary invalidation as -j.
+DUNE_JOBS also leaves the action cached when only parallelism changes.
 
   $ DUNE_JOBS=3 dune build "$target"
   $ arguments
-  [["3","-j3","n3","2"]]
+  []
 
 A real source change must rerun the action with the current job count.
 

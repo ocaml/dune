@@ -301,7 +301,8 @@ module Lock_dir_selection = struct
          User_error.raise
            ~loc:cond.loc
            [ Pp.text "None of the conditions matched so no lockdir could be chosen." ]
-       | Some (String s) -> Path.Source.relative dir s
+       | Some ((String _ | Jobs _) as value) ->
+         Path.Source.relative dir (Value.to_string value ~dir:(Path.source dir))
        | Some (Dir p | Path p) ->
          Path.reach ~from:(Path.source dir) p |> Path.Source.of_string)
   ;;

@@ -1254,10 +1254,12 @@ let action_runner t =
 ;;
 
 let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Builder.t) =
-  Memo.set_incremental
-    (match builder.watch with
-     | No -> false
-     | Yes _ -> true);
+  (match builder.watch with
+   | No ->
+     Memo.set_incremental false;
+     (* Don't queue watches for workspace reads in a one-shot process. *)
+     ignore (Dune_engine.Fs_memo.init ~dune_file_watcher:None : Memo.Invalidation.t)
+   | Yes _ -> Memo.set_incremental true);
   let c = build root builder in
   No_build.set c.builder.no_build;
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;

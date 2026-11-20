@@ -1,7 +1,7 @@
 Packages can export environment variables.
 
-Inspect the final rule, not just rebuilds: digest-qualified paths currently
-mask missing environment dependencies. These checks should report true.
+Inspect the recipe's final rule as well as its output: a change to a package's
+installation path can cause a rebuild without an environment dependency.
 
   $ export UNRELATED_ENV=present
   $ make_lockdir
@@ -14,8 +14,12 @@ mask missing environment dependencies. These checks should report true.
   >  (:= BAR zzz))
   > EOF
 
-  $ make_lockpkg usetest <<'EOF'
+  $ make_lockpkg middle <<'EOF'
+  > (version 1)
   > (depends test)
+  > EOF
+  $ make_lockpkg usetest <<'EOF'
+  > (depends middle)
   > (version 1.2.3)
   > (build
   >  (progn
@@ -37,9 +41,13 @@ mask missing environment dependencies. These checks should report true.
   OPAMSWITCH=dune
   $ cat "$(get_build_pkg_dir usetest)/target/environment"
   bar/1.2.3
+
+Only test's explicit exports (FOO and BAR) are package metadata. The recipe
+also receives standard install paths and the shell environment.
+
   $ dune rules --format=json "$(get_build_pkg_dir usetest)/target" \
-  >   | jq '.[] | .deps | index({Env: "FOO"}) != null'
-  false
+  >   | jq -c '[.[].deps[] | .Env? // empty] | sort'
+  []
 
 Changing only a dependency's exported environment must rebuild its consumer.
 
@@ -67,8 +75,8 @@ Changing the package version also invalidates the build.
   baz/1.2.4
 
 Workspace rules receive exports both through explicit package dependencies
-and through their directory environment. Both must record the environment
-dependency even when package artifact paths change after a lock edit.
+and through their directory environment. Compare receiving FOO with explicitly
+declaring it as an input.
 
   $ make_dune_project 3.24
   $ cat >dune <<'EOF'
@@ -159,9 +167,8 @@ Use a separate project with an empty package: no binary lookup is involved.
   host/target
   host-path
 
-All three explicit exports should be tracked by the final rule, regardless of
-which context supplies them. Automatic installation paths are not the export
-being checked here: PATH is explicitly exported by the host package.
+The action receives all three exports, but declares no environment reads.
+PATH here includes an explicit host export, not just installation paths.
 
   $ dune rules --format=json _build/target/exports |
   >   jq -c '.[] | .deps | { host: (index({Env: "HOST_ONLY"}) != null),
@@ -260,7 +267,7 @@ export from dune.lock.
   false
 
 Conversely, an explicitly selected lock context injects FOO even when package
-management is disabled. Its rule should track that value.
+management is disabled. The rule does not declare an environment read.
 
   $ cat >dune-workspace <<'EOF'
   > (lang dune 3.25)

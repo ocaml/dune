@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795175884328,
+  "lastUpdate": 1795176194541,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -491983,6 +491983,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5055282075466666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "555fe43d70740ddf99dba973614039357dd4cac9",
+          "message": "refactor(formatting): keep correction assembly in Format_generated (#17119)\n\nUndo the action-expansion preparation from #17116 now that dialect\nformatter actions are out of scope for automatic correction formatting.\nOCamlFormat and Dune’s built-in formatter do not need to expand user\nactions, so move the format-then-diff helper back to `Format_generated`\nand make formatter selection private again.\n\nFormatter behavior and compatibility gates are unchanged.",
+          "timestamp": "2026-11-20T19:42:45+08:00",
+          "tree_id": "8e71ab75693a971db1953f6b43f9b64d5452f536",
+          "url": "https://github.com/ocaml/dune/commit/555fe43d70740ddf99dba973614039357dd4cac9"
+        },
+        "date": 1795176193050,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 60.50275228927334,
             "unit": "seconds"
           }
         ]

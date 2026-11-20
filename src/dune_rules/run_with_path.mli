@@ -10,6 +10,7 @@ module Spec : sig
   type 'path chunk =
     | String of string
     | Path of 'path
+    | Jobs of int
 
   type 'path arg = 'path chunk Array.Immutable.t
 end

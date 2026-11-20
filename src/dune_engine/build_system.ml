@@ -287,8 +287,8 @@ let compute_rule_digest ~targets ~facts ~action ~sandbox_mode ~execution_paramet
       |> Execution_parameters.set_sandbox_actions false
       |> Execution_parameters.set_use_sandbox_policy false
   in
-  let digest =
-    let d = Digest.Manual.create () in
+  let d = Digest.Manual.create () in
+  try
     Digest.Manual.int d rule_digest_version;
     (* Update when changing the rule digest scheme. *)
     Digest.Manual.repr d Sandbox_mode.repr sandbox_mode;
@@ -301,8 +301,11 @@ let compute_rule_digest ~targets ~facts ~action ~sandbox_mode ~execution_paramet
     Digest.Manual.repr d Repr.(option Corrections.repr) corrections;
     Digest.Manual.digest d (Execution_parameters.digest execution_parameters);
     Digest.Manual.get d
-  in
-  digest
+  with
+  | exn ->
+    let exn = Exn_with_backtrace.capture exn in
+    Digest.Manual.reset d;
+    Exn_with_backtrace.reraise exn
 ;;
 
 let report_evaluated_rule_exn () =

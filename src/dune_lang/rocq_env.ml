@@ -20,6 +20,8 @@ type t =
   ; rocqdoc_flags : Ordered_set_lang.Unexpanded.t
   ; rocqdoc_header : String_with_vars.t option
   ; rocqdoc_footer : String_with_vars.t option
+  ; timing : Blang.t option
+  ; profiling : Blang.t option
   }
 
 let default =
@@ -28,6 +30,8 @@ let default =
   ; rocqdoc_flags = Ordered_set_lang.Unexpanded.standard
   ; rocqdoc_header = None
   ; rocqdoc_footer = None
+  ; timing = None
+  ; profiling = None
   }
 ;;
 
@@ -36,6 +40,8 @@ let rocqdep_flags t = t.rocqdep_flags
 let rocqdoc_flags t = t.rocqdoc_flags
 let rocqdoc_header t = t.rocqdoc_header
 let rocqdoc_footer t = t.rocqdoc_footer
+let timing t = t.timing
+let profiling t = t.profiling
 
 let decode =
   field
@@ -62,14 +68,37 @@ let decode =
           field_o
             "rocqdoc_footer"
             (Syntax.since Stanza.syntax (3, 21) >>> String_with_vars.decode)
+        and+ timing =
+          field_o "timing" (Syntax.since Stanza.syntax (3, 26) >>> Blang.decode)
+        and+ profiling =
+          field_o "profiling" (Syntax.since Stanza.syntax (3, 26) >>> Blang.decode)
         in
-        { flags; rocqdep_flags; rocqdoc_flags; rocqdoc_header; rocqdoc_footer }))
+        { flags
+        ; rocqdep_flags
+        ; rocqdoc_flags
+        ; rocqdoc_header
+        ; rocqdoc_footer
+        ; timing
+        ; profiling
+        }))
 ;;
 
-let equal { flags; rocqdep_flags; rocqdoc_flags; rocqdoc_header; rocqdoc_footer } t =
+let equal
+      { flags
+      ; rocqdep_flags
+      ; rocqdoc_flags
+      ; rocqdoc_header
+      ; rocqdoc_footer
+      ; timing
+      ; profiling
+      }
+      t
+  =
   Ordered_set_lang.Unexpanded.equal flags t.flags
   && Ordered_set_lang.Unexpanded.equal rocqdep_flags t.rocqdep_flags
   && Ordered_set_lang.Unexpanded.equal rocqdoc_flags t.rocqdoc_flags
   && Option.equal String_with_vars.equal rocqdoc_header t.rocqdoc_header
   && Option.equal String_with_vars.equal rocqdoc_footer t.rocqdoc_footer
+  && Option.equal Blang.equal timing t.timing
+  && Option.equal Blang.equal profiling t.profiling
 ;;

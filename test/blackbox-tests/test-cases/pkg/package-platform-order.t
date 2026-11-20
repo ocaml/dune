@@ -29,18 +29,16 @@ Use no-op build actions and inspect cache misses for its target rule.
   $ misses
   []
 
-Only the platform order changes. Currently this changes the package key and
-causes a new target-rule miss.
+Only the platform order changes. The package key and target rule stay cached.
 
   $ cat > dune.lock/lock.dune <<EOF
   > (lang package 0.1)
   > (solved_for_platforms ((os macos)) ((os linux)))
   > EOF
   $ test "$digest" = "$(dune pkg print-digest foo)"
-  [1]
   $ build_pkg foo
   $ misses
-  ["never seen this target before"]
+  []
 
 The order of alternatives within an explicit platform condition also should
 not matter.
@@ -62,7 +60,6 @@ not matter.
   >   ((((os macos)) ((os linux))) ((action (system ":"))))))
   > EOF
   $ test "$digest" = "$(dune pkg print-digest foo)"
-  [1]
   $ build_pkg foo
   $ misses
-  ["never seen this target before"]
+  []

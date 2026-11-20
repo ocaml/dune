@@ -27,15 +27,10 @@ dependency.
   > EOF
   $ echo 'let answer = Bridge.P.answer' > consumer/consumer.ml
 
-The public alias currently fails to resolve its private target.
+The public alias resolves its private target.
 
   $ dune build --sandbox copy --cache=disabled \
   >   consumer/.consumer.objs/melange/consumer.cmj
-  File "consumer/consumer.ml", line 1, characters 13-21:
-  1 | let answer = Bridge.P.answer
-                   ^^^^^^^^
-  Error: The module Bridge.P is an alias for module Dep__Private, which is missing
-  [1]
 
 The hidden transitive dependency cannot be named directly.
 

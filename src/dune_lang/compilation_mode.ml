@@ -4,6 +4,11 @@ type t =
   | Ocaml
   | Melange
 
+let of_lib_mode : Lib_mode.t -> t = function
+  | Ocaml _ -> Ocaml
+  | Melange -> Melange
+;;
+
 let equal a b =
   match a, b with
   | Ocaml, Ocaml | Melange, Melange -> true

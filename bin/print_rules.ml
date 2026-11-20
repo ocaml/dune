@@ -68,10 +68,13 @@ let rec encode_action ~dir (t : Action.t) : Dune_lang.t =
       ; target fn
       ; encode r
       ]
+  | Redirect_out_atomic (fn, action) ->
+    List [ atom "with-stdout-to-atomic"; target fn; encode action ]
   | Redirect_in (inputs, fn, r) ->
     List [ atom (sprintf "with-%s-from" (Inputs.to_string inputs)); path fn; encode r ]
   | Ignore (outputs, r) ->
     List [ atom (sprintf "ignore-%s" (Outputs.to_string outputs)); encode r ]
+  | If_file_exists (p, action) -> List [ atom "if-file-exists"; path p; encode action ]
   | Progn l -> List (atom "progn" :: List.map l ~f:encode)
   | Concurrent l -> List (atom "concurrent" :: List.map l ~f:encode)
   | Echo xs -> List (atom "echo" :: List.map xs ~f:string)

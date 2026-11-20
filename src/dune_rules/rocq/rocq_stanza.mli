@@ -48,6 +48,8 @@ module Theory : sig
     ; boot : bool
     ; generate_project_file : Loc.t * bool
     ; enabled_if : Blang.t
+    ; timing : Blang.t option
+    ; profiling : Blang.t option
     ; buildable : Buildable.t
     ; rocqdep_flags : Ordered_set_lang.Unexpanded.t
     ; rocqdoc_flags : Ordered_set_lang.Unexpanded.t

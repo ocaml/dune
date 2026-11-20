@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795165860707,
+  "lastUpdate": 1795165869149,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -491896,6 +491896,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.504293056386665,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ae3ed9eb9a7c55913527aeccf6e76265bf61a685",
+          "message": "refactor(formatting): move correction action assembly into action expansion (#17116)\n\nMove the existing format-then-diff construction into\n`Action_unexpanded`, where both `diff?` and Cinaps can use it. Keep\nformatter selection in `Format_generated`, and separate constructing a\ntargetless action expansion from running it. This prepares for #17113\nwithout changing formatter selection, dependencies, or version gates.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-20T16:51:34+08:00",
+          "tree_id": "8ffdedaaaae755fd2835efee8c8fa66b714c2441",
+          "url": "https://github.com/ocaml/dune/commit/ae3ed9eb9a7c55913527aeccf6e76265bf61a685"
+        },
+        "date": 1795165867985,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5448990922933333,
             "unit": "seconds"
           }
         ]

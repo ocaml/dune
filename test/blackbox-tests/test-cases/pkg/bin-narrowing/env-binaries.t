@@ -38,8 +38,7 @@ An env binary colliding with a lock-directory binary
 
 Env binaries take precedence over package binaries during artifact resolution,
 and they keep that precedence on the action's [PATH]. Create a locked package
-that installs another [mybin], plus a distinct binary used to force the package
-to be built before the action runs:
+that installs another [mybin]:
 
   $ make_lockpkg provider <<'EOF'
   > (version 0.0.1)
@@ -50,13 +49,8 @@ to be built before the action runs:
   >           "\| echo from lockdir
   >           "\| EOI
   >   )
-  >   (system "\| cat > force-provider <<'EOI'
-  >           "\| #!/bin/sh
-  >           "\| echo force provider
-  >           "\| EOI
-  >   )
-  >   (system "chmod +x mybin force-provider")
-  >   (system "echo 'bin: [ \"mybin\" \"force-provider\" ]' > provider.install")
+  >   (system "chmod +x mybin")
+  >   (system "echo 'bin: [ \"mybin\" ]' > provider.install")
   >  ))
   > EOF
 
@@ -66,7 +60,7 @@ to be built before the action runs:
   > EOF
   $ cat >>dune <<'EOF'
   > (rule
-  >  (deps %{bin:force-provider})
+  >  (deps %{bin:mybin})
   >  (action (with-stdout-to mybin-from-path (system mybin))))
   > (rule
   >  (deps (package provider))
@@ -80,8 +74,8 @@ The pform still selects the env binding:
   $ cat _build/default/mybin-out
   from env binary
 
-A bare-name lookup preserves it too. Here [%{bin:force-provider}] stages a
-different binary, so nothing competes with the env binding on [PATH]:
+A bare-name lookup preserves it too. Here [(deps %{bin:mybin})] selects the env
+binding, which is already on [PATH], so no lockdir binary is staged:
 
   $ cat _build/default/mybin-from-path
   from env binary
@@ -94,8 +88,9 @@ different binary, so nothing competes with the env binding on [PATH]:
   from env binary
 
 Removing only the env binding leaves the lock directory's [mybin] as the sole
-candidate, so every lookup now finds it. Without this, the assertions above
-would also hold if [provider]'s [mybin] were never visible in the first place:
+candidate, so every lookup now finds it, and [(deps %{bin:mybin})] stages it.
+Without this, the assertions above would also hold if [provider]'s [mybin] were
+never visible in the first place:
 
   $ cat >dune <<'EOF'
   > (executable (name mytool))
@@ -105,7 +100,7 @@ would also hold if [provider]'s [mybin] were never visible in the first place:
   >  (enabled_if %{bin-available:mybin})
   >  (action (with-stdout-to mybin-out (run %{bin:mybin}))))
   > (rule
-  >  (deps %{bin:force-provider})
+  >  (deps %{bin:mybin})
   >  (action (with-stdout-to mybin-from-path (system mybin))))
   > (rule
   >  (deps (package provider))

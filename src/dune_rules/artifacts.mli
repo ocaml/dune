@@ -39,8 +39,8 @@ val binary
   -> string
   -> Action.Prog.t Memo.t
 
-(** Return the installed filename when the selected binary is from a local
-    package. *)
+(** Return the path and installed filename when the selected binary is built
+    by dune, from a local package or from the lock directory. *)
 val local_binary : t -> dir:Path.Build.t -> string -> (Path.t * Filename.t) option Memo.t
 
 val binary_available : t -> dir:Path.Build.t -> string -> bool Memo.t

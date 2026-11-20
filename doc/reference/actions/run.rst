@@ -17,6 +17,7 @@ run
    - an executable installed by a workspace package, typically via an
      :doc:`/reference/dune/executable` stanza with ``(public_name ...)`` or an
      :doc:`/reference/dune/install` stanza with ``(section bin)``;
+   - an executable installed by a package of the lock directory;
    - a binary introduced by an :doc:`/reference/dune/env` stanza's
      ``(binaries ...)`` field;
    - or an executable found in ``PATH``.

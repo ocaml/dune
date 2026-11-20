@@ -33,11 +33,13 @@ so that it can invoke companion executables from its installed environment.
   > EOF
   $ cat >dune <<'EOF'
   > (rule
+  >  (deps (package provider))
   >  (action (with-stdout-to action-output (run %{bin:launcher}))))
   > EOF
 
-A normal rule gets its directory's [Env_node] environment, so [launcher] can
-find [helper] by bare name:
+[launcher] calls [helper] by bare name. Depending on the whole [provider]
+package puts its bin directory on the PATH, and reruns the rule whenever any of
+its executables change:
 
   $ dune build action-output
   $ cat _build/default/action-output

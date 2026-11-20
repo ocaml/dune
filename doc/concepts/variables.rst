@@ -133,12 +133,13 @@ In addition, ``(action ...)`` fields support the following special variables:
 - ``bin:<program>`` expands to a runnable path for ``program`` and adds
   it as a dependency of the action. If ``<program>`` is the public name
   of an executable in the workspace, the expansion is the build-artifact
-  path of the locally built binary; otherwise, ``<program>`` is looked
-  up in the build context's ``PATH`` and the expansion is its absolute
-  path. When the resulting relative path is a bare basename (i.e. the
-  binary lives in the action's directory), Dune prepends ``./`` so that
-  shells like ``bash`` execute the file directly rather than performing
-  a ``PATH`` lookup.
+  path of the locally built binary; if it is installed by a package of the
+  lock directory, the expansion is its path in that package's build
+  directory; otherwise, ``<program>`` is looked up in the build context's
+  ``PATH`` and the expansion is its absolute path. When the resulting
+  relative path is a bare basename (i.e. the binary lives in the action's
+  directory), Dune prepends ``./`` so that shells like ``bash`` execute the
+  file directly rather than performing a ``PATH`` lookup.
 
   When ``%{bin:<program>}`` appears in ``(deps ...)``, the action
   additionally gets an isolated directory prepended to ``PATH``,
@@ -148,6 +149,11 @@ In addition, ``(action ...)`` fields support the following special variables:
 
   ``%{bin:...}`` is not required with ``(run ...)``: ``(run %{bin:foo}
   ...)`` and ``(run foo ...)`` behave the same.
+
+  Only the binary itself is a dependency, whether it comes from the workspace
+  or from the lock directory. Other executables it calls by name and files it
+  reads at runtime are neither tracked nor added to the ``PATH``: declare them
+  as well, or depend on their whole package with ``(deps (package <pkg>))``.
 - ``bin-available:<program>`` expands to ``true`` or ``false``, depending
   on whether ``<program>`` is available or not.
 - ``file-available:<path>`` expands to ``true`` or ``false``, depending on

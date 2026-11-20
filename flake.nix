@@ -170,9 +170,7 @@
               version_string = strings.removePrefix prefix version_line;
               ocamlformat_attr = builtins.replaceStrings [ "." ] [ "_" ] version_string;
             in
-            builtins.getAttr (
-              "ocamlformat_" + ocamlformat_attr
-            ) nixpkgs.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+            builtins.getAttr ("ocamlformat_" + ocamlformat_attr) pkgs.ocamlPackages;
           testBuildInputs =
             with pkgs;
             [
@@ -278,7 +276,7 @@
             with pkgs;
             mkShell {
               inherit INSIDE_NIX;
-              nativeBuildInputs = lib.remove pkgs.ocamlformat (testNativeBuildInputs pkgs);
+              nativeBuildInputs = lib.remove ocamlformat (testNativeBuildInputs pkgs);
               meta.description = ''
                 provides a shell with just `opam` and minimal (external)
                 dependencies to run the testsuite.";

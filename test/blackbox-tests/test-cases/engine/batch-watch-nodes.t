@@ -11,7 +11,7 @@ Compare the number of computed Memo nodes rather than relying on a fixed total.
   $ same=$(nodes a.inc)
   $ distinct=$(nodes b.inc)
 
-Currently the second distinct path gets a watcher cell even in a batch build.
+Neither include needs a watcher cell in a batch build.
 
   $ echo $((distinct - same))
-  1
+  0

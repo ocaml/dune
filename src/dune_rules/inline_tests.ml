@@ -456,17 +456,20 @@ include Sub_system.Register_end_point (struct
            match actions with
            | [] -> Action.Full.empty
            | _ :: _ ->
-             let run_tests = Action.concurrent actions in
              let diffs =
-               List.map promotion_targets ~f:(fun fn ->
-                 Path.as_in_build_dir_exn fn
-                 |> Path.Build.extend_basename ~suffix:Filename.corrected
-                 |> Action.diff ~optional:true fn)
-               |> Action.concurrent
+               List.map promotion_targets ~f:(fun source ->
+                 let target =
+                   Path.as_in_build_dir_exn source
+                   |> Path.Build.extend_basename ~suffix:Filename.corrected
+                 in
+                 Action.diff ~optional:true source target |> Action.Full.make)
              in
-             Action.progn [ run_tests; diffs ]
-             |> Action.Full.make ~sandbox
-             |> Action.Full.add_env env))
+             let run_tests =
+               Action.concurrent actions
+               |> Action.Full.make ~sandbox
+               |> Action.Full.add_env env
+             in
+             Action.Full.progn [ run_tests; Action.Full.concurrent diffs ]))
     ;;
 
     let gen_rules

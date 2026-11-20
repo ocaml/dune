@@ -69,24 +69,25 @@ let gen_rules sctx components =
   | _ -> Memo.return ()
 ;;
 
-let promote_correction (m : Module.t) build ~suffix ~ml_kind =
-  let open Action_builder.O in
-  let src = pp_input_path m ~ml_kind in
-  let dst = pp_corrected_path m ~ml_kind ~suffix in
-  let+ act = build in
-  Action.Full.reduce [ act; Action.Full.make (Action.diff ~optional:true src dst) ]
+let correction_diff ~source ~target =
+  Action.diff ~optional:true source target |> Action.Full.make |> Action_builder.return
 ;;
 
-let promote_correction_with_target fn build ~suffix =
+let promote_correction (m : Module.t) build ~suffix ~ml_kind =
+  let open Action_builder.O in
+  let source = pp_input_path m ~ml_kind in
+  let target = pp_corrected_path m ~ml_kind ~suffix in
+  let+ action = build
+  and+ diff = correction_diff ~source ~target in
+  Action.Full.reduce [ action; diff ]
+;;
+
+let promote_correction_with_target source build ~suffix =
+  let target = Path.Build.extend_basename source ~suffix in
   Action_builder.progn
     [ build
-    ; Action_builder.with_no_targets
-        (Action_builder.return
-           (Action.Full.make
-              (Action.diff
-                 ~optional:true
-                 (Path.build fn)
-                 (Path.Build.extend_basename fn ~suffix))))
+    ; correction_diff ~source:(Path.build source) ~target
+      |> Action_builder.with_no_targets
     ]
 ;;
 

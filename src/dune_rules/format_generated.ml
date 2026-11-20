@@ -131,24 +131,3 @@ let ocamlformat_action ~expander ~dir ~source ~target kind =
     |> Action_builder.of_memo
     >>| action
 ;;
-
-let format_diff sctx ~dir ~source ~target ~diff =
-  let open Action_builder.O in
-  let with_diff formatter =
-    Action.Full.map formatter ~f:(fun formatter ->
-      Action.progn [ Action.if_file_exists (Path.build target) formatter; diff ])
-  in
-  Action_builder.of_memo (for_source ~dir source)
-  >>= function
-  | None -> Action_builder.return (Action.Full.make diff)
-  | Some (Dune version) ->
-    Format_dune_file.action_stdout ~version (Path.build target)
-    |> Action.with_stdout_to_atomic target
-    |> Action.Full.make
-    |> with_diff
-    |> Action_builder.return
-  | Some (Ocamlformat kind) ->
-    let* expander = Action_builder.of_memo (Super_context.expander sctx ~dir) in
-    let+ formatter = ocamlformat_action ~expander ~dir ~source ~target kind in
-    with_diff formatter
-;;

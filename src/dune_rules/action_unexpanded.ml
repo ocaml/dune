@@ -472,9 +472,59 @@ end = struct
   end
 end
 
+let expand_no_targets_internal action sandbox ~loc ~chdir ~deps ~expander ~what =
+  let open Action_builder.O in
+  let env, expander, sandbox = Dep_conf_eval.named ~expander sandbox deps in
+  let expander =
+    Expander.set_expanding_what expander (User_action_without_targets { what })
+  in
+  let* { Action_builder.With_targets.build = action; targets } =
+    Action_expander.run action ~chdir ~targets_dir:None ~expander
+    |> Action_builder.of_memo
+  in
+  if not (Targets.is_empty targets)
+  then
+    User_error.raise
+      ~loc
+      [ Pp.textf
+          "%s must not have targets, however I inferred that these files will be created \
+           by this action:"
+          (String.capitalize what)
+      ; pp_targets targets
+      ];
+  let+ sandbox
+  and+ env
+  and+ action in
+  Action.Full.map action ~f:(fun action -> Action.Chdir (Path.build chdir, action))
+  |> Action.Full.add_sandbox sandbox
+  |> Action.Full.add_env env
+;;
+
 type format_generated_diffs =
   | Do_not_format
   | Format of Super_context.t
+
+let format_generated_diff_action sctx ~dir ~source ~target diff =
+  let open Action_builder.O in
+  Format_generated.for_source ~dir source
+  |> Action_builder.of_memo
+  >>= function
+  | None -> Action_builder.return (Action.Full.make diff)
+  | Some formatter ->
+    let+ formatter =
+      match formatter with
+      | Dune version ->
+        Format_dune_file.action_stdout ~version (Path.build target)
+        |> Action.with_stdout_to_atomic target
+        |> Action.Full.make
+        |> Action_builder.return
+      | Ocamlformat kind ->
+        let* expander = Action_builder.of_memo (Super_context.expander sctx ~dir) in
+        Format_generated.ocamlformat_action ~expander ~dir ~source ~target kind
+    in
+    Action.Full.map formatter ~f:(fun formatter ->
+      Action.progn [ Action.if_file_exists (Path.build target) formatter; diff ])
+;;
 
 let rec expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
   : Action.Full.t Action_expander.t
@@ -631,12 +681,12 @@ let rec expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
             |> Option.map ~f:Path.Build.parent_exn
             |> Option.value ~default:(Expander.dir expander)
           in
-          Format_generated.format_diff
+          format_generated_diff_action
             sctx
             ~dir:source_dir
             ~source:file1
             ~target:file2
-            ~diff
+            diff
         | (Do_not_format | Format _), _, _ ->
           Action_builder.return (Action.Full.make diff))
       |> Memo.return)
@@ -660,50 +710,9 @@ let rec expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
     assert false
 ;;
 
-let expand_no_targets_internal
-      ~format_generated_diffs
-      t
-      sandbox
-      ~loc
-      ~chdir
-      ~deps:deps_written_by_user
-      ~expander
-      ~what
-  =
-  let open Action_builder.O in
-  let env, expander, sandbox =
-    Dep_conf_eval.named ~expander sandbox deps_written_by_user
-  in
-  let expander =
-    Expander.set_expanding_what expander (User_action_without_targets { what })
-  in
-  let* { Action_builder.With_targets.build = action; targets } =
-    expand_action ~format_generated_diffs t
-    |> Action_expander.run ~chdir ~targets_dir:None ~expander
-    |> Action_builder.of_memo
-  in
-  if not (Targets.is_empty targets)
-  then
-    User_error.raise
-      ~loc
-      [ Pp.textf
-          "%s must not have targets, however I inferred that these files will be created \
-           by this action:"
-          (String.capitalize what)
-      ; pp_targets targets
-      ];
-  let+ sandbox
-  and+ env
-  and+ action in
-  Action.Full.map action ~f:(fun action -> Action.Chdir (Path.build chdir, action))
-  |> Action.Full.add_sandbox sandbox
-  |> Action.Full.add_env env
-;;
-
 let expand_no_targets t sandbox ~loc ~chdir ~deps ~expander ~what =
   expand_no_targets_internal
-    ~format_generated_diffs:Do_not_format
-    t
+    (expand_action ~format_generated_diffs:Do_not_format t)
     sandbox
     ~loc
     ~chdir
@@ -723,8 +732,7 @@ let expand_no_targets_with_formatted_diffs
       ~what
   =
   expand_no_targets_internal
-    ~format_generated_diffs:(Format sctx)
-    t
+    (expand_action ~format_generated_diffs:(Format sctx) t)
     sandbox
     ~loc
     ~chdir
@@ -833,6 +841,11 @@ let expand_with_formatted_diffs
     ~targets_dir
     ~targets
     ~expander
+;;
+
+let format_generated_diff sctx ~dir ~source ~target ~optional =
+  Action.diff ~optional source target
+  |> format_generated_diff_action sctx ~dir ~source ~target
 ;;
 
 (* We re-export [Dune_lang.Action] in the end to avoid polluting the inferred

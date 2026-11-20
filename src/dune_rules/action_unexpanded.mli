@@ -62,3 +62,11 @@ val expand_no_targets_with_formatted_diffs
   -> expander:Expander.t
   -> what:string
   -> Action.Full.t Action_builder.t
+
+val format_generated_diff
+  :  Super_context.t
+  -> dir:Path.Build.t
+  -> source:Path.t
+  -> target:Path.Build.t
+  -> optional:bool
+  -> Action.Full.t Action_builder.t

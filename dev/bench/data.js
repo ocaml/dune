@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795176202468,
+  "lastUpdate": 1795182338976,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -685733,6 +685733,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.5415925213466664,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "df6749029837dd6b05fb6beceed9cab159d094c8",
+          "message": "fix(rocq): honour enabled_if of rocq.theory (#16703)\n\n## Description\n\nA `rocq.theory` whose `enabled_if` evaluates to false makes dune crash\nwith\n\"gen_rules returned a set of directory targets that doesn't match the\nset of\ndirectory targets from returned rules\". The theory's rocqdoc directory\ntargets (`<name>.html`, `<name>.tex`) are declared, but no rule produces\nthem, because the theory's rules are not set up.\n\nThis PR makes two changes:\n\n- `src/dune_rules/dir_status.ml`: the theory's rocqdoc directory targets\nnow\ngo through `when_enabled`, as they already do for libraries, executables\n  and rules.\n- `src/dune_rules/install_rules.ml`: `keep_if` now evaluates the\ntheory's\n`enabled_if`, as it already does for libraries and executables. Without\n  this, a disabled theory attached to a package was still installed, and\n`@install` failed with \"No rule found for a.vo\" once the crash was gone.\n\nAs with a disabled library, a package whose only stanza is a disabled\ntheory\nnow reports \"The package foo does not have any user defined stanzas\nattached\nto it\", and `(allow_empty)` silences that error. The test documents this\nbehaviour.\n\n## Related Issue and Motivation\n\nFixes #16700.\n\nThe declaration of the directory targets was split from rule generation\nin\n#9149, and the `enabled_if` guard was not carried over for theories.\n\n## Tests\n\nThis flips the cram test\n`test/blackbox-tests/test-cases/rocq/theory-enabled-if.t`\nadded in #16798 from the internal error to the expected behaviour.\n\nChecked locally in the repository's nix dev shells (OCaml 5.5.2, Rocq\n9.2), on\ntop of current `main`: `make test-rocq` (as in the \"Rocq Tests\" job),\n`dune build @check` and `dune build @fmt` pass.\n\n## Changelog\n\n`doc/changes/fixed/16703.md`.",
+          "timestamp": "2026-11-20T14:31:50+01:00",
+          "tree_id": "a0d891bc8538c7f5dbb8e8f82afae7711c5b519f",
+          "url": "https://github.com/ocaml/dune/commit/df6749029837dd6b05fb6beceed9cab159d094c8"
+        },
+        "date": 1795181922800,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.776965919426667,
             "unit": "seconds"
           }
         ]

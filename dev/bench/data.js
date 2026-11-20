@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795186763246,
+  "lastUpdate": 1795189414353,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -685907,6 +685907,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.1578359034266668,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "quentin@tarides.com",
+            "name": "mefyl",
+            "username": "mefyl"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a0f72af2f936fe7f28652f3850df48ccc5a61d47",
+          "message": "Do not add the entirety of the lock directory in the PATH. (#17023)\n\n## Description\n\nInstead of adding the entire set of `bin/` directories from locked\npackages in the `PATH`, surgically add what we depend on.\n\n## Related Issue and Motivation\n\nThis is a big and probably controversial change. The motivation stems in\nthe discussion following `dune tools env` changes where fears that\nadding so much in the PATH would trigger some non reproducibility in\nrules, especially cram tests (by @rgrinberg notably): the developer has\nall the tools in their PATH, so the cram tests pass locally, but since\nthe dependencies are not properly declared they don't pass on CI and\nthey may run with stale dependencies or not be rerun at all.\n\nIt was suggested that sanitation of the PATH could shield against that.\nWhile starting my implementation of this, I however noticed that dune is\nalready adding all the locked packages in the PATH for each rule,\nalready causing the issues we feared: we don't necessarily build or\nrebuild the required packages when needed, we do not necessarily rerun\nrules when the locked executable they depend on change (see #17004).\n\nIt thus seems like a prerequisite to me to first stop stuffing all of\nthat in the PATH, otherwise there's no point in sanitizing it from the\nuser's PATH just for dune to put it back in. However @Alizter then noted\nthat the fear was more about the _workspace_ executables than the locked\nexecutable, which thus makes the sanitation worthy as-is for that half\nof the project. I think this current endeavor still has some merit for\nthe second half, though.\n\n## Changes\n\nMy approach was to simply stop doing that then fix the test suite, as a\nPoC that we can do without. Although the test suite passes, this is\nstill a nontrivial change of behavior, which we may consider too\ndamaging to the early adopters. OTOH, if there is a time to not accustom\nthem to the very bad habit of having everything magically in the PATH,\nnow is clearly the less bad timing.\n\nChanges to restore a proper behavior:\n* When a rule depends on a locked binary, add the `bin/` directory of\nthe owning package to the PATH.\n* In that case, also depend on the whole package. We may fish something\nout of it via the PATH, so the only safe approach is to rebuild when the\npackage changes.\n* Make an exception for the toolchain, so that unqualified `ocamlc` is\nthe local one. I dislike the exception, but a unit test checks this\nspecifically, and it might be too much of a footgun to fallback to the\nsystem `ocamlc` if one forgets to `(deps (package ocaml))`.\n\nThe change expected from the users can be seen in the test suite. On a\npositive note, some of them clearly got clearer / simpler, and a\nCR-someday got automagically fixed.\n\n## Checklist\n\nI'm waiting for some kind of signal before doing the doc and the\nchangelog so as not to waste more time if thin get blanket rejected.\n\n- [x] Tests added, if applicable.\n- [ ] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [ ] Documentation added for any user-facing changes.",
+          "timestamp": "2026-11-20T16:28:53+01:00",
+          "tree_id": "30b053b10434363b1e71d7f73114d93e000577c1",
+          "url": "https://github.com/ocaml/dune/commit/a0f72af2f936fe7f28652f3850df48ccc5a61d47"
+        },
+        "date": 1795188995144,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.965990243306667,
             "unit": "seconds"
           }
         ]

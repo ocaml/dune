@@ -165,7 +165,7 @@ let extend_action_env t ~dir action =
     Action_builder.of_memo
       (let open Memo.O in
        let* node = t.get_node dir in
-       let+ env = Env_node.env_without_local_bins node
+       let+ env = Env_node.base_env node
        and+ local_bin_dirs = Env_node.local_bin_dirs node in
        env, local_bin_dirs)
   in
@@ -413,7 +413,7 @@ let env_node t ~dir = t.get_node dir
 
 let context_env_by_dir t ~dir =
   let* node = env_node t ~dir in
-  let* env = Env_node.env_without_local_bins node in
+  let* env = Env_node.base_env node in
   let* local_bin_dirs = Env_node.local_bin_dirs node in
   let+ lockdir_bin_paths =
     let* packages = expander t ~dir >>= Expander.visible_packages in

@@ -21,7 +21,7 @@ val external_env : t -> Env.t Memo.t
     [(env (binaries ...))]. An action merges its own environment into this and
     then adds [local_bin_dirs] on top, so that nothing staged by [(deps ...)]
     shadows a binary the user bound explicitly. *)
-val env_without_local_bins : t -> Env.t Memo.t
+val base_env : t -> Env.t Memo.t
 
 (** Directories holding the binaries bound by [(env (binaries ...))], most
     specific first. *)

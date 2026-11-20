@@ -4,7 +4,6 @@ type t =
   { local_binaries : File_binding.Expanded.t list Memo.Lazy.t
   ; base_env : Env.t Memo.Lazy.t
   ; local_bin_dirs : Path.t list Memo.Lazy.t
-  ; env_without_local_bins : Env.t Memo.Lazy.t
   ; external_env : Env.t Memo.Lazy.t
   ; artifacts : Artifacts.t Memo.Lazy.t
   }
@@ -12,7 +11,6 @@ type t =
 let local_binaries t = Memo.Lazy.force t.local_binaries
 let base_env t = Memo.Lazy.force t.base_env
 let local_bin_dirs t = Memo.Lazy.force t.local_bin_dirs
-let env_without_local_bins t = Memo.Lazy.force t.env_without_local_bins
 let external_env t = Memo.Lazy.force t.external_env
 let artifacts t = Memo.Lazy.force t.artifacts
 
@@ -73,11 +71,5 @@ let make
     Memo.lazy_ ~name:"local-binaries" (fun () ->
       Memo.Lazy.force artifacts >>= Artifacts.local_binaries)
   in
-  { base_env
-  ; local_bin_dirs
-  ; env_without_local_bins = base_env
-  ; external_env
-  ; artifacts
-  ; local_binaries
-  }
+  { base_env; local_bin_dirs; external_env; artifacts; local_binaries }
 ;;

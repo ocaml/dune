@@ -46,6 +46,12 @@ val dep_file : t -> obj_dir:Path.Build.t -> Path.Build.t
 val glob_file : t -> obj_dir:Path.Build.t -> Path.Build.t
 val output_file : t -> obj_dir:Path.Build.t -> Path.Build.t
 
+(** Output of [rocq compile -time-file] *)
+val timing_file : t -> obj_dir:Path.Build.t -> Path.Build.t
+
+(** Output of [rocq compile -profile] *)
+val profile_file : t -> obj_dir:Path.Build.t -> mode:Rocq_mode.t -> Path.Build.t
+
 (** Some of the object files should not be installed, we control this with the
     following parameter *)
 type obj_files_mode =

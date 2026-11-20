@@ -13,15 +13,10 @@ module Solver_env_disjunction = struct
   ;;
 
   let to_dyn = Dyn.list Solver_env.to_dyn
-
-  let equal a b =
-    let a = List.sort a ~compare:Solver_env.compare in
-    let b = List.sort b ~compare:Solver_env.compare in
-    List.equal Solver_env.equal a b
-  ;;
-
-  let hash t = List.hash Solver_env.hash t
-  let repr = Repr.list Solver_env.repr
+  let normalize t = List.sort t ~compare:Solver_env.compare
+  let equal a b = List.equal Solver_env.equal (normalize a) (normalize b)
+  let hash t = List.hash Solver_env.hash (normalize t)
+  let repr = Repr.view (Repr.list Solver_env.repr) ~to_:normalize
 
   let encode t =
     let open Encoder in

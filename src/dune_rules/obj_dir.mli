@@ -58,7 +58,6 @@ val public_cmi_ocaml_dir : 'path t -> 'path
 (** The public compiled cmi file directory for melange *)
 val public_cmi_melange_dir : 'path t -> 'path
 
-val odoc_dir : 'path t -> 'path
 val all_obj_dirs : 'path t -> mode:Lib_mode.t -> 'path list
 
 (** Create the object directory for a library *)
@@ -142,8 +141,6 @@ module Module : sig
     -> ml_kind:Ml_kind.t
     -> cm_kind:Lib_mode.Cm_kind.t
     -> 'path option
-
-  val odoc : 'path t -> Module.t -> 'path
 
   module L : sig
     val o_files : 'path t -> Module.t list -> ext_obj:Filename.Extension.t -> Path.t list

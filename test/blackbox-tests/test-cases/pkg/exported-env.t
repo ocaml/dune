@@ -39,7 +39,7 @@ mask missing environment dependencies. These checks should report true.
   bar/1.2.3
   $ dune rules --format=json "$(get_build_pkg_dir usetest)/target" \
   >   | jq '.[] | .deps | index({Env: "FOO"}) != null'
-  false
+  true
 
 Changing only a dependency's exported environment must rebuild its consumer.
 
@@ -56,7 +56,7 @@ Changing only a dependency's exported environment must rebuild its consumer.
   baz/1.2.3
   $ dune rules --format=json "$(get_build_pkg_dir usetest)/target" \
   >   | jq '.[] | .deps | index({Env: "FOO"}) != null'
-  false
+  true
 
 Changing the package version also invalidates the build.
 
@@ -93,10 +93,10 @@ dependency even when package artifact paths change after a lock edit.
   baz
   $ dune rules --format=json workspace-output \
   >   | jq '.[] | .deps | index({Env: "FOO"}) != null'
-  false
+  true
   $ dune rules --format=json implicit-output \
   >   | jq '.[] | .deps | index({Env: "FOO"}) != null'
-  false
+  true
 
 An explicit declaration distinguishes a present environment dependency
 from an absent one.
@@ -167,7 +167,7 @@ being checked here: PATH is explicitly exported by the host package.
   >   jq -c '.[] | .deps | { host: (index({Env: "HOST_ONLY"}) != null),
   >                         target: (index({Env: "TARGET_ONLY"}) != null),
   >                         path: (index({Env: "PATH"}) != null) }'
-  {"host":false,"target":false,"path":false}
+  {"host":true,"target":true,"path":true}
 
 A later host export can clear a merged binding on Windows. Explicit package
 dependencies still supply their selected exports.
@@ -184,7 +184,7 @@ dependencies still supply their selected exports.
   $ dune rules --format=json _build/target/exports |
   >   jq -c '.[] | .deps | { host: (index({Env: "HOST_ONLY"}) != null),
   >                         path: (index({Env: "PATH"}) != null) }'
-  {"host":false,"path":false}
+  {"host":true,"path":true}
 
 With no owning package, the directory sees all host packages. The suppressor
 clears their PATH. Neither the implicit action nor an explicit dependency on
@@ -217,10 +217,10 @@ Removing the suppressor leaves the host as the only source of package bins.
   $ rm host.lock/suppressor.pkg
   $ dune build _build/target/implicit-path
   $ cat _build/target/implicit-path
-  ambient
+  host
   $ dune rules --format=json _build/target/implicit-path |
   >   jq '.[] | .deps | index({Env: "PATH"}) != null'
-  false
+  true
 
 Moving the same package to the target leaves no package PATH to track.
 
@@ -272,4 +272,4 @@ management is disabled. Its rule should track that value.
   baz
   $ dune rules --format=json implicit-output |
   >   jq '.[] | .deps | index({Env: "FOO"}) != null'
-  false
+  true

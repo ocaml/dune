@@ -168,12 +168,16 @@ let extend_action_env t ~dir action =
   let open Action_builder.O in
   let+ (action : Action.Full.t) = action
   and+ env, local_bin_dirs =
-    Action_builder.of_memo
-      (let open Memo.O in
-       let* node = t.get_node dir in
-       let+ env = Env_node.env_without_local_bins node
-       and+ local_bin_dirs = Env_node.local_bin_dirs node in
-       env, local_bin_dirs)
+    Action_builder.of_memo (t.get_node dir) >>= Env_node.action_env
+  and+ () =
+    match Context.kind t.context with
+    | Default | Opam _ -> Action_builder.return ()
+    | Lock _ ->
+      let* env =
+        Action_builder.of_memo (Pkg_rules.exported_env (Context.name t.context))
+      in
+      let vars = Env.Var.Set.remove (Env.vars env) Env_path.var in
+      Action_builder.List.iter (Env.Var.Set.to_list vars) ~f:Action_builder.env_var
   in
   (* Cons path-like vars from the action's environment (bin-layout PATH,
      package-layout OCAMLPATH/etc.) onto the directory env so that both layout

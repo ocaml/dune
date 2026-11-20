@@ -4,7 +4,7 @@ type t =
   { local_binaries : File_binding.Expanded.t list Memo.Lazy.t
   ; base_env : Env.t Memo.Lazy.t
   ; local_bin_dirs : Path.t list Memo.Lazy.t
-  ; env_without_local_bins : Env.t Memo.Lazy.t
+  ; env_without_local_bins : (Dep.Set.t * Env.t) Memo.Lazy.t
   ; external_env : Env.t Memo.Lazy.t
   ; artifacts : Artifacts.t Memo.Lazy.t
   }
@@ -12,9 +12,16 @@ type t =
 let local_binaries t = Memo.Lazy.force t.local_binaries
 let base_env t = Memo.Lazy.force t.base_env
 let local_bin_dirs t = Memo.Lazy.force t.local_bin_dirs
-let env_without_local_bins t = Memo.Lazy.force t.env_without_local_bins
 let external_env t = Memo.Lazy.force t.external_env
 let artifacts t = Memo.Lazy.force t.artifacts
+
+let action_env t =
+  Action_builder.dyn_memo_deps
+    (let open Memo.O in
+     let+ deps, env = Memo.Lazy.force t.env_without_local_bins
+     and+ dirs = local_bin_dirs t in
+     deps, (env, dirs))
+;;
 
 let expand_str_lazy expander sw =
   Memo.Option.value (String_with_vars.text_only sw) ~default:(fun () ->
@@ -62,11 +69,14 @@ let make
     Memo.lazy_ ~name:"env-without-local-bins" (fun () ->
       let* env = Memo.Lazy.force base_env in
       let+ bin_paths = lockdir_bin_paths in
-      Env_path.cons_multi env ~dirs:bin_paths)
+      match bin_paths with
+      | [] -> Dep.Set.empty, env
+      | _ :: _ ->
+        Dep.Set.singleton (Dep.env Env_path.var), Env_path.cons_multi env ~dirs:bin_paths)
   in
   let external_env =
     Memo.lazy_ ~name:"external-env" (fun () ->
-      let+ env = Memo.Lazy.force env_without_local_bins
+      let+ _, env = Memo.Lazy.force env_without_local_bins
       and+ dirs = Memo.Lazy.force local_bin_dirs in
       Env_path.cons_multi env ~dirs)
   in

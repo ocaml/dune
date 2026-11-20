@@ -1,5 +1,28 @@
 Generated corrections are formatted as part of the diff action.
 
+With no correction to compare, an optional diff succeeds even if the dialect
+formatter refers to a missing input:
+
+  $ mkdir custom
+  $ cd custom
+  $ make_dune_project 3.26
+  $ cat >> dune-project <<'EOF'
+  > (formatting (enabled_for custom))
+  > (dialect
+  >  (name custom)
+  >  (implementation
+  >   (extension custom)
+  >   (format (cat %{input-file} suffix))))
+  > EOF
+  $ echo 'unformatted' > source.custom
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (alias missing-correction)
+  >  (action (diff? source.custom source.custom.generated)))
+  > EOF
+  $ dune build @missing-correction
+  $ cd ..
+
 OCamlFormat receives the original source name and formats the correction in
 place:
 

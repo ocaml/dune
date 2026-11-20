@@ -104,16 +104,25 @@ module Hasher = struct
          [Hasher.with_singleton], which is not allowed."
         []
     else (
-      (* [Manual] shares this hasher, so preserve the ordering of pending input
-         before using it for a nested digest computation. *)
-      Scratch.flush ();
-      singleton_in_use := true;
       let hasher = Lazy.force singleton in
-      f hasher x;
-      let digest = Blake3_mini.digest hasher in
-      Blake3_mini.reset hasher;
-      singleton_in_use := false;
-      digest)
+      singleton_in_use := true;
+      match
+        (* [Manual] shares this hasher, so preserve the ordering of pending input
+           before using it for a nested digest computation. *)
+        Scratch.flush ();
+        f hasher x;
+        Blake3_mini.digest hasher
+      with
+      | digest ->
+        Blake3_mini.reset hasher;
+        singleton_in_use := false;
+        digest
+      | exception exn ->
+        let exn = Exn_with_backtrace.capture exn in
+        Scratch.pos := 0;
+        Blake3_mini.reset hasher;
+        singleton_in_use := false;
+        Exn_with_backtrace.reraise exn)
   ;;
 
   let pool = ref []
@@ -431,6 +440,11 @@ module Manual = struct
     Blake3_mini.reset hasher;
     res
   ;;
+
+  let reset () =
+    Hasher.Scratch.pos := 0;
+    Blake3_mini.reset (Lazy.force Hasher.singleton)
+  ;;
 end
 
 let string s = Feed.compute_digest Feed.string s
@@ -460,11 +474,6 @@ let path_with_executable_bit_with string_digest =
 
 let path_with_executable_bit = path_with_executable_bit_with string
 let path_with_executable_bit_pooled = path_with_executable_bit_with string_pooled
-
-let file_with_executable_bit_sync ~executable path =
-  let content_digest = file path in
-  path_with_executable_bit ~content_digest ~executable
-;;
 
 let file_with_executable_bit_pooled ~executable path =
   let content_digest = file path in
@@ -523,7 +532,9 @@ let path_with_stats_internal
       Unix_error.Detailed.catch
         (fun path ->
            let contents = Path.to_string path |> Unix.readlink |> string_digest in
-           path_with_executable_bit ~executable:stats.executable ~content_digest:contents)
+           path_with_executable_bit_pooled
+             ~executable:stats.executable
+             ~content_digest:contents)
         path
       |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)
     | S_REG ->
@@ -567,9 +578,9 @@ let path_with_stats_internal
 let path_with_stats ~allow_dirs path stats =
   path_with_stats_internal
     ~allow_dirs
-    ~string_digest:string
-    ~directory_digest:(directory_digest_with repr)
-    ~file_with_executable_bit:file_with_executable_bit_sync
+    ~string_digest:string_pooled
+    ~directory_digest:(directory_digest_with repr_pooled)
+    ~file_with_executable_bit:file_with_executable_bit_pooled
     path
     stats
 ;;

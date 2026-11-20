@@ -74,8 +74,13 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
   | Redirect_out (outputs, fn, perm, t) ->
     let fn = Path.build fn in
     redirect_out t ~ectx ~eenv outputs ~perm fn
+  | Redirect_out_atomic (fn, t) -> redirect_out_atomic t ~ectx ~eenv fn
   | Redirect_in (inputs, fn, t) -> redirect_in t ~ectx ~eenv inputs fn
   | Ignore (outputs, t) -> redirect_out t ~ectx ~eenv ~perm:Normal outputs Dev_null.path
+  | If_file_exists (path, t) ->
+    (match Path.Untracked.stat path with
+     | Ok { st_kind = S_REG; _ } -> exec t ~ectx ~eenv
+     | Ok _ | Error _ -> Fiber.return ())
   | Progn ts -> exec_list ts ~ectx ~eenv
   | Concurrent ts ->
     Fiber.parallel_iter ts ~f:(fun t ->
@@ -181,6 +186,21 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
 
 and redirect_out t ~ectx ~eenv ~perm outputs fn =
   redirect t ~ectx ~eenv ~out:(outputs, fn, perm) ()
+
+and redirect_out_atomic t ~ectx ~eenv fn =
+  let fn = Path.build fn in
+  let temporary =
+    Temp.temp_in_dir
+      File
+      ~dir:(Path.parent_exn fn)
+      ~prefix:"dune-atomic-output"
+      ~suffix:"tmp"
+  in
+  Fiber.finalize_now
+    ~finally:(fun () -> Temp.destroy File temporary)
+    (fun () ->
+       let+ () = redirect_out t ~ectx ~eenv ~perm:Normal Stdout temporary in
+       Fpath.rename_exn (Path.to_string temporary) (Path.to_string fn))
 
 and redirect_in t ~ectx ~eenv inputs fn = redirect t ~ectx ~eenv ~in_:(inputs, fn) ()
 

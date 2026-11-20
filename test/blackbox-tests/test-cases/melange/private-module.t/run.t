@@ -11,14 +11,9 @@ Without sandboxing, OCaml resolves this wrapper alias.
   $ dune build --sandbox none foo.bc
   $ mv dune.melange dune
 
-Melange currently fails to resolve the same wrapper alias.
+Melange resolves the same wrapper alias.
 
   $ dune build --sandbox none private-module/foo.js
-  File "foo.ml", line 1, characters 0-5:
-  1 | Lib.X.run ();;
-      ^^^^^
-  Error: The module Lib.X is an alias for module Lib__X, which is missing
-  [1]
 
 The internal compilation-unit name remains unavailable.
 

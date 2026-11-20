@@ -1113,6 +1113,43 @@ write_target_promotion_rules() {
 	EOF
 }
 
+write_site_test_reader() {
+  cat > site_reader.ml <<-'EOF'
+	let print dirs name =
+	  let paths = List.map (fun dir -> Filename.concat dir name) dirs in
+	  match List.find_opt Sys.file_exists paths with
+	  | None ->
+	    Printf.printf "%s: missing\n" name;
+	    false
+	  | Some path ->
+	    let contents = In_channel.with_open_text path input_line in
+	    Printf.printf "%s: %s\n" name contents;
+	    true
+	EOF
+}
+
+write_package_site_test_project() {
+  unset DUNE_DIR_LOCATIONS
+  cat > dune-project <<-'EOF'
+	(lang dune 3.1)
+	(using dune_site 0.1)
+	(package (name foo) (sites (share data)))
+	EOF
+  cat > dune <<-'EOF'
+	(executable (public_name main) (package foo) (libraries dune-site))
+	(generate_sites_module (module sites) (sites foo))
+	(install (package foo) (section (site (foo data))) (files foo.txt))
+	EOF
+  write_site_test_reader
+  cat > main.ml <<-'EOF'
+	let () =
+	  let names = List.tl (Array.to_list Sys.argv) in
+	  let found = List.map (Site_reader.print Sites.Sites.data) names in
+	  if List.mem false found then exit 1
+	EOF
+  echo foo > foo.txt
+}
+
 write_sites_plugin_app_dune() {
   local version="$1"
   local executable_package="${2:-}"

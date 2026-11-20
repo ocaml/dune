@@ -30,6 +30,7 @@ let syntax =
     ; (1, 1), `Since (3, 5)
     ; (1, 2), `Since (3, 7)
     ; (1, 3), `Since (3, 8)
+    ; (1, 4), `Since (3, 26)
     ]
 ;;
 
@@ -258,23 +259,30 @@ let gen_rules sctx t ~dir ~scope =
         in
         Dep_conf_eval.unnamed sandbox ~expander t.runtime_deps
       in
+      let checks =
+        List.map cinapsed_files ~f:(fun source ->
+          let target =
+            Path.Build.extend_basename source ~suffix:Filename.cinaps_corrected
+          in
+          let source = Path.build source in
+          let diff = Action.diff ~optional:true source target in
+          if t.cinaps_version < (1, 4)
+          then Action_builder.return (Action.Full.make diff)
+          else Format_generated.format_diff sctx ~dir ~source ~target ~diff)
+        |> Action_builder.all
+      in
       let+ () =
         cinaps_exe :: List.rev_map cinapsed_files ~f:Path.build
         |> Dep.Set.of_files
         |> Action_builder.deps
-      and+ env in
-      Action.Full.make ~sandbox
-      @@ Action.chdir
-           (Path.build dir)
-           (Action.progn
-              [ Action.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ]
-              ; Action.concurrent
-                @@ List.map cinapsed_files ~f:(fun fn ->
-                  Action.diff
-                    ~optional:true
-                    (Path.build fn)
-                    (Path.Build.extend_basename fn ~suffix:Filename.cinaps_corrected))
-              ])
+      and+ env
+      and+ checks in
+      Action.Full.progn
+        [ Action.Full.make (Action.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ])
+        ; Action.Full.concurrent checks
+        ]
+      |> Action.Full.map ~f:(Action.chdir (Path.build dir))
+      |> Action.Full.add_sandbox sandbox
       |> Action.Full.add_env env
     in
     Super_context.add_alias_action sctx ~dir ~loc [ cinaps_alias ] action

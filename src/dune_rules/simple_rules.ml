@@ -44,7 +44,8 @@ let check_filename =
   fun ~kind ~error_loc ~dir -> function
     | Value.String ("." | "..") ->
       User_error.raise ~loc:error_loc [ Pp.text "'.' and '..' are not valid targets" ]
-    | String s ->
+    | (String _ | Jobs _) as value ->
+      let s = Value.to_string value ~dir:(Path.build dir) in
       if Filename.dirname s <> Filename.current_dir_name
       then not_in_dir ~kind ~error_loc s;
       Path.Build.relative ~error_loc dir s
@@ -193,7 +194,8 @@ let user_rule sctx ~dir ~expander (rule : Rule_conf.t) =
     let () = validate_corrections ~rule in
     let* action =
       let chdir = Expander.dir expander in
-      Action_unexpanded.expand
+      Action_unexpanded.expand_with_formatted_diffs
+        sctx
         (snd rule.action)
         sandbox
         ~loc:(fst rule.action)
@@ -378,7 +380,8 @@ let alias sctx ~dir ~expander (alias_conf : Alias_conf.t) =
      | Some (action_loc, action) ->
        let action =
          let chdir = Expander.dir expander in
-         Action_unexpanded.expand_no_targets
+         Action_unexpanded.expand_no_targets_with_formatted_diffs
+           sctx
            action
            Sandbox_config.no_special_requirements
            ~loc:action_loc

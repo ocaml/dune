@@ -154,6 +154,8 @@ module Theory = struct
     ; boot : bool
     ; generate_project_file : Loc.t * bool
     ; enabled_if : Blang.t
+    ; timing : Blang.t option
+    ; profiling : Blang.t option
     ; buildable : Buildable.t
     ; rocqdep_flags : Ordered_set_lang.Unexpanded.t
     ; rocqdoc_flags : Ordered_set_lang.Unexpanded.t
@@ -206,6 +208,12 @@ module Theory = struct
        and+ modules = Ordered_set_lang.field "modules"
        and+ modules_flags = field_o "modules_flags" Per_file.decode
        and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
+       and+ timing =
+         field_o "timing" (Dune_lang.Syntax.since Stanza.syntax (3, 26) >>> Blang.decode)
+       and+ profiling =
+         field_o
+           "profiling"
+           (Dune_lang.Syntax.since Stanza.syntax (3, 26) >>> Blang.decode)
        and+ buildable = Buildable.decode
        and+ rocqdep_flags = Ordered_set_lang.Unexpanded.field "rocqdep_flags"
        and+ rocqdoc_flags = Ordered_set_lang.Unexpanded.field "rocqdoc_flags"
@@ -225,6 +233,8 @@ module Theory = struct
        ; generate_project_file
        ; buildable
        ; enabled_if
+       ; timing
+       ; profiling
        ; rocqdep_flags
        ; rocqdoc_flags
        ; rocqdoc_header

@@ -91,7 +91,12 @@ module Conf = struct
       ~display:Quiet
       Strict
       codesign
-      [ "-f"; "-s"; "-"; Path.to_string path ]
+      [ "-f"
+      ; "-s"
+      ; "-"
+      ; "--preserve-metadata=identifier,entitlements,requirements,flags,runtime"
+      ; Path.to_string path
+      ]
   ;;
 
   let sign_hook_of_context (context : Context.t) =

@@ -50,9 +50,9 @@ Build markdown documentation:
   $ dune build @doc-markdown
   $ list_markdown_docs
   _build/default/_doc/_markdown/index.md
-  _build/default/_doc/_markdown/mylib/Mylib-SubModule.md
-  _build/default/_doc/_markdown/mylib/Mylib.md
   _build/default/_doc/_markdown/mylib/index.md
+  _build/default/_doc/_markdown/mylib/mylib/Mylib-SubModule.md
+  _build/default/_doc/_markdown/mylib/mylib/Mylib.md
 
 Check the top-level index contains markdown:
 

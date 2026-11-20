@@ -28,7 +28,7 @@ Whenever an invalid package name is used, dune crashes when building @doc
   Description:
     ("[gen_rules] returned directory target in a directory that is not a descendant of the directory it was called for",
      { dir = In_build_dir "default/_doc/_html/x.y"
-     ; example = In_build_dir "default/_doc/_html/x/X"
+     ; example = In_build_dir "default/_doc/_html/x/x.y/X_y"
      })
   Raised at Stdune__Code_error.raise in file
   [1]

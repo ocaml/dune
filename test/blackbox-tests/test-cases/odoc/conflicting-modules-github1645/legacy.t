@@ -24,8 +24,9 @@ built. See #1645.
 
   $ dune build @install
   $ dune build @doc
-  Error: Multiple rules generated for _build/default/_doc/_html/l/Module:
-  - <internal location>
-  - <internal location>
-  -> required by alias doc
-  [1]
+  File "Module":
+  Ambiguous lookup. Possible files: Module
+  Module
+  File "Module":
+  Ambiguous lookup. Possible files: Module
+  Module

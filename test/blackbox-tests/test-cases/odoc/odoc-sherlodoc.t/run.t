@@ -4,11 +4,11 @@ This test generates documentation using odoc for a library:
 
 This test if `.odocl` files are generated
   $ find _build/default/_doc/_odocls -name '*.odocl' | sort -n
-  _build/default/_doc/_odocls/bar/bar.odocl
+  _build/default/_doc/_odocls/bar/bar/bar.odocl
   _build/default/_doc/_odocls/bar/page-index.odocl
-  _build/default/_doc/_odocls/foo/foo.odocl
-  _build/default/_doc/_odocls/foo/foo2.odocl
-  _build/default/_doc/_odocls/foo/foo_byte.odocl
+  _build/default/_doc/_odocls/foo/foo.byte/foo_byte.odocl
+  _build/default/_doc/_odocls/foo/foo/foo.odocl
+  _build/default/_doc/_odocls/foo/foo/foo2.odocl
   _build/default/_doc/_odocls/foo/page-index.odocl
 
   $ find . -name '*.js' | sort -n
@@ -21,13 +21,13 @@ This test if `.odocl` files are generated
   $ cat ./_build/default/_doc/_html/bar/db.js
   /* Sherlodoc DB for: */
   /*   - ../../_odocls/bar/page-index.odocl */
-  /*   - --favored ../../_odocls/bar/bar.odocl */
+  /*   - --favored ../../_odocls/bar/bar/bar.odocl */
   $ cat ./_build/default/_doc/_html/foo/db.js
   /* Sherlodoc DB for: */
   /*   - ../../_odocls/foo/page-index.odocl */
-  /*   - --favored ../../_odocls/foo/foo_byte.odocl */
-  /*   - --favored ../../_odocls/foo/foo2.odocl */
-  /*   - --favored ../../_odocls/foo/foo.odocl */
+  /*   - --favored ../../_odocls/foo/foo.byte/foo_byte.odocl */
+  /*   - --favored ../../_odocls/foo/foo/foo2.odocl */
+  /*   - --favored ../../_odocls/foo/foo/foo.odocl */
 
 
 

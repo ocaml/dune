@@ -37,6 +37,10 @@ Add some build contexts with different environments
   >   (lock_dir change-opam-version.lock)))
   > EOF
 
+  $ cat >dune-project <<EOF
+  > (lang dune 3.26)
+  > EOF
+
   $ dune pkg print-solver-env --all
   Solver environment for lock directory change-opam-version.lock:
   - opam-version = 42

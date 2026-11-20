@@ -188,7 +188,7 @@ Changing only the system environment must update the solution.
   > }
 
   $ cat >dune-project <<'EOF'
-  > (lang dune 3.20)
+  > (lang dune 3.26)
   > EOF
 
   $ rm -r dune.lock

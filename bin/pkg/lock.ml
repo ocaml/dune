@@ -184,8 +184,14 @@ let solve_lock_dir
   let solver_env_from_context =
     Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env)
   in
+  let* dune_version =
+    Memo.run (Source_tree.root ())
+    >>| Source_tree.Dir.project
+    >>| Dune_project.dune_version
+  in
   let solver_env =
     solver_env
+      ~dune_version
       ~solver_env_from_context
       ~solver_env_from_current_system
       ~unset_solver_vars_from_context:
@@ -196,6 +202,9 @@ let solve_lock_dir
     | true ->
       (match solver_env_from_context with
        | Some solver_env_from_context ->
+         let solver_env_from_context =
+           Solver_env.normalize ~dune_version solver_env_from_context
+         in
          List.map solve_for_platforms ~f:(fun platform_env ->
            Solver_env.extend solver_env_from_context platform_env)
        | None -> solve_for_platforms)

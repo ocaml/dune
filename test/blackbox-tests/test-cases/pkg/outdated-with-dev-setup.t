@@ -5,7 +5,7 @@ Reproduce internal error with dune pkg outdated in #11188.
   $ mkpkg b
 
   $ solve_project<<EOF
-  > (lang dune 3.20)
+  > (lang dune 3.26)
   > (package
   >  (name foo)
   >  (depends a (b :with-dev-setup)))

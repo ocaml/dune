@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795139725412,
+  "lastUpdate": 1795142065054,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -685298,6 +685298,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.19986469222,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "mkoconnor@protonmail.com",
+            "name": "Michael O'Connor",
+            "username": "mkoconnor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ed09b9fbad658339223ecc27e484a7b36dc9ff1e",
+          "message": "fiber: avoid let rec cycle through immutable blocks (#17112)\n\n## Description\nAvoid a let rec cycle that goes through immutable values\n\n## Motivation\nWe'd like to ban such cycles in oxcaml soon-ish\n\n## Checklist\nExisting tests should be sufficient from the dune side. There were no\nuser-facing changes.\n\n- [x] Tests added, if applicable.\n- [x] [Change log entry\nadded](../CONTRIBUTING.md#updating-the-changelog) for any user-facing\nchanges.\n- [x] Documentation added for any user-facing changes.\n\nSigned-off-by: Michael O'Connor <moconnor@janestreet.com>",
+          "timestamp": "2026-11-20T10:20:45+08:00",
+          "tree_id": "5f32662a4c180991e3d3ad345a275762fb67b672",
+          "url": "https://github.com/ocaml/dune/commit/ed09b9fbad658339223ecc27e484a7b36dc9ff1e"
+        },
+        "date": 1795141653697,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.924514866186667,
             "unit": "seconds"
           }
         ]

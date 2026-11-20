@@ -64,9 +64,9 @@ of the dune-project:
   version: "1.0.0"
 
   $ mkpkg odoc
-  $ mkpkg dune 3.11
+  $ mkpkg dune 3.26
   $ solve_project <<EOF
-  > (lang dune 3.11)
+  > (lang dune 3.26)
   > EOF
   Solution for dune.lock:
   - bar.1.0.0

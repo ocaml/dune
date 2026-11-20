@@ -58,13 +58,14 @@ let simplify_filter get_solver_var =
     match OpamVariable.Full.scope var with
     | Global ->
       let name = OpamVariable.Full.variable var |> Package_variable_name.of_opam in
-      if Package_variable_name.Set.mem Package_variable_name.local_only name
-      then
-        (* We don't generate lockfiles for local packages, and we don't include
-           test, doc or dev-setup dependencies for non-local packages, so these
-           variables always evaluate to "false". *)
-        Some (B false)
-      else get_solver_var name |> Option.map ~f:Variable_value.to_opam_variable_contents
+      (match get_solver_var name with
+       | Some value -> Some (Variable_value.to_opam_variable_contents value)
+       | None ->
+         (* Unless set in the solver environment, these variables only apply to
+            local packages, for which we don't generate lockfiles. *)
+         Option.some_if
+           (Package_variable_name.Set.mem Package_variable_name.local_only name)
+           (OpamVariable.B false))
     | _ -> None)
 ;;
 

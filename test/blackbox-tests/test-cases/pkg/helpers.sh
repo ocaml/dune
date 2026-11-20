@@ -594,7 +594,7 @@ make_package_project() {
 
 make_project() {
   cat <<- EOF
-	(lang dune 3.20)
+	(lang dune 3.26)
 	 (package
 	  (name x)
 	  (allow_empty)

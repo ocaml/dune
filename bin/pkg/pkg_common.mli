@@ -1,12 +1,18 @@
 open Import
 
+(** The Dune language version of the root project, which selects the solver
+    variables defaults. *)
+val root_dune_version : Dune_lang.Syntax.Version.t Memo.t
+
 (** Create a [Dune_pkg.Solver_env.t] by combining variables taken from the
     current system and variables taken from the current context, with priority
     being given to the latter. Some variables are initialized to default values
     (which can be overridden by the arguments to this function):
+    - "with-doc" and "with-dev-setup" are set to "false" before Dune 3.26
     - "opam-version" is set to the version of opam vendored in dune *)
 val solver_env
-  :  solver_env_from_current_system:Dune_pkg.Solver_env.t option
+  :  dune_version:Dune_lang.Syntax.Version.t
+  -> solver_env_from_current_system:Dune_pkg.Solver_env.t option
   -> solver_env_from_context:Dune_pkg.Solver_env.t option
   -> unset_solver_vars_from_context:Dune_lang.Package_variable_name.Set.t option
   -> Dune_pkg.Solver_env.t

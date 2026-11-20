@@ -37,12 +37,11 @@ changed if desired.
 
       It consists of a sequence of ``(<name> <value>)`` pairs.
 
-      The ``with-test``, ``with-doc`` and ``with-dev-setup`` variables only
-      apply to local packages: the test, documentation and development setup
-      dependencies of local packages are locked, but never those of other
-      packages. Setting one of these variables to ``false`` excludes the
-      corresponding dependencies of local packages, while setting it to
-      ``true`` is the same as leaving it unset.
+      Starting with Dune 3.26, the ``with-doc`` and ``with-dev-setup`` variables
+      are unset by default: like ``with-test``, the corresponding dependencies
+      of local packages are then locked, but not those of other packages. Before
+      3.26, they default to ``false`` and setting them applies to all
+      packages.
 
    .. describe:: (unset_variables <name list>)
 

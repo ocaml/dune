@@ -4,12 +4,19 @@ module Solver_env = Dune_pkg.Solver_env
 module Package_variable_name = Dune_lang.Package_variable_name
 module Variable_value = Dune_pkg.Variable_value
 
+let root_dune_version =
+  let open Memo.O in
+  Source_tree.root () >>| Source_tree.Dir.project >>| Dune_project.dune_version
+;;
+
 let solver_env
+      ~dune_version
       ~solver_env_from_current_system
       ~solver_env_from_context
       ~unset_solver_vars_from_context
   =
   Solver_env.combine
+    ~dune_version
     ~current_system:solver_env_from_current_system
     ~context:solver_env_from_context
     ~unset:unset_solver_vars_from_context
@@ -45,10 +52,10 @@ let solver_env_from_system_and_context ~lock_dir_path =
   let+ solver_env_from_current_system =
     poll_solver_env_from_current_system () >>| Option.some
   and+ solver_env_from_context = get_solver_env_from_context ~lock_dir_path
-  and+ unset_solver_vars_from_context =
-    get_unset_solver_vars_from_context ~lock_dir_path
-  in
+  and+ unset_solver_vars_from_context = get_unset_solver_vars_from_context ~lock_dir_path
+  and+ dune_version = Memo.run root_dune_version in
   solver_env
+    ~dune_version
     ~solver_env_from_current_system
     ~solver_env_from_context
     ~unset_solver_vars_from_context

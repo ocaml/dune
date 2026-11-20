@@ -34,15 +34,27 @@ let is_subset =
     Variable_value.equal value of_)
 ;;
 
-(* "with-test", "with-doc" and "with-dev-setup" only apply to local packages,
-   for which they are enabled unless set to "false". Setting them to "true" is
-   the same as leaving them unset, which keeps them disabled for other
-   packages. *)
-let normalize t =
+(* The Dune language version from which "with-doc" and "with-dev-setup" are
+   enabled by default for local packages. *)
+let doc_and_dev_setup_enabled_since = 3, 26
+
+(* Setting [variables] to "true" is the same as leaving them unset: they then
+   only apply to local packages. *)
+let unset_true t variables =
   Package_variable_name.Map.filteri t ~f:(fun variable value ->
     not
-      (Package_variable_name.Set.mem Package_variable_name.local_only variable
+      (Package_variable_name.Set.mem variables variable
        && Variable_value.equal value Variable_value.true_))
+;;
+
+let with_test_only = Package_variable_name.Set.singleton Package_variable_name.with_test
+
+let normalize ~dune_version t =
+  unset_true
+    t
+    (if dune_version >= doc_and_dev_setup_enabled_since
+     then Package_variable_name.local_only
+     else with_test_only)
 ;;
 
 let encode t =
@@ -57,7 +69,7 @@ let decode =
     located (repeat (pair Package_variable_name.decode Variable_value.decode))
   in
   match Package_variable_name.Map.of_list bindings with
-  | Ok t -> normalize t
+  | Ok t -> unset_true t with_test_only
   | Error (duplicate_key, a, b) ->
     User_error.raise
       ~loc
@@ -70,18 +82,25 @@ let decode =
 ;;
 
 let set t variable_name variable_value =
-  Package_variable_name.Map.set t variable_name variable_value |> normalize
+  unset_true (Package_variable_name.Map.set t variable_name variable_value) with_test_only
 ;;
 
 let get = Package_variable_name.Map.find
 let extend a b = Package_variable_name.Map.superpose b a
 let contains = Package_variable_name.Map.mem
 
-let with_defaults =
-  [ ( Package_variable_name.opam_version
-    , OpamVersion.to_string OpamVersion.current |> Variable_value.string )
-  ; Package_variable_name.post, Variable_value.true_
-  ]
+let with_defaults ~dune_version =
+  ([ ( Package_variable_name.opam_version
+     , OpamVersion.to_string OpamVersion.current |> Variable_value.string )
+   ; Package_variable_name.post, Variable_value.true_
+   ]
+   @
+   if dune_version >= doc_and_dev_setup_enabled_since
+   then []
+   else
+     [ Package_variable_name.with_doc, Variable_value.false_
+     ; Package_variable_name.with_dev_setup, Variable_value.false_
+     ])
   |> List.fold_left ~init:empty ~f:(fun acc (name, value) -> set acc name value)
 ;;
 
@@ -116,12 +135,13 @@ let unset_multi t variable_names =
     unset t variable_name)
 ;;
 
-let combine ~current_system ~context ~unset =
+let combine ~dune_version ~current_system ~context ~unset =
   let t =
     [ current_system; context ]
     |> List.filter_opt
-    |> List.fold_left ~init:with_defaults ~f:extend
+    |> List.fold_left ~init:(with_defaults ~dune_version) ~f:extend
   in
+  let t = normalize ~dune_version t in
   match unset with
   | None -> t
   | Some variables -> unset_multi t variables

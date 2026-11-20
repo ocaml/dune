@@ -72,3 +72,71 @@ It should also be visible in the workspace:
 
   $ dune build ./testout && cat _build/default/testout
   from test package
+
+Two packages install the same command. A recipe using the shell should select
+the same provider if an intermediate lock entry merely lists its dependencies
+in the opposite order. Which independent provider wins is not part of the test.
+
+  $ export DUNE_CACHE=disabled
+  $ make_lockpkg other <<'EOF'
+  > (version 1)
+  > EOF
+  $ make_lockpkg_file other foo <<'EOF'
+  > #!/bin/sh
+  > echo from other package
+  > EOF
+  $ echo 'bin: [ "foo" ]' > dune.lock/other.files/other.install
+  $ middle() {
+  >   make_lockpkg middle <<EOF
+  > (version 1)
+  > (depends $1 $2)
+  > EOF
+  > }
+  $ make_lockpkg usetest <<'EOF'
+  > (version 1)
+  > (depends middle)
+  > (install (system "echo selecting; foo > %{prefix}/selected"))
+  > EOF
+  $ middle test other
+  $ target=$(get_build_pkg_dir usetest)/target
+  $ dune build "$target"
+  selecting
+  $ first=$(cat "$target/selected")
+  $ echo "$first" | grep -Eq '^from (other|test) package$'
+
+Both installations are inputs. An unused directory on the inherited PATH is not.
+
+  $ a=$(get_build_pkg_dir test)/target
+  $ b=$(get_build_pkg_dir other)/target
+  $ dune rules --format=json "$target" | jq_dune -c --arg a "$a" --arg b "$b" '
+  >   .[] | {providers: (ruleHasDepFile($a) and ruleHasDepFile($b)),
+  >          path: (.deps | index({Env: "PATH"}) != null)}'
+  {"providers":true,"path":false}
+  $ mkdir ambient-bin
+  $ PATH="$PWD/ambient-bin:$PATH" dune build "$target"
+
+Swap the two providers without changing their files or the consuming recipe.
+
+  $ middle other test
+  $ target=$(get_build_pkg_dir usetest)/target
+  $ dune build "$target" > log 2>&1
+  $ fresh=_fresh/${target#_build/}
+  $ dune build --build-dir _fresh "$fresh" > log 2>&1
+  $ selected=$(cat "$target/selected")
+  $ test "$selected" = "$(cat "$fresh/selected")"
+
+The current search path follows the spelling of the lock entry, so a mere
+permutation can still change the selected command.
+
+  $ test "$selected" = "$first"
+  [1]
+
+Adding a dependency edge between the same two providers really changes the
+graph. Even if neither helper changes, incremental and fresh builds must agree.
+
+  $ echo '(depends test)' >> dune.lock/other.pkg
+  $ target=$(get_build_pkg_dir usetest)/target
+  $ dune build "$target" > log 2>&1
+  $ fresh=_fresh_edge/${target#_build/}
+  $ dune build --build-dir _fresh_edge "$fresh" > log 2>&1
+  $ test "$(cat "$target/selected")" = "$(cat "$fresh/selected")"

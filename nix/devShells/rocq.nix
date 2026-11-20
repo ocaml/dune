@@ -10,13 +10,13 @@
   rocq = makeDuneDevShell {
     extraOCamlOverlays = [
       (oself: osuper: {
-        rocq-core = pkgs.rocqPackages_9_2.rocq-core.override {
+        rocq-core = pkgs.rocqPackages_9_3.rocq-core.override {
           customOCamlPackages = oself;
         };
-        mkRocqDerivation = pkgs.rocqPackages_9_2.mkRocqDerivation.override {
+        mkRocqDerivation = pkgs.rocqPackages_9_3.mkRocqDerivation.override {
           rocq-core = oself.rocq-core;
         };
-        rocq-stdlib = pkgs.rocqPackages_9_2.stdlib.override {
+        rocq-stdlib = pkgs.rocqPackages_9_3.stdlib.override {
           rocq-core = oself.rocq-core;
           mkRocqDerivation = oself.mkRocqDerivation;
         };
@@ -36,7 +36,7 @@
     extraOCamlOverlays = [
       (oself: osuper: {
         rocq-core-native =
-          (pkgs.rocqPackages_9_2.rocq-core.override {
+          (pkgs.rocqPackages_9_3.rocq-core.override {
             customOCamlPackages = oself;
           }).overrideAttrs
             (a: {
@@ -45,10 +45,10 @@
                 "yes"
               ];
             });
-        mkRocqDerivation-native = pkgs.rocqPackages_9_2.mkRocqDerivation.override {
+        mkRocqDerivation-native = pkgs.rocqPackages_9_3.mkRocqDerivation.override {
           rocq-core = oself.rocq-core-native;
         };
-        rocq-stdlib-native = pkgs.rocqPackages_9_2.stdlib.override {
+        rocq-stdlib-native = pkgs.rocqPackages_9_3.stdlib.override {
           rocq-core = oself.rocq-core-native;
           mkRocqDerivation = oself.mkRocqDerivation-native;
         };

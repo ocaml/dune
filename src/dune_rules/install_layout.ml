@@ -105,8 +105,13 @@ let entries =
         ~init:(Path.Build.Map.empty, Dep.Set.empty)
         ~f:(fun dst (entry : Path.t Install.Entry.Expanded.t) (dirs, deps) ->
           let is_lib_entry =
+            let is_rocq_theory =
+              Install.Entry.Dst.to_string entry.dst
+              |> String.split ~on:'/'
+              |> fun components -> List.mem components "rocq.d" ~equal:String.equal
+            in
             match (entry.section : Section.t) with
-            | Lib | Libexec -> true
+            | Lib | Libexec -> not is_rocq_theory
             | _ -> false
           in
           match (entry.kind : Install.Entry.Expanded.kind) with
@@ -239,13 +244,13 @@ module For_rocq_only = struct
      see must be a declared dep. In the opam layout, both {!Section.Lib} and
      {!Section.Libexec} are under [lib/<package>]; Dune uses Libexec for native
      OCaml plugins so that their executable bit is preserved. Bulk {!env}
-     doesn't work: it also pulls in {!Section.Lib_root} entries, which include
-     Rocq theory [.vo] files under
-     [lib/coq/user-contrib/...]; in the same-package theory-plus-plugin case,
-     that creates a build cycle (the theory rule depending on its own output
-     via the layout symlink). Filtering to {!Section.Lib} and
-     {!Section.Libexec} excludes root-section content (theory output) while
-     keeping METAs, .cmi, .cmxs etc. — all upstream of theory compilation. *)
+     doesn't work: it also pulls in Rocq theory outputs. Legacy theories use
+     {!Section.Lib_root} under [lib/coq/user-contrib/...], while package-based
+     theories use {!Section.Lib} under [lib/<package>/rocq.d]. In the
+     same-package theory-plus-plugin case, depending on those outputs creates a
+     cycle through the layout symlink. Keep {!Section.Lib} and
+     {!Section.Libexec} entries except those under [rocq.d], preserving METAs,
+     .cmi, .cmxs etc. — all upstream of theory compilation. *)
   let lib_root context_name packages =
     let open Action_builder.O in
     let+ () =

@@ -199,23 +199,24 @@ a `Code_error`.
 ### `For_rocq_only` escape hatch
 
 `Install_layout.For_rocq_only.lib_root` returns the layout's `lib` root and
-records dependencies on its `Section.Lib` and `Section.Libexec` entries.
-Discovery, compilation, and extraction use it. Package-set layouts follow
-opam's layout, where both sections install under `lib/<package>` and `Libexec`
-additionally preserves the executable bit. Dune records native OCaml plugins
-(`.cmxs`) in `Libexec`.
+records dependencies on its `Section.Lib` and `Section.Libexec` entries, except
+Rocq theory outputs under `rocq.d`. Discovery, compilation, and extraction use
+it. Package-set layouts follow opam's layout, where both sections install under
+`lib/<package>` and `Libexec` additionally preserves the executable bit. Dune
+records native OCaml plugins (`.cmxs`) in `Libexec`.
 
 The special handling exists because rocq puts the layout's `lib` dir on
 `OCAMLPATH`, where findlib walks eagerly; for a race-free, deterministic walk,
 every entry findlib could see must be a declared dep. The bulk `env` function
-isn't suitable here because it also pulls in root-section entries. For rocq
-those include the theory's own `.vo` output
-under `lib/coq/user-contrib/...`, creating a build cycle in the same-package
-theory-plus-plugin case (the theory rule would depend on its own output via the
-layout symlink). Filtering to `Section.Lib` and `Section.Libexec` excludes the
-theory output while keeping METAs, `.cmi`, `.cmxs` etc., all of which are
-upstream of theory compilation. See the comment on the module in
-`install_layout.ml` for details.
+isn't suitable here because it also pulls in theory install entries. Legacy
+Rocq theories install their `.vo` output under `lib/coq/user-contrib/...` in
+`Section.Lib_root`; package-based theories install under
+`lib/<package>/rocq.d` in `Section.Lib`. Depending on either creates a build
+cycle in the same-package theory-plus-plugin case (the theory rule would depend
+on its own output via the layout symlink). Filtering to `Section.Lib` and
+`Section.Libexec`, and excluding paths under `rocq.d`, keeps METAs, `.cmi`,
+`.cmxs` etc., all of which are upstream of theory compilation. See the comment
+on the module in `install_layout.ml` for details.
 
 Grouping is lazy within the existing layout-entry memo and forced only by
 Rocq callers. Ordinary package-dependency actions and layout rule generation

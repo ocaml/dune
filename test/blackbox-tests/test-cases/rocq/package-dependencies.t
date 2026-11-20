@@ -39,7 +39,6 @@ First inspect the environment and materialized package set directly.
   >   (package top))
   >  (action
   >   (run bash %{dep:inspect.sh})))
-  > 
   > (rule
   >  (alias consume)
   >  (deps
@@ -66,9 +65,9 @@ First inspect the environment and materialized package set directly.
   > EOF
 
   $ dune build @inspect
-  ROCQPATH is unset
+  ROCQPATH is set
   Top is present
-  Bottom is missing
+  Bottom is present
 
 A nested Dune invocation must also be able to discover and use the theories.
 
@@ -87,12 +86,5 @@ A nested Dune invocation must also be able to discover and use the theories.
   > EOF
 
   $ dune build @consume
-  File "dune", line 3, characters 11-14:
-  3 |  (theories Top Bottom))
-                 ^^^
-  Theory "Top" has not been found.
-  -> required by theory Consumer in dune:2
-  -> required by _build/default/.Consumer.theory.d
-  -> required by alias all
-  -> required by alias default
-  [1]
+  top
+       : Set

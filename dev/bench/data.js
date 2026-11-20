@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795165869149,
+  "lastUpdate": 1795174176508,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -685559,6 +685559,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.7675827311066663,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5f06ce9db9271a1e72d366ea6630bace8aee97ed",
+          "message": "perf(engine): skip filesystem watch tracking in batch builds (#17117)\n\nOne-shot builds never install a file watcher, but filesystem reads can\nstill create Memo cells and queue paths while waiting for one. Tell\n`Fs_memo` at startup that no watcher is coming, before reading the\nworkspace. Watch-mode initialization is unchanged.\n\nThe regression test compares two otherwise identical batch builds:\nreading a second distinct empty include used to add one computed Memo\nnode and now adds none.\n\n---------\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-20T19:15:32+08:00",
+          "tree_id": "388bdb15f01038b1c2e31a2f346b1ce2a0ee8e9b",
+          "url": "https://github.com/ocaml/dune/commit/5f06ce9db9271a1e72d366ea6630bace8aee97ed"
+        },
+        "date": 1795173750604,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7370214979333336,
             "unit": "seconds"
           }
         ]

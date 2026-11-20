@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795193625941,
+  "lastUpdate": 1795193633991,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -492244,6 +492244,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 63.78865062381999,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "10c93909c1024e8c153a97b4926f98c3ed5e3149",
+          "message": "test(site): cover scoped lookup and install compatibility (#17125)\n\nRecord that package-dependent site lookup misses staged files even after\nreordering dependency includes. Also check that a plugin is listed once\nwhen the legacy install tree is already populated.\n\nRefs #17031.",
+          "timestamp": "2026-11-20T17:23:26+01:00",
+          "tree_id": "769af59e1346f976f756ff9e2668800e72f156f5",
+          "url": "https://github.com/ocaml/dune/commit/10c93909c1024e8c153a97b4926f98c3ed5e3149"
+        },
+        "date": 1795193632925,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5422360155733333,
             "unit": "seconds"
           }
         ]

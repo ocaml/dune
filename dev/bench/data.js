@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795200814161,
+  "lastUpdate": 1795200821855,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -492360,6 +492360,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 52.71082582859333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "55b12ccc0c838754c17df67827b21066fbbca9dd",
+          "message": "test(pkg): declare curl dependencies for package fixtures (#17128)\n\nDeclare `curl` for the package and OCamlFormat Cram tests that fetch\nsources, rather than relying on it being available on the test runner’s\n`PATH`.\n\nRefs #16292.",
+          "timestamp": "2026-11-20T19:34:42+01:00",
+          "tree_id": "775b357a02a9beeb970deb70a4942c79cdc6d844",
+          "url": "https://github.com/ocaml/dune/commit/55b12ccc0c838754c17df67827b21066fbbca9dd"
+        },
+        "date": 1795200820624,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.49935699681333334,
             "unit": "seconds"
           }
         ]

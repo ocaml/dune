@@ -1,11 +1,11 @@
-Cinaps corrections are formatted before being diffed starting with version 1.4
-of the Cinaps extension, available in Dune 3.26.
+Cinaps uses the project's generated correction formatting setting.
 
-OCaml sources are formatted when OCaml formatting is enabled:
+Opting in formats OCaml corrections without a new Cinaps extension version:
 
-  $ mkdir ocaml-1.4
-  $ cd ocaml-1.4
-  $ make_cinaps_project 3.26 1.4
+  $ mkdir enabled
+  $ cd enabled
+  $ make_cinaps_project 3.26 1.3
+  $ echo '(format_generated_corrections true)' >> dune-project
   $ cat > dune <<'EOF'
   > (cinaps (files *.ml))
   > EOF
@@ -20,11 +20,11 @@ OCaml sources are formatted when OCaml formatting is enabled:
   (* fake ocamlformat output *)
   $ dune build @cinaps
 
-Older plugin versions retain unformatted corrections even with Dune 3.26:
+Without the setting, corrections stay unformatted even with Dune 3.26:
 
   $ cd ..
-  $ mkdir ocaml-1.3
-  $ cd ocaml-1.3
+  $ mkdir default
+  $ cd default
   $ make_cinaps_project 3.26 1.3
   $ cat > dune <<'EOF'
   > (cinaps (files *.ml))
@@ -40,29 +40,14 @@ Older plugin versions retain unformatted corrections even with Dune 3.26:
   let   generated = 1
   (*$*)
 
-Cinaps 1.4 requires Dune 3.26:
-
-  $ cd ..
-  $ mkdir unsupported
-  $ cd unsupported
-  $ make_cinaps_project 3.25 1.4
-  $ dune build @cinaps
-  File "dune-project", line 2, characters 14-17:
-  2 | (using cinaps 1.4)
-                    ^^^
-  Error: Version 1.4 of the cinaps extension is not supported until version
-  3.26 of the dune language.
-  Supported versions of this extension in version 3.25 of the dune language:
-  - 1.0 to 1.3
-  [1]
-
-Explicitly disabling formatting retains the generated contents:
+Disabling formatting takes precedence over opting in to correction formatting:
 
   $ cd ..
   $ mkdir disabled
   $ cd disabled
-  $ make_cinaps_project 3.26 1.4
+  $ make_cinaps_project 3.26 1.3
   $ cat >> dune-project <<'EOF'
+  > (format_generated_corrections true)
   > (formatting disabled)
   > EOF
   $ cat > dune <<'EOF'

@@ -91,6 +91,7 @@ type t =
   ; dialects : Dialect.DB.t
   ; explicit_js_mode : bool
   ; format_config : Format_config.t option
+  ; format_generated_corrections : bool
   ; subst_config : (Loc.t * Subst_config.t) option
   ; strict_package_deps : bool
   ; allow_approximate_merlin : Loc.t option
@@ -145,6 +146,7 @@ let set_generate_opam_files generate_opam_files t = { t with generate_opam_files
 let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
 let dialects t = t.dialects
 let explicit_js_mode t = t.explicit_js_mode
+let format_generated_corrections t = t.format_generated_corrections
 let dune_version t = t.dune_version
 
 let to_dyn
@@ -169,6 +171,7 @@ let to_dyn
       ; dialects
       ; explicit_js_mode
       ; format_config
+      ; format_generated_corrections
       ; subst_config
       ; strict_package_deps
       ; allow_approximate_merlin
@@ -203,6 +206,7 @@ let to_dyn
     ; "dialects", Dialect.DB.to_dyn dialects
     ; "explicit_js_mode", bool explicit_js_mode
     ; "format_config", option Format_config.to_dyn format_config
+    ; "format_generated_corrections", bool format_generated_corrections
     ; "subst_config", option Toggle.to_dyn (Option.map ~f:snd subst_config)
     ; "strict_package_deps", bool strict_package_deps
     ; "pins", Pin_stanza.Project.to_dyn pins
@@ -599,6 +603,7 @@ let infer ~dir info packages =
   ; dialects = Dialect.DB.builtin
   ; explicit_js_mode
   ; format_config = None
+  ; format_generated_corrections = false
   ; subst_config = None
   ; strict_package_deps
   ; cram
@@ -630,6 +635,7 @@ let encode : t -> Dune_sexp.t list =
       ; dialects
       ; explicit_js_mode
       ; format_config
+      ; format_generated_corrections
       ; strict_package_deps
       ; cram
       ; subst_config
@@ -683,6 +689,8 @@ let encode : t -> Dune_sexp.t list =
           executables_implicit_empty_intf
           executables_implicit_empty_intf_default
       ; flag "strict_package_deps" strict_package_deps strict_package_deps_default
+      ; flag "format_generated_corrections" format_generated_corrections (fun ~lang:_ ->
+          false)
       ; flag'
           "accept_alternative_dune_file_name"
           accept_alternative_dune_file_name
@@ -975,6 +983,11 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
   and+ explicit_js_mode =
     field_o_b "explicit_js_mode" ~check:(Syntax.since Stanza.syntax (1, 11))
   and+ format_config = Format_config.field ~since:(2, 0)
+  and+ format_generated_corrections =
+    field
+      "format_generated_corrections"
+      ~default:false
+      (Syntax.since Stanza.syntax (3, 26) >>> bool)
   and+ subst_config = Subst_config.field
   and+ strict_package_deps =
     field_o_b "strict_package_deps" ~check:(Syntax.since Stanza.syntax (2, 3))
@@ -1103,6 +1116,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
     ; dialects
     ; explicit_js_mode
     ; format_config
+    ; format_generated_corrections
     ; subst_config
     ; strict_package_deps
     ; allow_approximate_merlin

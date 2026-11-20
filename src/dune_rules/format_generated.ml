@@ -73,9 +73,9 @@ let source_path path =
 
 let for_source ~dir source =
   let* project = Dune_load.find_project ~dir in
-  match source_path source with
-  | None -> Memo.return None
-  | Some source_path ->
+  match Dune_project.format_generated_corrections project, source_path source with
+  | false, _ | _, None -> Memo.return None
+  | true, Some source_path ->
     Fs_memo.file_exists (Path.Outside_build_dir.In_source_dir source_path)
     >>= (function
      | false -> Memo.return None

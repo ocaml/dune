@@ -70,12 +70,8 @@ let gen_rules sctx components =
 ;;
 
 let correction_diff sctx ~dir ~source ~target =
-  let open Action_builder.O in
-  let* project = Action_builder.of_memo (Dune_load.find_project ~dir) in
   let diff = Action.diff ~optional:true source target in
-  if Dune_project.dune_version project < (3, 26)
-  then Action_builder.return (Action.Full.make diff)
-  else Format_generated.format_diff sctx ~dir ~source ~target ~diff
+  Format_generated.format_diff sctx ~dir ~source ~target ~diff
 ;;
 
 let promote_correction sctx ~dir (m : Module.t) build ~suffix ~ml_kind =

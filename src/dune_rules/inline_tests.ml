@@ -463,9 +463,7 @@ include Sub_system.Register_end_point (struct
                    |> Path.Build.extend_basename ~suffix:Filename.corrected
                  in
                  let diff = Action.diff ~optional:true source target in
-                 if dune_version < (3, 26)
-                 then Action_builder.return (Action.Full.make diff)
-                 else Format_generated.format_diff sctx ~dir ~source ~target ~diff)
+                 Format_generated.format_diff sctx ~dir ~source ~target ~diff)
                |> Action_builder.all
              in
              let run_tests =

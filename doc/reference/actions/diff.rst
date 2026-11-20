@@ -19,7 +19,6 @@ diff
 
    .. versionchanged:: 3.26
 
-      For text diffs, regular correction files are formatted before comparison
-      or promotion, according to the formatting configuration for ``<file1>``.
-      This supports OCamlFormat and Dune's built-in formatter for ``dune`` and
-      ``dune-project``. See :doc:`../dune-project/formatting`.
+      With :ref:`format-generated-corrections` set to ``true``, regular text
+      corrections are formatted before comparison or promotion according to the
+      formatting configuration for ``<file1>``.

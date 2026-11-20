@@ -1,6 +1,5 @@
-Cinaps formats dune and dune-project corrections only when Dune formatting is
-enabled. The extension-version boundary and global formatting disablement are
-covered separately in format-generated.t.
+After opting in to correction formatting, Cinaps formats dune and dune-project
+corrections only when Dune formatting is enabled.
 
 Cinaps needs an explicit comment syntax for these extensionless filenames:
 
@@ -11,7 +10,8 @@ Cinaps needs an explicit comment syntax for these extensionless filenames:
   $ export PATH="$PWD/bin:$PATH"
 
   $ make_project() {
-  >   make_cinaps_project 3.26 1.4
+  >   make_cinaps_project 3.26 1.3
+  >   echo '(format_generated_corrections true)' >> dune-project
   >   echo "(formatting (enabled_for $1))" >> dune-project
   >   cat >> dune-project <<'EOF'
   > ; (*$ print_string "\n(name    generated)\n; " *)

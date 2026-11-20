@@ -20,10 +20,11 @@ a sandbox.
   $ cat correct/add.ml
   let () = Printf.printf "%d\n" @@ 42
 
-Starting with Dune 3.26, PPX lint corrections are formatted before promotion:
+Opting in with Dune 3.26 formats PPX lint corrections before promotion:
 
   $ rm dune-project
   $ make_dune_project 3.26
+  $ echo '(format_generated_corrections true)' >> dune-project
   $ mkdir bin
   $ cp ../../utils/ocamlformat.exe bin/ocamlformat
   $ cp ../../utils/ocamlformat.exe bin/ocamlformat.exe

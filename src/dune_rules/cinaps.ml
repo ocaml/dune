@@ -30,7 +30,6 @@ let syntax =
     ; (1, 1), `Since (3, 5)
     ; (1, 2), `Since (3, 7)
     ; (1, 3), `Since (3, 8)
-    ; (1, 4), `Since (3, 26)
     ]
 ;;
 
@@ -266,9 +265,7 @@ let gen_rules sctx t ~dir ~scope =
           in
           let source = Path.build source in
           let diff = Action.diff ~optional:true source target in
-          if t.cinaps_version < (1, 4)
-          then Action_builder.return (Action.Full.make diff)
-          else Format_generated.format_diff sctx ~dir ~source ~target ~diff)
+          Format_generated.format_diff sctx ~dir ~source ~target ~diff)
         |> Action_builder.all
       in
       let+ () =

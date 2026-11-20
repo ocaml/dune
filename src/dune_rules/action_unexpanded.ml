@@ -627,8 +627,7 @@ let rec expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
       |> A.bind_action_builder ~f:(fun (file1, file2) ->
         let diff = Action.diff ~optional ~mode ~directory_diffs file1 file2 in
         match format_generated_diffs, optional, mode with
-        | Format sctx, true, Text
-          when Dune_project.dune_version (Expander.project expander) >= (3, 26) ->
+        | Format sctx, true, Text ->
           let source_dir =
             Path.as_in_build_dir file1
             |> Option.map ~f:Path.Build.parent_exn

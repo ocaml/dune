@@ -1,4 +1,20 @@
-Generated corrections are formatted as part of the diff action.
+Generated corrections can be formatted as part of the diff action.
+
+The project setting requires Dune 3.26:
+
+  $ mkdir old-project
+  $ cd old-project
+  $ make_dune_project 3.25
+  $ echo '(format_generated_corrections true)' >> dune-project
+  $ dune build
+  File "dune-project", line 2, characters 0-35:
+  2 | (format_generated_corrections true)
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'format_generated_corrections' is only available since version 3.26 of
+  the dune language. Please update your dune-project file to have (lang dune
+  3.26).
+  [1]
+  $ cd ..
 
 With no correction to compare, an optional diff succeeds even if the dialect
 formatter refers to a missing input:
@@ -29,6 +45,7 @@ place:
   $ mkdir ocaml
   $ cd ocaml
   $ make_dune_project 3.26
+  $ echo '(format_generated_corrections true)' >> dune-project
   $ echo 'let original = 0' > source.ml
   $ cat > dune <<'EOF'
   > (rule
@@ -45,12 +62,12 @@ place:
   $ cat source.ml
   (* fake ocamlformat output *)
 
-Projects older than Dune 3.26 retain the unformatted correction:
+Correction formatting is off by default, even with Dune 3.26:
 
   $ cd ..
-  $ mkdir old-project
-  $ cd old-project
-  $ make_dune_project 3.25
+  $ mkdir default
+  $ cd default
+  $ make_dune_project 3.26
   $ echo 'let original = 0' > source.ml
   $ cat > dune <<'EOF'
   > (rule
@@ -72,6 +89,7 @@ Inline-test corrections are formatted before being offered for promotion:
   $ mkdir inline-tests
   $ cd inline-tests
   $ make_dune_project 3.26
+  $ echo '(format_generated_corrections true)' >> dune-project
   $ cat > dune <<'EOF'
   > (library
   >  (name test)
@@ -94,6 +112,7 @@ by [diff?] rather than exposed as an intermediate build target:
   $ mkdir dune-file
   $ cd dune-file
   $ make_dune_project 3.26
+  $ echo '(format_generated_corrections true)' >> dune-project
   $ echo '(rule  (alias generated))' > generated
   $ cat > dune <<'EOF'
   > (rule
@@ -118,6 +137,7 @@ A directory correction can replace a source file without running a file formatte
   $ mkdir directory-replacement
   $ cd directory-replacement
   $ make_dune_project 3.26
+  $ echo '(format_generated_corrections true)' >> dune-project
   $ echo 'original' > source.ml
   $ cat > dune <<'EOF'
   > (rule

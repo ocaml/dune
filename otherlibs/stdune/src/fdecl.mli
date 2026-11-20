@@ -14,4 +14,7 @@ val set : 'a t -> 'a -> unit
     been called yet. *)
 val get : 'a t -> 'a
 
+(** Returns [None] if [set] has not been called yet. *)
+val get_opt : 'a t -> 'a option
+
 val to_dyn : 'a t -> Dyn.t

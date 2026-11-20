@@ -24,6 +24,12 @@ let get t =
   | Set x -> x
 ;;
 
+let get_opt t =
+  match t.state with
+  | Unset -> None
+  | Set x -> Some x
+;;
+
 let to_dyn t =
   match t.state with
   | Unset -> Dyn.variant "Unset" []

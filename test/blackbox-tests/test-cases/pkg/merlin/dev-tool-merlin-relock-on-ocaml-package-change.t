@@ -1,58 +1,43 @@
-A dev tool that must use the project's compiler must be relocked when the
-compiler package changes, even if its name and version stay the same.
+A compiler-integrated tool that has no explicit opam dependency on OCaml must
+still be built with the project's compiler. Bake a value supplied by the
+compiler into the installed tool. Changing only the project recipe (not the
+version or the tool repository) distinguishes using the target from re-solving
+for an independently built compiler of the same version.
 
   $ mkrepo
-  $ make_mock_merlin_package
-  $ mk_ocaml 5.2.0
-
-  $ setup_merlin_workspace
-  $ make_named_package_project foo 3.16 "(ocaml (= 5.2.0))"
-  $ dune build
-
-Create the initial dev-tool lock directory.
-
-  $ dune tools exec ocamlmerlin >/dev/null 2>&1
-
-An unchanged compiler package must keep the existing dev-tool lock directory.
-Use an extra file to distinguish reuse from an identical regenerated lockdir.
-
-  $ touch "${dev_tool_lock_dir}"/relock-sentinel
-  $ dune tools exec ocamlmerlin >/dev/null 2>&1
-  $ if test -e "${dev_tool_lock_dir}"/relock-sentinel; then
-  >   echo 'unchanged dev-tool lock reused'
-  > else
-  >   echo 'unchanged dev-tool lock regenerated'
-  > fi
-  unchanged dev-tool lock regenerated
-  $ rm -f "${dev_tool_lock_dir}"/relock-sentinel
-
-Change the compiler package's build recipe without changing its version, then
-regenerate only the project lock directory.
-
-  $ cat >>mock-opam-repository/packages/ocaml-base-compiler/ocaml-base-compiler.5.2.0/opam <<'EOF'
-  > build: [ [ "echo" "compiler-recipe-v2" ] ]
+  $ mk_ocaml 5.5.0
+  $ cat >>"$mock_packages/ocaml-base-compiler/ocaml-base-compiler.5.5.0/opam" <<'EOF'
+  > install: [
+  >   [ "sh" "-c" "echo '#!/bin/sh' > %{bin}%/compiler-id; echo 'echo compiler-v1' >> %{bin}%/compiler-id; chmod +x %{bin}%/compiler-id" ]
+  > ]
   > EOF
-  $ rm -rf dune.lock
-  $ dune pkg lock >/dev/null 2>&1
-  $ grep -q compiler-recipe-v2 dune.lock/ocaml-base-compiler*.pkg \
-  > && echo 'project compiler updated'
-  project compiler updated
+  $ mkpkg merlin <<'EOF'
+  > install: [
+  >   [ "sh" "-c" "id=$(compiler-id 2>/dev/null || echo no-compiler); echo '#!/bin/sh' > %{bin}%/ocamlmerlin; echo echo $id >> %{bin}%/ocamlmerlin; chmod +x %{bin}%/ocamlmerlin" ]
+  > ]
+  > EOF
+  $ setup_merlin_workspace
+  $ make_named_package_project foo 3.16 "(ocaml (= 5.5.0))"
+  $ export DUNE_CACHE=disabled
+  $ dune pkg lock > /dev/null 2>&1
+  $ run_merlin() {
+  >   dune tools exec ocamlmerlin >log 2>&1 && tail -n 1 log
+  > }
+  $ run_merlin
+  no-compiler
 
-Executing Merlin must notice the changed compiler package and regenerate its
-lock directory from the updated recipe.
+The tool lock can be reused while the solver choices are unchanged.
 
-  $ dune tools exec ocamlmerlin
-  The version of the compiler package ("ocaml-base-compiler") in this project's
-  lockdir has changed to 5.2.0 (formerly the compiler version was 5.2.0). The
-  dev-tool "merlin" will be re-locked and rebuilt with this version of the
-  compiler.
-  Solution for _build/.dev-tools.locks/merlin:
-  - merlin.0.0.1
-  - ocaml-base-compiler.5.2.0
-  - ocaml-compiler.5.2.0
-       Running 'ocamlmerlin'
-  hello from fake ocamlmerlin
-  $ grep -q compiler-recipe-v2 "${dev_tool_lock_dir}"/ocaml-base-compiler*.pkg \
-  > && echo 'dev-tool compiler updated'
-  dev-tool compiler updated
+  $ touch "$dev_tool_lock_dir/relock-sentinel"
+  $ run_merlin
+  no-compiler
+  $ test -e "$dev_tool_lock_dir/relock-sentinel"
+  [1]
 
+Use an authoritative edit that cannot be obtained by re-solving the tool.
+
+  $ set -- dune.lock/ocaml-base-compiler*.pkg
+  $ dune_cmd subst compiler-v1 compiler-v2 <"$1" >updated
+  $ mv updated "$1"
+  $ run_merlin
+  no-compiler

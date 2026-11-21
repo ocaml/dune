@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795277969912,
+  "lastUpdate": 1795278082845,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -686777,6 +686777,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.1640180898600003,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ee497565573b34979594f9a62146f5ea9fc1f7f2",
+          "message": "test(pkg): check extra-source rebuilds by package target (#17129)\n\nMatch cache misses against the exact package target rather than looking\nfor a digest in its path. This distinguishes the effect of reordering\nextra sources from editing their contents.\n\nRefs #16292.",
+          "timestamp": "2026-11-21T17:06:23+01:00",
+          "tree_id": "be66e054c9c644dd1375b076e96dfa27cb76bd1c",
+          "url": "https://github.com/ocaml/dune/commit/ee497565573b34979594f9a62146f5ea9fc1f7f2"
+        },
+        "date": 1795277847555,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.736627104326667,
             "unit": "seconds"
           }
         ]

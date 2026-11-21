@@ -23,17 +23,27 @@ val get : t -> Package_variable_name.t -> Variable_value.t option
 val extend : t -> t -> t
 
 (** A [t] with default values for some variables:
-    - "with-doc" is set to "false"
-    - "with-dev-setup" is set to "false"
-    - "opam-version" is set to the version of opam vendored in dune *)
-val with_defaults : t
+    - "opam-version" is set to the version of opam vendored in dune
+    - "with-doc" and "with-dev-setup" are set to "false" before Dune 3.26.
+      Starting with Dune 3.26 they are left unset, so that the doc and
+      dev-setup dependencies of local packages are selected. *)
+val with_defaults : dune_version:Dune_lang.Syntax.Version.t -> t
 
 val pp : t -> 'a Pp.t
 val pp_oneline : t -> 'a Pp.t
 val unset_multi : t -> Package_variable_name.Set.t -> t
 
+(** Starting with Dune 3.26, setting "with-doc" or "with-dev-setup" to "true"
+    is the same as leaving them unset, so that they only apply to local
+    packages. Setting "with-test" to "true" is always the same as leaving it
+    unset. *)
+val normalize : dune_version:Dune_lang.Syntax.Version.t -> t -> t
+
+(** Like [normalize], applied to the combination of the default variables,
+    [current_system] and [context]. *)
 val combine
-  :  current_system:t option
+  :  dune_version:Dune_lang.Syntax.Version.t
+  -> current_system:t option
   -> context:t option
   -> unset:Package_variable_name.Set.t option
   -> t

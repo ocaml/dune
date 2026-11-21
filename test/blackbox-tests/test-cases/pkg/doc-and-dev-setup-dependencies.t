@@ -1,0 +1,124 @@
+Test which "with-doc" and "with-dev-setup" dependencies are locked. Starting
+with Dune 3.26, like "with-test", they are selected for local packages only.
+
+  $ mkrepo
+  $ add_mock_repo_if_needed
+
+  $ mkpkg doc-dep
+  $ mkpkg dev-setup-dep
+  $ mkpkg transitive-doc-dep
+  $ mkpkg transitive-dev-setup-dep
+  $ mkpkg dep <<EOF
+  > depends: [
+  >   "transitive-doc-dep" {with-doc}
+  >   "transitive-dev-setup-dep" {with-dev-setup}
+  > ]
+  > build: [
+  >   ["echo" "build"]
+  >   ["echo" "doc"] {with-doc}
+  >   ["echo" "dev-setup"] {with-dev-setup}
+  > ]
+  > EOF
+
+  $ write_project() {
+  > cat > dune-project <<EOF
+  > (lang dune $1)
+  > (package
+  >  (name x)
+  >  (allow_empty)
+  >  (depends
+  >   dep
+  >   (doc-dep :with-doc)
+  >   (dev-setup-dep :with-dev-setup)))
+  > EOF
+  > }
+
+Before Dune 3.26, doc and dev-setup dependencies are not locked:
+
+  $ write_project 3.25
+  $ dune pkg lock
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - dep.0.0.1
+
+Starting with Dune 3.26, doc and dev-setup dependencies of local packages are
+locked, but not those of locked packages:
+
+  $ write_project 3.26
+  $ dune pkg lock
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - dep.0.0.1
+  - dev-setup-dep.0.0.1
+  - doc-dep.0.0.1
+
+The doc and dev-setup build steps of locked packages are disabled:
+
+  $ grep -A 3 '^(build' ${default_lock_dir}/dep.*.pkg
+  (build
+   (all_platforms ((action (run echo build)))))
+
+  $ dune pkg validate-lockdir
+
+The workspace can disable them:
+
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.26)
+  > (lock_dir
+  >  (repositories mock)
+  >  (solver_env
+  >   (with-doc false)
+  >   (with-dev-setup false)))
+  > (repository
+  >  (name mock)
+  >  (url "file://$(pwd)/mock-opam-repository"))
+  > EOF
+
+  $ dune pkg lock
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - dep.0.0.1
+
+  $ dune pkg validate-lockdir
+
+Setting them to true is the same as leaving them unset:
+
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.26)
+  > (lock_dir
+  >  (repositories mock)
+  >  (solver_env
+  >   (with-doc true)
+  >   (with-dev-setup true)))
+  > (repository
+  >  (name mock)
+  >  (url "file://$(pwd)/mock-opam-repository"))
+  > EOF
+
+  $ dune pkg lock
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - dep.0.0.1
+  - dev-setup-dep.0.0.1
+  - doc-dep.0.0.1
+
+  $ grep -A 3 '^(build' ${default_lock_dir}/dep.*.pkg
+  (build
+   (all_platforms ((action (run echo build)))))
+
+Before Dune 3.26, setting them to true applies to all packages:
+
+  $ write_project 3.25
+  $ dune pkg lock
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - dep.0.0.1
+  - dev-setup-dep.0.0.1
+  - doc-dep.0.0.1
+  - transitive-dev-setup-dep.0.0.1
+  - transitive-doc-dep.0.0.1

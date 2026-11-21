@@ -237,6 +237,10 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.t =
               |> Memo.of_non_reproducible_fiber))
        and+ solver_env_from_current_system =
          Action_builder.of_memo Lock_dir.Sys_vars.solver_env
+       and+ dune_version =
+         Action_builder.of_memo
+           (let open Memo.O in
+            Source_tree.root () >>| Source_tree.Dir.project >>| Dune_project.dune_version)
        and+ pins =
          (* CR-soon Alizter: This pin logic (extracting workspace pins,
             combining with project pins) is duplicated in bin/pkg/lock.ml. The
@@ -271,6 +275,7 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.t =
        in
        let solver_env =
          Solver_env.combine
+           ~dune_version
            ~current_system:(Some solver_env_from_current_system)
            ~context:(Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env))
            ~unset:(Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.unset_solver_vars))

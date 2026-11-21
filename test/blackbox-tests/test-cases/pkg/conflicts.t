@@ -68,13 +68,14 @@ the behaviour should be the same:
 Even though the conflicts are listed by opam without a `|` to indicate a
 disjunction, either package is problematic:
 
-  $ mkpkg dune 3.11
-  $ echo '(lang dune 3.11)' | solve_project 2>&1 | dune_cmd subst '3.[0-9]+' '3.XX'
+  $ mkpkg odoc
+  $ mkpkg dune 3.26
+  $ echo '(lang dune 3.26)' | solve_project 2>&1 | dune_cmd subst '3.[0-9]+' '3.XX'
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
   Couldn't solve the package dependency formula.
-  Selected candidates: bar.0.0.1 bar2.0.0.1 x.dev
+  Selected candidates: bar.0.0.1 bar2.0.0.1 odoc.0.0.1 x.dev
   - dune -> dune.3.XX
       User requested = 3.XX
   - foo -> (problem)
@@ -88,12 +89,12 @@ disjunction, either package is problematic:
 Adding a new version of `foo` only resolves one conflict:
 
   $ mkpkg foo 0.2
-  $ echo '(lang dune 3.11)' | solve_project 2>&1 | dune_cmd subst '3.[0-9]+' '3.XX'
+  $ echo '(lang dune 3.26)' | solve_project 2>&1 | dune_cmd subst '3.[0-9]+' '3.XX'
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
   Couldn't solve the package dependency formula.
-  Selected candidates: bar.0.0.1 bar2.0.0.1 foo.0.2 x.dev
+  Selected candidates: bar.0.0.1 bar2.0.0.1 foo.0.2 odoc.0.0.1 x.dev
   - dune -> dune.3.XX
       User requested = 3.XX
   - foo2 -> (problem)
@@ -105,19 +106,20 @@ Addition of `foo2` to solve the last remaining conflict:
 
   $ mkpkg foo2 0.2
   $ solve_project <<EOF
-  > (lang dune 3.11)
+  > (lang dune 3.26)
   > EOF
   Solution for dune.lock:
   - bar.0.0.1
   - bar2.0.0.1
   - foo.0.2
   - foo2.0.2
+  - odoc.0.0.1
 
 Same but checking that the latest versions of `foo` and `foo2` are not selected
 due to the version constraints conflicts:
 
   $ solve_project << EOF
-  > (lang dune 3.11)
+  > (lang dune 3.26)
   > (generate_opam_files true)
   > (package
   >  (name x)

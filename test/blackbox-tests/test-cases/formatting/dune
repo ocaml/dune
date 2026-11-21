@@ -5,3 +5,8 @@
 (cram
  (applies_to :whole_subtree)
  (deps %{bin:ocamlformat}))
+
+(cram
+ (applies_to generated-diff)
+ (deps
+  (package ppx_expect)))

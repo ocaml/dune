@@ -493,3 +493,53 @@ let%expect_test "threaded progress flushes queued output before finishing" =
     second frame
     finished |}]
 ;;
+
+let%expect_test "shutdown fires the cancellation of the active scope and waits for it" =
+  let open Fiber.O in
+  go (fun () ->
+    let cancellation = Fiber.Cancel.create () in
+    let cancelled = Fiber.Ivar.create () in
+    Scheduler.cancel_on_shutdown cancellation (fun () ->
+      Fiber.finalize
+        (fun () ->
+           let+ (), (_ : unit Fiber.Cancel.outcome) =
+             Fiber.Cancel.with_handler
+               cancellation
+               (fun () ->
+                  Scheduler.shutdown `Ok;
+                  Fiber.Ivar.read cancelled)
+               ~on_cancel:(fun () ->
+                 print_endline "cancelled";
+                 Fiber.Ivar.fill cancelled ())
+           in
+           print_endline "scope returned")
+        ~finally:(fun () ->
+          print_endline "finalizer ran";
+          Fiber.return ())));
+  [%expect
+    {|
+    cancelled
+    scope returned
+    finalizer ran
+    |}]
+;;
+
+let%expect_test "shutdown outside of a scope stops without running finalizers" =
+  go (fun () ->
+    Fiber.finalize
+      (fun () ->
+         Scheduler.shutdown `Ok;
+         Fiber.never)
+      ~finally:(fun () ->
+        print_endline "finalizer ran";
+        Fiber.return ()));
+  [%expect {| |}]
+;;
+
+let%expect_test "a scope that does not wind down is stopped after the grace period" =
+  go ~timeout:(Time.Span.of_secs 5.) (fun () ->
+    Scheduler.cancel_on_shutdown (Fiber.Cancel.create ()) (fun () ->
+      Scheduler.shutdown `Ok;
+      Fiber.never));
+  [%expect {| |}]
+;;

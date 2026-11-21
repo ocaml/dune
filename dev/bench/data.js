@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795278309917,
+  "lastUpdate": 1795278356904,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -492795,6 +492795,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.3912432479933334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5dd7171e2b464120b931c20115ee44248823b399",
+          "message": "test(pkg): distinguish recipe exports from the workspace environment (#17130)\n\nPass `FOO` and `BAR` to a recipe through a transitive dependency.\nInspect the recipe’s rule to distinguish the values its shell receives\nfrom the environment dependencies Dune records for rebuilds.\n\nRefs #16292.",
+          "timestamp": "2026-11-21T17:04:54+01:00",
+          "tree_id": "e090b10e81e82244e9d2496d2d2aa357462e5529",
+          "url": "https://github.com/ocaml/dune/commit/5dd7171e2b464120b931c20115ee44248823b399"
+        },
+        "date": 1795278355735,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 39.11517375080667,
             "unit": "seconds"
           }
         ]

@@ -219,5 +219,9 @@ module Workspace_local = struct
 
   let remove targets = Database.remove targets
   let remove_target = Database.remove_target
-  let remove_subtree = Database.remove_subtree
+
+  let delete_subtree path =
+    Database.remove_subtree path;
+    Path.rm_rf (Path.build path)
+  ;;
 end

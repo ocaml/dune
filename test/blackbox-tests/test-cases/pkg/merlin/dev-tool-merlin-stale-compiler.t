@@ -9,12 +9,17 @@ variables.
   $ mkrepo
   $ make_mock_merlin_package
   $ cat >>"$mock_packages/merlin/merlin.0.0.1/opam" <<'EOF'
-  > depends: [ "ocaml" ]
+  > depends: [ "ocaml" "tool-support" ]
   > EOF
   $ make_mock_dev_tool_package ocaml-lsp-server ocamllsp \
   >   "hello from fake ocamllsp"
   $ cat >>"$mock_packages/ocaml-lsp-server/ocaml-lsp-server.0.0.1/opam" <<'EOF'
-  > depends: [ "ocaml" ]
+  > depends: [ "ocaml" "tool-support" ]
+  > EOF
+  $ mkpkg tool-support <<'EOF'
+  > build: [ [ "echo" "build private helper" ] ]
+  > EOF
+  $ mkpkg project-only <<'EOF'
   > EOF
   $ mk_ocaml 5.2.0
   $ mkpkg compiler-cloning enabled <<'EOF'
@@ -66,14 +71,56 @@ removed from its dependency closure.
   >  (name mock)
   >  (url "file://$PWD/mock-opam-repository"))
   > EOF
-  $ make_named_package_project foo 3.16 "(ocaml (= 5.2.0))"
+  $ make_named_package_project foo 3.16 "(ocaml (= 5.2.0))" project-only
   $ export DUNE_CACHE=disabled
   $ dune pkg lock >/dev/null 2>&1
   $ grep -q old-compiler-dependency \
   >   dune.lock/relocatable-compiler*.pkg
-  $ dune build >/dev/null 2>&1
-  $ dune tools exec ocamlmerlin >/dev/null 2>&1
-  $ dune tools exec ocamllsp >/dev/null 2>&1
+  $ dune build >project-output 2>&1
+  $ dune tools exec ocamlmerlin >merlin-output 2>&1
+  $ dune tools exec ocamllsp >lsp-output 2>&1
+  $ for output in project-output merlin-output lsp-output; do
+  >   printf '%s: ' "$output"
+  >   grep -c '^build compiler ' "$output" || :
+  > done
+  project-output: 1
+  merlin-output: 1
+  lsp-output: 0
+
+Both tools use the same relocatable compiler target. Check their final edges
+as well as the build count: a cache hit is not a shared target.
+
+  $ dependency_target() {
+  >   exe=$(dune tools which "$1") || return 1
+  >   target=$(dirname "$(dirname "$exe")")
+  >   dune rules --format=json "$target" | jq_dune -er --arg pkg "$2" '
+  >     [.[] | ruleDepFilePaths | select(test("/" + $pkg + "([.][^/]*)?/target$"))]
+  >     | unique | if length == 1 then .[0] else error("expected one package target") end'
+  > }
+  $ project_only=$(get_build_pkg_dir project-only)/target
+  $ for tool in ocamlmerlin ocamllsp; do
+  >   exe=$(dune tools which "$tool") || exit 1
+  >   dune rules --format=json "$(dirname "$(dirname "$exe")")" |
+  >     jq_dune --arg target "$project_only" '.[] | ruleHasDepFile($target)'
+  > done
+  false
+  false
+  $ merlin_compiler=$(dependency_target ocamlmerlin relocatable-compiler)
+  $ test "$merlin_compiler" = "$(dependency_target ocamllsp relocatable-compiler)"
+  $ project_compiler=$(get_build_pkg_dir relocatable-compiler)/target
+  $ test "$merlin_compiler" = "$project_compiler"
+  [1]
+
+Compare reuse of an ordinary package which both tools lock identically.
+
+  $ merlin_private=$(dependency_target ocamlmerlin tool-support)
+  $ lsp_private=$(dependency_target ocamllsp tool-support)
+  $ test "$merlin_private" = "$lsp_private"
+  $ grep -c "^build private helper$" merlin-output
+  1
+  $ grep -c "^build private helper$" lsp-output
+  0
+  [1]
   $ grep -q old-compiler-dependency \
   >   "$dev_tool_lock_dir"/relocatable-compiler*.pkg
   $ grep -q old-compiler-dependency \

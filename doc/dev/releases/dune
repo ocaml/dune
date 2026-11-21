@@ -1,5 +1,5 @@
 (rule
- (alias lint-release-scripts)
+ (alias runtest)
  (enabled_if %{bin-available:shellcheck})
  (deps backport.sh release-cut.sh release-init.sh)
  (action

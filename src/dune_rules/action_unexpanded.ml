@@ -660,8 +660,18 @@ let rec expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
     assert false
 ;;
 
-let expand_no_targets_internal
-      ~format_generated_diffs
+let finish_action action ~chdir ~sandbox ~env =
+  let open Action_builder.O in
+  let+ sandbox
+  and+ env
+  and+ action in
+  Action.Full.map action ~f:(Action.chdir (Path.build chdir))
+  |> Action.Full.add_sandbox sandbox
+  |> Action.Full.add_env env
+;;
+
+let expand_targetless
+      format_generated_diffs
       t
       sandbox
       ~loc
@@ -692,49 +702,14 @@ let expand_no_targets_internal
           (String.capitalize what)
       ; pp_targets targets
       ];
-  let+ sandbox
-  and+ env
-  and+ action in
-  Action.Full.map action ~f:(fun action -> Action.Chdir (Path.build chdir, action))
-  |> Action.Full.add_sandbox sandbox
-  |> Action.Full.add_env env
+  finish_action action ~chdir ~sandbox ~env
 ;;
 
-let expand_no_targets t sandbox ~loc ~chdir ~deps ~expander ~what =
-  expand_no_targets_internal
-    ~format_generated_diffs:Do_not_format
-    t
-    sandbox
-    ~loc
-    ~chdir
-    ~deps
-    ~expander
-    ~what
-;;
-
-let expand_no_targets_with_formatted_diffs
-      sctx
-      t
-      sandbox
-      ~loc
-      ~chdir
-      ~deps
-      ~expander
-      ~what
-  =
-  expand_no_targets_internal
-    ~format_generated_diffs:(Format sctx)
-    t
-    sandbox
-    ~loc
-    ~chdir
-    ~deps
-    ~expander
-    ~what
-;;
+let expand_no_targets = expand_targetless Do_not_format
+let expand_no_targets_with_formatted_diffs ctx = expand_targetless (Format ctx)
 
 let expand_internal
-      ~format_generated_diffs
+      format_generated_diffs
       t
       sandbox
       ~loc
@@ -744,7 +719,6 @@ let expand_internal
       ~targets:targets_written_by_user
       ~expander
   =
-  let open Action_builder.O in
   let env, expander, sandbox =
     Dep_conf_eval.named sandbox ~expander deps_written_by_user
   in
@@ -788,52 +762,12 @@ let expand_internal
       let dirs = Path.Build.Set.of_list dirs in
       Targets.combine targets (Targets.create ~files ~dirs)
   in
-  let build =
-    let+ sandbox
-    and+ env
-    and+ action in
-    Action.Full.map action ~f:(fun action -> Action.Chdir (Path.build chdir, action))
-    |> Action.Full.add_sandbox sandbox
-    |> Action.Full.add_env env
-  in
+  let build = finish_action action ~chdir ~sandbox ~env in
   Action_builder.with_targets ~targets build
 ;;
 
-let expand t sandbox ~loc ~chdir ~deps ~targets_dir ~targets ~expander =
-  expand_internal
-    ~format_generated_diffs:Do_not_format
-    t
-    sandbox
-    ~loc
-    ~chdir
-    ~deps
-    ~targets_dir
-    ~targets
-    ~expander
-;;
-
-let expand_with_formatted_diffs
-      sctx
-      t
-      sandbox
-      ~loc
-      ~chdir
-      ~deps
-      ~targets_dir
-      ~targets
-      ~expander
-  =
-  expand_internal
-    ~format_generated_diffs:(Format sctx)
-    t
-    sandbox
-    ~loc
-    ~chdir
-    ~deps
-    ~targets_dir
-    ~targets
-    ~expander
-;;
+let expand = expand_internal Do_not_format
+let expand_with_formatted_diffs sctx = expand_internal (Format sctx)
 
 (* We re-export [Dune_lang.Action] in the end to avoid polluting the inferred
    types in this module with all the various t's *)

@@ -290,66 +290,70 @@ module Poll = struct
   let name t = t.name
 
   module Progress = struct
-    module V1 = struct
-      type t =
-        | Waiting
-        | In_progress of
-            { complete : int
-            ; remaining : int
-            }
-        | Failed
-        | Interrupted
-        | Success
+    type 'counts legacy =
+      | Waiting
+      | In_progress of 'counts
+      | Failed
+      | Interrupted
+      | Success
 
-      let sexp =
-        let open Conv in
-        let waiting = constr "waiting" unit (fun () -> Waiting) in
-        let failed = constr "failed" unit (fun () -> Failed) in
-        let in_progress =
-          let complete = field "complete" (required int) in
-          let remaining = field "remaining" (required int) in
-          constr
-            "in_progress"
-            (record (both complete remaining))
-            (fun (complete, remaining) -> In_progress { complete; remaining })
-        in
-        let interrupted = constr "interrupted" unit (fun () -> Interrupted) in
-        let success = constr "success" unit (fun () -> Success) in
-        let constrs =
-          List.map ~f:econstr [ waiting; failed; interrupted; success ]
-          @ [ econstr in_progress ]
-        in
-        let serialize = function
+    let legacy_sexp fields =
+      let open Conv in
+      let waiting = constr "waiting" unit (fun () -> Waiting) in
+      let failed = constr "failed" unit (fun () -> Failed) in
+      let interrupted = constr "interrupted" unit (fun () -> Interrupted) in
+      let success = constr "success" unit (fun () -> Success) in
+      let in_progress =
+        constr "in_progress" (record fields) (fun counts -> In_progress counts)
+      in
+      sum
+        [ econstr waiting
+        ; econstr failed
+        ; econstr interrupted
+        ; econstr success
+        ; econstr in_progress
+        ]
+        (function
           | Waiting -> case () waiting
-          | In_progress { complete; remaining } -> case (complete, remaining) in_progress
+          | In_progress counts -> case counts in_progress
           | Failed -> case () failed
           | Interrupted -> case () interrupted
-          | Success -> case () success
-        in
-        sum constrs serialize
-      ;;
+          | Success -> case () success)
+    ;;
 
-      let to_progress : t -> Progress.t = function
+    let complete = Conv.(field "complete" (required int))
+    let remaining = Conv.(field "remaining" (required int))
+
+    let legacy_in_progress ~complete ~remaining ~failed : Progress.t =
+      In_progress
+        { complete
+        ; remaining
+        ; failed
+        ; running_jobs = 0
+        ; goals = 0
+        ; run = None
+        ; started_at = None
+        ; action_duration = 0.
+        }
+    ;;
+
+    module V1 = struct
+      let sexp = legacy_sexp (Conv.both complete remaining)
+
+      let to_progress : (int * int) legacy -> Progress.t = function
         | Waiting -> Waiting
-        | In_progress { complete; remaining } ->
-          In_progress
-            { complete
-            ; remaining
-            ; failed = 0
-            ; running_jobs = 0
-            ; goals = 0
-            ; run = None
-            ; started_at = None
-            ; action_duration = 0.
-            }
+        | In_progress (complete, remaining) ->
+          legacy_in_progress ~complete ~remaining ~failed:0
         | Failed -> Failed
         | Interrupted -> Interrupted
         | Success -> Success
       ;;
 
-      let of_progress : Progress.t -> t = function
+      let of_progress : Progress.t -> (int * int) legacy = function
         | Waiting -> Waiting
-        | In_progress { complete; remaining; _ } -> In_progress { complete; remaining }
+        | In_progress { complete; remaining; _ } ->
+          let counts = complete, remaining in
+          In_progress counts
         | Failed -> Failed
         | Interrupted -> Interrupted
         | Success -> Success
@@ -357,68 +361,25 @@ module Poll = struct
     end
 
     module V2 = struct
-      type t =
-        | Waiting
-        | In_progress of
-            { complete : int
-            ; remaining : int
-            ; failed : int
-            }
-        | Failed
-        | Interrupted
-        | Success
-
       let sexp =
         let open Conv in
-        let failed = constr "failed" unit (fun () -> Failed)
-        and in_progress =
-          let complete = field "complete" (required int)
-          and failed = field "failed" (required int)
-          and remaining = field "remaining" (required int) in
-          constr
-            "in_progress"
-            (record (three complete remaining failed))
-            (fun (complete, remaining, failed) ->
-               In_progress { complete; remaining; failed })
-        and interrupted = constr "interrupted" unit (fun () -> Interrupted)
-        and success = constr "success" unit (fun () -> Success)
-        and waiting = constr "waiting" unit (fun () -> Waiting) in
-        let constrs =
-          List.map ~f:econstr [ waiting; failed; interrupted; success ]
-          @ [ econstr in_progress ]
-        and serialize = function
-          | Waiting -> case () waiting
-          | In_progress { complete; remaining; failed } ->
-            case (complete, remaining, failed) in_progress
-          | Failed -> case () failed
-          | Interrupted -> case () interrupted
-          | Success -> case () success
-        in
-        sum constrs serialize
+        let failed = field "failed" (required int) in
+        legacy_sexp (three complete remaining failed)
       ;;
 
-      let to_progress : t -> Progress.t = function
+      let to_progress : (int * int * int) legacy -> Progress.t = function
         | Waiting -> Waiting
-        | In_progress { complete; remaining; failed } ->
-          In_progress
-            { complete
-            ; remaining
-            ; failed
-            ; running_jobs = 0
-            ; goals = 0
-            ; run = None
-            ; started_at = None
-            ; action_duration = 0.
-            }
+        | In_progress (complete, remaining, failed) ->
+          legacy_in_progress ~complete ~remaining ~failed
         | Failed -> Failed
         | Interrupted -> Interrupted
         | Success -> Success
       ;;
 
-      let of_progress : Progress.t -> t = function
+      let of_progress : Progress.t -> (int * int * int) legacy = function
         | Waiting -> Waiting
         | In_progress { complete; remaining; failed; _ } ->
-          In_progress { complete; remaining; failed }
+          In_progress (complete, remaining, failed)
         | Failed -> Failed
         | Interrupted -> Interrupted
         | Success -> Success

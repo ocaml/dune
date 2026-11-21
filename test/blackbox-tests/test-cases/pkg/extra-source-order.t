@@ -7,10 +7,10 @@ Use ordinary files and a no-op action to isolate declaration-order changes.
   $ echo first > a
   $ echo second > b
   $ misses() {
-  >   dune trace cat | jq -cs '
+  >   dune trace cat | jq -cs --arg target "$target" '
   >     [ .[]
   >       | select(.cat == "cache" and .name == "workspace_local_miss")
-  >       | select(.args.target | contains("foo.") and endswith("/target"))
+  >       | select(.args.target == $target)
   >       | .args.reason | split(":")[0]
   >     ]
   >   '
@@ -23,27 +23,28 @@ Use ordinary files and a no-op action to isolate declaration-order changes.
   > EOF
   > }
   $ write_pkg a b
-  $ digest=$(dune pkg print-digest foo)
-  $ build_pkg foo
-  $ build_pkg foo
+  $ target=$(get_build_pkg_dir foo)/target
+  $ dune build "$target"
+  $ dune build "$target"
   $ misses
   []
 
-Only declaration order changes. Currently this changes the package key and
-triggers a new target-rule miss despite identical files and build actions.
+Change only the declaration order. Compare the target path and check whether
+Dune reuses the previous build.
 
+  $ previous=$target
   $ write_pkg b a
-  $ test "$digest" = "$(dune pkg print-digest foo)"
+  $ target=$(get_build_pkg_dir foo)/target
+  $ test "$previous" = "$target"
   [1]
-  $ build_pkg foo
+  $ dune build "$target"
   $ misses
   ["never seen this target before"]
 
 Changing an input's contents must still invalidate the build.
 
-  $ digest=$(dune pkg print-digest foo)
   $ echo changed > a
-  $ test "$digest" = "$(dune pkg print-digest foo)"
-  $ build_pkg foo
+  $ test "$target" = "$(get_build_pkg_dir foo)/target"
+  $ dune build "$target"
   $ misses
   ["rule or dependencies changed"]

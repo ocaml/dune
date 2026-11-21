@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795273352839,
+  "lastUpdate": 1795273554091,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -492389,6 +492389,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.49935699681333334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5bf3f64162c0febb81145c1b129f43a357e5edb1",
+          "message": "refactor(engine): share build subtree cleanup (#17134)\n\nRule execution, stale-directory pruning, and `dune clean` with explicit\npaths all invalidate cached subtree digests before deleting build\nartifacts. Put both steps in `Rule_cache.Workspace_local.delete_subtree`\nso callers cannot forget the invalidation. No behavior change.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-21T22:51:24+08:00",
+          "tree_id": "8b52c2758bcbf230ba73fddde8bf024b17c7ccc7",
+          "url": "https://github.com/ocaml/dune/commit/5bf3f64162c0febb81145c1b129f43a357e5edb1"
+        },
+        "date": 1795273553272,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 39.32709045537333,
             "unit": "seconds"
           }
         ]

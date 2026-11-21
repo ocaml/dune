@@ -21,7 +21,6 @@ Inline tests should see site data from both direct and included dependencies.
   >   (deps (package foo) (include deps.sexp))))
   > EOF
   $ dune runtest > output 2>&1
-  [1]
   $ grep -E '^(foo|addon)\.txt:' output
-  foo.txt: missing
-  addon.txt: missing
+  foo.txt: foo
+  addon.txt: addon

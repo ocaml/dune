@@ -167,26 +167,18 @@ let entries =
   fun context packages -> Memo.exec memo (context, packages)
 ;;
 
-let files context_name packages =
-  let open Memo.O in
-  let+ entries, _ = entries context_name packages in
-  Path.Build.Map.keys entries |> List.map ~f:Path.build
-;;
-
-let deps context_name packages =
-  let open Action_builder.O in
-  let* files = Action_builder.of_memo (files context_name packages) in
-  Action_builder.paths files
-;;
-
 let root context_name packages = dir ~context:context_name ~key:(Key.encode packages)
 
 let env context_name packages =
   let open Action_builder.O in
-  let+ () = deps context_name packages in
+  let* entries, _ = Action_builder.of_memo (entries context_name packages) in
+  let* () =
+    Path.Build.Map.keys entries |> List.map ~f:Path.build |> Action_builder.paths
+  in
   let layout_root = root context_name packages in
   let roots = Install.Roots.opam_from_prefix layout_root ~relative:Path.Build.relative in
-  Install.Roots.add_to_env roots Env.empty
+  let+ site_env = Site_env.install_env context_name ~root:layout_root ~entries in
+  Install.Roots.add_to_env roots site_env
 ;;
 
 let make_dispatch ~dir ~directory_targets subdirs f =

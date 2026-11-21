@@ -27,5 +27,5 @@ locations without hiding files that are only available there.
   $ inherited=$(dune_cmd native-path "$PWD/inherited")
   $ locations=$(dune exec ./encoder/locations.exe "$inherited")
   $ DUNE_DIR_LOCATIONS="$locations" dune runtest
-  foo.txt: inherited
+  foo.txt: foo
   fallback.txt: fallback

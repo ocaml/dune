@@ -5,9 +5,9 @@ val set_entry_resolver
   -> unit
 
 (** Env extension for an action depending on a package set. Returns an env
-    with PATH, OCAMLPATH, etc. prepended for the layout root, and registers
-    the action's dependency on every install entry the layout produces for
-    the set. *)
+    with PATH, OCAMLPATH, etc. and site locations for the layout root, and
+    registers the action's dependency on every install entry the layout
+    produces for the set. *)
 val env : Context_name.t -> Package.Name.Set.t -> Env.t Action_builder.t
 
 (** Engine dispatch for [_build/_private/<context>/.packages/<rest>]. Called

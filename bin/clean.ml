@@ -28,8 +28,7 @@ let command =
     | paths ->
       let remove_build_path path =
         Dune_engine.Rule_cache.Workspace_local.remove_target path;
-        Dune_engine.Rule_cache.Workspace_local.remove_subtree path;
-        Path.rm_rf (Path.build path)
+        Dune_engine.Rule_cache.Workspace_local.delete_subtree path
       in
       (* Paths already inside the build directory are removed as is. Source paths
          (including the project root) are resolved against every build context,

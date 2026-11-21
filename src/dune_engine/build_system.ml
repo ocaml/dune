@@ -687,18 +687,13 @@ and execute_rule_action
            the build directory. *)
         Rule_cache.Workspace_local.remove targets;
         let () =
-          let remove_target_dir dir =
-            let () = Rule_cache.Workspace_local.remove_subtree dir in
-            Path.rm_rf (Path.build dir)
-          in
           let remove_target_file path =
             match Fpath.unlink (Path.Build.to_string path) with
             | Success -> ()
             | Does_not_exist -> ()
             | Is_a_directory ->
-              (* If target changed from a directory to a file, delete
-                   in anyway. *)
-              remove_target_dir path
+              (* The target may have changed from a directory to a file. *)
+              Rule_cache.Workspace_local.delete_subtree path
             | Error exn ->
               Log.warn
                 "Error while removing target"
@@ -706,7 +701,10 @@ and execute_rule_action
                 ; "error", Dyn.string (Printexc.to_string exn)
                 ]
           in
-          Targets.Validated.iter targets ~file:remove_target_file ~dir:remove_target_dir
+          Targets.Validated.iter
+            targets
+            ~file:remove_target_file
+            ~dir:Rule_cache.Workspace_local.delete_subtree
         in
         let* produced_targets, dynamic_deps_stages =
           (* Step III. Try to restore artifacts from the shared cache. *)

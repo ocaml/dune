@@ -13,14 +13,7 @@
  (action
   (run %{bin:bash} -n %{deps})))
 
-;; this file has too many problems. enable this rule once they're fixed
-
-(rule
- (alias runtest)
- (enabled_if %{bin-available:shellcheck})
- (deps helpers.sh)
- (action
-  (run %{bin:shellcheck} -s bash %{deps})))
+(plugin.shellcheck helpers.sh)
 
 (cram
  (deps %{bin:git})

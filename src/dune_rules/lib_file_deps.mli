@@ -15,8 +15,6 @@ end
     with extension [files] of libraries [libs]. *)
 val deps : Lib.t list -> groups:Group.t list -> Dep.Set.t
 
-val deps_with_exts : (Lib.t * Group.t list) list -> Dep.Set.t
-
 (** [deps_of_entries ~opaque ~cm_kind libs] computes the file dependencies (glob
     deps on .cmi/.cmx files) for the given libraries. *)
 val deps_of_entries : opaque:bool -> cm_kind:Lib_mode.Cm_kind.t -> Lib.t list -> Dep.Set.t
@@ -24,12 +22,10 @@ val deps_of_entries : opaque:bool -> cm_kind:Lib_mode.Cm_kind.t -> Lib.t list ->
 (** Specific-file deps on the [modules] of [lib]. Only valid for local libraries
     (where [Module.t] values are available).
 
-    Currently produces complete per-module deps only for [cm_kind = Ocaml _]
-    (cmi + cmx); for [Melange _] only the cmi is emitted — there is no
-    per-module cmj arm, asymmetric with [deps_of_entries]. The sole caller
-    ([Module_compilation.lib_deps_for_module]) gates Melange out before
-    reaching this function, so this asymmetry is not observable today. If a
-    future Melange caller is added, extend with a [want_cmj] arm. *)
+    Per [cm_kind]: [Ocaml Cmx] emits cmi + cmx (cmx omitted when [opaque] and
+    [Lib.is_local lib]); [Ocaml (Cmi | Cmo)] emits cmi only; [Melange Cmj]
+    emits cmi + cmj; [Melange Cmi] emits cmi only. The cmi/cmj selection
+    mirrors [groups_for_cm_kind] used by the broad-dep path. *)
 val deps_of_entry_modules
   :  opaque:bool
   -> cm_kind:Lib_mode.Cm_kind.t
@@ -42,9 +38,9 @@ module Lib_index : sig
 
   (** Third tuple element is [Some m] for local + unwrapped libs (with the
       entry's [Module.t]) and [None] otherwise (wrapped locals, externals).
-      [no_ocamldep] names local libs whose [.d] files don't exist
-      (short-circuited by [Dep_rules.skip_ocamldep]); the cross-library walk
-      skips them. *)
+      [no_ocamldep] names local libs that are walker-terminal (singletons
+      with no resolved requires) — the cross-library walk would gain nothing
+      by running ocamldep on them, so it skips them. *)
   val create
     :  no_ocamldep:Lib.Set.t
     -> (Module_name.t * Lib.t * Module.t option) list

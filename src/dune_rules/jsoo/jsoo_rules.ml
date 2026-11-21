@@ -580,30 +580,29 @@ type standalone_runtime =
   | Shared of Digest.t
   | Per_stanza of Path.Build.t
 
+let runtime_args cc ~mode ~runtime_files =
+  let open Command.Args in
+  [ Resolve.Memo.args
+      (let open Resolve.Memo.O in
+       let+ libs = Compilation_context.requires_link cc in
+       Deps (jsoo_runtime_files ~mode libs))
+  ; Deps (List.map runtime_files ~f:Path.build)
+  ]
+;;
+
 let standalone_runtime_rule ~mode cc ~runtime_files ~target ~flags ~sourcemap =
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
   let config = resolve_config sctx ~dir ~mode flags in
-  let libs = Compilation_context.requires_link cc in
-  let spec =
-    Command.Args.S
-      [ Resolve.Memo.args
-          (let open Resolve.Memo.O in
-           let+ libs = libs in
-           Command.Args.Deps (jsoo_runtime_files ~mode libs))
-      ; Deps (List.map ~f:Path.build runtime_files)
-      ]
-  in
-  let dir = Compilation_context.dir cc in
   js_of_ocaml_rule
-    (Compilation_context.super_context cc)
+    sctx
     ~mode
     ~sub_command:Build_runtime
     ~dir
     ~flags
     ~target
     ~directory_targets:[]
-    ~spec
+    ~spec:(S (runtime_args cc ~mode ~runtime_files))
     ~config:(Some config)
     ~sourcemap
 ;;
@@ -627,23 +626,15 @@ let exe_rule
   =
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
-  let libs = Compilation_context.requires_link cc in
   let linkall =
     let open Action_builder.O in
     let+ linkall = linkall
     and+ jsoo_version = jsoo_version ~dir sctx in
     Command.Args.As (linkall_arg ~version:jsoo_version ~linkall)
   in
-  let spec =
-    Command.Args.S
-      [ Resolve.Memo.args
-          (let open Resolve.Memo.O in
-           let+ libs = libs in
-           Command.Args.Deps (jsoo_runtime_files ~mode libs))
-      ; Deps (List.map ~f:Path.build runtime_files)
-      ; Dep (Path.build src)
-      ; Dyn linkall
-      ]
+  let spec : _ Command.Args.t =
+    let runtime = runtime_args cc ~mode ~runtime_files in
+    S (runtime @ [ Dep (Path.build src); Dyn linkall ])
   in
   js_of_ocaml_rule
     sctx

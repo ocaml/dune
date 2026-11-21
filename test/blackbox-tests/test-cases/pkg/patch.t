@@ -109,9 +109,9 @@ Empty patches are treated as a no-op, matching Opam behavior:
   $ build_pkg empty-test
   original content
 
-A package can edit its own sources in place. Even when hardlink sandboxing
-is preferred, Dune copies both the sources and the installed outputs of the
-dependencies.
+A package can edit its own sources in place without copying the installed
+outputs of its dependencies. In hardlink mode the dependency stays linked,
+while even a nested source file gets a private, writable copy.
 
   $ make_lockpkg dep <<'EOF'
   > (version 0.0.1)
@@ -141,15 +141,15 @@ dependencies.
   $ dune build --cache=disabled --config-file hardlink-config \
   >   "$pkg_dir/target"
   regular file
-  1
+  2
   regular file
   1
   edited
   $ cat "$pkg_dir/source/nested/input"
   original
 
-The dependency and source file are also copied when symlink sandboxing is
-preferred. Editing the source still leaves the staged source intact.
+In symlink mode the dependency is a symbolic link, but the package's source
+file is still a regular file and editing it leaves the staged source intact.
 Skip this case on Windows, where Dune does not support symlink sandboxing.
 
   $ cat > symlink-config <<'EOF'
@@ -157,7 +157,7 @@ Skip this case on Windows, where Dune does not support symlink sandboxing.
   > (sandboxing_preference none symlink)
   > EOF
   $ cat > symlink.expected <<'EOF'
-  > regular file
+  > symbolic link
   > 1
   > regular file
   > 1

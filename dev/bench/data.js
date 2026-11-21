@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795277842329,
+  "lastUpdate": 1795277849260,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -492650,6 +492650,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 54.13431321331999,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9a0f223cb25f2d6c9a209fccd4ae66366db503a1",
+          "message": "refactor(ppx): share driver flag setup with linting (#17136)\n\nShare PPX driver resolution, flag memoization, and `%{corrected-suffix}`\nexpansion between linting and non-staged preprocessing. Each path keeps\nits own flag field, defaults, and correction suffix. Staged\npreprocessing is unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-21T23:51:56+08:00",
+          "tree_id": "6b5dfcf15cf34059c1a46d3e9c5c666915fe8f75",
+          "url": "https://github.com/ocaml/dune/commit/9a0f223cb25f2d6c9a209fccd4ae66366db503a1"
+        },
+        "date": 1795277848316,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.48121637628666675,
             "unit": "seconds"
           }
         ]

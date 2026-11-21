@@ -1057,6 +1057,7 @@ module Config : sig
   type t
 
   val ocaml_config : unit -> t Fiber.t
+  val set_child_runtime_defaults : t -> unit
   val ext_obj : t -> string
   val ccomp_type : t -> Ccomp.t
   val word_size : t -> Word_size.t
@@ -1129,6 +1130,21 @@ end = struct
       | key, data -> String.Map.add ~key ~data acc
       | exception _ ->
         fatal "invalid line in output of 'ocamlc -config': %s" (String.escaped line))
+  ;;
+
+  let set_child_runtime_defaults t =
+    match Sys.getenv_opt "OCAMLRUNPARAM", Sys.getenv_opt "CAMLRUNPARAM" with
+    | Some _, _ | _, Some _ -> ()
+    | None, None ->
+      let version =
+        Scanf.sscanf (String.Map.find "version" t) "%d.%d.%d" (fun a b c -> a, b, c)
+      in
+      let word_size = int_of_string (String.Map.find "word_size" t) in
+      Unix.putenv
+        "OCAMLRUNPARAM"
+        (Compiler_gc.runparam
+           ~word_size
+           ~use_small_heap_limit:(Compiler_gc.supports_small_heap_limit version))
   ;;
 
   let ext_obj t = String.Map.find_opt "ext_obj" t |> Option.value ~default:".o"
@@ -2246,6 +2262,7 @@ let main () =
   (try Unix.mkdir build_dir 0o777 with
    | Unix.Unix_error (Unix.EEXIST, _, _) -> ());
   let* ocaml_config = Config.ocaml_config () in
+  Config.set_child_runtime_defaults ocaml_config;
   let ext_obj = Config.ext_obj ocaml_config in
   let* libraries =
     let ccomp_type = Config.ccomp_type ocaml_config in

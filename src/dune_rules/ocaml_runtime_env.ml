@@ -1,13 +1,6 @@
 open Import
 open Memo.O
 
-let mb = 1024 * 1024
-let minor_heap_size = 2 * mb
-
-(* Convert the nominal 128 MiB target using the compiler's word size below.
-   The runtime counts GC-work units; this is not a byte limit. *)
-let small_heap_limit_bytes = 128 * mb
-
 let add_defaults
       { Ocaml_toolchain.ocaml_config; _ }
       ~use_small_heap_limit
@@ -17,13 +10,8 @@ let add_defaults
   Ocaml.Runparam.add_defaults
     ~inherited
     ~overrides
-    ~minor_heap_size
-    ~small_heap_limit:
-      (if use_small_heap_limit
-       then (
-         let bytes_per_word = Ocaml_config.word_size ocaml_config / 8 in
-         Some (small_heap_limit_bytes / bytes_per_word))
-       else None)
+    ~word_size:(Ocaml_config.word_size ocaml_config)
+    ~use_small_heap_limit
 ;;
 
 let toolchain sctx ~dir overrides =

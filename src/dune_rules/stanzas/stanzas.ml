@@ -41,6 +41,35 @@ module Dynamic_include = struct
     end)
 end
 
+module Enabled_if = struct
+  type t =
+    { condition : Blang.t
+    ; body : Dune_lang.Ast.t list
+    }
+
+  let decode =
+    let* () = Syntax.since Stanza.syntax (3, 26) in
+    let decode_string =
+      String_with_vars.decode_manually (fun env var ->
+        match Pform.Env.parse env var with
+        | Var (Profile | Context_name) as pform -> pform
+        | _ ->
+          User_error.raise
+            ~loc:(Dune_lang.Template.Pform.loc var)
+            [ Pp.text "Only %{profile} and %{context_name} are allowed in this stanza." ])
+    in
+    let+ condition = Blang.Ast.decode ~override_decode_bare_literal:None decode_string
+    and+ body = repeat raw in
+    { condition; body }
+  ;;
+
+  include Stanza.Make (struct
+      type nonrec t = t
+
+      include Poly
+    end)
+end
+
 let with_redirect decode =
   let+ (x : Library.t) = decode in
   let base =
@@ -85,6 +114,7 @@ let stanzas : Stanza.Parser.t list =
           (let+ x = Copy_files.decode in
            { x with add_line_directive = true }) )
     ; ("include", Include.(decode_stanza decode))
+    ; ("enabled_if", Enabled_if.(decode_stanza decode))
     ; ("documentation", Documentation.(decode_stanza Documentation.decode))
     ; ( "jbuild_version"
       , let+ () = Dune_lang.Syntax.deleted_in Stanza.syntax (1, 0)

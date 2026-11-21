@@ -54,6 +54,7 @@ The following pages describe the available stanzas and their meanings.
       copy_files
       include
       dynamic_include
+      enabled_if
       env
       dirs
       files

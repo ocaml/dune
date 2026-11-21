@@ -62,3 +62,19 @@ Plugin lifecycle events use the ordinary trace category filter.
   rules plugin started
   $ trace_jq '[.[] | select(.name | startswith("rule-plugin-"))] | length'
   0
+
+Guarding the invocation prevents the plugin from starting in other profiles.
+
+  $ cat > use/dune <<'EOF'
+  > (enabled_if (= %{profile} dev)
+  >  (plugin.generate first))
+  > (enabled_if (= %{profile} release)
+  >  (rule (write-file first release)))
+  > EOF
+  $ dune build use/first
+  rules plugin started
+  $ cat _build/default/use/first; echo
+  first
+  $ dune build --profile release use/first
+  $ cat _build/default/use/first; echo
+  release

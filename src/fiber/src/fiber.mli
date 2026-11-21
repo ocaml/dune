@@ -138,6 +138,14 @@ val map_reduce_array
   -> combine:('b -> 'b -> 'b)
   -> 'b t
 
+(** Like [map_reduce_seq], traversing appendable lists directly. *)
+val map_reduce_appendable_list
+  :  'a Appendable_list.t
+  -> f:('a -> 'b t)
+  -> empty:'b
+  -> combine:('b -> 'b -> 'b)
+  -> 'b t
+
 (** Like [map_reduce_seq], for lists. *)
 val map_reduce : 'a list -> f:('a -> 'b t) -> empty:'b -> combine:('b -> 'b -> 'b) -> 'b t
 

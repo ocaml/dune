@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795277699826,
+  "lastUpdate": 1795277757416,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -492563,6 +492563,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5245031737533333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c7de55af18d5e5d32b3fe2a3baf5cce7f5b2389d",
+          "message": "refactor(rules): share library compilation context construction (#17139)\n\nUse the same helper to resolve the library, find its source modules, and\nconstruct its compilation context whether generating library rules or\nonly requesting the context. This keeps the two paths from drifting\nwithout changing rule generation.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-21T23:53:16+08:00",
+          "tree_id": "719c6ee12b5664f1192dcf114c38d2eb03817f6a",
+          "url": "https://github.com/ocaml/dune/commit/c7de55af18d5e5d32b3fe2a3baf5cce7f5b2389d"
+        },
+        "date": 1795277755257,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 52.55800764498,
             "unit": "seconds"
           }
         ]

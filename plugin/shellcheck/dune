@@ -1,0 +1,7 @@
+(executable
+ (name shellcheck_rules)
+ (libraries dune-rules-plugin-lwt lwt lwt.unix))
+
+(plugin
+ (name shellcheck)
+ (executable ./shellcheck_rules.exe))

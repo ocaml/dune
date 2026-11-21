@@ -12,15 +12,18 @@ open Import
     These records make it possible to decide if the build directory contains up
     to date results for a given rule. *)
 module Workspace_local : sig
-  (** Check if the workspace-local cache contains up-to-date results for a rule
-      using the information stored in the rule database. *)
+  type hit =
+    { produced_targets : Digest.t Targets.Produced.t
+    ; dynamic_deps_stages : (Dep.Set.t * Digest.t) list
+    }
+
+  (** Look up cached results. The caller must validate [dynamic_deps_stages]
+      before reusing [produced_targets]. *)
   val lookup
     :  always_rerun:bool
     -> rule_digest:Digest.t
     -> targets:Targets.Validated.t
-    -> env:Env.t
-    -> build_deps:(Dep.Set.t -> Dep.Facts.t Memo.t)
-    -> Digest.t Targets.Produced.t option Fiber.t
+    -> hit option
 
   (** Add a new record to the rule database. *)
   val store

@@ -249,9 +249,64 @@ let package ~explicit loc pkg_name (context : Build_context.t) ~dune_version =
       }
 ;;
 
-(* Expands a package set by taking all the libraries in those packages and
-   collecting the libraries in their transitive closures and then adding the
-   packages that own those libraries. *)
+let packages_of_libraries libraries =
+  let open Memo.O in
+  Lib.descriptive_closure libraries ~with_pps:false ~for_:Compilation_mode.Ocaml
+  >>| List.filter_map ~f:(fun lib -> Lib_info.package (Lib.info lib))
+  >>| Package.Name.Set.of_list
+;;
+
+let libraries_of_package context package_name =
+  let open Memo.O in
+  let* db = Package_db.create context in
+  Package_db.find_package db package_name
+  >>= function
+  | None -> Memo.return []
+  | Some (Installed { entries; _ }) ->
+    let* lib_db = Scope.DB.public_libs context in
+    Lib_name.Map.keys entries |> Memo.List.filter_map ~f:(Lib.DB.find lib_db)
+  | Some (Local pkg) ->
+    let* { Scope.DB.Lib_entry.Set.libraries; deprecated_library_names } =
+      Scope.DB.lib_entries_of_package context (Package.name pkg)
+    in
+    let+ redirected =
+      let* lib_db = Scope.DB.public_libs context in
+      Memo.List.filter_map deprecated_library_names ~f:(fun redirect ->
+        Lib.DB.find lib_db (Deprecated_library_name.old_public_name redirect))
+    in
+    List.map libraries ~f:Lib.Local.to_lib @ redirected
+  | Some (Build _) ->
+    (* We cannot know the libraries of a given dune pkg package so
+       easily, however the dependency on that package already expands
+       correctly to include the closure we are after. *)
+    Memo.return []
+;;
+
+let rocq_dependencies_of_package context package_name =
+  let open Memo.O in
+  let* theories = Scope.DB.rocq_theories_of_package context package_name in
+  let* theory_closures =
+    Memo.parallel_map theories ~f:(fun theory ->
+      Rocq_lib.theories_closure theory |> Resolve.read_memo)
+  in
+  let theories = theories @ List.concat theory_closures in
+  let theory_packages =
+    List.filter_map theories ~f:(fun theory ->
+      Rocq_lib.package theory |> Option.map ~f:Package.name)
+    |> Package.Name.Set.of_list
+  in
+  let* libraries =
+    Memo.parallel_map theories ~f:(fun theory ->
+      Rocq_lib.libraries theory |> Resolve.read_memo)
+    >>| List.concat_map ~f:(List.map ~f:snd)
+  in
+  let+ library_packages = packages_of_libraries libraries in
+  Package.Name.Set.union theory_packages library_packages
+;;
+
+(* Expand a package set with the packages owning its OCaml library and Rocq
+   theory dependency closures. Packages reached through either closure are not
+   treated as new roots, so unrelated siblings in those packages stay out. *)
 let expand_package_set context package_names =
   let open Memo.O in
   Memo.map_reduce_seq
@@ -259,34 +314,10 @@ let expand_package_set context package_names =
     ~empty:package_names
     ~combine:Package.Name.Set.union
     ~f:(fun package_name ->
-      (* Find all the libraries present in a given package. *)
-      let* libs =
-        let* db = Package_db.create context in
-        Package_db.find_package db package_name
-        >>= function
-        | None -> Memo.return []
-        | Some (Installed { entries; _ }) ->
-          let* lib_db = Scope.DB.public_libs context in
-          Lib_name.Map.keys entries |> Memo.List.filter_map ~f:(Lib.DB.find lib_db)
-        | Some (Local pkg) ->
-          let* { Scope.DB.Lib_entry.Set.libraries; deprecated_library_names } =
-            Scope.DB.lib_entries_of_package context (Package.name pkg)
-          in
-          let+ redirected =
-            let* lib_db = Scope.DB.public_libs context in
-            Memo.List.filter_map deprecated_library_names ~f:(fun redirect ->
-              Lib.DB.find lib_db (Deprecated_library_name.old_public_name redirect))
-          in
-          List.map libraries ~f:Lib.Local.to_lib @ redirected
-        | Some (Build _) ->
-          (* We cannot know the libraries of a given dune pkg package so
-             easily, however the dependency on that package already expands
-             correctly to include the closure we are after. *)
-          Memo.return []
-      in
-      Lib.descriptive_closure libs ~with_pps:false ~for_:Compilation_mode.Ocaml
-      >>| List.filter_map ~f:(fun lib -> Lib_info.package (Lib.info lib))
-      >>| Package.Name.Set.of_list)
+      let* libraries = libraries_of_package context package_name
+      and* rocq_packages = rocq_dependencies_of_package context package_name in
+      let+ library_packages = packages_of_libraries libraries in
+      Package.Name.Set.union library_packages rocq_packages)
 ;;
 
 let rec dep expander : Dep_conf.t -> _ = function

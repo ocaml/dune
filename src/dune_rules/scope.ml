@@ -592,4 +592,40 @@ module DB = struct
         in
         libs
   ;;
+
+  let rocq_theories_of_package =
+    let make_map build_dir stanzas =
+      let+ theories =
+        Dune_file.Memo_fold.fold_static_stanzas stanzas ~init:[] ~f:(fun d stanza acc ->
+          match Stanza.repr stanza with
+          | Rocq_stanza.Theory.T theory ->
+            (match theory.package with
+             | None -> Memo.return acc
+             | Some package ->
+               let dir = Path.Build.append_source build_dir (Dune_file.dir d) in
+               let* enabled =
+                 let* expander = Expander0.get ~dir in
+                 Expander0.eval_blang expander theory.enabled_if
+               in
+               if enabled
+               then Memo.return ((Package.name package, (dir, theory.name)) :: acc)
+               else Memo.return acc)
+          | _ -> Memo.return acc)
+      in
+      Package.Name.Map.of_list_multi theories
+    in
+    let per_context =
+      Per_context.create_by_name ~name:"rocq-theories-by-package" (fun ctx ->
+        let* stanzas = Dune_load.dune_files ctx in
+        make_map (Context_name.build_dir ctx) stanzas)
+      |> Staged.unstage
+    in
+    fun (ctx : Context_name.t) pkg_name ->
+      let* map = per_context ctx in
+      let theories = Package.Name.Map.find map pkg_name |> Option.value ~default:[] in
+      Memo.parallel_map theories ~f:(fun (dir, name) ->
+        let* scope = find_by_dir dir in
+        let* rocq_db = rocq_libs scope in
+        Rocq_lib.DB.resolve rocq_db name |> Resolve.Memo.read_memo)
+  ;;
 end

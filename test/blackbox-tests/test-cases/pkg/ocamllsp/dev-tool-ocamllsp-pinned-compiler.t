@@ -65,3 +65,28 @@ rather than "ocaml-base-compiler.5.2.0" from opam-repository.
   - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'
   hello from fake ocamllsp
+
+A pinned compiler may itself depend on a package that exists only as a project
+pin. The tool solve needs that compiler pin, but not unrelated project pins.
+
+  $ mkdir compiler-support
+  $ cat >compiler-support/compiler-support.opam <<'EOF'
+  > opam-version: "2.0"
+  > EOF
+  $ cat >>dune-project <<EOF
+  > (pin
+  >  (url "file://$PWD/compiler-support")
+  >  (package (name compiler-support)))
+  > EOF
+  $ echo 'depends: [ "compiler-support" ]' >>pinned-compiler/ocaml-base-compiler.opam
+  $ dune pkg lock >project-solve 2>&1
+  $ grep -q compiler-support project-solve
+  $ rm -rf "$dev_tool_lock_dir"
+  $ if dune tools exec ocamllsp >tool-solve 2>&1; then
+  >   tail -n 1 tool-solve
+  > elif grep -q compiler-support tool-solve; then
+  >   echo 'compiler dependency pin missing'
+  > else
+  >   cat tool-solve
+  > fi
+  compiler dependency pin missing

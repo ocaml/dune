@@ -121,3 +121,24 @@ compiler dependency is built again.
   $ dune build @pkg-install >output 2>&1
   $ grep "building old compiler dependency" output
   building old compiler dependency
+
+Merlin's private libraries cannot require a different version of a package
+that participates in the project compiler build. In this fixture the project
+selected compiler-cloning.enabled, but the tool solve is currently free to
+pick disabled at exactly the same OCaml version.
+
+  $ mkpkg compiler-cloning disabled <<'EOF'
+  > EOF
+  $ make_mock_merlin_package
+  $ cat >>"$mock_packages/merlin/merlin.0.0.1/opam" <<'EOF'
+  > depends: [ "ocaml" "compiler-cloning" {= "disabled"} ]
+  > EOF
+  $ rm -rf "$dev_tool_lock_dir"
+  $ if dune tools exec ocamlmerlin >conflict 2>&1; then
+  >   echo 'accepted a different compiler dependency'
+  > elif grep -q 'compiler-cloning' conflict; then
+  >   echo 'rejected the incompatible compiler dependency'
+  > else
+  >   cat conflict
+  > fi
+  accepted a different compiler dependency

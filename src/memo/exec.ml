@@ -29,11 +29,6 @@ let report_and_collect_errors f =
 
 let check_point = ref (Fiber.return ())
 
-(* The run in which we last computed a non-reproducible error. [reset_if_necessary]
-   uses it to force a new run even when the invalidation is empty, so that
-   non-reproducible errors (which are never restored from the cache) get recomputed. *)
-let last_saw_non_reproducible_exn_at = ref Run.invalid
-
 (* The cancelled value of a computation aborted by a dependency cycle. Its deps are
    inaccurate, so it is stored with [Deps.empty] and as a non-reproducible error (so it
    is never restored from the cache). *)
@@ -129,10 +124,6 @@ and compute : 'i 'o. ('i, 'o) Dep_node.t -> unit Fiber.t =
         ~f:(fun (node : (_, _) Dep_node.t) -> node.spec.f node.input)
         node)
   in
-  (match res with
-   | Error { reproducible = false; _ } ->
-     last_saw_non_reproducible_exn_at := Run.current ()
-   | Ok _ | Error { reproducible = true; _ } -> ());
   let deps = Deps_collector.get deps_collector in
   let value : _ Value.t =
     match res with

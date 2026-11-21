@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795277849260,
+  "lastUpdate": 1795277963639,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -492679,6 +492679,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.48121637628666675,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aecb6d43163b72cc0d22897d3c28684d92a203b5",
+          "message": "test(pkg): exercise dependency search order in locked recipes (#17131)\n\nSwap two transitive dependencies that install the same command and\ncompare the helper selected by incremental and fresh builds. Changing\nonly the inherited `PATH` must not rerun the recipe.\n\nRefs #16292.",
+          "timestamp": "2026-11-21T17:01:52+01:00",
+          "tree_id": "e9054c92d89af2c62e90e60846f7ddc4b500e861",
+          "url": "https://github.com/ocaml/dune/commit/aecb6d43163b72cc0d22897d3c28684d92a203b5"
+        },
+        "date": 1795277960913,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 50.337893647019996,
             "unit": "seconds"
           }
         ]

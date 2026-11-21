@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795275823211,
+  "lastUpdate": 1795275830388,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -492534,6 +492534,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.31468573801333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8ed7035fef6128b6836d1776fb49e7c3a681db34",
+          "message": "test(pkg): reproduce autolocking failure on unrelated platforms (#17133)\n\nCapture the failure when a macOS build autolocks a macOS-only\ndependency: the solver also requires a Linux solution. This reproduces\nthe regression using a local mock package repository.\n\nRefs #17127",
+          "timestamp": "2026-11-21T16:24:22+01:00",
+          "tree_id": "ea1a135a6fffeedf5245d1d23d0576e660301149",
+          "url": "https://github.com/ocaml/dune/commit/8ed7035fef6128b6836d1776fb49e7c3a681db34"
+        },
+        "date": 1795275829539,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5245031737533333,
             "unit": "seconds"
           }
         ]

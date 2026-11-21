@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795278362579,
+  "lastUpdate": 1795284825234,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -686951,6 +686951,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.372915948593333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "94c53268c7532ee2e9ff3f11ce0b24e6e02e49fe",
+          "message": "chore: fix formatting in pp_spec_rules.ml (#17147)\n\nApply OCamlFormat to the `unstaged_ppx` definition to fix the Format job\non `main`. The change is whitespace-only.",
+          "timestamp": "2026-11-21T18:59:17+01:00",
+          "tree_id": "8a8decd19a462e3667cf2b10ec99799a63b43b96",
+          "url": "https://github.com/ocaml/dune/commit/94c53268c7532ee2e9ff3f11ce0b24e6e02e49fe"
+        },
+        "date": 1795284400002,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.2651017498866666,
             "unit": "seconds"
           }
         ]

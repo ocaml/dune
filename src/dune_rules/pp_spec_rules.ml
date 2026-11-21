@@ -134,8 +134,9 @@ let setup_dialect_rules sctx ~sandbox ~dir ~expander (m : Module.t) =
 
 let unstaged_ppx =
   let cutoff =
-  let strings_equal = List.equal String.equal in
-    Tuple.T3.equal Path.Build.equal strings_equal strings_equal in
+    let strings_equal = List.equal String.equal in
+    Tuple.T3.equal Path.Build.equal strings_equal strings_equal
+  in
   fun ctx ~for_ ~expander ~lib_name ~scope kind spec ->
     let ({ loc; pps; flags; staged = _ } : _ Preprocess.Pps.t) = spec in
     let suffix =

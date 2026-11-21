@@ -456,8 +456,11 @@ module Local_gen = struct
   end
 end
 
-module Local = struct
-  type w = Unspecified.w
+module Make_root (Root : sig
+    type w
+  end) =
+struct
+  type w = Root.w
 
   include (
     Local_gen :
@@ -482,83 +485,27 @@ module Local = struct
     end) :
       Comparator.OPS with type t := t)
 
-  let of_local t = t
-
-  include Fix_root (struct
-      type nonrec w = w
-    end)
+  include Local_gen.Fix_root (Root)
 
   let basename_opt = basename_opt ~is_root ~basename
+end
+
+module Local = struct
+  include Make_root (Unspecified)
+
+  let of_local t = t
 end
 
 module Source = struct
-  type w = Path_intf.Source.w
-
-  include (
-    Local_gen :
-      module type of Local_gen
-      with type 'a t := 'a Local_gen.t
-      with module Prefix := Local_gen.Prefix)
-
-  type nonrec t = w Local_gen.t
-
-  module Prefix = struct
-    open Local_gen
-    include (Prefix : module type of Prefix with type 'a t := 'a Prefix.t)
-
-    type t = w Prefix.t
-  end
-
-  include (
-    Comparator.Operators (struct
-      type nonrec t = t
-
-      let compare = Local_gen.compare
-    end) :
-      Comparator.OPS with type t := t)
+  include Make_root (Path_intf.Source)
 
   let of_local (t : Local.t) : t = t
   let to_local (t : t) : Local.t = t
-
-  include Fix_root (struct
-      type nonrec w = w
-    end)
-
-  let basename_opt = basename_opt ~is_root ~basename
 end
 
 module Build = struct
-  type w = Path_intf.Build.w
-
-  include (
-    Local_gen :
-      module type of Local_gen
-      with type 'a t := 'a Local_gen.t
-      with module Prefix := Local_gen.Prefix)
-
-  type nonrec t = w Local_gen.t
-
-  module Prefix = struct
-    open Local_gen
-    include (Prefix : module type of Prefix with type 'a t := 'a Prefix.t)
-
-    type t = w Prefix.t
-  end
-
-  include (
-    Comparator.Operators (struct
-      type nonrec t = t
-
-      let compare = Local_gen.compare
-    end) :
-      Comparator.OPS with type t := t)
+  include Make_root (Path_intf.Build)
 
   let of_local (t : Local.t) : t = t
   let local (t : t) : Local.t = t
-
-  include Fix_root (struct
-      type nonrec w = w
-    end)
-
-  let basename_opt = basename_opt ~is_root ~basename
 end

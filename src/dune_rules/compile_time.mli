@@ -10,10 +10,6 @@ open Import
     - or at runtime with the environment variable [DUNE_CONFIG__$NAME=enabled/disabled]
       where [$NAME] is the option's name in uppercase. *)
 
-(** Enable or disable the toolchains behaviour workaround.
-    For more detail, see src/dune_rules/pkg_toolchains.mli *)
-val toolchains : Toggle.t Config.t
-
 (** Enable or disable using package management to install dev tools. *)
 val lock_dev_tools : Toggle.t Config.t
 

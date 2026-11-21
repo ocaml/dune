@@ -81,25 +81,15 @@ Menhir must come from the lock directory too, so wrap the test's menhir:
   > } > fake-menhir/menhir
   $ chmod +x fake-menhir/menhir
 
-Only a compiler installed inside _build can hit this bug, but compilers won't
-end up in _build unless the compiler package is version 5.5.0 or later or it
-depends on a relocatable-compiler marker package (see [Pkg_rules.resolve_impl]).
-We declare the compiler version as 5.2.1, to match the bug report, but this then
-requires the marker package to ensure the compiler ends up in _build. Dune does
-not compare the declared version with the compiler's own reported version.
+Declare the compiler version as 5.2.1, to match the bug report.
 
   $ make_lockdir
   $ cat >> dune.lock/lock.dune <<'EOF'
   > (ocaml ocaml-base-compiler)
   > EOF
 
-  $ make_lockpkg relocatable-compiler <<EOF
-  > (version 5.2.1)
-  > EOF
-
   $ make_lockpkg ocaml-base-compiler <<EOF
   > (version 5.2.1)
-  > (depends relocatable-compiler)
   > (install
   >  (progn
   >   (run mkdir -p %{prefix}/bin %{prefix}/lib/ocaml)
@@ -153,7 +143,6 @@ not compare the declared version with the compiler's own reported version.
   > | i = INT EOF { i + 1 }
   > EOF
 
-The compiler runs through the sandbox link, computes its standard library path
-relative to it, and finds nothing there:
+The compiler should find its standard library relative to the sandbox link:
 
   $ dune build _build/default/parser__mock.mli.inferred

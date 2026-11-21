@@ -209,6 +209,10 @@ managed automatically by Dune. Thus, when cleaning the build directory, the
 installed packages are cleaned as well and will be reinstalled at the next
 build.
 
+This applies to compilers too. Compilers installed by Dune must be relocatable.
+The `relocatable` repository provides compatible packages for older versions
+of OCaml.
+
 ## External System Dependencies (depexts)
 
 OCaml packages sometimes require system packages at build or run time, such as

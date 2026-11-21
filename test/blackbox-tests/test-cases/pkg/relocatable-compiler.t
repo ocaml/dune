@@ -1,6 +1,5 @@
-Test that relocatable compilers bypass toolchain cache. A compiler is
-considered relocatable if it's OCaml 5.5.0 or newer, or if the compiler
-package's dependency closure contains an older relocatable compiler marker.
+Test that the relocatable compiler repository takes precedence and that its
+compiler artifacts use the same caches as other packages.
 
   $ mkrepo
   $ mkdir -p relocatable-repo/packages
@@ -97,13 +96,7 @@ Solving for OCaml 5.4 should pick up the relocatable compiler.
 
   $ build_pkg ocaml-base-compiler
 
-Toolchain cache should be empty:
-
-  $ test -d dune-cache/toolchains
-  [1]
-
-Check the installed files from the compiler are hardlinked (cached as regular
-package):
+Check that the compiler is installed in the workspace and cached:
 
   $ dune_cmd stat hardlinks $(get_build_pkg_dir ocaml-base-compiler)/target/bin/ocamlc.opt
   3
@@ -122,8 +115,7 @@ workspace-local target from the first build.
   >   | .args.reason
   > '
 
-Test that OCaml 5.5 and newer compilers are treated as relocatable based on
-their version.
+Check caching for the split package layout used by OCaml 5.5.
 
 We clean up the previous build state first:
 
@@ -171,14 +163,6 @@ Solving for OCaml 5.5 should pick the split compiler packages:
   - ocaml-compiler.5.5.0
 
   $ build_pkg ocaml-compiler
-
-Toolchain cache should be empty:
-
-  $ test -d dune-cache/toolchains
-  [1]
-
-Check the installed files from the compiler are hardlinked (cached as regular
-package):
 
   $ dune_cmd stat hardlinks $(get_build_pkg_dir ocaml-compiler)/target/bin/ocamlc.opt
   3

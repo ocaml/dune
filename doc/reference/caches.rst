@@ -6,8 +6,6 @@ Dune implements several different caches:
 - The build cache contains build artifacts that are shared across different
   workspaces. This is the main cache, interacted with via the ``dune cache``
   command.
-- The toolchains cache contains the compiler (and compiler variants) when they
-  can't be installed like regular packages, due to them not being relocatable.
 - The revision store is a git repository containing all revisions fetched via
   git.
 
@@ -17,8 +15,6 @@ Their location is as follows:
 | Name             | Default status | Default location on Unix           | Alternate location (has priority) |
 +==================+================+====================================+===================================+
 | Build cache      | Enabled        | ``XDG_CACHE_HOME/dune/db``         | ``DUNE_CACHE_ROOT/db``            |
-+------------------+----------------+------------------------------------+-----------------------------------+
-| Toolchains cache | Enabled        | ``XDG_CACHE_HOME/dune/toolchains`` | ``DUNE_CACHE_ROOT/toolchains``    |
 +------------------+----------------+------------------------------------+-----------------------------------+
 | Revision store   | Enabled        | ``XDG_CACHE_HOME/dune/git-repo``   | ``DUNE_CACHE_ROOT/git-repo``      |
 +------------------+----------------+------------------------------------+-----------------------------------+

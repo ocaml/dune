@@ -31,7 +31,7 @@ file and directory hashing. The solver ignores these metadata links.
   >         lock: ($misses | map(select(
   >           endswith("/.lock/dune.lock"))) | length),
   >         package: ($misses | map(select(
-  >           contains("foo.") and endswith("/target"))) | length)
+  >           contains("/.pkg/foo/") and endswith("/target"))) | length)
   >       }
   >   '
   > }

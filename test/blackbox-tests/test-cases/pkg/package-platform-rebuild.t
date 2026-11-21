@@ -1,12 +1,12 @@
 Package build keys should describe the selected platform, not inactive branches
-or the lock directory's representation. Record the current extra builds.
+or the lock directory's representation.
 
   $ export DUNE_TRACE=+cache
   $ misses() {
   >   dune trace cat | jq -cs '
   >     [ .[]
   >       | select(.cat == "cache" and .name == "workspace_local_miss")
-  >       | select(.args.target | contains("foo.") and endswith("/target"))
+  >       | select(.args.target | contains("/.pkg/foo/") and endswith("/target"))
   >       | .args.reason | split(":")[0]
   >     ]
   >   '
@@ -24,13 +24,13 @@ or the lock directory's representation. Record the current extra builds.
   >   ((((os linux))) ((action (system "true"))))
   >   ((((os macos))) ((action (system "false"))))))
   > EOF
-  $ digest=$(dune pkg print-digest foo)
+
   $ build_pkg foo
   $ build_pkg foo
   $ misses
   []
 
-Editing only the macOS command currently changes the Linux package key.
+Editing only the macOS command does not invalidate the Linux package.
 
   $ make_lockpkg foo <<EOF
   > (version 1)
@@ -39,45 +39,39 @@ Editing only the macOS command currently changes the Linux package key.
   >   ((((os linux))) ((action (system "true"))))
   >   ((((os macos))) ((action (system ":"))))))
   > EOF
-  $ test "$digest" = "$(dune pkg print-digest foo)"
-  [1]
+
   $ build_pkg foo
   $ misses
-  ["never seen this target before"]
+  []
 
-Adding another supported platform also invalidates the unchanged Linux build.
+Adding another supported platform also preserves the unchanged Linux build.
 
-  $ digest=$(dune pkg print-digest foo)
   $ cat > dune.lock/lock.dune <<EOF
   > (lang package 0.1)
   > (solved_for_platforms ((os linux)) ((os macos)) ((os win32)))
   > EOF
-  $ test "$digest" = "$(dune pkg print-digest foo)"
-  [1]
+
   $ build_pkg foo
   $ misses
-  ["never seen this target before"]
+  []
 
 An equivalent non-portable lock directory should reuse the build.
 
-  $ digest=$(dune pkg print-digest foo)
   $ make_lockdir
   $ make_lockpkg foo <<EOF
   > (version 1)
   > (build (system "true"))
   > EOF
-  $ test "$digest" = "$(dune pkg print-digest foo)"
-  [1]
+
   $ build_pkg foo
   $ misses
-  ["never seen this target before"]
+  []
 
 Spelling out an empty dependency list should have no effect either.
 
-  $ digest=$(dune pkg print-digest foo)
+
   $ printf '\n(depends)\n' >> dune.lock/foo.pkg
-  $ test "$digest" = "$(dune pkg print-digest foo)"
-  [1]
+
   $ build_pkg foo
   $ misses
-  ["never seen this target before"]
+  []

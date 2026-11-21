@@ -29,7 +29,7 @@ file in the package's source.
 
 Make sure that the package's source directory ends up with the version
 of foo.txt from extra_sources:
-  $ cat _build/_private/default/.pkg/$($dune pkg print-digest foo)/source/foo.txt
+  $ cat _build/_private/default/.pkg/foo/source/foo.txt
   from extra source
   $ cat foo-source/foo.txt
   from source
@@ -47,10 +47,9 @@ prepared source directory must retain their original contents.
   > EOF
   $ echo 'share: [ "observed" ]' > foo-source/foo.install
   $ build_pkg foo
-  $ digest=$($dune pkg print-digest foo)
-  $ cat _build/_private/default/.pkg/$digest/target/share/foo/observed
+  $ cat _build/_private/default/.pkg/foo/target/share/foo/observed
   from extra source
   $ cat foo-source/foo.txt
   from source
-  $ cat _build/_private/default/.pkg/$digest/source/foo.txt
+  $ cat _build/_private/default/.pkg/foo/source/foo.txt
   from source

@@ -44,7 +44,16 @@ let module_source_path_without_extension m =
   |> Option.map ~f:(fun p -> fst (Path.Build.split_extension p))
 ;;
 
-let make ~dir ~for_ ~expander ~lib_config ~libs ~exes ~include_subdirs ~melange_emits =
+let make
+      ~dir
+      ~for_
+      ~expander
+      ~lib_config
+      ~libs
+      ~non_lib_modules
+      ~include_subdirs
+      ~melange_emits
+  =
   let+ lib_config = lib_config in
   let libs =
     List.map libs ~f:(fun ((lib : Library.t), modules, obj_dir) ->
@@ -65,17 +74,16 @@ let make ~dir ~for_ ~expander ~lib_config ~libs ~exes ~include_subdirs ~melange_
           match module_source_path_without_extension m with
           | None -> by_source_path, by_logical_path
           | Some source_path ->
-            ( Path.Build.Map.add_exn by_source_path source_path (obj_dir, m)
+            (* Shared sources have the same logical path; keep all artifact
+               candidates in [by_logical_path] to report ambiguity. *)
+            ( Path.Build.Map.set by_source_path source_path (obj_dir, m)
             , Module_name.Path.Map.add_multi by_logical_path (Module.path m) (obj_dir, m)
             ))
     in
     let init =
       let empty = Path.Build.Map.empty, Module_name.Path.Map.empty in
-      match for_ with
-      | Compilation_mode.Ocaml ->
-        List.fold_left exes ~init:empty ~f:(fun modules (m, obj_dir) ->
-          add_modules modules obj_dir m)
-      | Compilation_mode.Melange -> empty
+      List.fold_left non_lib_modules ~init:empty ~f:(fun modules (m, obj_dir) ->
+        add_modules modules obj_dir m)
     in
     List.fold_left libs ~init ~f:(fun modules (_, info, m, obj_dir) ->
       if

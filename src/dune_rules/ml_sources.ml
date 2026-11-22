@@ -1573,12 +1573,15 @@ let make
         List.map modules_of_stanzas.libraries ~f:(fun (part : _ Per_stanza.group_part) ->
           part.stanza, part.modules, part.obj_dir)
       in
-      let exes =
+      let non_lib_modules =
         let modules_and_obj_dir { Per_stanza.modules; obj_dir; _ } = modules, obj_dir in
-        List.concat
-          [ List.map modules_of_stanzas.executables ~f:modules_and_obj_dir
-          ; List.map modules_of_stanzas.tests ~f:modules_and_obj_dir
-          ]
+        match for_ with
+        | Compilation_mode.Ocaml ->
+          List.concat
+            [ List.map modules_of_stanzas.executables ~f:modules_and_obj_dir
+            ; List.map modules_of_stanzas.tests ~f:modules_and_obj_dir
+            ]
+        | Melange -> List.map modules_of_stanzas.melange_emits ~f:modules_and_obj_dir
       in
       let melange_emits =
         List.map modules_of_stanzas.melange_emits ~f:(fun { Per_stanza.stanza; dir; _ } ->
@@ -1595,7 +1598,7 @@ let make
         ~expander:(Expander.to_expander0 expander)
         ~lib_config
         ~libs
-        ~exes
+        ~non_lib_modules
         ~include_subdirs
         ~melange_emits)
   in

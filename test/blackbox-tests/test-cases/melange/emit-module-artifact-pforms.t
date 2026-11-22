@@ -21,27 +21,15 @@ Module artifact variables should find modules owned by melange.emit stanzas.
   $ mkdir sub
   $ echo 'let value = 3' > sub/nested.ml
 
-The emit artifacts exist, but module artifact lookup cannot find them.
-The disjoint library module remains available.
+Module artifact lookup finds emit-owned modules alongside disjoint library
+modules, without including disabled emit stanzas.
 
   $ dune build .output.mobjs/melange/melange__Main.{cmi,cmt,cmti}
   $ dune build '%{cmi:lib}'
   $ dune build '%{cmi:main}'
-  File "command line", line 1, characters 0-11:
-  Error: Module Main does not exist.
-  [1]
   $ dune build '%{cmt:main}'
-  File "command line", line 1, characters 0-11:
-  Error: Module Main does not exist.
-  [1]
   $ dune build '%{cmti:main}'
-  File "command line", line 1, characters 0-12:
-  Error: Module Main does not exist.
-  [1]
   $ dune build '%{cmi:sub.nested}'
-  File "command line", line 1, characters 0-17:
-  Error: Module Sub.Nested does not exist.
-  [1]
 
 Multiple emit stanzas selecting the same module must not crash artifact lookup.
 
@@ -55,5 +43,5 @@ Multiple emit stanzas selecting the same module must not crash artifact lookup.
   > EOF
   $ dune build '%{cmi:main}'
   File "command line", line 1, characters 0-11:
-  Error: Module Main does not exist.
+  Error: Module reference Main is ambiguous.
   [1]

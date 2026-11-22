@@ -10,7 +10,7 @@ val make
   -> expander:Expander0.t
   -> lib_config:Lib_config.t Memo.t
   -> libs:(Library.t * Modules.t * Path.Build.t Obj_dir.t) list
-  -> exes:(Modules.t * Path.Build.t Obj_dir.t) list
+  -> non_lib_modules:(Modules.t * Path.Build.t Obj_dir.t) list
   -> include_subdirs:Include_subdirs.t
   -> melange_emits:(Path.Build.t * (Melange.Emit.t * Loc.t)) list
   -> t Memo.t

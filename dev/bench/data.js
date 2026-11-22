@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795322221989,
+  "lastUpdate": 1795322359565,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -493491,6 +493491,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.45592481,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8e4244db521bd77b5e91668349ee30452838edb7",
+          "message": "ci: install OCamlFormat in opam test jobs (#17140)\n\nInstall the version pinned in `.ocamlformat` before the opam test suite\nruns on Ubuntu, macOS, and Windows (MinGW and MSVC). Check that\n`ocamlformat --version` works in the same opam switch as the tests.\nBuild-only jobs are unchanged.\n\nThe test jobs in #17120 failed because generated correction formatting\nneeds `ocamlformat` on `PATH`. This standalone change checks that all\nfour runners can install and run it.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T12:19:30+08:00",
+          "tree_id": "edcb9e066fd91d02328383beebbf4c48ed229d94",
+          "url": "https://github.com/ocaml/dune/commit/8e4244db521bd77b5e91668349ee30452838edb7"
+        },
+        "date": 1795322356787,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.361733955380004,
             "unit": "seconds"
           }
         ]

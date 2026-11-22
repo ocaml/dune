@@ -4,24 +4,9 @@ open Memo.O
 let available_exes ~dir (exes : Executables.t) =
   let* compile_info =
     let* scope = Scope.DB.find_by_dir dir in
-    let dune_version =
-      let project = Scope.project scope in
-      Dune_project.dune_version project
-    in
-    let libs = Scope.libs scope in
-    (* Instead of making the binary unavailable, this will just fail when
-       loading artifacts. This is clearly bad but "optional" executables
-       shouldn't be used. *)
-    let+ pps = Lib.DB.pps_for_preprocessing libs exes.buildable.preprocess.config in
-    Lib.DB.resolve_user_written_deps
-      libs
-      (Executables.exe_target exes)
-      exes.buildable.libraries
-      ~allow_unused_libraries:exes.buildable.allow_unused_libraries
-      ~pps
-      ~dune_version
-      ~forbidden_libraries:exes.forbidden_libraries
-      ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
+    (* If preprocessors fail to resolve, this fails when loading artifacts
+       instead of making the binary unavailable. *)
+    Scope.resolve_executable_deps scope ~db:(Scope.libs scope) exes
   in
   (* CR-someday rgrinberg: what if a preprocessor is unavailable? *)
   let+ available = Lib.Compile.direct_requires compile_info ~for_:Ocaml in

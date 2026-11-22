@@ -515,23 +515,10 @@ end = struct
            if not exes.optional
            then Memo.return true
            else
+             (* If preprocessors fail to resolve, this fails rather than
+                skipping the optional executable. *)
              let* compile_info =
-               let dune_version = Scope.project scope |> Dune_project.dune_version in
-               let libs = Scope.libs scope in
-               (* This is wrong. If the preprocessors fail to resolve, we
-                  shouldn't install the binary rather than failing outright. *)
-               let+ pps =
-                 Lib.DB.pps_for_preprocessing libs exes.buildable.preprocess.config
-               in
-               Lib.DB.resolve_user_written_deps
-                 libs
-                 ~forbidden_libraries:[]
-                 (Executables.exe_target exes)
-                 exes.buildable.libraries
-                 ~allow_unused_libraries:exes.buildable.allow_unused_libraries
-                 ~pps
-                 ~dune_version
-                 ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
+               Scope.resolve_executable_deps scope ~db:(Scope.libs scope) exes
              in
              let+ requires = Lib.Compile.direct_requires compile_info ~for_:Ocaml in
              Resolve.is_ok requires)

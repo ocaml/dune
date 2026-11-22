@@ -357,24 +357,9 @@ let executables_rules
   cctx, merlin
 ;;
 
-let compile_info ~scope (exes : Executables.t) =
-  let dune_version = Scope.project scope |> Dune_project.dune_version in
-  let libs = Scope.libs scope in
-  let+ pps = Lib.DB.pps_for_preprocessing libs exes.buildable.preprocess.config in
-  Lib.DB.resolve_user_written_deps
-    libs
-    (Executables.exe_target exes)
-    exes.buildable.libraries
-    ~allow_unused_libraries:exes.buildable.allow_unused_libraries
-    ~pps
-    ~dune_version
-    ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-    ~forbidden_libraries:exes.forbidden_libraries
-;;
-
 let rules ~sctx ~dir_contents ~scope ~expander (exes : Executables.t) =
   let dir = Dir_contents.dir dir_contents in
-  let* compile_info = compile_info ~scope exes in
+  let* compile_info = Scope.resolve_executable_deps scope ~db:(Scope.libs scope) exes in
   let f () =
     executables_rules
       exes

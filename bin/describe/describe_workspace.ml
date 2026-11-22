@@ -656,7 +656,9 @@ module Crawl = struct
         modules ~options ~obj_dir ~dune_file ~parser_gen_origins ~deps_of modules_
       in
       let+ requires =
-        let* compile_info = Exe_rules.compile_info ~scope exes in
+        let* compile_info =
+          Scope.resolve_executable_deps scope ~db:(Scope.libs scope) exes
+        in
         let open Resolve.Memo.O in
         let* requires = Lib.Compile.direct_requires compile_info ~for_ in
         if options.with_pps

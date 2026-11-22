@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795316666835,
+  "lastUpdate": 1795316944870,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -493201,6 +493201,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5168373793333334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4336b221558b55de7c3b89651c3b538bd83ab743",
+          "message": "refactor(fiber): share and inline scheduler error collection (#17141)\n\nShare error context construction across error collection and\nfinalization. Keep `collect` outside the recursive scheduler group and\nmark it `[@inline always]` so the native compiler can inline it. Each\npath still uses its own continuation and tail-calls `exec_fiber_thunk`\ndirectly.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T10:52:53+08:00",
+          "tree_id": "23c94828c428a6b1f4f0b00ac8360b23381aa2c4",
+          "url": "https://github.com/ocaml/dune/commit/4336b221558b55de7c3b89651c3b538bd83ab743"
+        },
+        "date": 1795316942961,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 53.121085568839995,
             "unit": "seconds"
           }
         ]

@@ -73,11 +73,22 @@ A directory declared as a file target is rejected before promotion:
   - blah-blah: Directory produced for a file target. Use (dir blah-blah).
   [1]
 
-Test error message for (promote (into <dir>)) if <dir> is missing.
+Promoting into a different directory should preserve the tree below the
+promoted directory target.
 
   $ write_promoted_directory_target_rule "(promote (into another_dir))"
-
   $ dune build a
+  $ cat _build/default/dir/subdir/d
+  d
+
+CR: Promotion relocates every file by basename, so the contents end up next
+to the directory target rather than inside it.
+
+  $ find another_dir -type f | sort
+  another_dir/a
+  another_dir/b
+  another_dir/c
+  another_dir/d
 
 Test cleaning up unexpected files and directories in directory targets.
 

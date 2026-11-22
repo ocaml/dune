@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795364480024,
+  "lastUpdate": 1795364486942,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -494564,6 +494564,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.25323176348667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "53e389ce12fb6f3671433d107ede51e3bd1561cc",
+          "message": "refactor(engine): share running-job state updates (#17164)\n\nShare the deferred state write and event stamp between job starts and\nstops, while keeping their distinct validity checks and error messages.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-23T00:02:04+08:00",
+          "tree_id": "365c71cbaf757ca3cf880f1a4324bbcfe84b74e2",
+          "url": "https://github.com/ocaml/dune/commit/53e389ce12fb6f3671433d107ede51e3bd1561cc"
+        },
+        "date": 1795364486131,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5179117825333334,
             "unit": "seconds"
           }
         ]

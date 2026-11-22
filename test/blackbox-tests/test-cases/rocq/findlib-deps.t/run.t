@@ -49,3 +49,49 @@ collide.
   "-package","rocq-stdlib"
   "-package","rocq-stdlib"
   $ trace_rocq_flags B/b.vo | grep '"-package","pkg.a"' || true
+
+Packages with custom Rocq install entries are materialized before they are
+passed to Rocq. This is needed by packages such as Rocq itself, whose theories
+are built using custom rules rather than [rocq.theory].
+
+  $ cat >> dune-project << EOF
+  > (package
+  >  (name prebuilt)
+  >  (allow_empty))
+  > EOF
+  $ touch prebuilt.opam
+  $ cat > META.prebuilt.template << EOF
+  > rocqpath = "Prebuilt"
+  > # DUNE_GEN
+  > EOF
+  $ mkdir Prebuilt Consumer
+  $ cat > Prebuilt/dune << EOF
+  > (library
+  >  (name dummy)
+  >  (public_name prebuilt))
+  > (rocq.theory
+  >  (name Prebuilt))
+  > (install
+  >  (section lib)
+  >  (package prebuilt)
+  >  (files
+  >   (p.v as rocq.d/p.v)
+  >   (p.vo as rocq.d/p.vo)))
+  > EOF
+  $ touch Prebuilt/dummy.ml
+  $ cat > Prebuilt/p.v << EOF
+  > Definition x := 42.
+  > EOF
+  $ cat > Consumer/dune << EOF
+  > (rocq.theory
+  >  (name Consumer)
+  >  (theories prebuilt))
+  > EOF
+  $ cat > Consumer/use.v << EOF
+  > From Prebuilt Require Import p.
+  > Check x.
+  > EOF
+  $ dune build _build/install/default/lib/prebuilt/META
+  $ OCAMLPATH=$PWD/_build/install/default/lib:$OCAMLPATH dune build Consumer/use.vo
+  x
+       : nat

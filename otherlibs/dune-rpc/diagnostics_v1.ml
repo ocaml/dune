@@ -33,25 +33,15 @@ type t = (unit Pp.t, Related.t) Diagnostic.fields
 let sexp = Diagnostic.sexp_fields ~message:sexp_pp_unit ~related:Related.sexp
 
 let to_diagnostic (t : t) : Diagnostic.t =
-  { targets = t.targets
-  ; message = t.message |> Pp.map_tags ~f:(fun _ -> User_message.Style.Details)
-  ; loc = t.loc
-  ; severity = t.severity
-  ; promotion = t.promotion
-  ; directory = t.directory
-  ; id = t.id
+  { t with
+    message = t.message |> Pp.map_tags ~f:(fun _ -> User_message.Style.Details)
   ; related = t.related |> List.map ~f:Related.to_diagnostic_related
   }
 ;;
 
 let of_diagnostic (t : Diagnostic.t) : t =
-  { targets = t.targets
-  ; message = t.message |> Pp.map_tags ~f:(fun _ -> ())
-  ; loc = t.loc
-  ; severity = t.severity
-  ; promotion = t.promotion
-  ; directory = t.directory
-  ; id = t.id
+  { t with
+    message = t.message |> Pp.map_tags ~f:(fun _ -> ())
   ; related = t.related |> List.map ~f:Related.of_diagnostic_related
   }
 ;;

@@ -1672,39 +1672,6 @@ let run_internal
          `Finished res, times))
 ;;
 
-let run
-      ?dir
-      ~display
-      ?stdout_to
-      ?stderr_to
-      ?stdin_from
-      ?env
-      ?metadata
-      ?build
-      ?sandbox
-      fail_mode
-      prog
-      args
-  =
-  let+ run, _ =
-    run_internal
-      ~job_slot:None
-      ?dir
-      ~display
-      ?stdout_to
-      ?stderr_to
-      ?stdin_from
-      ?env
-      ?metadata
-      ?build
-      ?sandbox
-      fail_mode
-      prog
-      (Array.Immutable.of_list args)
-  in
-  Failure_mode.map_result fail_mode run ~f:ignore
-;;
-
 let run_with_job_slot
       ~job_slot
       ~dir
@@ -1766,6 +1733,35 @@ let run_with_array_args
       args
   in
   Failure_mode.map_result fail_mode run ~f:ignore
+;;
+
+let run
+      ?dir
+      ~display
+      ?stdout_to
+      ?stderr_to
+      ?stdin_from
+      ?env
+      ?metadata
+      ?build
+      ?sandbox
+      fail_mode
+      prog
+      args
+  =
+  run_with_array_args
+    ?dir
+    ~display
+    ?stdout_to
+    ?stderr_to
+    ?stdin_from
+    ?env
+    ?metadata
+    ?build
+    ?sandbox
+    fail_mode
+    prog
+    (Array.Immutable.of_list args)
 ;;
 
 let run_with_times
@@ -1879,23 +1875,18 @@ let run_capture_line
           | Some dir -> sprintf "cd %s && %s" (Path.to_string dir) prog_display
         in
         let metadata = Option.value metadata ~default:Process_metadata.default in
-        let loc = metadata.Process_metadata.loc in
-        let compound = metadata.Process_metadata.compound in
-        (match l with
-         | [] ->
-           User_error.raise
-             ?loc
-             ~compound
-             [ Pp.textf "Command returned nothing: %s" cmdline ]
-         | _ ->
-           User_error.raise
-             ?loc
-             ~compound
-             [ Pp.textf "command returned too many lines: %s" cmdline
-             ; Pp.vbox
-                 (Pp.concat_map l ~sep:Pp.cut ~f:(fun line ->
-                    Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
-             ]))
+        let { Process_metadata.loc; compound; _ } = metadata in
+        let paragraphs =
+          match l with
+          | [] -> [ Pp.textf "Command returned nothing: %s" cmdline ]
+          | _ ->
+            [ Pp.textf "command returned too many lines: %s" cmdline
+            ; Pp.vbox
+                (Pp.concat_map l ~sep:Pp.cut ~f:(fun line ->
+                   Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
+            ]
+        in
+        User_error.raise ?loc ~compound paragraphs)
 ;;
 
 let run_inherit_std_in_out =

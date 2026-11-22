@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795358927941,
+  "lastUpdate": 1795358997824,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -494303,6 +494303,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.34337323174,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "de98a5887f0ac9bdb47674efa0735fa2423e62e9",
+          "message": "test(pkg): compare incremental and fresh installs after removing an overlay (#17169)\n\nInstall a package with an extra source that shadows a file from its\nsource tree, then remove the extra source and rebuild. Compare the\ninstalled file with a fresh build so the test catches stale contents\nwithout relying on the layout of the prepared source directory.\n\nRefs #16292.",
+          "timestamp": "2026-11-22T15:33:41+01:00",
+          "tree_id": "17b0b5a24d8883f65a6d0b1c2e6a30d188c9fb85",
+          "url": "https://github.com/ocaml/dune/commit/de98a5887f0ac9bdb47674efa0735fa2423e62e9"
+        },
+        "date": 1795358994738,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 52.52804183862,
             "unit": "seconds"
           }
         ]

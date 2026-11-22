@@ -127,20 +127,16 @@ module Constraint = struct
       let+ value = Value.of_opam_filter filter in
       Some (Uop (op, value))
     | Block formula -> opt_of_opam_condition formula
-    | And (lhs, rhs) ->
+    | And (lhs, rhs) | Or (lhs, rhs) ->
       let+ lhs = opt_of_opam_condition lhs
       and+ rhs = opt_of_opam_condition rhs in
       (match lhs, rhs with
-       | None, None -> None
-       | Some x, None | None, Some x -> Some x
-       | Some lhs, Some rhs -> Some (And [ lhs; rhs ]))
-    | Or (lhs, rhs) ->
-      let+ lhs = opt_of_opam_condition lhs
-      and+ rhs = opt_of_opam_condition rhs in
-      (match lhs, rhs with
-       | None, None -> None
-       | Some x, None | None, Some x -> Some x
-       | Some lhs, Some rhs -> Some (Or [ lhs; rhs ]))
+       | None, result | result, None -> result
+       | Some lhs, Some rhs ->
+         let args = [ lhs; rhs ] in
+         (match condition with
+          | And _ -> Some (And args)
+          | _ -> Some (Or args)))
   ;;
 end
 

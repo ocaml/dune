@@ -1192,42 +1192,30 @@ module With_vlib = struct
         | Private -> acc
         | Public -> m :: acc)
     in
-    let rec loop_impl_with_vlib impl_lookup vlib_lookup ~of_name acc = function
+    let rec loop_impl impl_lookup vlib ~of_ ~of_name prepared acc = function
       | [] -> Ok (List.rev acc)
       | name :: names ->
         if Module_name.equal name of_name
-        then loop_impl_with_vlib impl_lookup vlib_lookup ~of_name acc names
+        then loop_impl impl_lookup vlib ~of_ ~of_name prepared acc names
         else (
           match Dep_lookup.find_nonself impl_lookup name with
           | Error _ as error -> error
           | Ok (_ :: _ as modules) ->
             let acc = List.rev_append modules acc in
-            loop_impl_with_vlib impl_lookup vlib_lookup ~of_name acc names
+            loop_impl impl_lookup vlib ~of_ ~of_name prepared acc names
           | Ok [] ->
-            (match Dep_lookup.find_nonself vlib_lookup name with
+            let lookup, prepared =
+              match prepared with
+              | Some lookup -> lookup, prepared
+              | None ->
+                let lookup = Dep_lookup.prepare vlib ~of_ in
+                lookup, Some lookup
+            in
+            (match Dep_lookup.find_nonself lookup name with
              | Error _ as error -> error
              | Ok modules ->
                let acc = append_vlib_modules modules acc in
-               loop_impl_with_vlib impl_lookup vlib_lookup ~of_name acc names))
-    in
-    let rec loop_impl impl_lookup vlib ~of_ ~of_name acc = function
-      | [] -> Ok (List.rev acc)
-      | name :: names ->
-        if Module_name.equal name of_name
-        then loop_impl impl_lookup vlib ~of_ ~of_name acc names
-        else (
-          match Dep_lookup.find_nonself impl_lookup name with
-          | Error _ as error -> error
-          | Ok (_ :: _ as modules) ->
-            let acc = List.rev_append modules acc in
-            loop_impl impl_lookup vlib ~of_ ~of_name acc names
-          | Ok [] ->
-            let vlib_lookup = Dep_lookup.prepare vlib ~of_ in
-            (match Dep_lookup.find_nonself vlib_lookup name with
-             | Error _ as error -> error
-             | Ok modules ->
-               let acc = append_vlib_modules modules acc in
-               loop_impl_with_vlib impl_lookup vlib_lookup ~of_name acc names))
+               loop_impl impl_lookup vlib ~of_ ~of_name prepared acc names))
     in
     let rec start t ~of_ ~of_name = function
       | [] -> Ok []
@@ -1241,7 +1229,7 @@ module With_vlib = struct
             loop_modules lookup ~of_name [] remaining
           | Impl { vlib; impl; _ } ->
             let impl_lookup = Dep_lookup.prepare impl ~of_ in
-            loop_impl impl_lookup vlib ~of_ ~of_name [] remaining)
+            loop_impl impl_lookup vlib ~of_ ~of_name None [] remaining)
     in
     fun t ~of_ names ->
       match names with

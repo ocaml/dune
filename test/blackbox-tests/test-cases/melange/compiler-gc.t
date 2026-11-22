@@ -56,6 +56,39 @@ Explicit runtime settings and JavaScript emission are preserved.
   cmj: ocaml=unset legacy= man=local
   js: ocaml=unset legacy= man=local
 
+Changing runtime settings alone does not invalidate existing outputs.
+Count compiler invocations to distinguish execution from cached output.
+
+  $ compiled () {
+  >   dune trace cat --trace-file _build_defaults/trace.csexp \
+  >     | jq_dune -s '[.[] | processesBrief
+  >       | select(.prog == "melc" and (.args | index("-o")))] | length'
+  > }
+  $ OCAMLRUNPARAM=s=123456 build defaults
+  $ compiled
+  0
+
+After a source edit, an empty override is preserved in the same build directory.
+
+  $ echo 'let () = print_endline "first"' > main.ml
+  $ OCAMLRUNPARAM= build defaults
+  cmj: ocaml= legacy=unset man=local
+  js: ocaml= legacy=unset man=local
+  $ compiled
+  2
+
+Removing the override restores the defaults for subsequent compilations.
+
+  $ echo 'let () = print_endline "second"' > main.ml
+  $ build defaults
+  cmj: ocaml=s=2M,Xsmall_heap_limit=16777216 legacy=unset man=local
+  js: ocaml=unset legacy=unset man=local
+  $ compiled
+  2
+  $ build defaults
+  $ compiled
+  0
+
 Directory-local runtime settings are preserved too.
 
   $ cat > dune <<'EOF'

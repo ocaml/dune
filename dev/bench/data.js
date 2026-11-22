@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795367136440,
+  "lastUpdate": 1795368896292,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -689735,6 +689735,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.84246532156,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9cedb89c6d31fe894f417faabca74663043d2c56",
+          "message": "perf(jsoo): defer module compiler action construction (#17152)\n\nDefer JS/Wasm module action graph construction until the target is\nrequested, avoiding unused graph allocation in native and bytecode-only\nbuilds.\n\n019ffd87-afd6-7983-99f9-1a7139620b20\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-22T09:20:47-08:00",
+          "tree_id": "fdb754c0a927803abf42f1208654db5ea5442bcd",
+          "url": "https://github.com/ocaml/dune/commit/9cedb89c6d31fe894f417faabca74663043d2c56"
+        },
+        "date": 1795368475997,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.8040743931666667,
             "unit": "seconds"
           }
         ]

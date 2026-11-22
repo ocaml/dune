@@ -155,12 +155,11 @@ module Process = struct
           | None -> binding
           | Some i -> String.take binding i
         in
+        let override_names = List.map env ~f:name in
         let inherited =
           Array.to_list (Unix.environment ())
           |> List.filter ~f:(fun binding ->
-            not
-              (List.exists env ~f:(fun override ->
-                 String.equal (name binding) (name override))))
+            not (List.mem (name binding) ~set:override_names))
         in
         let env = Array.of_list (env @ inherited) in
         Unix.create_process_env prog args env stdin stdout stderr

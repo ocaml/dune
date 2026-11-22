@@ -150,7 +150,18 @@ module Process = struct
       match env with
       | None -> Unix.create_process prog args stdin stdout stderr
       | Some env ->
-        let env = Array.of_list env in
+        let name binding =
+          match String.index binding '=' with
+          | None -> binding
+          | Some i -> String.take binding i
+        in
+        let override_names = List.map env ~f:name in
+        let inherited =
+          Array.to_list (Unix.environment ())
+          |> List.filter ~f:(fun binding ->
+            not (List.mem (name binding) ~set:override_names))
+        in
+        let env = Array.of_list (env @ inherited) in
         Unix.create_process_env prog args env stdin stdout stderr
     in
     let stdout_fn = t.dest_dir ^/ sprintf "stdout-%d" n in

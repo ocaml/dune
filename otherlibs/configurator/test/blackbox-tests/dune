@@ -4,6 +4,11 @@
   (package dune-configurator)))
 
 (cram
+ (applies_to pkg-config-env.t)
+ (enabled_if
+  (= %{os_type} Unix)))
+
+(cram
  (applies_to pkg-config-quoting.t)
  (deps %{bin:pkg-config}))
 

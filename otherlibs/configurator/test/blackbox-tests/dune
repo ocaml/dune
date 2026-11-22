@@ -6,7 +6,7 @@
 (cram
  (applies_to pkg-config-env.t)
  (enabled_if
-  (= %{ocaml-config:system} macosx)))
+  (= %{os_type} Unix)))
 
 (cram
  (applies_to pkg-config-quoting.t)

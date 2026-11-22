@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795353219601,
+  "lastUpdate": 1795353332033,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -688227,6 +688227,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.72550163248,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d004c4bfa0cc47356fac03b3e50c6ed7a74f8e11",
+          "message": "refactor(cli): share single-file RPC builds (#17157)\n\nUse the same single-file RPC build helper for `dune exec` and developer\ntools. Both callers encode the target and handle the build result the\nsame way, with no change to when they use the running server.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T21:04:44+08:00",
+          "tree_id": "b85c4914abe1c25d6ed726f3d5c8957360bd7577",
+          "url": "https://github.com/ocaml/dune/commit/d004c4bfa0cc47356fac03b3e50c6ed7a74f8e11"
+        },
+        "date": 1795353035641,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.5348196369399996,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795315673197,
+  "lastUpdate": 1795316136993,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -687212,6 +687212,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.2970931664600003,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "14bbc65c5ecd2096af6691db8ef21470817d41be",
+          "message": "refactor(memo): share parallel collection error handling (#17145)\n\nShare error handling between fixed-size and dynamic parallel dependency\ncollection. Disabled collectors keep their error boundary, and active\ncollectors still record dependencies before re-raising errors.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T10:40:57+08:00",
+          "tree_id": "7e16e6b9bd53bbb21bd4163eefa94daa328784ec",
+          "url": "https://github.com/ocaml/dune/commit/14bbc65c5ecd2096af6691db8ef21470817d41be"
+        },
+        "date": 1795315711512,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.233388165126667,
             "unit": "seconds"
           }
         ]

@@ -23,19 +23,12 @@ let classify_libs sctx libs =
        | archive :: _ -> Right (lib, (loc, archive))))
 ;;
 
-let gen_rules
-      sctx
-      toolchain
-      loc
-      ~obj_dir
-      ~modules
-      ~dir
-      ~user_written_requires
-      ~allow_unused_libraries
-  =
+let gen_rules_for_context cctx compile_info ~loc =
+  let obj_dir = Compilation_context.obj_dir cctx in
   match
     let modules =
-      Modules.With_vlib.drop_vlib modules
+      Compilation_context.modules cctx
+      |> Modules.With_vlib.drop_vlib
       |> Modules.fold ~init:[] ~f:(fun m acc -> m :: acc)
     in
     let cmis = Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Ocaml Cmi) in
@@ -44,12 +37,18 @@ let gen_rules
   with
   | [] -> Memo.return ()
   | units ->
+    let dir = Compilation_context.dir cctx in
+    let sctx = Compilation_context.super_context cctx in
+    let toolchain = Compilation_context.ocaml cctx in
+    let for_ = Compilation_context.for_ cctx in
+    let requires = Lib.Compile.user_written_requires compile_info ~for_ in
+    let allowed = Lib.Compile.allow_unused_libraries compile_info in
     let action =
       let open Action_builder.O in
       let build_dir = Obj_dir.dir obj_dir in
       let* local_modules, external_lib_archives =
-        let* user_written_requires = Resolve.Memo.read user_written_requires in
-        classify_libs sctx user_written_requires |> Action_builder.of_memo
+        let* requires = Resolve.Memo.read requires in
+        classify_libs sctx requires |> Action_builder.of_memo
       in
       let* results =
         Ocamlobjinfo.rules
@@ -69,7 +68,7 @@ let gen_rules
           lib, (loc, modules))
         |> Action_builder.all
       in
-      let* allowed_libs = Resolve.Memo.read allow_unused_libraries in
+      let* allowed_libs = Resolve.Memo.read allowed in
       let allowed_set = Lib.Set.of_list allowed_libs in
       let unused_libs =
         let all_imported =
@@ -115,24 +114,4 @@ let gen_rules
       [ unused_libs_alias ]
       ~loc
       (action |> Action_builder.map ~f:Action.Full.make)
-;;
-
-let gen_rules_for_context cctx compile_info ~loc =
-  let sctx = Compilation_context.super_context cctx in
-  let toolchain = Compilation_context.ocaml cctx in
-  let for_ = Compilation_context.for_ cctx in
-  let obj_dir = Compilation_context.obj_dir cctx in
-  let modules = Compilation_context.modules cctx in
-  let dir = Compilation_context.dir cctx in
-  let user_written_requires = Lib.Compile.user_written_requires compile_info ~for_ in
-  let allow_unused_libraries = Lib.Compile.allow_unused_libraries compile_info in
-  gen_rules
-    sctx
-    toolchain
-    loc
-    ~obj_dir
-    ~modules
-    ~dir
-    ~user_written_requires
-    ~allow_unused_libraries
 ;;

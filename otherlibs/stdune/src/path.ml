@@ -1,28 +1,36 @@
 include Path0
 module External = Path_external
 
+let outside_workspace loc ~path ~from =
+  let message = Pp.textf "path outside the workspace: %s from %s" path from in
+  User_error.raise ?loc [ message ]
+;;
+
 let inside_workspace_exn ?loc ~path ~from = function
   | Ok t -> t
-  | Error `Outside_the_workspace ->
-    User_error.raise ?loc [ Pp.textf "path outside the workspace: %s from %s" path from ]
+  | Error `Outside_the_workspace -> outside_workspace loc ~path ~from
 ;;
+
+module Relative_components = struct
+  include Local_gen.L
+
+  let relative ?error_loc t components =
+    match relative_result t components with
+    | Ok t -> t
+    | Error `Outside_the_workspace ->
+      outside_workspace
+        error_loc
+        ~path:(String.concat ~sep:"/" components)
+        ~from:(Local_gen.to_string t)
+  ;;
+end
 
 module Local = struct
   include Local
 
   let repr = Repr.view Repr.string ~to_:to_string
 
-  module L = struct
-    include L
-
-    let relative ?error_loc t components =
-      relative_result t components
-      |> inside_workspace_exn
-           ?loc:error_loc
-           ~path:(String.concat ~sep:"/" components)
-           ~from:(Local_gen.to_string t)
-    ;;
-  end
+  module L = Relative_components
 
   let relative ?error_loc t path =
     relative_result t path
@@ -54,22 +62,7 @@ module Source0 = struct
   let append_local a b = of_local (Local.append (to_local a) b)
   let descendant t ~of_ = Option.map (Path0.Local_gen.descendant t ~of_) ~f:of_local
 
-  module L = struct
-    include L
-
-    let relative ?error_loc t components =
-      match relative_result t components with
-      | Ok t -> t
-      | Error `Outside_the_workspace ->
-        User_error.raise
-          ?loc:error_loc
-          [ Pp.textf
-              "path outside the workspace: %s from %s"
-              (String.concat ~sep:"/" components)
-              (Path0.Local_gen.to_string t)
-          ]
-    ;;
-  end
+  module L = Relative_components
 
   let relative ?error_loc t path =
     relative_result t path
@@ -202,22 +195,7 @@ module Build = struct
 
   let repr = Repr.view Repr.string ~to_:to_string
 
-  module L = struct
-    include L
-
-    let relative ?error_loc t components =
-      match relative_result t components with
-      | Ok t -> t
-      | Error `Outside_the_workspace ->
-        User_error.raise
-          ?loc:error_loc
-          [ Pp.textf
-              "path outside the workspace: %s from %s"
-              (String.concat ~sep:"/" components)
-              (Path0.Local_gen.to_string t)
-          ]
-    ;;
-  end
+  module L = Relative_components
 
   let relative ?error_loc t path =
     relative_result t path

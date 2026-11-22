@@ -7,11 +7,7 @@ open Memo.O
    will return the list containing all descendants of the directory
    "foo/bar/baz/qux". The descendants of a directory are that directory's
    subdirectories, and each of of their subdirectories, and so on ad infinitum. *)
-let get_descendants_of_relative_dir_relative_to_base_dir_local
-      ~base_dir
-      ~relative_dir
-      ~prefix
-  =
+let source_dirs ~base_dir ~relative_dir ~prefix =
   let base_dir = Path.Build.drop_build_context_exn base_dir in
   let rec get_descendants_rec relative_dir prefix =
     let absolute_dir = Path.Source.relative base_dir relative_dir in
@@ -33,6 +29,26 @@ let get_descendants_of_relative_dir_relative_to_base_dir_local
     (relative_dir, prefix) :: rest
   in
   get_descendants_rec relative_dir prefix
+;;
+
+let recursive_dirs ~base_dir ~relative_dir ~prefix =
+  Path.Build.relative base_dir relative_dir
+  |> Build_system.directory_target_contents
+  >>= function
+  | None -> source_dirs ~base_dir ~relative_dir ~prefix
+  | Some contents ->
+    let rec collect relative_dir prefix { Targets.Produced.subdirs; files = _ } acc =
+      Filename.Array.Map.foldi
+        subdirs
+        ~init:((relative_dir, prefix) :: acc)
+        ~f:(fun name contents acc ->
+          collect
+            (Filename.append relative_dir name)
+            (Filename.append prefix name)
+            contents
+            acc)
+    in
+    Memo.return (collect relative_dir prefix contents [])
 ;;
 
 let split_glob_string_into_parent_and_pattern glob_string =
@@ -98,10 +114,7 @@ module Without_vars = struct
       in
       if recursive
       then
-        get_descendants_of_relative_dir_relative_to_base_dir_local
-          ~base_dir
-          ~relative_dir
-          ~prefix
+        recursive_dirs ~base_dir ~relative_dir ~prefix
         |> Memo.map
              ~f:
                (List.map ~f:(fun (relative_dir, prefix) ->

@@ -61,11 +61,9 @@ from its subdirectories as well as its root.
   $ dune build --sandbox=copy report
   $ test -f _build/default/tree/sub/nested.txt
 
-CR: The recursive glob only discovers subdirectories in the source tree, so
-it silently omits the generated nested file.
-
   $ cat _build/default/report
   root
+  nested
 
 A glob whose directory component is actually a generated file should not
 raise an internal error.

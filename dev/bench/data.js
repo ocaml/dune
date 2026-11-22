@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795363586887,
+  "lastUpdate": 1795363905595,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -494477,6 +494477,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5153782012533333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "ajumashukurov@gmail.com",
+            "name": "khan",
+            "username": "aikhanjum"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bfd55a294a3b778c3c10cf9eb6609d6b694d2ca2",
+          "message": "Preserve the inherited pkg-config environment on macOS (#17078)\n\nWhen Homebrew adds a pkg-config search path, configurator passes an\nexplicit\n`PKG_CONFIG_PATH` binding to `Unix.create_process_env`. That replaces\nthe inherited\nenvironment and drops settings such as `PKG_CONFIG_LIBDIR` and\n`PKG_CONFIG_SYSROOT_DIR`, causing a package that depends on those\nsettings to be\nreported as missing.\n\nMerge the explicit bindings with the inherited environment, with\nexplicit\nbindings taking precedence. The macOS regression uses controlled `brew`\nand\n`pkg-config` executables to cover inherited variables, existing\nsearch-path\nprecedence, and packages without a Homebrew directory.\n\nRelated to #10805. The original vcpkg setup in that issue has not been\nreproduced.\n\nValidation performed against main at\n`5a68b1910384be91a56b8f99046b00db6b87b8ab`.\n\n- `./dune.exe build --cache=disabled @check @fmt` passed on macOS.\n- `./dune.exe runtest --cache=disabled\notherlibs/configurator/test/blackbox-tests`\npassed on macOS. The saved before-fix regression reports `package\nmissing`.\n- `./dune.exe build --cache=disabled @check @fmt @runtest` was run on\nLinux\narm64 with OCaml 5.5.2 in the repository's pinned Nix development shell.\nThe\n  final fresh run failed in `pkg/opam-package-with-build-env.t` and\n`pkg/pkg-extract-fail.t` with `Lock directory is not active for context\n\"default\"`. Earlier runs hit the same error in other package-lock cases.\n  A separate clean upstream checkout reproduced the same error in\n`pkg/pin-stanza/opam-template.t`. No expectations were changed or\npromoted.\n- The macOS full suite hit an `fsevents_tests.ml` expectation failure\nalso\n  reproduced on clean upstream.\n\nAI assistance was used to prepare and validate this change.\n\n---------\n\nSigned-off-by: Aikhan Jumashukurov <117706338+aikhanj@users.noreply.github.com>\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>\nCo-authored-by: Aikhan Jumashukurov <117706338+aikhanj@users.noreply.github.com>\nCo-authored-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T23:52:27+08:00",
+          "tree_id": "003c87655d003beed71339ee69b410cee368c6f8",
+          "url": "https://github.com/ocaml/dune/commit/bfd55a294a3b778c3c10cf9eb6609d6b694d2ca2"
+        },
+        "date": 1795363903899,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 61.581450526333334,
             "unit": "seconds"
           }
         ]

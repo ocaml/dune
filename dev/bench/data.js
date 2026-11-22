@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795354128625,
+  "lastUpdate": 1795354333132,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -494013,6 +494013,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5688145757666666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "497b1f89f027e2f42ed0a0c2c252517a7780ddaa",
+          "message": "refactor(lib): share dependency traversal state (#17160)\n\nUse the same state monad for virtual-library substitution and re-export\ntraversal. Each traversal still maintains its own accumulated libraries\nand visited set.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T21:12:43+08:00",
+          "tree_id": "188a5c790701b390ef5c1b1bd7996c115bcc90cb",
+          "url": "https://github.com/ocaml/dune/commit/497b1f89f027e2f42ed0a0c2c252517a7780ddaa"
+        },
+        "date": 1795354331054,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.901208086720004,
             "unit": "seconds"
           }
         ]

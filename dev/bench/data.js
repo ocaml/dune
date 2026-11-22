@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795321616818,
+  "lastUpdate": 1795321622378,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -493288,6 +493288,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 40.420158532740004,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9e70f87e473b7a9b01ba90fd2e6cf8f5077acd10",
+          "message": "refactor(engine): reuse array-based process execution (#17150)\n\nConvert list arguments once and delegate to the existing array-based\nrunner. Share the error-reporting path for commands expected to return\none line, while keeping the existing messages for empty and multiline\noutput.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T12:08:02+08:00",
+          "tree_id": "6ebb821f3b7bd2c1e55e3cae5e93159a8a4a299c",
+          "url": "https://github.com/ocaml/dune/commit/9e70f87e473b7a9b01ba90fd2e6cf8f5077acd10"
+        },
+        "date": 1795321619754,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 53.41211465358,
             "unit": "seconds"
           }
         ]

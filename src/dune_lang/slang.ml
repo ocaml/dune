@@ -54,33 +54,6 @@ let rec equal a b =
 
 and blang_equal a b = Blang.Ast.equal equal a b
 
-let rec remove_locs t =
-  let form_remove_locs = function
-    | Concat ts -> Concat (List.map ts ~f:remove_locs)
-    | When (blang, t) -> When (blang_remove_locs blang, remove_locs t)
-    | If { condition; then_; else_ } ->
-      If
-        { condition = blang_remove_locs condition
-        ; then_ = remove_locs then_
-        ; else_ = remove_locs else_
-        }
-    | Has_undefined_var t -> Has_undefined_var (remove_locs t)
-    | Catch_undefined_var { value; fallback } ->
-      Catch_undefined_var { value = remove_locs value; fallback = remove_locs fallback }
-    | And_absorb_undefined_var blangs ->
-      And_absorb_undefined_var (List.map blangs ~f:blang_remove_locs)
-    | Or_absorb_undefined_var blangs ->
-      Or_absorb_undefined_var (List.map blangs ~f:blang_remove_locs)
-    | Blang blang -> Blang (blang_remove_locs blang)
-  in
-  match t with
-  | Nil -> Nil
-  | Undefined -> Undefined
-  | Literal sw -> Literal (String_with_vars.remove_locs sw)
-  | Form (_loc, form) -> Form (Loc.none, form_remove_locs form)
-
-and blang_remove_locs blang = Blang.Ast.map_string ~f:remove_locs blang
-
 let decode_literal =
   let open Decoder in
   let+ x = String_with_vars.decode in
@@ -203,46 +176,38 @@ let loc = function
   | Form (loc, _form) -> loc
 ;;
 
-let blang_map = Blang.Ast.map_string
-
-let rec map_loc ~f = function
-  | Nil -> Nil
-  | Undefined -> Undefined
-  | Literal sw -> Literal (String_with_vars.map_loc ~f sw)
-  | Form (loc, form) ->
-    let loc = f loc in
-    let form = map_form_loc ~f form in
-    Form (loc, form)
-
-and map_form_loc ~f = function
-  | Concat ts -> Concat (List.map ~f:(map_loc ~f) ts)
-  | When (blang, t) ->
-    let blang = blang_map blang ~f:(map_loc ~f) in
-    let t = map_loc ~f t in
-    When (blang, t)
-  | If { condition; then_; else_ } ->
-    let condition = blang_map condition ~f:(map_loc ~f) in
-    let then_ = map_loc ~f then_ in
-    let else_ = map_loc ~f else_ in
-    If { condition; then_; else_ }
-  | Has_undefined_var t ->
-    let t = map_loc ~f t in
-    Has_undefined_var t
-  | Catch_undefined_var { value; fallback } ->
-    let value = map_loc ~f value in
-    let fallback = map_loc ~f fallback in
-    Catch_undefined_var { value; fallback }
-  | And_absorb_undefined_var blangs ->
-    let blangs = List.map blangs ~f:(blang_map ~f:(map_loc ~f)) in
-    And_absorb_undefined_var blangs
-  | Or_absorb_undefined_var blangs ->
-    let blangs = List.map blangs ~f:(blang_map ~f:(map_loc ~f)) in
-    Or_absorb_undefined_var blangs
-  | Blang blang ->
-    let blang = blang_map blang ~f:(map_loc ~f) in
-    Blang blang
+let map ~loc ~literal =
+  let rec slang = function
+    | Nil -> Nil
+    | Undefined -> Undefined
+    | Literal sw -> Literal (literal sw)
+    | Form (l, f) ->
+      let l = loc l in
+      Form (l, form f)
+  and form = function
+    | Concat ts -> Concat (List.map ~f:slang ts)
+    | When (b, t) ->
+      let b = blang b in
+      When (b, slang t)
+    | If { condition; then_; else_ } ->
+      let condition = blang condition in
+      let then_ = slang then_ in
+      let else_ = slang else_ in
+      If { condition; then_; else_ }
+    | Has_undefined_var t -> Has_undefined_var (slang t)
+    | Catch_undefined_var { value; fallback } ->
+      let value = slang value in
+      Catch_undefined_var { value; fallback = slang fallback }
+    | And_absorb_undefined_var bs -> And_absorb_undefined_var (List.map bs ~f:blang)
+    | Or_absorb_undefined_var bs -> Or_absorb_undefined_var (List.map bs ~f:blang)
+    | Blang b -> Blang (blang b)
+  and blang b = Blang.Ast.map_string ~f:slang b in
+  slang
 ;;
 
+let map_loc ~f = map ~loc:f ~literal:(String_with_vars.map_loc ~f)
+let map_string_with_vars ~f = map ~loc:Fun.id ~literal:f
+let remove_locs = map ~loc:(fun _ -> Loc.none) ~literal:String_with_vars.remove_locs
 let concat ?(loc = Loc.none) ts = Form (loc, Concat ts)
 let when_ ?(loc = Loc.none) condition t = Form (loc, When (condition, t))
 
@@ -481,8 +446,8 @@ module Blang = struct
 
   let equal = blang_equal
   let to_dyn = blang_to_dyn
-  let remove_locs = blang_remove_locs
-  let map_loc ~f = blang_map ~f:(map_loc ~f)
+  let remove_locs = Blang.Ast.map_string ~f:remove_locs
+  let map_loc ~f = Blang.Ast.map_string ~f:(map_loc ~f)
   let true_ = Blang.Const true
   let false_ = Blang.Const false
   let decode = Blang.Ast.decode ~override_decode_bare_literal:None decode

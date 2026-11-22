@@ -514,58 +514,13 @@ let rec encode =
   | Format_dune_file (src, dst) -> List [ atom "format-dune-file"; sw src; sw dst ]
 ;;
 
-let rec blang_map_string_with_vars ~f = function
-  | Blang.Const _ as c -> c
-  | Not blang -> Not (blang_map_string_with_vars ~f blang)
-  | Expr sw -> Expr (slang_map_string_with_vars ~f sw)
-  | And blangs -> And (List.map blangs ~f:(blang_map_string_with_vars ~f))
-  | Or blangs -> Or (List.map blangs ~f:(blang_map_string_with_vars ~f))
-  | Compare (op, a, b) ->
-    Compare (op, slang_map_string_with_vars ~f a, slang_map_string_with_vars ~f b)
-
-and slang_map_string_with_vars ~f = function
-  | Slang.Nil -> Slang.Nil
-  | Slang.Undefined -> Slang.Undefined
-  | Literal sw -> Literal (f sw)
-  | Form (loc, form) ->
-    let form =
-      match form with
-      | Slang.Concat ts -> Slang.Concat (List.map ts ~f:(slang_map_string_with_vars ~f))
-      | When (condition, t) ->
-        When (blang_map_string_with_vars condition ~f, slang_map_string_with_vars t ~f)
-      | If { condition; then_; else_ } ->
-        If
-          { condition = blang_map_string_with_vars condition ~f
-          ; then_ = slang_map_string_with_vars then_ ~f
-          ; else_ = slang_map_string_with_vars else_ ~f
-          }
-      | Has_undefined_var t -> Has_undefined_var (slang_map_string_with_vars t ~f)
-      | Catch_undefined_var { value; fallback } ->
-        Catch_undefined_var
-          { value = slang_map_string_with_vars value ~f
-          ; fallback = slang_map_string_with_vars fallback ~f
-          }
-      | And_absorb_undefined_var blangs ->
-        And_absorb_undefined_var (List.map blangs ~f:(blang_map_string_with_vars ~f))
-      | Or_absorb_undefined_var blangs ->
-        Or_absorb_undefined_var (List.map blangs ~f:(blang_map_string_with_vars ~f))
-      | Blang b -> Blang (blang_map_string_with_vars b ~f)
-    in
-    Form (loc, form)
-;;
-
 let rec map t ~string_with_vars ~slang ~blang =
+  let map_args xs =
+    List.map xs ~f:(fun t -> slang t |> Slang.map_string_with_vars ~f:string_with_vars)
+  in
   match t with
-  | Run xs ->
-    Run
-      (List.map
-         ~f:(fun slang_ -> slang slang_ |> slang_map_string_with_vars ~f:string_with_vars)
-         xs)
-  | Runexec xs ->
-    Runexec
-      (List.map
-         ~f:(fun slang_ -> slang slang_ |> slang_map_string_with_vars ~f:string_with_vars)
-         xs)
+  | Run xs -> Run (map_args xs)
+  | Runexec xs -> Runexec (map_args xs)
   | With_accepted_exit_codes (lang, t) ->
     With_accepted_exit_codes (lang, map t ~string_with_vars ~slang ~blang)
   | Dynamic_run (sw, sws) ->
@@ -604,7 +559,8 @@ let rec map t ~string_with_vars ~slang ~blang =
       , map t ~string_with_vars ~slang ~blang )
   | When (condition, t) ->
     When
-      ( blang condition |> blang_map_string_with_vars ~f:string_with_vars
+      ( blang condition
+        |> Blang.Ast.map_string ~f:(Slang.map_string_with_vars ~f:string_with_vars)
       , map t ~string_with_vars ~slang ~blang )
   | Format_dune_file (src, dst) ->
     Format_dune_file (string_with_vars src, string_with_vars dst)

@@ -23,8 +23,13 @@ interpreted relative to the current directory:
 
 - ``cmi:<path>`` expands to the compiled interface for the specified module.
 
-- ``cmj:<path>`` expands to the Melange compiled module for the specified
-  module.
+- ``melange.cmi:<path>`` expands to the Melange compiled interface for the
+  specified module, including when that module is also selected for OCaml.
+
+  .. versionadded:: 3.26
+
+- ``cmj:<path>`` and its alias ``melange.cmj:<path>`` expand to the Melange
+  compiled module for the specified module.
 
   .. versionadded:: 3.26
 
@@ -41,6 +46,11 @@ interpreted relative to the current directory:
 
   .. versionadded:: 3.21
 
+- ``melange.cmt:<path>`` and ``melange.cmti:<path>`` expand to the corresponding
+  Melange annotation files, including when the module is also selected for OCaml.
+
+  .. versionadded:: 3.26
+
 - ``melange.emit:<path>`` expands to the output directory of the
   :ref:`melange.emit stanza <melange-emit>` whose target directory is
   ``<path>``. See :ref:`melange-emit-artifact-variable` for examples.
@@ -52,8 +62,12 @@ Melange. If a module is selected for both compilation modes, these variables
 refer to its OCaml artifact. Otherwise, they refer to the artifact for the mode
 in which the module is selected.
 
+The ``cmt``, ``cmj``, ``melange.cmt``, and ``melange.cmj`` variables expand to an
+empty string for modules without an implementation. The ``cmti`` and
+``melange.cmti`` variables select the implementation's annotation file when the
+module has no explicit interface.
+
 For module artifacts, the basename of ``<path>`` should be the name of a module
 as specified in a ``(modules)`` or ``(melange.modules)`` field.
 
-In each case, the expansion of the variable is a path pointing inside the build
-context (i.e., ``_build/<context>``).
+Artifact paths point inside the build context (i.e., ``_build/<context>``).

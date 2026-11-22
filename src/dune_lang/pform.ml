@@ -223,9 +223,14 @@ end
 module Artifact = struct
   open Ocaml
 
+  type melange =
+    | Cm_kind of Melange.Cm_kind.t
+    | Cmt
+    | Cmti
+
   type mod_ =
     | Cm_kind of Ocaml.Cm_kind.t
-    | Melange of Melange.Cm_kind.t
+    | Melange of melange
     | Cmt
     | Cmti
 
@@ -233,7 +238,9 @@ module Artifact = struct
     let open Dyn in
     function
     | Cm_kind x -> Ocaml.Cm_kind.to_dyn x
-    | Melange x -> variant "Melange" [ Melange.Cm_kind.to_dyn x ]
+    | Melange (Cm_kind x) -> variant "Melange" [ Melange.Cm_kind.to_dyn x ]
+    | Melange Cmt -> variant "Melange" [ variant "Cmt" [] ]
+    | Melange Cmti -> variant "Melange" [ variant "Cmti" [] ]
     | Cmt -> variant "Cmt" []
     | Cmti -> variant "Cmti" []
   ;;
@@ -242,12 +249,23 @@ module Artifact = struct
     | Mod of mod_
     | Lib of Mode.t
 
+  let compare_melange (x : melange) (y : melange) =
+    match x, y with
+    | Cm_kind x, Cm_kind y -> Melange.Cm_kind.compare x y
+    | Cm_kind _, _ -> Lt
+    | _, Cm_kind _ -> Gt
+    | Cmt, Cmt -> Eq
+    | Cmt, _ -> Lt
+    | _, Cmt -> Gt
+    | Cmti, Cmti -> Eq
+  ;;
+
   let compare_mod x y =
     match x, y with
     | Cm_kind x, Cm_kind y -> Ocaml.Cm_kind.compare x y
     | Cm_kind _, _ -> Lt
     | _, Cm_kind _ -> Gt
-    | Melange x, Melange y -> Melange.Cm_kind.compare x y
+    | Melange x, Melange y -> compare_melange x y
     | Melange _, _ -> Lt
     | _, Melange _ -> Gt
     | Cmt, Cmt -> Eq
@@ -265,17 +283,27 @@ module Artifact = struct
   ;;
 
   let ext = function
-    | Mod Cmt -> Filename.Extension.cmt
-    | Mod Cmti -> Filename.Extension.cmti
+    | Mod (Cmt | Melange Cmt) -> Filename.Extension.cmt
+    | Mod (Cmti | Melange Cmti) -> Filename.Extension.cmti
     | Mod (Cm_kind cm_kind) -> Cm_kind.ext cm_kind
-    | Mod (Melange cm_kind) -> Melange.Cm_kind.ext cm_kind
+    | Mod (Melange (Cm_kind cm_kind)) -> Melange.Cm_kind.ext cm_kind
     | Lib mode -> Mode.compiled_lib_ext mode
+  ;;
+
+  let name = function
+    | Mod (Melange (Cm_kind Cmj)) -> "cmj"
+    | Mod (Melange _) as artifact ->
+      "melange." ^ (ext artifact |> Filename.Extension.drop_dot)
+    | artifact -> ext artifact |> Filename.Extension.drop_dot
   ;;
 
   let all =
     Mod Cmt
     :: Mod Cmti
-    :: Mod (Melange Cmj)
+    :: Mod (Melange (Cm_kind Cmi))
+    :: Mod (Melange (Cm_kind Cmj))
+    :: Mod (Melange Cmt)
+    :: Mod (Melange Cmti)
     :: (List.map ~f:(fun kind -> Mod (Cm_kind kind)) Cm_kind.all
         @ List.map ~f:(fun mode -> Lib mode) Mode.all)
   ;;
@@ -430,7 +458,7 @@ module Macro = struct
     | Pkg -> Ok "pkg"
     | Pkg_self -> Ok "pkg-self"
     | Ppx -> Ok "ppx"
-    | Artifact a -> Ok (Artifact.ext a |> Filename.Extension.drop_dot)
+    | Artifact a -> Ok (Artifact.name a)
   ;;
 end
 
@@ -667,7 +695,7 @@ module Env = struct
     let macros =
       let macro (x : Macro.t) = No_info x in
       let artifact x =
-        let name = Artifact.ext x |> Filename.Extension.drop_dot in
+        let name = Artifact.name x in
         let version =
           match x with
           | Mod Cmt | Mod Cmti -> 3, 21
@@ -703,6 +731,8 @@ module Env = struct
          ; "ocaml-config", macro Ocaml_config
          ; "env", since ~version:(1, 4) Macro.Env
          ; "melange.emit", since ~version:(3, 25) Macro.Melange_emit
+         ; ( "melange.cmj"
+           , since ~version:(3, 26) (Macro.Artifact (Mod (Melange (Cm_kind Cmj)))) )
          ; "ppx", since ~version:(3, 21) Macro.Ppx
          ; "pkg", since ~version:(3, 24) Macro.Pkg
          ; "rocq", macro Rocq_config

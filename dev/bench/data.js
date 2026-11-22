@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795369228667,
+  "lastUpdate": 1795375172817,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -689822,6 +689822,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8040743931666667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9432383900bbb7604cd98471580fa5a5cf550836",
+          "message": "chore: disable changlog entry check for rgrinberg (#17178)\n\nThis is constantly red and making it difficult to see the CI. I am\ndisabling the action in this specific case.",
+          "timestamp": "2026-11-22T20:04:06+01:00",
+          "tree_id": "40b058365363e301f691c7df3ee7b5bcdbc99c86",
+          "url": "https://github.com/ocaml/dune/commit/9432383900bbb7604cd98471580fa5a5cf550836"
+        },
+        "date": 1795374667728,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.4915935886933336,
             "unit": "seconds"
           }
         ]

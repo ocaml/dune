@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795305670990,
+  "lastUpdate": 1795305956314,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -492911,6 +492911,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.47278066650666667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bd5878e26c9428dddad3adaa2d73e24b27ab4ea9",
+          "message": "build: update Nix flakes (#17148)\n\nUpdate the Nix flake inputs.\n\n01a20051-a4d9-7873-96ce-69291ddf2214\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-21T15:49:20-08:00",
+          "tree_id": "d2f89f949046ffdde33f445a8bc2ec220a09a58b",
+          "url": "https://github.com/ocaml/dune/commit/bd5878e26c9428dddad3adaa2d73e24b27ab4ea9"
+        },
+        "date": 1795305954124,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 54.51786785929334,
             "unit": "seconds"
           }
         ]

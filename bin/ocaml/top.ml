@@ -42,21 +42,25 @@ let files_to_load_of_requires sctx requires =
     Filename.Extension.Or_empty.(check ext compiled_lib_ext || check ext cmo_ext))
 ;;
 
+let context_arg =
+  Common.context_arg ~doc:(Some {|Select context where to build/run top.|})
+;;
+
+let find_sctx name =
+  Memo.map (Util.setup ()) ~f:(fun setup ->
+    Dune_engine.Context_name.Map.find setup.scontexts name |> Option.value_exn)
+;;
+
 let term =
   let+ builder = Common.Builder.term
   (* CR-someday Alizter: document this option *)
   and+ dir = Arg.(value & pos 0 string "" & Arg.info [] ~docv:"DIR" ~doc:None)
-  and+ ctx_name =
-    Common.context_arg ~doc:(Some {|Select context where to build/run top.|})
-  in
+  and+ ctx_name = context_arg in
   let common, config = Common.init builder in
   Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
     Build_system.run_exn (fun () ->
       let open Memo.O in
-      let* setup = Util.setup () in
-      let sctx =
-        Dune_engine.Context_name.Map.find setup.scontexts ctx_name |> Option.value_exn
-      in
+      let* sctx = find_sctx ctx_name in
       let context = Super_context.context sctx in
       let* libs =
         let dir =
@@ -221,17 +225,12 @@ module Module = struct
         required
         & pos 0 (some string) None
         & Arg.info [] ~docv:"MODULE" ~doc:(Some "Path to an OCaml module."))
-    and+ ctx_name =
-      Common.context_arg ~doc:(Some {|Select context where to build/run top.|})
-    in
+    and+ ctx_name = context_arg in
     let common, config = Common.init builder in
     Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
       Build_system.run_exn (fun () ->
         let open Memo.O in
-        let* setup = Util.setup () in
-        let sctx =
-          Dune_engine.Context_name.Map.find setup.scontexts ctx_name |> Option.value_exn
-        in
+        let* sctx = find_sctx ctx_name in
         let+ directives =
           module_directives sctx (Common.source_path common module_path)
         in

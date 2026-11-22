@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795367129396,
+  "lastUpdate": 1795367136440,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -494680,6 +494680,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.485810519846666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7503f05912e1429ddde683d47b5a2f1c55114871",
+          "message": "test: reproduce directory-target digest, glob, and promotion bugs (#17175)\n\nAdd cram reproductions for five directory-target bugs: ambiguous\ndirectory-dependency digests, missing empty subdirectories on\nworkspace-local cache hits, recursive globs skipping generated\ndescendants, an internal error when globbing through a regular file, and\npromotion flattening directories when using `(into ...)`.\n\nThe tests document current behavior so each fix can update its own\nexpectation independently. This PR does not change production code.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-23T00:46:11+08:00",
+          "tree_id": "9aa548aebe1a77cad328d9633f29f18b2c7f51a1",
+          "url": "https://github.com/ocaml/dune/commit/7503f05912e1429ddde683d47b5a2f1c55114871"
+        },
+        "date": 1795367135600,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5453643321,
             "unit": "seconds"
           }
         ]

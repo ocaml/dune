@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795354340300,
+  "lastUpdate": 1795355459354,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -688778,6 +688778,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8985321596999998,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4c4ba69db38ce1b0246400b9c7dfa875e1bbf80d",
+          "message": "test(pkg): reproduce a missing compiler dependency pin in dev-tool locks (#17163)\n\nThe project can lock a compiler whose `compiler-support` dependency\nexists only as a project pin. Relocking OCaml-LSP finds the pinned\ncompiler but fails to resolve that dependency.\n\nRefs #16292.",
+          "timestamp": "2026-11-22T14:39:19+01:00",
+          "tree_id": "0dcb59b0bc82815cb092f94a8b2a20edd454307e",
+          "url": "https://github.com/ocaml/dune/commit/4c4ba69db38ce1b0246400b9c7dfa875e1bbf80d"
+        },
+        "date": 1795355208496,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.8566243240733336,
             "unit": "seconds"
           }
         ]

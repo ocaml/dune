@@ -71,34 +71,32 @@ let unsatisfied_dependencies_error
           ~f:Resolve_opam_formula.Unsatisfied_formula_hint.pp)
 ;;
 
-let concrete_dependencies_of_local_package t local_package_name ~with_test =
-  let local_package = Package_name.Map.find_exn t.local_packages local_package_name in
+let local_dependencies t name ~with_test ~include_depopts =
+  let local_package = Package_name.Map.find_exn t.local_packages name in
+  let resolve =
+    if include_depopts
+    then Lock_pkg.local_package_dependencies_with_depopts
+    else Lock_pkg.local_package_dependencies
+  in
   match
-    Lock_pkg.local_package_dependencies
+    resolve
       (Local_package.for_solver local_package)
       ~env:(lock_dir_filter_env t)
       ~with_test
       ~packages:t.version_by_package_name
       ~dune_version:(Package_version.of_opam_package_version Dune_dep.version)
   with
-  | Ok regular -> regular
+  | Ok depends -> depends
   | Error (`Formula_could_not_be_satisfied hints) ->
     unsatisfied_dependencies_error local_package ~with_test hints
 ;;
 
-let selected_dependencies_of_local_package t local_package_name ~with_test =
-  let local_package = Package_name.Map.find_exn t.local_packages local_package_name in
-  match
-    Lock_pkg.local_package_dependencies_with_depopts
-      (Local_package.for_solver local_package)
-      ~env:(lock_dir_filter_env t)
-      ~with_test
-      ~packages:t.version_by_package_name
-      ~dune_version:(Package_version.of_opam_package_version Dune_dep.version)
-  with
-  | Ok selected -> selected
-  | Error (`Formula_could_not_be_satisfied hints) ->
-    unsatisfied_dependencies_error local_package ~with_test hints
+let concrete_dependencies_of_local_package t name ~with_test =
+  local_dependencies t name ~with_test ~include_depopts:false
+;;
+
+let selected_dependencies_of_local_package t name ~with_test =
+  local_dependencies t name ~with_test ~include_depopts:true
 ;;
 
 let all_non_local_dependencies_of_local_packages t =

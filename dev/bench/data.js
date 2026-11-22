@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795359004405,
+  "lastUpdate": 1795359883023,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -689213,6 +689213,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.2612636422666665,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "939cd59afa2f39efbade5617e31d3dcb658185fa",
+          "message": "refactor(fiber): share pool runner resumption (#17167)\n\nUse the same state transition to resume the pool runner after submitting\na task or closing the pool. The existing checks for a closed pool stay\nin place.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T22:52:25+08:00",
+          "tree_id": "5acbb8bdf1df6ec7a2d75b73c2f0271da9731c24",
+          "url": "https://github.com/ocaml/dune/commit/939cd59afa2f39efbade5617e31d3dcb658185fa"
+        },
+        "date": 1795359545340,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.3267686492066666,
             "unit": "seconds"
           }
         ]

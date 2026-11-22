@@ -25,25 +25,24 @@ type nonrec t =
   ; mutable status : status
   }
 
-let run_running t k =
-  match t.status with
-  | Open -> continue k true
-  | Closed -> continue k false
-;;
-
+let run_running t k = continue k (t.status = Open)
 let running t = primitive run_running t
 let create () = { tasks = Queue.create (); runner = Awaiting_run; status = Open }
+
+let resume_runner t k =
+  match t.runner with
+  | Running | Awaiting_run -> continue k ()
+  | Awaiting_resume r ->
+    t.runner <- Running;
+    Resume (r, (), k)
+;;
 
 let run_task t f k =
   match t.status with
   | Closed -> Code_error.raise "pool is closed. new tasks may not be submitted" []
   | Open ->
     Queue.push t.tasks f;
-    (match t.runner with
-     | Running | Awaiting_run -> continue k ()
-     | Awaiting_resume r ->
-       t.runner <- Running;
-       Resume (r, (), k))
+    resume_runner t k
 ;;
 
 let task t ~f = primitive2 run_task t f
@@ -53,11 +52,7 @@ let run_close t k =
   | Closed -> continue k ()
   | Open ->
     t.status <- Closed;
-    (match t.runner with
-     | Running | Awaiting_run -> continue k ()
-     | Awaiting_resume r ->
-       t.runner <- Running;
-       Resume (r, (), k))
+    resume_runner t k
 ;;
 
 let close t = primitive run_close t

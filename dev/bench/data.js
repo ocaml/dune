@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795355864470,
+  "lastUpdate": 1795355872039,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -494158,6 +494158,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.898861999093334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e021cae8b84faccc47ae909682836b843ed95b6e",
+          "message": "refactor(engine): share the action extension signature (#17166)\n\nDeclare the common action extension fields once and use that signature\nfor the extension functor. The full action specification still adds the\ndynamic flag.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T21:37:39+08:00",
+          "tree_id": "e92e2ee9721d8fc0cfc4612829d950d58d134885",
+          "url": "https://github.com/ocaml/dune/commit/e021cae8b84faccc47ae909682836b843ed95b6e"
+        },
+        "date": 1795355870839,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5131684545866667,
             "unit": "seconds"
           }
         ]

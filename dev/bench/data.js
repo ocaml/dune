@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795360195568,
+  "lastUpdate": 1795360283411,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -494419,6 +494419,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5244212492733334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "80a55192a71e7e474035f0f081e7fb7d1d4c20ee",
+          "message": "refactor(rpc): update only converted diagnostic fields (#17170)\n\nUse record updates when converting V1 diagnostics, replacing only the\nmessage and related diagnostics. The remaining fields and wire encoding\nare unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T22:52:02+08:00",
+          "tree_id": "00d042fc8376ea4c29ee81074644a2ca1f55d788",
+          "url": "https://github.com/ocaml/dune/commit/80a55192a71e7e474035f0f081e7fb7d1d4c20ee"
+        },
+        "date": 1795360280882,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 61.776014606526665,
             "unit": "seconds"
           }
         ]

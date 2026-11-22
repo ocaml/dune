@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795353822506,
+  "lastUpdate": 1795353947574,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -493897,6 +493897,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5107903602466668,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c4c11fe7bff3f959d2d3fb8f22bd38bf54a249d0",
+          "message": "refactor(rules): share environment merging for included dependencies (#17154)\n\nUse one path-aware environment merge for named and unnamed included\ndependencies. Keep the existing merge order in both cases.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T21:06:18+08:00",
+          "tree_id": "c7d66e755c6c790b2f64ee0c93513bdf5ca505b7",
+          "url": "https://github.com/ocaml/dune/commit/c4c11fe7bff3f959d2d3fb8f22bd38bf54a249d0"
+        },
+        "date": 1795353945014,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 63.13060936784666,
             "unit": "seconds"
           }
         ]

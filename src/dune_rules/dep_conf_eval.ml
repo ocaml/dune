@@ -167,6 +167,13 @@ let make_bin_env expander bin_names =
        Install.Roots.cons_path Env.empty ~var:Env_path.var layout_dir)
 ;;
 
+let merge_include_envs outer include_envs =
+  List.fold_left include_envs ~init:outer ~f:(fun acc env ->
+    let+ acc = acc
+    and+ env = env in
+    Install.Roots.extend_env_concat_path_vars acc env)
+;;
+
 let package_dep_swvs (dep : Dep_conf.t) =
   match dep with
   | Package p -> [ p, String_with_vars.loc p ]
@@ -578,11 +585,7 @@ and named_paths_builder ~expander l =
       and+ bin_env = bin_env in
       Env_path.extend_env_concat_path package_env bin_env
     in
-    List.fold_left include_envs ~init:outer ~f:(fun acc env ->
-      let open Action_builder.O in
-      let+ acc = acc
-      and+ env = env in
-      Install.Roots.extend_env_concat_path_vars acc env)
+    merge_include_envs outer include_envs
   in
   let builder = List.rev builders |> Action_builder.all >>| List.concat in
   builder, bindings, action_env
@@ -641,14 +644,8 @@ let unnamed sandbox ~expander l =
       | Some e -> e :: envs
       | None -> envs)
   in
-  let bin_env =
-    let outer = make_bin_env expander bin_names in
-    List.fold_left include_envs ~init:outer ~f:(fun acc env ->
-      let open Action_builder.O in
-      let+ acc = acc
-      and+ env = env in
-      Install.Roots.extend_env_concat_path_vars acc env)
-  in
+  let bin_env = make_bin_env expander bin_names in
+  let bin_env = merge_include_envs bin_env include_envs in
   let action_env =
     Action_builder.memoize
       "deps action_env"

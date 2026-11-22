@@ -112,9 +112,9 @@ order to declare a multi-directory library, you need to use the
    The default is ``no_preprocessing``. The syntax is described in
    :ref:`lint-field`.
 
-.. describe:: (preprocessor_deps (<deps-conf list>))
+.. describe:: (preprocessor_deps <deps-conf list>)
 
-   Specifies extra preprocessor dependencies preprocessor, i.e., if the
+   Specifies extra preprocessor dependencies, e.g., if the
    preprocessor reads a generated file.
 
    The specification of dependencies is described in
@@ -186,7 +186,8 @@ order to declare a multi-directory library, you need to use the
 
    Specifies the modules used when compiling the Melange variant of the
    library. This field has the same syntax as ``modules``. If omitted, Melange
-   compilation uses ``modules``.
+   compilation uses ``modules``. In either case, ``:standard`` selects the
+   modules available for Melange, including Melange-only sources.
 
 .. describe:: (melange.libraries <library-dependencies>)
 
@@ -194,29 +195,38 @@ order to declare a multi-directory library, you need to use the
 
    Specifies the dependencies used when compiling the Melange variant of the
    library. If omitted, Melange compilation uses ``libraries``. This field may
-   only be used by libraries that include ``melange`` in ``modes``.
+   only be used by libraries that include ``melange`` in ``modes``. It replaces
+   ``libraries`` and has the same syntax, including ``select`` and
+   ``re_export`` forms. An empty field removes the ordinary library
+   dependencies; PPX runtime dependencies are still added separately.
 
 .. describe:: (melange.preprocess <preprocess-spec>)
 
    .. versionadded:: 3.24
 
    Specifies preprocessing for Melange compilation. If omitted, Melange
-   compilation uses ``preprocess``. This field has the same syntax as
-   ``preprocess``.
+   compilation uses both ``preprocess`` and ``preprocessor_deps``. This field
+   has the same syntax as ``preprocess``; ``no_preprocessing`` disables
+   inherited preprocessing.
 
-.. describe:: (melange.preprocessor_deps (<deps-conf list>))
-
-   .. versionadded:: 3.24
-
-   Specifies extra dependencies for ``melange.preprocess``. The dependency
-   specification is described in :doc:`/concepts/dependency-spec`.
-
-.. describe:: (melange.ppx_runtime_libraries (<library-names>))
+.. describe:: (melange.preprocessor_deps <deps-conf list>)
 
    .. versionadded:: 3.24
 
-   Specifies PPX runtime dependencies for Melange compilation. If omitted,
-   Melange compilation uses ``ppx_runtime_libraries``.
+   Specifies extra dependencies for an explicit ``melange.preprocess`` field,
+   defaulting to an empty list. It does not inherit ``preprocessor_deps``.
+   Without ``melange.preprocess``, this field is ignored and the ordinary
+   preprocessing configuration is used instead. The dependency specification
+   is described in :doc:`/concepts/dependency-spec`.
+
+.. describe:: (melange.ppx_runtime_libraries <library-names>)
+
+   .. versionadded:: 3.24
+
+   Specifies runtime dependencies added to Melange code preprocessed by this
+   PPX rewriter. If omitted, its Melange consumers use
+   ``ppx_runtime_libraries``. The rewriter itself is built with OCaml and does
+   not need ``melange`` in its ``modes``.
 
 .. describe:: (melange.flags <flags>)
 
@@ -271,7 +281,7 @@ order to declare a multi-directory library, you need to use the
    libraries that share cookies with the same name should agree on their
    expanded value).
 
-.. describe:: (ppx_runtime_libraries (<library-names>))
+.. describe:: (ppx_runtime_libraries <library-names>)
 
    This field is for when the library is a ``ppx rewriter`` or a ``[@@deriving
    ...]`` plugin, and has runtime dependencies.

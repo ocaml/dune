@@ -12,6 +12,7 @@ concurrency:
 jobs:
   check-changelog:
     name: Entry Check
+    if: ${{ github.event.pull_request.user.login != 'rgrinberg' }}
     runs-on: ubuntu-slim
     steps:
       - name: Check for a changelog entry

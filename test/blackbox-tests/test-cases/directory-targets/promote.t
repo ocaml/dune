@@ -81,14 +81,11 @@ promoted directory target.
   $ cat _build/default/dir/subdir/d
   d
 
-CR: Promotion relocates every file by basename, so the contents end up next
-to the directory target rather than inside it.
-
   $ find another_dir -type f | sort
   another_dir/a
-  another_dir/b
-  another_dir/c
-  another_dir/d
+  another_dir/dir/b
+  another_dir/dir/c
+  another_dir/dir/subdir/d
 
 Test cleaning up unexpected files and directories in directory targets.
 

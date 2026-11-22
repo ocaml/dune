@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795337059422,
+  "lastUpdate": 1795337576838,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -688082,6 +688082,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.3718138859866666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "53e8425283cd7256a95bfda9bb179f10ca191cd1",
+          "message": "refactor(engine): construct default execution parameters directly (#17155)\n\nConstruct the default execution parameters as a record instead of\nforwarding every field through a private constructor with one caller.\nAll defaults stay the same.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T16:38:52+08:00",
+          "tree_id": "59c030a83ff3b88c2c0964b66013dbbe1c5d51c3",
+          "url": "https://github.com/ocaml/dune/commit/53e8425283cd7256a95bfda9bb179f10ca191cd1"
+        },
+        "date": 1795337160491,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7746980251066664,
             "unit": "seconds"
           }
         ]

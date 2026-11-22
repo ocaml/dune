@@ -4,13 +4,10 @@ open Stdune
 
 (** Add a single runtime-parameter override unless [OCAMLRUNPARAM] is set in the
     inherited environment or the action overrides, including empty values. The
-    inherited environment is not copied into the result.
-
-    [minor_heap_size] is in words. [small_heap_limit] is in GC-work units, not
-    bytes. *)
+    inherited environment is not copied into the result. [word_size] is in bits. *)
 val add_defaults
-  :  minor_heap_size:int
-  -> small_heap_limit:int option
+  :  word_size:int
+  -> use_small_heap_limit:bool
   -> inherited:Env.t
   -> overrides:Env.t
   -> Env.t

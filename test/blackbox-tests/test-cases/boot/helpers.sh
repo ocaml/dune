@@ -5,6 +5,8 @@ function init_bootstrap() {
   cp ../../../../boot/duneboot.ml boot/duneboot.ml
   cp ../../../../boot/pps.mll boot/pps.mll
   cp ../../../../boot/pps.mli boot/pps.mli
+  mkdir -p src/ocaml
+  cp ../../../../src/ocaml/compiler_gc.ml src/ocaml/compiler_gc.ml
 
   cat > dune-project <<EOF
 (lang dune 3.21)

@@ -27,7 +27,7 @@ let keep_generated_files =
 
 let pps = "boot/pps"
 let main = "boot/duneboot"
-let modules = pps :: [ "boot/types"; "boot/libs" ]
+let modules = pps :: [ "boot/types"; "boot/libs"; "src/ocaml/compiler_gc" ]
 let duneboot = ".duneboot"
 
 let () =

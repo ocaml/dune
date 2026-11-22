@@ -1,13 +1,7 @@
 An implementation of an installed Melange-only virtual library should use the
 available Melange module metadata.
 
-  $ mkdir -p producer/vlib consumer/impl
-
-  $ cat > producer/dune-project <<'EOF'
-  > (lang dune 3.24)
-  > (using melange 1.0)
-  > (package (name repro))
-  > EOF
+  $ setup_installed_vlib_projects
   $ cat > producer/vlib/dune <<'EOF'
   > (library
   >  (name vlib)
@@ -22,18 +16,6 @@ available Melange module metadata.
   $ dune build --root producer @install
   $ dune install --root producer --prefix "$PWD/prefix"
 
-  $ cat > consumer/dune-project <<'EOF'
-  > (lang dune 3.24)
-  > (using melange 1.0)
-  > (package (name consumer))
-  > EOF
-  $ cat > consumer/impl/dune <<'EOF'
-  > (library
-  >  (name impl)
-  >  (public_name consumer.impl)
-  >  (modes melange)
-  >  (implements repro.vlib))
-  > EOF
   $ cat > consumer/impl/virt.ml <<'EOF'
   > let run () = 42
   > EOF

@@ -1,0 +1,4 @@
+(cram
+ (applies_to utop-absolute.t)
+ (deps
+  (package utop)))

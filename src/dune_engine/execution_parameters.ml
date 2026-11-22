@@ -112,29 +112,6 @@ let digest
   Digest.Manual.get d
 ;;
 
-let make
-      ~action_stdout_on_success
-      ~action_stderr_on_success
-      ~action_stdout_limit
-      ~action_stderr_limit
-      ~expand_aliases_in_sandbox
-      ~workspace_root_to_build_path_prefix_map
-      ~action_project_root
-      ~sandbox_actions
-      ~use_sandbox_policy
-  =
-  { action_stdout_on_success
-  ; action_stderr_on_success
-  ; action_stdout_limit
-  ; action_stderr_limit
-  ; expand_aliases_in_sandbox
-  ; workspace_root_to_build_path_prefix_map
-  ; action_project_root
-  ; sandbox_actions
-  ; use_sandbox_policy
-  }
-;;
-
 let repr =
   Repr.record
     "execution-parameters"
@@ -162,17 +139,16 @@ let repr =
 ;;
 
 let builtin_default =
-  make
-    ~action_stdout_on_success:Print
-    ~action_stderr_on_success:Print
-    ~action_stdout_limit:Action_output_limit.default
-    ~action_stderr_limit:Action_output_limit.default
-    ~expand_aliases_in_sandbox:true
-    ~workspace_root_to_build_path_prefix_map:
-      (Workspace_root_for_build_prefix_map.Set "/workspace_root")
-    ~action_project_root:None
-    ~sandbox_actions:false
-    ~use_sandbox_policy:false
+  { action_stdout_on_success = Print
+  ; action_stderr_on_success = Print
+  ; action_stdout_limit = Action_output_limit.default
+  ; action_stderr_limit = Action_output_limit.default
+  ; expand_aliases_in_sandbox = true
+  ; workspace_root_to_build_path_prefix_map = Set "/workspace_root"
+  ; action_project_root = None
+  ; sandbox_actions = false
+  ; use_sandbox_policy = false
+  }
 ;;
 
 let set_action_stdout_on_success x t = { t with action_stdout_on_success = x }

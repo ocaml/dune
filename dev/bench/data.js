@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795321629889,
+  "lastUpdate": 1795321931620,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -687734,6 +687734,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.63039876834,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "83c6e2105df0fe08956ab69ce8f44ee8388d2173",
+          "message": "refactor(rules): share parser-generator stanza dispatch (#17149)\n\nUse the same `enabled_if` check to dispatch `ocamllex` and `ocamlyacc`\nrules. Disabled stanzas still generate no rules, and Menhir dispatch is\nunchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T12:17:52+08:00",
+          "tree_id": "c615e456ad33e72cbb6aae3a6dfdbcbcfd3cda7c",
+          "url": "https://github.com/ocaml/dune/commit/83c6e2105df0fe08956ab69ce8f44ee8388d2173"
+        },
+        "date": 1795321512331,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.234056924506667,
             "unit": "seconds"
           }
         ]

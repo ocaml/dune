@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795353489132,
+  "lastUpdate": 1795353542418,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -493723,6 +493723,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5144943929,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7c549840ec5f144a1da6f11579c83322b018f729",
+          "message": "test(trace): share the read-only pipe fixture (#17159)\n\nReuse the read-only pipe setup in the trace writer tests for write,\nflush, close, and descriptor cleanup failures. The assertions and\nexpected errors are unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T20:59:46+08:00",
+          "tree_id": "b47d520145a6a9f0f4569f53f47bdd23d143c3b2",
+          "url": "https://github.com/ocaml/dune/commit/7c549840ec5f144a1da6f11579c83322b018f729"
+        },
+        "date": 1795353539513,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.192914845093334,
             "unit": "seconds"
           }
         ]

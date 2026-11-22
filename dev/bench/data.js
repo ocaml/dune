@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795353457311,
+  "lastUpdate": 1795353466586,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -493694,6 +493694,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.7757377644,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b68c60d1c52a6372624238ac181b90ceca96864c",
+          "message": "refactor(rpc): share method lookup error construction (#17161)\n\nBuild the method-name payload in one place for both RPC lookup failures.\nAn invalid method and a method with no common version still report\ndistinct errors.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T20:58:08+08:00",
+          "tree_id": "919b7e2335c02ed7021af1e0ad38cc9782352cef",
+          "url": "https://github.com/ocaml/dune/commit/b68c60d1c52a6372624238ac181b90ceca96864c"
+        },
+        "date": 1795353464596,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5144943929,
             "unit": "seconds"
           }
         ]

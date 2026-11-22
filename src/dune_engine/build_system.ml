@@ -396,7 +396,12 @@ and build_directory_targets path =
   match kind with
   | Dir_target { targets } -> targets
   | File_target ->
-    Code_error.raise "build_dir called on a file target" [ "path", Path.to_dyn path ]
+    User_error.raise
+      ~needs_stack_trace:true
+      [ Pp.textf
+          "%S is not a directory."
+          (Path.to_string (Path.drop_optional_build_context path))
+      ]
 
 and eval_pred file_selector = Memo.exec (Lazy.force eval_pred_memo) file_selector
 and execute_rule rule = Memo.exec (Lazy.force execute_rule_memo) rule

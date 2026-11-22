@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795316136993,
+  "lastUpdate": 1795316145252,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -687241,6 +687241,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.233388165126667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "88c10df8cd681b9976914ca4d287f4d4b68e98c7",
+          "message": "perf(boot): reuse the OCaml compiler GC defaults (#17142)\n\nBootstrap now shares the compiler GC defaults used by regular Dune\nbuilds. It sets `s=2M` and adds `Xsmall_heap_limit` on OCaml 5.5 or\nnewer (`16777216` on 64-bit, `33554432` on 32-bit). Bootstrap leaves\nexplicit `OCAMLRUNPARAM` or `CAMLRUNPARAM` values untouched.\n\nOn aarch64 Linux with OCaml 5.5.2, median clean bootstrap time (`-j 4`,\nthree runs per variant) fell from 61.93 s to 54.32 s, a 12.3% reduction.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T10:41:53+08:00",
+          "tree_id": "72d305b690d6a0214629f0384a97afd3e06bbf54",
+          "url": "https://github.com/ocaml/dune/commit/88c10df8cd681b9976914ca4d287f4d4b68e98c7"
+        },
+        "date": 1795315728580,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7325551346533334,
             "unit": "seconds"
           }
         ]

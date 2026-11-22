@@ -558,6 +558,22 @@ module Produced = struct
     { root; contents }
   ;;
 
+  let digest_dir_contents contents =
+    let d = Digest.Manual.create () in
+    let rec loop { files; subdirs } =
+      Digest.Manual.int d (Filename.Array.Set.length (Filename.Array.Map.keys files));
+      Filename.Array.Map.iteri files ~f:(fun name digest ->
+        Digest.Manual.string d (Filename.to_string name);
+        Digest.Manual.digest d digest);
+      Digest.Manual.int d (Filename.Array.Set.length (Filename.Array.Map.keys subdirs));
+      Filename.Array.Map.iteri subdirs ~f:(fun name contents ->
+        Digest.Manual.string d (Filename.to_string name);
+        loop contents)
+    in
+    loop contents;
+    Digest.Manual.get d
+  ;;
+
   let digest { contents; root = _ } =
     let d = Digest.Manual.create () in
     let rec loop { files; subdirs } =

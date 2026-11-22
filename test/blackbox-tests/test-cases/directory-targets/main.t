@@ -432,9 +432,9 @@ even if its file contents stay the same.
   abc
   payload
 
-CR: The dependency digest concatenates directory names without boundaries, so
-"abc" and "a" followed by "bc" produce the same digest. The producer rebuilt,
-but the consumer still reports the old listing.
+Replacing `abc` with `a` and `bc` must change the dependency digest. The
+consumer should report the new listing even though the names concatenate to
+the same string.
 
   $ dune_cmd wait-for-fs-clock-to-advance
   $ echo 'a bc' > layout
@@ -444,7 +444,8 @@ but the consumer still reports the old listing.
   bc
   payload
   $ cat _build/default/listing
-  abc
+  a
+  bc
   payload
 
 Directory target whose name conflicts with an internal directory used by Dune.

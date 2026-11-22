@@ -264,7 +264,7 @@ let digest_env_subset d deps env =
 
 (* The current version of the rule digest scheme. We should increment it when
    making any changes to the scheme, to avoid collisions. *)
-let rule_digest_version = 37
+let rule_digest_version = 38
 
 let compute_rule_digest ~targets ~facts ~action ~sandbox_mode ~execution_parameters =
   let { Action.Full.action; props } = action in
@@ -853,17 +853,6 @@ and execute_anonymous_action { Rule.Anonymous_action.action; dir; loc } ~capture
 (* A rule can have multiple targets but calls to [execute_rule] are memoized,
    so the rule will be executed only once. *)
 and build_file_impl path =
-  let directory_digest contents =
-    Digest.Feed.compute_digest
-      (fun hasher contents ->
-         Targets.Produced.iteri_dir_contents
-           contents
-           ~d:(fun d -> Digest.Feed.string hasher (Path.Local.to_string d))
-           ~f:(fun path digest ->
-             Digest.Feed.digest hasher digest;
-             Digest.Feed.string hasher (Path.Local.to_string path)))
-      contents
-  in
   Load_rules.get_rule_or_source path
   >>= function
   | Source digest -> Memo.return (digest, File_target)
@@ -877,7 +866,7 @@ and build_file_impl path =
     (match Targets.Produced.find_any targets path with
      | Some (Left digest) -> Memo.return (digest, File_target)
      | Some (Right contents) ->
-       let digest = directory_digest contents in
+       let digest = Targets.Produced.digest_dir_contents contents in
        Memo.return (digest, Dir_target { targets })
      | None ->
        (* CR-someday amokhov: The most important reason we end up here is

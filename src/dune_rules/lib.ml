@@ -957,6 +957,18 @@ let check_private_deps lib ~loc ~(private_deps : private_deps) =
      | _ -> Ok lib)
 ;;
 
+module Closure_state = struct
+  module M =
+    State.Make
+      (struct
+        type t = lib list * Set.t
+      end)
+      (Resolve.Memo)
+
+  module List = Monad.List (M)
+  include M
+end
+
 module Vlib : sig
   (** Make sure that for every virtual library in the list there is at most one
       corresponding implementation.
@@ -1072,18 +1084,7 @@ end = struct
   end
 
   let second_step_closure =
-    let module R = struct
-      module M =
-        State.Make
-          (struct
-            type t = lib list * Set.t
-          end)
-          (Resolve.Memo)
-
-      module List = Monad.List (M)
-      include M
-    end
-    in
+    let module R = Closure_state in
     let open R.O in
     fun ts impls ~for_ ->
       let rec loop t =
@@ -1819,18 +1820,7 @@ end = struct
       | Some r -> Resolve.map r ~f:Option.some)
 
   and re_exports_closure ts ~for_ =
-    let module R = struct
-      module M =
-        State.Make
-          (struct
-            type t = lib list * Set.t
-          end)
-          (Resolve.Memo)
-
-      module List = Monad.List (M)
-      include M
-    end
-    in
+    let module R = Closure_state in
     let open R.O in
     let rec one (t : lib) =
       let* res, visited = R.get in

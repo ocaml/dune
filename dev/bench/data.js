@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795337052982,
+  "lastUpdate": 1795337059422,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -493578,6 +493578,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 38.81922086172,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "068fc037892c101627458fed7568f42b5d86dfe6",
+          "message": "test(boot): preserve installed paths for relocatable OCaml (#17156)\n\nThe bootstrap GC cram test symlinks the OCaml toplevel into its\ntemporary tools directory. A toplevel built with\n`--with-relative-libdir` looks for the standard library relative to that\npath and fails with `Unbound module Stdlib` before the GC checks run, as\nseen in [the OCaml 5.5 CI job for\n#17149](https://github.com/ocaml/dune/actions/runs/44978457065/job/137075755744?pr=17149).\n\nForward every tool call to the installed executable and only record GC\nsettings for the compiler tools under test. The existing GC assertions\nare unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T16:29:50+08:00",
+          "tree_id": "2c0afb4d19ba421141eed4325f147b7d38d167bb",
+          "url": "https://github.com/ocaml/dune/commit/068fc037892c101627458fed7568f42b5d86dfe6"
+        },
+        "date": 1795337058588,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.3758337579266667,
             "unit": "seconds"
           }
         ]

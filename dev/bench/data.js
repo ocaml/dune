@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795355872039,
+  "lastUpdate": 1795358587213,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -688952,6 +688952,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.884003721693334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fe01af6299bdb543ef4b4dd541b9230a6c162143",
+          "message": "test(pkg): distinguish compiler sharing between the project and dev tools (#17173)\n\nMerlin and OCaml-LSP share a compiler target with each other, but not\nwith the project. Check the rule dependencies as well as the build\ncounts, and distinguish the helper shared by both tools from a package\nused only by the project.\n\nRefs #16292.",
+          "timestamp": "2026-11-22T15:33:09+01:00",
+          "tree_id": "8936cbe73efaed7ecbf9b6d2111447127c1bba22",
+          "url": "https://github.com/ocaml/dune/commit/fe01af6299bdb543ef4b4dd541b9230a6c162143"
+        },
+        "date": 1795358336944,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.8590571057,
             "unit": "seconds"
           }
         ]

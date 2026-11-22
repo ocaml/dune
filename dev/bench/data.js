@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795316145252,
+  "lastUpdate": 1795316153637,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -687270,6 +687270,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.7325551346533334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2e5ef1e93e4dda6b63b5c5b982695eadb94bb82b",
+          "message": "refactor(stdune): share local path setup across roots (#17144)\n\nUse one functor to specialize prefixes, comparators, and collections for\nlocal, source, and build paths. Each root keeps its own witness type and\nconversions.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T10:39:39+08:00",
+          "tree_id": "38569cec0ac3aa8fbfd7524dfa5c6acaec9be0d0",
+          "url": "https://github.com/ocaml/dune/commit/2e5ef1e93e4dda6b63b5c5b982695eadb94bb82b"
+        },
+        "date": 1795315644419,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.71897080992,
             "unit": "seconds"
           }
         ]

@@ -284,9 +284,10 @@ end
 
 let package_ocamlpath_flags package_ocamlpath =
   Command.Args.Dyn
-    (Action_builder.map package_ocamlpath ~f:(function
-       | None -> Command.Args.empty
-       | Some path -> Command.Args.S [ A "-I"; Path (Path.build path) ]))
+    (Action_builder.map package_ocamlpath ~f:(fun paths ->
+       Command.Args.S
+         (List.concat_map paths ~f:(fun path ->
+            [ Command.Args.A "-I"; Command.Args.Path (Path.build path) ]))))
 ;;
 
 let rocqc_file_flags ~dir ~theories_deps ~wrapper_name ~package_ocamlpath
@@ -446,11 +447,17 @@ let package_ocamlpath_of_buildable
           ?loc:plugin_loc
           [ Pp.textf "Using private library %s as a Rocq plugin is not supported" name ])
   in
-  if Package.Name.Set.is_empty plugin_packages
-  then Action_builder.return None
-  else
-    let+ lib_root = Install_layout.For_rocq_only.lib_root context plugin_packages in
-    Some lib_root
+  let* theories = Resolve.Memo.read theories_deps in
+  let theory_packages =
+    List.fold_left theories ~init:Package.Name.Set.empty ~f:(fun packages theory ->
+      match Rocq_lib.package_name theory with
+      | None -> packages
+      | Some name -> Package.Name.Set.add packages (Lib_name.package_name name))
+  in
+  Install_layout.For_rocq_only.lib_roots
+    context
+    ~theory_packages
+    ~plugin_packages
 ;;
 
 let dep_theory_file ~dir ~wrapper_name =

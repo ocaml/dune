@@ -28,11 +28,13 @@ module For_rocq_only : sig
 
   (** DO NOT USE!!
 
-      Returns the layout's [lib] root (suitable for prepending to
-      [OCAMLPATH]) and registers the action's dependency on every
-      {!Section.Lib} and {!Section.Libexec} entry the layout produces for the
-      set, except Rocq theory outputs under [rocq.d]. Files in all-library
-      directories are grouped to share dependency hashes; mixed-directory
-      files remain explicit dependencies. Both are materialized in sandboxes. *)
-  val lib_root : Context_name.t -> Package.Name.Set.t -> Path.Build.t Action_builder.t
+      Returns the layout [lib] roots suitable for passing to Rocq with [-I].
+      Theory packages are fully materialized, including their [rocq.d]
+      entries. Plugin-only packages omit [rocq.d] entries to avoid cycles when
+      a theory uses a plugin from its own package. *)
+  val lib_roots
+    :  Context_name.t
+    -> theory_packages:Package.Name.Set.t
+    -> plugin_packages:Package.Name.Set.t
+    -> Path.Build.t list Action_builder.t
 end

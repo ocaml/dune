@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795358721991,
+  "lastUpdate": 1795358726774,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -689010,6 +689010,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.1584472857533332,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4ca32c2dea191378b7ac583529a1c29854a116e4",
+          "message": "test(pkg): record which compiler Merlin sees at install time (#17168)\n\nHave mock Merlin record a marker from the compiler during installation.\nChanging only the project’s locked compiler recipe, without bumping its\nversion, distinguishes using the project compiler from re-solving for\nthe same version. With no explicit OCaml dependency, mock Merlin\ncurrently reports `no-compiler` both times.\n\nRefs #16292.",
+          "timestamp": "2026-11-22T15:34:58+01:00",
+          "tree_id": "0f6cd11b6e353c4b69b231cf2b0ccca7ea051496",
+          "url": "https://github.com/ocaml/dune/commit/4ca32c2dea191378b7ac583529a1c29854a116e4"
+        },
+        "date": 1795358441231,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.2612636422666665,
             "unit": "seconds"
           }
         ]

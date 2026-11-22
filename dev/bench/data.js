@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795322217158,
+  "lastUpdate": 1795322221989,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -493462,6 +493462,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4687427068933334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7e2c721914c61fdc1f85b924ab7df6a8b469a0b3",
+          "message": "refactor(digest): reuse stat-aware digesting in the async wrapper (#17146)\n\nUse `path_with_stats` for both synchronous and background digesting\ninstead of repeating its setup in the async wrapper. The background\nscheduling decision is unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T12:20:38+08:00",
+          "tree_id": "2d7e08fc153f134f124cc1b406f0a9cebbbffa0c",
+          "url": "https://github.com/ocaml/dune/commit/7e2c721914c61fdc1f85b924ab7df6a8b469a0b3"
+        },
+        "date": 1795322218787,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.45592481,
             "unit": "seconds"
           }
         ]

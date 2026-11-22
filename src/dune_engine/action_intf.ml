@@ -22,13 +22,12 @@ end
 module Ext = struct
   module Exec = Exec
 
-  module type Spec = sig
+  module type Spec_base = sig
     type ('path, 'target) t
 
     val name : string
     val version : int
     val is_useful_to_memoize : bool
-    val is_dynamic : bool
     val runs_process : bool
     val can_run_in_action_runner : bool
     val encode : ('p, 't) t -> ('p -> Sexp.t) -> ('t -> Sexp.t) -> Sexp.t
@@ -39,6 +38,12 @@ module Ext = struct
       -> ectx:Exec.context
       -> eenv:Exec.env
       -> unit Fiber.t
+  end
+
+  module type Spec = sig
+    include Spec_base
+
+    val is_dynamic : bool
   end
 
   module type Instance = sig

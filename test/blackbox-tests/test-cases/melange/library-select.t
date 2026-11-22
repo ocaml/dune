@@ -89,3 +89,32 @@ The same select in ordinary libraries succeeds.
   $ dune build @app/melange
   $ node _build/default/app/output/app/main.js
   selected
+
+The OCaml and Melange modes can select different modules in the same library.
+Currently Melange tries to compile the OCaml-only select target instead.
+
+  $ mkdir mixed
+  $ cat >mixed/dune <<EOF
+  > (library
+  >  (name mixed)
+  >  (modes byte melange)
+  >  (libraries
+  >   (select ocaml_only.ml from (-> ocaml_only.available.ml)))
+  >  (melange.libraries
+  >   (select melange_only.ml from (-> melange_only.available.ml))))
+  > EOF
+  $ echo 'let value = "ocaml"' >mixed/ocaml_only.available.ml
+  $ echo 'let value = "melange"' >mixed/melange_only.available.ml
+  $ dune build mixed/mixed.cma
+  $ test -f _build/default/mixed/.mixed.objs/byte/mixed__Ocaml_only.cmi
+  $ test ! -f _build/default/mixed/.mixed.objs/byte/mixed__Melange_only.cmi
+  $ cat >app/dune <<EOF
+  > (melange.emit (target output) (libraries mixed))
+  > EOF
+  $ cat >app/main.ml <<EOF
+  > let () = Js.log Mixed.Melange_only.value
+  > EOF
+  $ dune build @app/melange
+  File "mixed/.mixed.objs/melange/_unknown_", line 1, characters 0-0:
+  Error: No rule found for mixed/.melange_src/ocaml_only.ml
+  [1]

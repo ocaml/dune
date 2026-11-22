@@ -238,30 +238,29 @@ let pp_one_module
       ~preprocessor_deps
       ~env
       ~(lint_module : source:_ -> ast:_ -> unit Memo.t)
-      ~sandbox
+      ~sandbox:sandbox_setting
       ~dir
       ~expander
       (pp : _ Preprocess.Without_future_syntax.t)
   =
   let open Action_builder.O in
   let command_dir = Context.build_dir context |> Path.build in
+  let sandbox = sandbox_of_setting sandbox_setting in
+  let setup_and_lint ~source ~lint ast =
+    let open Memo.O in
+    let* ast = setup_dialect_rules sctx ~sandbox ~dir ~expander ast in
+    let+ () = Memo.when_ lint (fun () -> lint_module ~ast ~source) in
+    ast
+  in
   match pp with
   | No_preprocessing ->
-    Staged.stage
-    @@ fun m ~lint ->
-    let open Memo.O in
-    let* ast =
-      let sandbox = sandbox_of_setting sandbox in
-      setup_dialect_rules sctx ~sandbox ~dir ~expander m
-    in
-    let+ () = Memo.when_ lint (fun () -> lint_module ~ast ~source:m) in
-    ast
+    let pp m ~lint = setup_and_lint ~source:m ~lint m in
+    Staged.stage pp
   | Action (loc, action) ->
     Staged.stage
     @@ fun m ~lint ->
     let open Memo.O in
     let* ast =
-      let sandbox = sandbox_of_setting sandbox in
       pped_module m ~f:(fun _kind src dst ->
         let action =
           let open Action_builder.O in
@@ -270,10 +269,8 @@ let pp_one_module
           Action.Full.add_env env act
         in
         Action_builder.with_stdout_to dst action |> Super_context.add_rule sctx ~loc ~dir)
-      >>= setup_dialect_rules sctx ~sandbox ~dir ~expander
     in
-    let+ () = Memo.when_ lint (fun () -> lint_module ~ast ~source:m) in
-    ast
+    setup_and_lint ~source:m ~lint ast
   | Pps ({ loc; pps; flags; staged } as spec) ->
     Staged.stage
     @@
@@ -310,27 +307,23 @@ let pp_one_module
       in
       let pp =
         let sandbox =
-          match sandbox with
+          match sandbox_setting with
           | `Set_by_user d -> d
           | `Default _ -> Sandbox_config.no_special_requirements
         in
         Some (dash_ppx_flag, sandbox)
       in
-      let sandbox = sandbox_of_setting sandbox in
       fun m ~lint ->
         let open Memo.O in
-        let* ast = setup_dialect_rules sctx ~sandbox ~dir ~expander m in
-        let+ () = Memo.when_ lint (fun () -> lint_module ~ast ~source:m) in
+        let+ ast = setup_and_lint ~source:m ~lint m in
         Module.set_pp ast pp)
     else (
       let corrected_suffix, driver_and_flags =
         unstaged_ppx context ~for_ ~expander ~lib_name ~scope `Preprocess spec
       in
-      let sandbox = sandbox_of_setting sandbox in
       fun m ~lint ->
         let open Memo.O in
-        let* ast = setup_dialect_rules sctx ~sandbox ~dir ~expander m in
-        let* () = Memo.when_ lint (fun () -> lint_module ~ast ~source:m) in
+        let* ast = setup_and_lint ~source:m ~lint m in
         pped_module ast ~f:(fun ml_kind src dst ->
           let loc_filename = pp_input_path m ~ml_kind in
           let loc_filename_arg =

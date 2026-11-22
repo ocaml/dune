@@ -5,21 +5,9 @@ The usable root a requires b. Its sibling a.optional requires unavailable,
 which will be removed after installation. Keeping a -> b is important: merely
 building a could otherwise pass even if its entire support closure were lost.
 
-  $ mkdir -p source/b source/optional source/unavailable prefix
-  $ mkdir dune-consumer meta-consumer probe-dune probe-meta
-  $ cat >source/dune-project <<'EOF'
-  > (lang dune 3.24)
-  > (package (name a))
-  > (package (name b))
-  > (package (name unavailable))
-  > EOF
-  $ cat >source/dune <<'EOF'
-  > (library
-  >  (public_name a)
-  >  (modes byte)
-  >  (libraries b))
-  > EOF
-  $ echo 'let value = B.value + 1' >source/a.ml
+  $ setup_package_a_requiring_b
+  $ mkdir source/optional source/unavailable prefix probe-dune probe-meta
+  $ echo '(package (name unavailable))' >>source/dune-project
   $ echo '(library (public_name b) (modes byte))' >source/b/dune
   $ echo 'let value = 1' >source/b/b.ml
   $ cat >source/optional/dune <<'EOF'
@@ -78,17 +66,7 @@ the error explicitly rather than treating an arbitrary failed build as proof.
 
 The consumer requests package a, but uses only its independent usable root.
 
-  $ echo '(lang dune 3.24)' >dune-consumer/dune-project
-  $ echo 'let () = Printf.printf "%d\n" A.value' >dune-consumer/main.ml
-  $ cat >dune-consumer/dune <<'EOF'
-  > (rule
-  >  (target main.exe)
-  >  (deps main.ml (package a))
-  >  (action
-  >   (run ocamlfind ocamlc -package a -linkpkg -o %{target} main.ml)))
-  > EOF
-  $ cp dune-consumer/dune dune-consumer/dune-project \
-  > dune-consumer/main.ml meta-consumer/
+  $ setup_package_a_consumers
   $ dune build --root dune-consumer main.exe
   $ dune-consumer/_build/default/main.exe
   2
@@ -98,14 +76,9 @@ not prevent following the available dependencies.
 
   $ dune rules --root dune-consumer --format=json main.exe >dune-rules.json
   $ jq_dune --arg b "$b_lib" --arg metadata dune-package '
-  >   rulesMatchingTarget("main.exe") | {
-  >     reader: $metadata,
-  >     required_interface:
-  >       ruleHasDepFileOrMatchingGlob($b + "/b.cmi"; $b; "*.cmi"),
-  >     required_archive:
-  >       ruleHasDepFileOrMatchingGlob($b + "/b.cma"; $b; "*.cma"),
-  >     required_metadata: ruleHasDepFile($b + "/" + $metadata)
-  >   }' dune-rules.json
+  >   rulesMatchingTarget("main.exe")
+  >   | rulePackageDependencyReport($b; "b"; $metadata)
+  > ' dune-rules.json
   {
     "reader": "dune-package",
     "required_interface": true,
@@ -130,14 +103,9 @@ yet register these installed files as dependencies.
   2
   $ dune rules --root meta-consumer --format=json main.exe >meta-rules.json
   $ jq_dune --arg b "$b_lib" --arg metadata META '
-  >   rulesMatchingTarget("main.exe") | {
-  >     reader: $metadata,
-  >     required_interface:
-  >       ruleHasDepFileOrMatchingGlob($b + "/b.cmi"; $b; "*.cmi"),
-  >     required_archive:
-  >       ruleHasDepFileOrMatchingGlob($b + "/b.cma"; $b; "*.cma"),
-  >     required_metadata: ruleHasDepFile($b + "/" + $metadata)
-  >   }' meta-rules.json
+  >   rulesMatchingTarget("main.exe")
+  >   | rulePackageDependencyReport($b; "b"; $metadata)
+  > ' meta-rules.json
   {
     "reader": "META",
     "required_interface": false,

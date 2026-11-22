@@ -6,20 +6,9 @@ remain untracked.
 Use bytecode so changing b's implementation does not change a through native
 inlining. Test both dune-package and META readers with fresh consumers.
 
-  $ mkdir -p source/b/unrelated source/c prefix dune-consumer meta-consumer
-  $ cat >source/dune-project <<'EOF'
-  > (lang dune 3.24)
-  > (package (name a))
-  > (package (name b))
-  > (package (name c))
-  > EOF
-  $ cat >source/dune <<'EOF'
-  > (library
-  >  (public_name a)
-  >  (modes byte)
-  >  (libraries b))
-  > EOF
-  $ echo 'let value = B.value + 1' >source/a.ml
+  $ setup_package_a_requiring_b
+  $ mkdir source/b/unrelated source/c prefix
+  $ echo '(package (name c))' >>source/dune-project
   $ echo '(library (public_name b) (modes byte))' >source/b/dune
   $ echo 'let value = 1' >source/b/b.ml
   $ cat >source/b/unrelated/dune <<'EOF'
@@ -60,17 +49,7 @@ observations. Package c must remain untracked even though it is installed.
 
 Both consumers use only (package a), not an explicit dependency on b.
 
-  $ echo '(lang dune 3.24)' >dune-consumer/dune-project
-  $ echo 'let () = Printf.printf "%d\n" A.value' >dune-consumer/main.ml
-  $ cat >dune-consumer/dune <<'EOF'
-  > (rule
-  >  (target main.exe)
-  >  (deps main.ml (package a))
-  >  (action
-  >   (run ocamlfind ocamlc -package a -linkpkg -o %{target} main.ml)))
-  > EOF
-  $ cp dune-consumer/dune dune-consumer/dune-project \
-  > dune-consumer/main.ml meta-consumer/
+  $ setup_package_a_consumers
   $ dune build --root dune-consumer main.exe
   $ dune-consumer/_build/default/main.exe
   2
@@ -80,22 +59,12 @@ non-library installed files, but not the sibling libraries' requirements.
 
   $ dune rules --root dune-consumer --format=json main.exe >dune-rules.json
   $ jq_dune --arg b "$b_lib" --arg c "$c_lib" --arg metadata dune-package '
-  >   rulesMatchingTarget("main.exe") | {
-  >     reader: $metadata,
-  >     required_interface:
-  >       ruleHasDepFileOrMatchingGlob($b + "/b.cmi"; $b; "*.cmi"),
-  >     required_archive:
-  >       ruleHasDepFileOrMatchingGlob($b + "/b.cma"; $b; "*.cma"),
-  >     required_metadata: ruleHasDepFile($b + "/" + $metadata),
-  >     unrelated_interface:
-  >       ruleHasDepFileOrMatchingGlob(
-  >         $b + "/unrelated/unrelated.cmi"; $b + "/unrelated"; "*.cmi"),
-  >     unrelated_archive:
-  >       ruleHasDepFileOrMatchingGlob(
-  >         $b + "/unrelated/unrelated.cma"; $b + "/unrelated"; "*.cma"),
-  >     sibling_dependency: ruleHasDepFile($c + "/c.cma"),
-  >     package_data: ruleHasDepFile("share/b/payload")
-  >   }' dune-rules.json
+  >   rulesMatchingTarget("main.exe")
+  >   | rulePackageDependencyReport($b; "b"; $metadata)
+  >     + ruleSiblingLibraryDependencyReport($b + "/unrelated"; "unrelated")
+  >     + {sibling_dependency: ruleHasDepFile($c + "/c.cma"),
+  >        package_data: ruleHasDepFile("share/b/payload")}
+  > ' dune-rules.json
   {
     "reader": "dune-package",
     "required_interface": true,
@@ -134,21 +103,11 @@ consumer must use META, including after its dependency changes.
   2
   $ dune rules --root meta-consumer --format=json main.exe >meta-rules.json
   $ jq_dune --arg b "$b_lib" --arg c "$c_lib" --arg metadata META '
-  >   rulesMatchingTarget("main.exe") | {
-  >     reader: $metadata,
-  >     required_interface:
-  >       ruleHasDepFileOrMatchingGlob($b + "/b.cmi"; $b; "*.cmi"),
-  >     required_archive:
-  >       ruleHasDepFileOrMatchingGlob($b + "/b.cma"; $b; "*.cma"),
-  >     required_metadata: ruleHasDepFile($b + "/" + $metadata),
-  >     unrelated_interface:
-  >       ruleHasDepFileOrMatchingGlob(
-  >         $b + "/unrelated/unrelated.cmi"; $b + "/unrelated"; "*.cmi"),
-  >     unrelated_archive:
-  >       ruleHasDepFileOrMatchingGlob(
-  >         $b + "/unrelated/unrelated.cma"; $b + "/unrelated"; "*.cma"),
-  >     sibling_dependency: ruleHasDepFile($c + "/c.cma")
-  >   }' meta-rules.json
+  >   rulesMatchingTarget("main.exe")
+  >   | rulePackageDependencyReport($b; "b"; $metadata)
+  >     + ruleSiblingLibraryDependencyReport($b + "/unrelated"; "unrelated")
+  >     + {sibling_dependency: ruleHasDepFile($c + "/c.cma")}
+  > ' meta-rules.json
   {
     "reader": "META",
     "required_interface": false,

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795321622378,
+  "lastUpdate": 1795321626362,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -493317,6 +493317,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 53.41211465358,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "983699e08cd50b1b03fa8454d79ffa1026c8db11",
+          "message": "refactor(jsoo): share runtime dependency arguments (#17138)\n\nUse one helper to build runtime dependency arguments for executable\ncompilation and standalone runtime generation. Both paths keep the same\nlibrary runtime files and stanza-specific files in the same order.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T12:14:16+08:00",
+          "tree_id": "d3e34c62edadbe26aaa3112ca22169b8d39866f5",
+          "url": "https://github.com/ocaml/dune/commit/983699e08cd50b1b03fa8454d79ffa1026c8db11"
+        },
+        "date": 1795321621915,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.3731712401866667,
             "unit": "seconds"
           }
         ]

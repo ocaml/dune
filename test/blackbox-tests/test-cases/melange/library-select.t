@@ -34,8 +34,8 @@ using `(select ...)` in `(library (modes melange) ..)`
   lib__Bar.cmj
   lib__Foo.cmj
 
-A select declared only in melange.libraries should also contribute its result
-to the library's modules. Currently the selected module is not discovered.
+A select declared only in melange.libraries also contributes its result to
+the library's modules.
 
   $ make_melange_project 3.26 1.0
   $ mkdir selected app
@@ -64,18 +64,11 @@ to the library's modules. Currently the selected module is not discovered.
   > let () = Js.log Picked.value
   > EOF
   $ dune build @app/melange
-  File "selected/picked.ml", line 1, characters 12-18:
-  1 | let value = Choice.value
-                  ^^^^^^
-  Error: Unbound module Choice
-  [1]
-
-The selection rule exists, but the selected module was not discovered.
-
-  $ dune build selected/.melange_src/choice.ml
+  $ node _build/default/app/output/app/main.js
+  selected
   $ test -f _build/default/selected/.melange_src/choice.ml
 
-The same select in ordinary libraries succeeds.
+Without melange.libraries, Melange inherits selects from libraries.
 
   $ cat >selected/dune <<EOF
   > (library
@@ -91,7 +84,6 @@ The same select in ordinary libraries succeeds.
   selected
 
 The OCaml and Melange modes can select different modules in the same library.
-Currently Melange tries to compile the OCaml-only select target instead.
 
   $ mkdir mixed
   $ cat >mixed/dune <<EOF
@@ -115,6 +107,5 @@ Currently Melange tries to compile the OCaml-only select target instead.
   > let () = Js.log Mixed.Melange_only.value
   > EOF
   $ dune build @app/melange
-  File "mixed/.mixed.objs/melange/_unknown_", line 1, characters 0-0:
-  Error: No rule found for mixed/.melange_src/ocaml_only.ml
-  [1]
+  $ node _build/default/app/output/app/main.js
+  melange

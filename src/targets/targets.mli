@@ -155,7 +155,7 @@ module Produced : sig
   (** Digest file names, file digests, and the directory structure. *)
   val digest_dir_contents : Digest.t dir_contents -> Digest.t
 
-  (** Aggregate all content digests. *)
+  (** Aggregate all content digests, including the structure of directory targets. *)
   val digest : Digest.t t -> Digest.t
 
   (* The odd type of [d] and [f] is due to the fact that [map_with_errors]

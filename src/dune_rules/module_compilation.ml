@@ -419,7 +419,7 @@ let build_module_rules ?(force_write_cmi = false) ?(precompiled_cmi = false) cct
            (* Build *.cmo.js / *.wasmo *)
            let sctx = Compilation_context.super_context cctx in
            let dir = Compilation_context.dir cctx in
-           let action_with_targets =
+           let action () =
              Jsoo_rules.build_cm
                cctx
                ~dir
@@ -429,6 +429,28 @@ let build_module_rules ?(force_write_cmi = false) ?(precompiled_cmi = false) cct
                ~obj_dir
                ~deps:module_deps
                ~config:None
+           in
+           let action_with_targets =
+             let target =
+               Jsoo_rules.cm_target ~mode ~src:(Path.build src) ~obj_dir ~config:None
+             in
+             let build =
+               let open Action_builder.O in
+               let* { With_targets.build; targets } = Action_builder.delayed action in
+               let expected = Targets.Validated.file target in
+               match Targets.validate targets with
+               | Valid actual
+                 when Path.Build.equal actual.root expected.root
+                      && Filename.Set.equal actual.files expected.files
+                      && Filename.Set.is_empty actual.dirs -> build
+               | _ ->
+                 Code_error.raise
+                   "Deferred compilation targets differ from their declaration"
+                   [ "target", Path.Build.to_dyn target
+                   ; "actual", Targets.to_dyn targets
+                   ]
+             in
+             Action_builder.with_targets build ~targets:(Targets.File.create target)
            in
            Super_context.add_rule sctx ~dir action_with_targets)))
   | Melange ->

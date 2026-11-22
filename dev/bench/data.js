@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795353622056,
+  "lastUpdate": 1795353784407,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -688488,6 +688488,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8500052055733334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2cf0679c304a1e1cbf7ec8e5ea395995b03183b7",
+          "message": "refactor(configurator): share quoted-string escape writes (#17162)\n\nReuse the backslash write for named, template, and decimal escapes in\nthe configurator’s standalone quoted-string encoder. The encoded output\nstays the same.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T21:08:43+08:00",
+          "tree_id": "2306d888fa6ea643075bbcba8ac603325060f496",
+          "url": "https://github.com/ocaml/dune/commit/2cf0679c304a1e1cbf7ec8e5ea395995b03183b7"
+        },
+        "date": 1795353362898,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 4.117723243313333,
             "unit": "seconds"
           }
         ]

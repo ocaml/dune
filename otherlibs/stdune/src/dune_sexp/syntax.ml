@@ -540,35 +540,22 @@ let get_exn t =
       ]
 ;;
 
-let deleted_in ?(extra_info = "") t ver =
+let check_old t ver kind =
   let open Version.Infix in
   let* current_ver = get_exn t in
-  if current_ver < ver
-  then return ()
-  else
-    let* loc, what = desc () in
-    Error.deleted_in ~extra_info loc t ver ~what
+  if current_ver >= ver
+  then
+    let+ loc, what = desc () in
+    match kind with
+    | `Deleted extra_info -> Error.deleted_in ~extra_info loc t ver ~what
+    | `Warn extra_info -> Warning.deprecated_in ~extra_info loc t ver ~what
+    | `Renamed to_ -> Error.renamed_in loc t ver ~what ~to_
+  else return ()
 ;;
 
-let deprecated_in ?(extra_info = "") t ver =
-  let open Version.Infix in
-  let* current_ver = get_exn t in
-  if current_ver < ver
-  then return ()
-  else
-    let+ loc, what = desc () in
-    Warning.deprecated_in ~extra_info loc t ver ~what
-;;
-
-let renamed_in t ver ~to_ =
-  let open Version.Infix in
-  let* current_ver = get_exn t in
-  if current_ver < ver
-  then return ()
-  else
-    let+ loc, what = desc () in
-    Error.renamed_in loc t ver ~what ~to_
-;;
+let deleted_in ?(extra_info = "") t ver = check_old t ver (`Deleted extra_info)
+let deprecated_in ?(extra_info = "") t ver = check_old t ver (`Warn extra_info)
+let renamed_in t ver ~to_ = check_old t ver (`Renamed to_)
 
 let since_fmt ?(fatal = true) ~fmt t ver loc =
   let open Version.Infix in

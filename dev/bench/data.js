@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795353784407,
+  "lastUpdate": 1795353814589,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -493839,6 +493839,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.41336717689333335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d7c6360a4b649aaa682260a5718d17bb1071bd1c",
+          "message": "refactor(cli): share toplevel context selection (#17158)\n\nShare the context argument and lookup between the directory and module\ntoplevel commands. Both commands keep the same context selection\nbehavior.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-22T21:04:07+08:00",
+          "tree_id": "79f08edf73614acf1a64feaf47433ecc9ce31fa6",
+          "url": "https://github.com/ocaml/dune/commit/d7c6360a4b649aaa682260a5718d17bb1071bd1c"
+        },
+        "date": 1795353810858,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.66311251216666,
             "unit": "seconds"
           }
         ]

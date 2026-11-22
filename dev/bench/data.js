@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795315388703,
+  "lastUpdate": 1795315666470,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -492969,6 +492969,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4787890131266667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "87a5ca6f48931f3e9a0da7200ad17e3997c2a2d1",
+          "message": "test(melange): cover GC settings in incremental builds (#16955)\n\nExtend #16958 with incremental-build coverage for runtime overrides,\nrestoration of #17022's GC defaults, and avoiding recompilation when\nonly GC settings change.\n\n01a1b8f2-7469-7990-90da-c0049284abf1\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-21T18:31:43-08:00",
+          "tree_id": "e687d77e8d6c7cbf44fbe0880539d88d063aa16a",
+          "url": "https://github.com/ocaml/dune/commit/87a5ca6f48931f3e9a0da7200ad17e3997c2a2d1"
+        },
+        "date": 1795315664765,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 53.316352784046664,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795364646977,
+  "lastUpdate": 1795364654766,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -494622,6 +494622,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.754074468119995,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ec660dc6fbed623c3a6a09e6d3590fd24b6a48c3",
+          "message": "test(pkg): cover empty directories in source overlays (#17056)\n\nExtend `pkg/source-empty-dir.t` with the lockfile-adjacent `.files`\noverlay case. Keep regular files as controls and correct the\nintroduction to reflect that empty directories are currently omitted.\n\nThis records the existing input-staging limitation; it does not change\nstaging behavior.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-23T00:04:40+08:00",
+          "tree_id": "a707308665365798db123e5dc1db17a7398b9374",
+          "url": "https://github.com/ocaml/dune/commit/ec660dc6fbed623c3a6a09e6d3590fd24b6a48c3"
+        },
+        "date": 1795364653530,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5541070764333335,
             "unit": "seconds"
           }
         ]

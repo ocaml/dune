@@ -1,5 +1,7 @@
 Bootstrap uses the GC settings supported by the selected compiler. Wrap the
 compiler tools to report the settings without passing them to the real compiler.
+Invoke the real tools by their installed paths so relocatable OCaml can find its
+standard library.
 
   $ init_bootstrap
   $ unset OCAMLRUNPARAM CAMLRUNPARAM
@@ -9,12 +11,17 @@ compiler tools to report the settings without passing them to the real compiler.
   $ mkdir tools
   $ cat > tools/compiler <<'EOF'
   > #!/bin/sh
-  > tool="$REAL_OCAML_BIN/${0##*/}"
+  > name=${0##*/}
+  > tool="$REAL_OCAML_BIN/$name"
+  > case "$name" in
+  >   ocamlc|ocamlc.opt|ocamlopt|ocamlopt.opt|ocamldep|ocamldep.opt) ;;
+  >   *) exec "$tool" "$@" ;;
+  > esac
   > if [ "$1" = -config ]; then
   >   "$tool" "$@" | sed -e "s/^version:.*/version: $REPORTED_VERSION/" \
   >     -e 's/^word_size:.*/word_size: 64/'
   > else
-  >   printf '%s OCAMLRUNPARAM=%s CAMLRUNPARAM=%s\n' "${0##*/}" \
+  >   printf '%s OCAMLRUNPARAM=%s CAMLRUNPARAM=%s\n' "$name" \
   >     "${OCAMLRUNPARAM-unset}" "${CAMLRUNPARAM-unset}" >> "$GC_LOG"
   >   unset OCAMLRUNPARAM CAMLRUNPARAM
   >   exec "$tool" "$@"
@@ -22,12 +29,7 @@ compiler tools to report the settings without passing them to the real compiler.
   > EOF
   $ chmod +x tools/compiler
   $ for tool in "$REAL_OCAML_BIN"/ocaml*; do
-  >   name=${tool##*/}
-  >   case "$name" in
-  >     ocamlc|ocamlc.opt|ocamlopt|ocamlopt.opt|ocamldep|ocamldep.opt)
-  >       ln -s compiler "tools/$name" ;;
-  >     *) ln -s "$tool" "tools/$name" ;;
-  >   esac
+  >   ln -s compiler "tools/${tool##*/}"
   > done
   $ export PATH="$PWD/tools:$PATH"
 

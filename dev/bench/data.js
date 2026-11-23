@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795451985746,
+  "lastUpdate": 1795452098374,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -691214,6 +691214,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.1554495430333334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "05c2e755817d6517761d13d81c04464d7bc2c48c",
+          "message": "test(odoc): share the simple documentation project (#17205)\n\nShare the project and library sources across the simple and Sherlodoc\ntests. The basic test still uses empty modules, and each test keeps its\nown documentation assertions.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-24T00:27:31+08:00",
+          "tree_id": "9e2a8b09202b6f9464628953d7f5c1ab7af012b5",
+          "url": "https://github.com/ocaml/dune/commit/05c2e755817d6517761d13d81c04464d7bc2c48c"
+        },
+        "date": 1795451675348,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.77607943202,
             "unit": "seconds"
           }
         ]

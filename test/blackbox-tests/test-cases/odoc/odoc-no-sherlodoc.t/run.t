@@ -1,6 +1,8 @@
 This test generates documentation using odoc for a library, and hides any
 sherlodoc installation to test what happens when sherlodoc is not installed.
 
+  $ cp ../simple-project/* .
+
 Set up some fake environment without sherlodoc
 
   $ export OCAMLLIB=$(ocamlc -where)

@@ -7,6 +7,10 @@ it.
 This is the version that builds into a library and tests multiple function
 description modules.
 
+  $ cp ../example-bindings/type_description.ml \
+  >   ../example-bindings/function_description_unlocked.ml stubgen/
+  $ cp ../example-bindings/function_description.ml \
+  >   stubgen/function_description_sequential.ml
   $ LIBEX=$(realpath "$PWD/../libexample")
   $ TARGET=./stubgen/vendor
   $ mkdir -p $TARGET && install $LIBEX/*example* $TARGET

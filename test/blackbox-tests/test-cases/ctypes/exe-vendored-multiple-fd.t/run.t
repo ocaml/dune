@@ -7,6 +7,10 @@ it.
 This is the version that builds into an executable and tests multiple function
 description modules.
 
+  $ cp ../example-bindings/type_description.ml \
+  >   ../example-bindings/function_description_unlocked.ml .
+  $ cp ../example-bindings/function_description.ml \
+  >   function_description_sequential.ml
   $ LIBEX=$(realpath "$PWD/../libexample")
   $ TARGET=./vendor
   $ mkdir -p $TARGET && install $LIBEX/*example* $TARGET

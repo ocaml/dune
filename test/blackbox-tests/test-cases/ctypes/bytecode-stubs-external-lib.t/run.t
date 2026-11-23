@@ -2,6 +2,8 @@ Build an example library as a DLL and set up the environment so that it looks
 like a system/distro library that can be probed with pkg-config and dynamically
 loaded.
 
+  $ cp ../example-bindings/function_description.ml \
+  >   ../example-bindings/type_description.ml stubgen/
   $ LIBEX=$(realpath "$PWD/../libexample")
 
 ocamlrun + requires CAML_LD_LIBRARY_PATH such that dlopen system call can find

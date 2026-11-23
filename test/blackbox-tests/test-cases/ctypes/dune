@@ -20,6 +20,33 @@
   %{bin:awk}
   (package ctypes)))
 
+(data_only_dirs example-bindings)
+
+(cram
+ (applies_to
+  bytecode-stubs-external-lib.t
+  exe-pkg_config.t
+  exe-pkg_config-multiple-fd.t
+  exe-vendored.t
+  exe-vendored-multiple-fd.t
+  exe-vendored-preamble.t
+  lib-external-name-need-mangling.t
+  lib-pkg_config.t
+  lib-pkg_config-multiple-fd.t
+  lib-vendored.t
+  lib-vendored-multiple-fd.t)
+ (deps
+  example-bindings/function_description.ml
+  example-bindings/type_description.ml))
+
+(cram
+ (applies_to
+  exe-pkg_config-multiple-fd.t
+  exe-vendored-multiple-fd.t
+  lib-pkg_config-multiple-fd.t
+  lib-vendored-multiple-fd.t)
+ (deps example-bindings/function_description_unlocked.ml))
+
 (cram
  (applies_to lib-return-errno.t)
  (deps

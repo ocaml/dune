@@ -9,6 +9,8 @@ This is the version that builds into an executable.
 This test is identical to exe-vendored.t except it uses preamble instead of
 include to require the example.h header.
 
+  $ cp ../example-bindings/function_description.ml \
+  >   ../example-bindings/type_description.ml .
   $ LIBEX=$(realpath "$PWD/../libexample")
   $ TARGET=./vendor
   $ mkdir -p $TARGET/pkgconfig && install $LIBEX/*example* $TARGET

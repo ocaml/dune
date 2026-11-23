@@ -6,6 +6,8 @@ it.
 
 This is the version that builds into an executable.
 
+  $ cp ../example-bindings/function_description.ml \
+  >   ../example-bindings/type_description.ml .
   $ LIBEX=$(realpath "$PWD/../libexample")
   $ TARGET=./vendor
   $ mkdir -p $TARGET && install $LIBEX/*example* $TARGET

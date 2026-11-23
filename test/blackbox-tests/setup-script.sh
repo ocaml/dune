@@ -762,6 +762,32 @@ make_and_enter_private_only_packages_project() {
 	EOF
 }
 
+make_cross_lib_open_fixture() {
+  local prelude_source="$1" type_name="$2" open_flags="$3"
+
+  make_dune_project 3.24
+  mkdir prelude middle consumer
+  echo '(library (name prelude))' >prelude/dune
+  printf 'type %s = Red | Green | Blue\n' "$type_name" \
+    >"prelude/$prelude_source"
+  cat >middle/dune <<-EOF
+	(library
+	 (name middle)
+	 (libraries prelude)
+	 (flags (:standard $open_flags)))
+	EOF
+  printf 'val pick : unit -> %s\n' "$type_name" >middle/middle.mli
+  echo 'let pick () = Green' >middle/middle.ml
+  cat >consumer/dune <<-'EOF'
+	(executable (name consumer) (libraries middle prelude))
+	EOF
+  cat >consumer/consumer.ml <<-'EOF'
+	let () = match Middle.pick () with
+	  | Green -> print_endline "g"
+	  | Red | Blue -> print_endline "nb"
+	EOF
+}
+
 write_simple_inline_tests_backend() {
   cat >dune <<-'EOF'
 	(library

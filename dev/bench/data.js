@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795443632622,
+  "lastUpdate": 1795443640641,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -495550,6 +495550,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.61880758311333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c819ae03fef4e7cf8d75575f24a3a6287f6769ed",
+          "message": "test: reproduce parser-generator formatting dialect collisions (#17194)\n\nReproduce #17030 for Menhir and ocamlyacc formatting dialects.\nComplements #17029; fixed by #17193.\n\n01a20619-183b-76f3-b8a7-18c1b28eb1c0\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-23T06:01:08-08:00",
+          "tree_id": "11a1be0f452eec7cad86928f2677d7475ffb1d77",
+          "url": "https://github.com/ocaml/dune/commit/c819ae03fef4e7cf8d75575f24a3a6287f6769ed"
+        },
+        "date": 1795443639603,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5210607052466666,
             "unit": "seconds"
           }
         ]

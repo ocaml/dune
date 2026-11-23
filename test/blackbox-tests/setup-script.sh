@@ -269,6 +269,34 @@ make_mypkg_stubs_project() {
 	EOF
 }
 
+write_stublibs_ab_producer() {
+  (cd producer && make_dune_project_with_package 3.13 pkg) || return
+  local lib
+  for lib in a b; do
+    cat <<-EOF
+	(library
+	 (name $lib)
+	 (public_name pkg.$lib)
+	 (modules $lib)
+	 (foreign_stubs (language c) (names ${lib}_stubs)))
+	EOF
+  done >producer/dune
+}
+
+write_stublibs_primitive() {
+  local file="$1" primitive="$2" result="$3"
+  cat >"$file" <<-EOF
+	#include <caml/mlvalues.h>
+	CAMLprim value $primitive(value unit) { return Val_int($result); }
+	EOF
+}
+
+install_stublibs_producer() {
+  dune build --root producer @install &&
+    dune install --root producer --prefix "$PWD/prefix" 2>/dev/null &&
+    export OCAMLPATH="$PWD/prefix/lib"
+}
+
 make_install_include_project() {
   make_dune_project 3.5
   cat >> dune-project <<-'EOF'

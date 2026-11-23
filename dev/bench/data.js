@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795411880109,
+  "lastUpdate": 1795411886949,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -495086,6 +495086,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 51.99043401518667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "be0ea133e4610130f74bfd2fe8bbbb1da9b4cedc",
+          "message": "test(melange): cover implicit Stdlib dependency tracking (#17192)\n\nCover missing implicit Stdlib dependencies in direct builds, incremental\nrebuilds, and `MELANGELIB` overrides. Extends #17187; fixed by the\nstacked PR #17188.\n\n01a204d9-9256-75b2-9f67-c02281f7a96d\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-22T21:12:41-08:00",
+          "tree_id": "4515b89ba7252c7d05e25937c33f4e6857831c6d",
+          "url": "https://github.com/ocaml/dune/commit/be0ea133e4610130f74bfd2fe8bbbb1da9b4cedc"
+        },
+        "date": 1795411885998,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4615379520866667,
             "unit": "seconds"
           }
         ]

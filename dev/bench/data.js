@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795399573334,
+  "lastUpdate": 1795399908210,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -494825,6 +494825,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4743239822266667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0f03041e315e304880a188918f1e3d0190af149b",
+          "message": "test(melange): reproduce missing implicit Stdlib dependencies (#17187)\n\nRecord the missing Stdlib compilation dependency when vendoring Melange,\nincluding a bundle with `(package melange)`. Fixed by the stacked PR\n#17188.\n\n01a204d9-9256-75b2-9f67-c02281f7a96d\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-22T17:52:01-08:00",
+          "tree_id": "35725fc0c4c70915eebcb534c84a049fa5592ee0",
+          "url": "https://github.com/ocaml/dune/commit/0f03041e315e304880a188918f1e3d0190af149b"
+        },
+        "date": 1795399906412,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 65.66842917765332,
             "unit": "seconds"
           }
         ]

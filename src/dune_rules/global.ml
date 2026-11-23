@@ -21,7 +21,7 @@ let remove_build_dir_from_path env =
             (Path.External.is_descendant
                (Path.External.of_filename_relative_to_initial_cwd dir)
                ~of_:build_dir))
-      |> String.concat ~sep:(String.make 1 Bin.path_sep)
+      |> Bin.encode_strings
     in
     Env.add env ~var:Env_path.var ~value
 ;;

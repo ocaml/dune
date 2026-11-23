@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795413962465,
+  "lastUpdate": 1795413970063,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -495260,6 +495260,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 63.20482060872667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f5c3e37b456ce963e41053f414ee2176d5c506e2",
+          "message": "test: declare utop dependency for absolute-path checks (#17189)\n\nDeclare the utop package dependency for the absolute-path Cram test.\n\n01a204d9-9256-75b2-9f67-c02281f7a96d\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-22T21:46:28-08:00",
+          "tree_id": "8adb77f7998b99e02f8eed3eb3823e666d4c1499",
+          "url": "https://github.com/ocaml/dune/commit/f5c3e37b456ce963e41053f414ee2176d5c506e2"
+        },
+        "date": 1795413968956,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5298808591266667,
             "unit": "seconds"
           }
         ]

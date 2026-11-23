@@ -51,16 +51,10 @@ Point the compiler at a local Stdlib, hiding the installed one.
 Building the consumer alone should first build the implicit Stdlib.
 
   $ dune build consumer/.consumer.objs/melange/consumer.cmj
-  File "command line", line 1:
-  Error: Unbound module Stdlib
-  [1]
 
 The implicit compilation inputs must also be available in a fresh copy sandbox.
 
   $ dune build --build-dir _build_bundle --sandbox=copy @bundle
-  File "command line", line 1:
-  Error: Unbound module Stdlib
-  [1]
 
 Prebuild Stdlib and disable sandboxing to check incremental dependencies.
 
@@ -74,22 +68,16 @@ the interface remains unchanged.
   $ dune build --sandbox=none consumer/.consumer.objs/melange/consumer.cmj
   $ dune trace cat | jq_dune -s '[.[] | processesBrief
   >   | select(.prog == "melc" and (.args | index("-o")))] | length'
-  0
+  2
 
 Absolute and compiler-relative MELANGELIB overrides also identify build inputs.
 
   $ MELANGELIB="$PWD/_build_absolute/default/stdlib/.stdlib.objs/melange" \
   > dune build --build-dir _build_absolute \
   >   consumer/.consumer.objs/melange/consumer.cmj
-  File "command line", line 1:
-  Error: Unbound module Stdlib
-  [1]
   $ MELANGELIB=../stdlib/.stdlib.objs/melange \
   > dune build --build-dir _build_relative --sandbox=copy \
   >   consumer/.consumer.objs/melange/consumer.cmj
-  File "command line", line 1:
-  Error: Unbound module Stdlib
-  [1]
 
 An explicit library dependency remains valid.
 

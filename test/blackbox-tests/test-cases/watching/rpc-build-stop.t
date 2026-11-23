@@ -18,12 +18,13 @@ Minimal RPC watch shutdown after an RPC build.
   shutdown stop
   accept stop close
 
-RPC build requests are cancelled if their client connection goes away. Exercise
-an unsandboxed action using a language version before user rules required
-sandboxing.
+RPC build requests are cancelled if their client connection goes away. Wait
+until the action has installed its TERM handler before disconnecting the client.
+Exercise an unsandboxed action using a language version before user rules
+required sandboxing.
 
   $ make_directory_targets_project 3.22
-  $ cancelled="$(mktemp -u)"
+  $ markers="$(mktemp -d)"
   $ cat > dune <<EOF
   > (rule
   >  (targets slow partial-file (dir partial-dir))
@@ -33,7 +34,8 @@ sandboxing.
   >    (write-file slow partial)
   >    (write-file partial-file partial)
   >    (bash "mkdir -p partial-dir; echo partial > partial-dir/output;
-  >           trap \"touch '$cancelled'; exit 0\" TERM;
+  >           trap \"touch '$markers/cancelled'; exit 0\" TERM;
+  >           touch '$markers/ready';
   >           while true; do sleep 1; done"))))
   > (rule
   >  (target fast)
@@ -41,9 +43,13 @@ sandboxing.
   > EOF
 
   $ start_dune
-  $ "$timeout" 1 dune rpc build --wait slow > cancelled.out 2>&1
-  [124]
-  $ with_timeout dune_cmd wait-for-file-to-appear "$cancelled"
+  $ dune rpc build --wait slow > cancelled.out 2>&1 &
+  $ CLIENT=$!
+  $ wait_for_file_with_timeout "$markers/ready"
+  $ kill "$CLIENT"
+  $ wait_for_pid_to_exit_with_timeout "$CLIENT" 200 || (cat cancelled.out; false)
+  $ wait "$CLIENT" || true
+  $ wait_for_file_with_timeout "$markers/cancelled"
   $ build_quiet fast
 
 Cancellation removes partial outputs, while a subsequent successful rule keeps
@@ -93,21 +99,23 @@ Concurrent RPC build requests both complete.
 
 Shutdown cancels pending RPC build requests.
 
-  $ cancelled="$(mktemp -u)"
+  $ markers="$(mktemp -d)"
   $ cat > dune <<EOF
   > (rule
   >  (target slow)
   >  (action
-  >   (bash "trap \"touch '$cancelled'; exit 0\" TERM; while true; do sleep 1; done")))
+  >   (bash "trap \"touch '$markers/cancelled'; exit 0\" TERM;
+  >          touch '$markers/ready';
+  >          while true; do sleep 1; done")))
   > EOF
 
   $ start_dune
   $ dune rpc build --wait slow > slow.out 2>&1 &
   $ SLOW=$!
-  $ sleep 0.5
+  $ wait_for_file_with_timeout "$markers/ready"
   $ shutdown_dune_quiet
   $ wait_for_dune_exit_with_timeout
-  $ wait_for_file "$cancelled"
+  $ wait_for_file_with_timeout "$markers/cancelled"
   $ wait_for_pid_to_exit_with_timeout "$SLOW" 200 || (cat slow.out; false)
   $ wait "$SLOW" || true
 

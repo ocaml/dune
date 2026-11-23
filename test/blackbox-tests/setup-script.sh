@@ -1700,6 +1700,10 @@ wait_for_file () {
     done
 }
 
+wait_for_file_with_timeout () {
+    with_timeout_quiet dune_cmd wait-for-file-to-appear "$1"
+}
+
 file_status() {
   [ -e "$1" ] && echo "$1 exists" || echo "$1 missing"
 }

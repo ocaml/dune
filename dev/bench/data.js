@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795453321818,
+  "lastUpdate": 1795453736393,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -691562,6 +691562,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.781826691633333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "110a4a183bdfadbdc1d864d0ab6d74f9f9042c76",
+          "message": "test(melange): share installed virtual library fixtures (#17199)\n\nShare the producer and consumer setup, the tool path without\n`melobjinfo`, and the copied-module dependency query across the\ninstalled virtual library tests. Each test keeps its own annotation\nscenario and expected dependencies.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-24T00:54:41+08:00",
+          "tree_id": "fdf1c317d90227e7ca86edf2b9c71e3d681c6fb9",
+          "url": "https://github.com/ocaml/dune/commit/110a4a183bdfadbdc1d864d0ab6d74f9f9042c76"
+        },
+        "date": 1795453312387,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.20454980124,
             "unit": "seconds"
           }
         ]

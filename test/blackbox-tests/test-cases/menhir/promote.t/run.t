@@ -1,5 +1,6 @@
 Reproduction case for #1781, only the .ml and .mli should be promoted:
 
+  $ cp ../parser-fixtures/test_menhir1.mly parser.mly
   $ dune build @all
   $ ls -1 _build/default | sort | grep mock
   parser__mock.ml.mock

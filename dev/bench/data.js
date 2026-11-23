@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795452993027,
+  "lastUpdate": 1795453314158,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -495869,6 +495869,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5120440937,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d5ed950a5116615eb3597c9705c6beb450b4f235",
+          "message": "test(watch): decouple RPC tests from watch status messages (#17202)\n\nAn RPC client can receive its build result before the watcher prints its\nstatus summary. Check client outcomes, diagnostics, and artifacts\ninstead of depending on that output. Re-enable the eager build client\ntest with a separate watched target and bounded RPC calls for both a\nsuccessful build and a compiler error.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-24T00:42:30+08:00",
+          "tree_id": "7491c3a4a919b356a7fbd31b987ba13858e862c7",
+          "url": "https://github.com/ocaml/dune/commit/d5ed950a5116615eb3597c9705c6beb450b4f235"
+        },
+        "date": 1795453312866,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.21069363194667,
             "unit": "seconds"
           }
         ]

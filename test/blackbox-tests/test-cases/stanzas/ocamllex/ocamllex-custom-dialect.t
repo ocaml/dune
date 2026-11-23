@@ -17,3 +17,22 @@ mistake it for a second implementation, even without a formatter.
   - _build/default/lexer.mll
   - _build/default/lexer.ml
   [1]
+
+The same input should remain available for formatting.
+
+  $ cat >dune-project <<'EOF'
+  > (lang dune 3.22)
+  > (formatting (enabled_for mll))
+  > (dialect
+  >  (name mll)
+  >  (implementation
+  >   (extension mll)
+  >   (format (run cat %{input-file}))))
+  > EOF
+  $ dune build lexer.cma @fmt
+  Error: Too many files for module Lexer in .:
+  - _build/default/lexer.mll
+  - _build/default/lexer.ml
+  [1]
+  $ dune trace cat | jq_dune -c \
+  >   'processesBrief | select(.prog == "cat") | .args'

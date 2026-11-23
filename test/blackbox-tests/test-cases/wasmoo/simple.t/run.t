@@ -1,4 +1,7 @@
 Compilation using WasmOO
+  $ fixture=../../js-compiler-fixtures/technologic
+  $ cp "$fixture/common/bin/"* "$fixture/wasm/bin/"* bin/
+  $ cp "$fixture/common/lib/"* "$fixture/wasm/lib/"* lib/
   $ dune build bin/technologic.bc.wasm.js @install --profile dev
   $ node ./_build/default/bin/technologic.bc.wasm.js
   buy it

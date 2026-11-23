@@ -1,4 +1,8 @@
 Compilation using jsoo
+  $ fixture=../../js-compiler-fixtures/technologic
+  $ mkdir bin
+  $ cp "$fixture/common/bin/"* "$fixture/js/bin/"* bin/
+  $ cp "$fixture/common/lib/"* "$fixture/js/lib/"* lib/
   $ js=bin/technologic.bc.js
   $ built_js=./_build/default/$js
   $ dune build "$js" --profile dev

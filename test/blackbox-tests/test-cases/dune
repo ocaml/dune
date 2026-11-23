@@ -22,7 +22,12 @@
    ../utils/sherlodoc.exe
    ../utils/ocaml_index.exe)))
 
-(data_only_dirs js-compiler-fixtures)
+(data_only_dirs js-compiler-fixtures lib-pform-fixtures)
+
+(cram
+ (applies_to lib.t libexec.t)
+ (deps
+  (source_tree lib-pform-fixtures)))
 
 (cram
  (applies_to pp-cwd.t)

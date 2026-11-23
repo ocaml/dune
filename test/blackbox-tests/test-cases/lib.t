@@ -7,25 +7,18 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 * Find a public library using the %{lib:...} variable
 
   $ make_dune_project 2.0
-  $ mkdir -p src
-  $ cat >src/dune <<EOF
+  $ cp -RL lib-pform-fixtures/src .
+  $ cat >src/dune <<'EOF'
   > (library
   >  (name private_lib)
   >  (public_name public_lib)
   >  (modules a))
   > EOF
 
-  $ cat >dune <<EOF
+  $ cat >dune <<'EOF'
   > (rule
   >  (alias find-a)
   >  (action (echo "%{lib:public_lib:a.ml}")))
-  > EOF
-
-  $ cat >src/a.ml <<EOF
-  > let a = "A"
-  > EOF
-  $ cat >src/a.mli <<EOF
-  > val a : string
   > EOF
 
   $ touch public_lib.opam
@@ -35,14 +28,7 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 ----------------------------------------------------------------------------------
 * Error when finding a public library by its private name using the %{lib:...} variable
 
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (public_name public_lib)
-  >  (modules a))
-  > EOF
-
-  $ cat >dune <<EOF
+  $ cat >dune <<'EOF'
   > (rule
   >  (alias find-a)
   >  (action (echo "%{lib:private_lib:a.ml}")))
@@ -60,14 +46,7 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 * Find a public library by its private name using the %{lib-private:...} variable
 * Error when using Dune language < 2.1
 
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (public_name public_lib)
-  >  (modules a))
-  > EOF
-
-  $ cat >dune <<EOF
+  $ cat >dune <<'EOF'
   > (rule
   >  (alias find-a)
   >  (action (echo "%{lib-private:private_lib:a.ml}")))
@@ -93,7 +72,7 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 ----------------------------------------------------------------------------------
 * Find a private library using the %{lib-private:...} variable
 
-  $ cat >src/dune <<EOF
+  $ cat >src/dune <<'EOF'
   > (library
   >  (name private_lib)
   >  (modules a))
@@ -106,14 +85,14 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 ----------------------------------------------------------------------------------
 * The %{lib-private:...} variable works with public library names too
 
-  $ cat >src/dune <<EOF
+  $ cat >src/dune <<'EOF'
   > (library
   >  (name private_lib)
   >  (public_name public_lib)
   >  (modules a))
   > EOF
 
-  $ cat >dune <<EOF
+  $ cat >dune <<'EOF'
   > (rule
   >  (alias find-a)
   >  (action (echo "%{lib-private:public_lib:a.ml}")))
@@ -126,50 +105,24 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 ----------------------------------------------------------------------------------
 * The %{lib-private:...} variable does not work with external libraries
 
-  $ mkdir -p external
-  $ cat >external/dune-project <<EOF
+  $ (cd lib-pform-fixtures/external && ../../sdune build @install \
+  >   && ../../sdune install --prefix install --display quiet)
+
+  $ cat >src/dune-project <<'EOF'
   > (lang dune 2.1)
-  > (name external_library)
+  > (name test-lib)
   > EOF
-  $ cat >external/dune <<EOF
-  > (library
-  >  (name extlib)
-  >  (public_name external_library))
-  > EOF
-
-  $ touch external/external_library.opam
-  $ ( cd external && ../sdune build @install \
-  > && ../sdune install --prefix install --display short | dune_cmd sanitize)
-  Installing install/lib/external_library/META
-  Installing install/lib/external_library/dune-package
-  Installing install/lib/external_library/extlib.a
-  Installing install/lib/external_library/extlib.cma
-  Installing install/lib/external_library/extlib.cmi
-  Installing install/lib/external_library/extlib.cmt
-  Installing install/lib/external_library/extlib.cmx
-  Installing install/lib/external_library/extlib.cmxa
-  Installing install/lib/external_library/extlib.ml
-  Installing install/lib/external_library/opam
-  Installing install/lib/external_library/extlib.cmxs
-
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (public_name public_lib)
-  >  (modules a))
+  $ cat >src/dune <<'EOF'
   > (rule
   >  (alias find-a)
   >  (action (echo "%{lib-private:external_library:opam}")))
   > EOF
 
-  $ touch src/public_lib.opam
-  $ echo "(lang dune 2.1)" > src/dune-project
-  $ echo "(name test-lib)" >> src/dune-project
-
-  $ export OCAMLPATH=$PWD/external/install/lib; ./sdune build @find-a --root=src
+  $ OCAMLPATH="$PWD/lib-pform-fixtures/external/install/lib" \
+  >   ./sdune build @find-a --root=src
   Entering directory 'src'
-  File "dune", line 7, characters 16-52:
-  7 |  (action (echo "%{lib-private:external_library:opam}")))
+  File "dune", line 3, characters 16-52:
+  3 |  (action (echo "%{lib-private:external_library:opam}")))
                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The variable "lib-private" can only refer to libraries within the same
   project. The current project's name is "test-lib", but the reference is to an
@@ -187,25 +140,22 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
   >  (public_name another_library))
   > EOF
 
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (public_name public_lib)
-  >  (modules a))
+  $ cat >another/dune-project <<'EOF'
+  > (lang dune 2.1)
+  > (name another-lib)
+  > EOF
+  $ touch another/another_library.opam
+
+  $ cat >src/dune <<'EOF'
   > (rule
   >  (alias find-a)
   >  (action (echo "%{lib-private:another_library:file}")))
   > EOF
-
-  $ touch another/another_library.opam
-  $ rm public_lib.opam
-  $ rm dune
-  $ echo "(lang dune 2.1)" > another/dune-project
-  $ echo "(name another-lib)" >> another/dune-project
+  $ rm dune public_lib.opam
 
   $ ./sdune build @find-a
-  File "src/dune", line 7, characters 16-51:
-  7 |  (action (echo "%{lib-private:another_library:file}")))
+  File "src/dune", line 3, characters 16-51:
+  3 |  (action (echo "%{lib-private:another_library:file}")))
                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The variable "lib-private" can only refer to libraries within the same
   project. The current project's name is "test-lib", but the reference is to

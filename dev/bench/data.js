@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795403962205,
+  "lastUpdate": 1795403969193,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -494912,6 +494912,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 50.52576735362666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "786c458b20e7b3170aa60d7bcab3712f63014e5b",
+          "message": "test(melange): cover root modules in qualified emit sources (#17182)\n\nCover `root_module` in `melange.emit` with qualified subdirectories and\na local module shadowing a dependency. Related to #16501.\n\n01a15050-6eae-7cb2-97c9-ed7b73a94c21\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-22T19:00:03-08:00",
+          "tree_id": "90310ca098f0fc2d21e74f57b8c7e4bb416b7470",
+          "url": "https://github.com/ocaml/dune/commit/786c458b20e7b3170aa60d7bcab3712f63014e5b"
+        },
+        "date": 1795403968026,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4402129725400001,
             "unit": "seconds"
           }
         ]

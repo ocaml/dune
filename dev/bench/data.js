@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795437451022,
+  "lastUpdate": 1795437458668,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -495492,6 +495492,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.640439451426666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6624d8402232826930a1c40cb2a36505297cad37",
+          "message": "test(ctypes): share the example binding descriptions (#17198)\n\nReuse the example type and function descriptions across eleven ctypes\ncram tests. Stage the shared files at their original paths, keeping the\nsequential and unlocked bindings distinct and leaving each test’s build\nconfiguration in place.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-23T20:17:47+08:00",
+          "tree_id": "38070fc8353e647d2cdfc2ff046ecd9455c18af5",
+          "url": "https://github.com/ocaml/dune/commit/6624d8402232826930a1c40cb2a36505297cad37"
+        },
+        "date": 1795437457909,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5025016503533334,
             "unit": "seconds"
           }
         ]

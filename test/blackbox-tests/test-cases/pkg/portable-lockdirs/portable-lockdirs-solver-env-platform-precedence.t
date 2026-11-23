@@ -21,18 +21,13 @@ variables in the lock stanza's solver_env.
   >   "macos-only" {os = "macos"}
   > ]
   > EOF
-  $ cat >dune-workspace <<EOF
-  > (lang dune 3.20)
-  > (repository
-  >  (name mock)
-  >  (url "file://$(pwd)/mock-opam-repository"))
+  $ write_portable_lockdir_workspace <<'EOF'
   > (lock_dir
   >  (repositories mock)
   >  (solver_env (os windows))
   >  (solve_for_platforms
   >   ((arch x86_64) (os linux))
   >   ((arch x86_64) (os macos))))
-  > (pkg enabled)
   > EOF
 
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock

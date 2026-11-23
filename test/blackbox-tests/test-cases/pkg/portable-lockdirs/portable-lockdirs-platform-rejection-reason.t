@@ -8,17 +8,12 @@ environment.
   > available: os != "linux"
   > EOF
 
-  $ cat >dune-workspace <<EOF
-  > (lang dune 3.20)
-  > (repository
-  >  (name mock)
-  >  (url "file://$(pwd)/mock-opam-repository"))
+  $ write_portable_lockdir_workspace <<'EOF'
   > (lock_dir
   >  (repositories mock)
   >  (solve_for_platforms
   >   ((arch x86_64)
   >    (os linux))))
-  > (pkg enabled)
   > EOF
   $ write_portable_lockdirs_project
 

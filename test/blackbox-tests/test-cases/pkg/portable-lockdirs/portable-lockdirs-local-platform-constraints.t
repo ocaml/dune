@@ -13,17 +13,12 @@ the platform filter instead of evaluating it in a platform-less environment.
   $ cat >dune-project <<'EOF'
   > (lang dune 3.18)
   > EOF
-  $ cat >dune-workspace <<EOF
-  > (lang dune 3.20)
-  > (repository
-  >  (name mock)
-  >  (url "file://$(pwd)/mock-opam-repository"))
+  $ write_portable_lockdir_workspace <<'EOF'
   > (lock_dir
   >  (repositories mock)
   >  (solve_for_platforms
   >   ((arch x86_64)
   >    (os linux))))
-  > (pkg enabled)
   > EOF
   $ cat >x.opam <<'EOF'
   > opam-version: "2.0"

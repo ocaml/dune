@@ -4,11 +4,7 @@ Detect common typos with package variables when describing platforms to solve fo
   $ add_mock_repo_if_needed
 
 Create a workspace with some typos in package variable names
-  $ cat > dune-workspace <<EOF
-  > (lang dune 3.20)
-  > (repository
-  >  (name mock)
-  >  (url "file://$(pwd)/mock-opam-repository"))
+  $ write_portable_lockdir_workspace <<'EOF'
   > (lock_dir
   >  (repositories mock)
   >  (solve_for_platforms
@@ -16,7 +12,6 @@ Create a workspace with some typos in package variable names
   >    (os linux)
   >    (os_distribution debian)
   >    (os_family debian))))
-  > (pkg enabled)
   > EOF
 
   $ cat > dune-project <<EOF

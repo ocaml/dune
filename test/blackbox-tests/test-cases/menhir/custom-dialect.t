@@ -22,12 +22,9 @@ Formatting dialects for parser inputs should coexist with generated OCaml files.
   > (library (name parser))
   > EOF
   $ dune build parser.cma @fmt
-  Error: Too many files for module Parser in .:
-  - _build/default/parser.mly
-  - _build/default/parser.ml
-  [1]
   $ dune trace cat | jq_dune -c \
   >   'processesBrief | select(.prog == "cat") | .args'
+  ["./parser.mly"]
 
 The same applies to ocamlyacc.
 
@@ -36,7 +33,3 @@ The same applies to ocamlyacc.
   > (library (name parser))
   > EOF
   $ dune build parser.cma @fmt
-  Error: Too many files for module Parser in .:
-  - _build/default/parser.mly
-  - _build/default/parser.ml
-  [1]

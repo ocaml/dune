@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795437203370,
+  "lastUpdate": 1795437210296,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -495376,6 +495376,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 39.045469847179994,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a86c726f6abc18f54805ec1481cccf4cbea9211c",
+          "message": "refactor(lang): share checks for old syntax (#17197)\n\nUse one version and stanza-location check for deleted, renamed, and\ndeprecated syntax. Each case still emits its existing diagnostic only at\nor after its specified version.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-23T20:15:26+08:00",
+          "tree_id": "b2198b79a4f09ba0c5d80b1478ad2db0218ff3cf",
+          "url": "https://github.com/ocaml/dune/commit/a86c726f6abc18f54805ec1481cccf4cbea9211c"
+        },
+        "date": 1795437209438,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.3896782404333334,
             "unit": "seconds"
           }
         ]

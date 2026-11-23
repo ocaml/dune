@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795413789112,
+  "lastUpdate": 1795413880428,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -690547,6 +690547,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.7752178644733334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b9a1254cf0cefebd68fe0f3bb04cae5184278d60",
+          "message": "test(melange): cover selects in qualified emit sources (#17184)\n\nCover `select` targets in qualified subdirectories of `melange.emit`,\nincluding execution of the emitted JavaScript. Related to #16501.\n\n01a15050-6eae-7cb2-97c9-ed7b73a94c21\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-22T21:50:30-08:00",
+          "tree_id": "79a297885f09e1c92685cbb8153022aa275bc9d1",
+          "url": "https://github.com/ocaml/dune/commit/b9a1254cf0cefebd68fe0f3bb04cae5184278d60"
+        },
+        "date": 1795413458923,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.9271754252266664,
             "unit": "seconds"
           }
         ]

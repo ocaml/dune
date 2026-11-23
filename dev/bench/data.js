@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795452098374,
+  "lastUpdate": 1795452218886,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -691243,6 +691243,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.77607943202,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8e094b6168bae840b473e227a6bd3b6644855ed4",
+          "message": "test(pkg): share portable lockdir workspace setup (#17200)\n\nWrite the mock repository and package-management stanzas through the\nexisting package setup script. Each portable lockdir test keeps its own\nlockdir settings and still generates the same workspace file.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-24T00:29:23+08:00",
+          "tree_id": "eef95811752ff8dd23a058d94e268d9db8b803d2",
+          "url": "https://github.com/ocaml/dune/commit/8e094b6168bae840b473e227a6bd3b6644855ed4"
+        },
+        "date": 1795451796589,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.85015786998,
             "unit": "seconds"
           }
         ]

@@ -82,3 +82,26 @@ Use root_module to fix:
   $ dune build @mel
   $ node _build/default/output/foo.js
   Hello World
+
+The root module is also visible from qualified subdirectories, where a local
+module shadows the library's name.
+
+  $ make_melange_project 3.26 1.0
+  $ mkdir -p app/nested
+  $ cat >app/dune <<EOF
+  > (include_subdirs qualified)
+  > (melange.emit
+  >  (target output)
+  >  (libraries lib1)
+  >  (emit_stdlib false)
+  >  (root_module root))
+  > EOF
+  $ cat >app/nested/lib1.ml <<EOF
+  > let greeting = ()
+  > EOF
+  $ cat >app/nested/main.ml <<EOF
+  > let () = print_endline Root.Lib1.greeting
+  > EOF
+  $ dune build @app/melange
+  $ node _build/default/app/output/app/nested/main.js
+  Hello World

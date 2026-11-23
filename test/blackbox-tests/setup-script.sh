@@ -687,6 +687,49 @@ make_melange_app_with_asset_reader() {
 	EOF
 }
 
+write_lib_pform_library() {
+  local context="$1" visibility="$2"
+  {
+    printf '%s\n' '(library' ' (name private_lib)'
+    if [ "$context" = host ]; then
+      echo ' (enabled_if (= %{context_name} host))'
+    fi
+    if [ "$visibility" = public ]; then
+      echo ' (public_name public_lib)'
+    fi
+    echo ' (modules a))'
+  } > src/dune
+}
+
+write_lib_pform_rules() {
+  local reference="$1" context
+  shift
+  for context do
+    echo '(rule'
+    if [ "$context" = default ]; then
+      echo ' (alias find-a)'
+    else
+      echo " (alias find-a-from-$context)"
+      echo " (enabled_if (= %{context_name} $context))"
+    fi
+    printf ' (action (echo "%%{%s}")))\n' "$reference"
+  done
+}
+
+make_lib_pform_external_library() {
+  mkdir -p external
+  cat >external/dune-project <<-EOF
+	(lang dune $1)
+	(name external_library)
+	EOF
+  cat >external/dune <<-'EOF'
+	(library
+	 (name extlib)
+	 (public_name external_library))
+	EOF
+  touch external/external_library.opam
+}
+
 make_and_enter_private_only_packages_project() {
   local macro="$1"
   local lib1_extra="${2:-}"

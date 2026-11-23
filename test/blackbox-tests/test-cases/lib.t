@@ -8,18 +8,8 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 
   $ make_dune_project 2.0
   $ mkdir -p src
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (public_name public_lib)
-  >  (modules a))
-  > EOF
-
-  $ cat >dune <<EOF
-  > (rule
-  >  (alias find-a)
-  >  (action (echo "%{lib:public_lib:a.ml}")))
-  > EOF
+  $ write_lib_pform_library default public
+  $ write_lib_pform_rules lib:public_lib:a.ml default >dune
 
   $ cat >src/a.ml <<EOF
   > let a = "A"
@@ -35,18 +25,8 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 ----------------------------------------------------------------------------------
 * Error when finding a public library by its private name using the %{lib:...} variable
 
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (public_name public_lib)
-  >  (modules a))
-  > EOF
-
-  $ cat >dune <<EOF
-  > (rule
-  >  (alias find-a)
-  >  (action (echo "%{lib:private_lib:a.ml}")))
-  > EOF
+  $ write_lib_pform_library default public
+  $ write_lib_pform_rules lib:private_lib:a.ml default >dune
 
   $ ./sdune build @find-a
   File "dune", line 3, characters 16-39:
@@ -60,18 +40,8 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 * Find a public library by its private name using the %{lib-private:...} variable
 * Error when using Dune language < 2.1
 
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (public_name public_lib)
-  >  (modules a))
-  > EOF
-
-  $ cat >dune <<EOF
-  > (rule
-  >  (alias find-a)
-  >  (action (echo "%{lib-private:private_lib:a.ml}")))
-  > EOF
+  $ write_lib_pform_library default public
+  $ write_lib_pform_rules lib-private:private_lib:a.ml default >dune
 
   $ ./sdune build @find-a
   File "dune", line 3, characters 16-47:
@@ -93,11 +63,7 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 ----------------------------------------------------------------------------------
 * Find a private library using the %{lib-private:...} variable
 
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (modules a))
-  > EOF
+  $ write_lib_pform_library default private
 
   $ ./sdune clean
   $ ./sdune build @find-a
@@ -106,18 +72,8 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 ----------------------------------------------------------------------------------
 * The %{lib-private:...} variable works with public library names too
 
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (public_name public_lib)
-  >  (modules a))
-  > EOF
-
-  $ cat >dune <<EOF
-  > (rule
-  >  (alias find-a)
-  >  (action (echo "%{lib-private:public_lib:a.ml}")))
-  > EOF
+  $ write_lib_pform_library default public
+  $ write_lib_pform_rules lib-private:public_lib:a.ml default >dune
 
   $ ./sdune clean
   $ ./sdune build @find-a
@@ -126,18 +82,7 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 ----------------------------------------------------------------------------------
 * The %{lib-private:...} variable does not work with external libraries
 
-  $ mkdir -p external
-  $ cat >external/dune-project <<EOF
-  > (lang dune 2.1)
-  > (name external_library)
-  > EOF
-  $ cat >external/dune <<EOF
-  > (library
-  >  (name extlib)
-  >  (public_name external_library))
-  > EOF
-
-  $ touch external/external_library.opam
+  $ make_lib_pform_external_library 2.1
   $ ( cd external && ../sdune build @install \
   > && ../sdune install --prefix install --display short | dune_cmd sanitize)
   Installing install/lib/external_library/META
@@ -152,15 +97,8 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
   Installing install/lib/external_library/opam
   Installing install/lib/external_library/extlib.cmxs
 
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (public_name public_lib)
-  >  (modules a))
-  > (rule
-  >  (alias find-a)
-  >  (action (echo "%{lib-private:external_library:opam}")))
-  > EOF
+  $ write_lib_pform_library default public
+  $ write_lib_pform_rules lib-private:external_library:opam default >>src/dune
 
   $ touch src/public_lib.opam
   $ echo "(lang dune 2.1)" > src/dune-project
@@ -187,15 +125,8 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
   >  (public_name another_library))
   > EOF
 
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (public_name public_lib)
-  >  (modules a))
-  > (rule
-  >  (alias find-a)
-  >  (action (echo "%{lib-private:another_library:file}")))
-  > EOF
+  $ write_lib_pform_library default public
+  $ write_lib_pform_rules lib-private:another_library:file default >>src/dune
 
   $ touch another/another_library.opam
   $ rm public_lib.opam

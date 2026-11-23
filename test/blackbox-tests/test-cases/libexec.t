@@ -15,24 +15,8 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
 
   $ make_dune_project 2.8
   $ mkdir -p src
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (enabled_if (= %{context_name} host))
-  >  (public_name public_lib)
-  >  (modules a))
-  > EOF
-
-  $ cat >dune <<EOF
-  > (rule
-  >  (alias find-a-from-host)
-  >  (enabled_if (= %{context_name} host))
-  >  (action (echo "%{libexec:public_lib:a.ml}")))
-  > (rule
-  >  (alias find-a-from-target)
-  >  (enabled_if (= %{context_name} target))
-  >  (action (echo "%{libexec:public_lib:a.ml}")))
-  > EOF
+  $ write_lib_pform_library host public
+  $ write_lib_pform_rules libexec:public_lib:a.ml host target >dune
 
   $ cat >src/a.ml <<EOF
   > let a = "A"
@@ -51,24 +35,8 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
 ----------------------------------------------------------------------------------
 * Error when finding a host-context public library by its private name using the %{libexec:...} variable
 
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (enabled_if (= %{context_name} host))
-  >  (public_name public_lib)
-  >  (modules a))
-  > EOF
-
-  $ cat >dune <<EOF
-  > (rule
-  >  (alias find-a-from-host)
-  >  (enabled_if (= %{context_name} host))
-  >  (action (echo "%{libexec:private_lib:a.ml}")))
-  > (rule
-  >  (alias find-a-from-target)
-  >  (enabled_if (= %{context_name} target))
-  >  (action (echo "%{libexec:private_lib:a.ml}")))
-  > EOF
+  $ write_lib_pform_library host public
+  $ write_lib_pform_rules libexec:private_lib:a.ml host target >dune
 
   $ ./sdune build @find-a-from-host
   File "dune", line 4, characters 16-43:
@@ -91,23 +59,8 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
 ----------------------------------------------------------------------------------
 * Find a host-context private library using the %{libexec-private:...} variable
 
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (enabled_if (= %{context_name} host))
-  >  (modules a))
-  > EOF
-
-  $ cat >dune <<EOF
-  > (rule
-  >  (alias find-a-from-host)
-  >  (enabled_if (= %{context_name} host))
-  >  (action (echo "%{libexec-private:private_lib:a.ml}")))
-  > (rule
-  >  (alias find-a-from-target)
-  >  (enabled_if (= %{context_name} target))
-  >  (action (echo "%{libexec-private:private_lib:a.ml}")))
-  > EOF
+  $ write_lib_pform_library host private
+  $ write_lib_pform_rules libexec-private:private_lib:a.ml host target >dune
 
   $ ./sdune clean
   $ ./sdune build @find-a-from-host
@@ -118,24 +71,8 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
 ----------------------------------------------------------------------------------
 * The %{libexec-private:...} variable works with public library names too
 
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (enabled_if (= %{context_name} host))
-  >  (public_name public_lib)
-  >  (modules a))
-  > EOF
-
-  $ cat >dune <<EOF
-  > (rule
-  >  (alias find-a-from-host)
-  >  (enabled_if (= %{context_name} host))
-  >  (action (echo "%{libexec-private:public_lib:a.ml}")))
-  > (rule
-  >  (alias find-a-from-target)
-  >  (enabled_if (= %{context_name} target))
-  >  (action (echo "%{libexec-private:public_lib:a.ml}")))
-  > EOF
+  $ write_lib_pform_library host public
+  $ write_lib_pform_rules libexec-private:public_lib:a.ml host target >dune
 
   $ ./sdune clean
   $ ./sdune build @find-a-from-host
@@ -146,18 +83,7 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
 ----------------------------------------------------------------------------------
 * The %{libexec-private:...} variable does not work with external libraries
 
-  $ mkdir -p external
-  $ cat >external/dune-project <<EOF
-  > (lang dune 2.8)
-  > (name external_library)
-  > EOF
-  $ cat >external/dune <<EOF
-  > (library
-  >  (name extlib)
-  >  (public_name external_library))
-  > EOF
-
-  $ touch external/external_library.opam
+  $ make_lib_pform_external_library 2.8
   $ ( cd external && ../sdune build @install \
   > && ../sdune install --prefix install --display short | dune_cmd sanitize)
   Installing install/lib/external_library/META
@@ -172,20 +98,9 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
   Installing install/lib/external_library/opam
   Installing install/lib/external_library/extlib.cmxs
 
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (public_name public_lib)
-  >  (modules a))
-  > (rule
-  >  (alias find-a-from-host)
-  >  (enabled_if (= %{context_name} host))
-  >  (action (echo "%{libexec-private:external_library:opam}")))
-  > (rule
-  >  (alias find-a-from-target)
-  >  (enabled_if (= %{context_name} target))
-  >  (action (echo "%{libexec-private:external_library:opam}")))
-  > EOF
+  $ write_lib_pform_library default public
+  $ write_lib_pform_rules libexec-private:external_library:opam \
+  >   host target >>src/dune
 
   $ touch src/public_lib.opam
   $ echo "(lang dune 2.8)" > src/dune-project
@@ -224,21 +139,9 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
   >  (public_name another_library))
   > EOF
 
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (enabled_if (= %{context_name} host))
-  >  (public_name public_lib)
-  >  (modules a))
-  > (rule
-  >  (alias find-a-from-host)
-  >  (enabled_if (= %{context_name} host))
-  >  (action (echo "%{libexec-private:another_library:file}")))
-  > (rule
-  >  (alias find-a-from-target)
-  >  (enabled_if (= %{context_name} target))
-  >  (action (echo "%{libexec-private:another_library:file}")))
-  > EOF
+  $ write_lib_pform_library host public
+  $ write_lib_pform_rules libexec-private:another_library:file \
+  >   host target >>src/dune
 
   $ touch another/another_library.opam
   $ rm public_lib.opam

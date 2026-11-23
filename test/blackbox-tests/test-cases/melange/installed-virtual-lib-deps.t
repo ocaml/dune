@@ -1,13 +1,7 @@
 An implementation of an installed Melange virtual library must analyze the
 installed modules using Melange object files.
 
-  $ mkdir -p producer/vlib consumer/impl fake-bin
-
-  $ cat > producer/dune-project <<'EOF'
-  > (lang dune 3.24)
-  > (using melange 1.0)
-  > (package (name repro))
-  > EOF
+  $ setup_installed_vlib_projects
 
 The virtual library and its implementation are both Melange-only.
 
@@ -68,30 +62,7 @@ The virtual library and its implementation are both Melange-only.
 Keep the fallback independent of whether the test environment provides
 melobjinfo.
 
-  $ mkdir no-melobjinfo-bin
-  $ for program in dune melc ocamlc ocamlopt ocamldep ocamlobjinfo; do
-  >   command -v "$program" > "no-melobjinfo-bin/$program.target"
-  >   cat > "no-melobjinfo-bin/$program" <<'EOF'
-  > #!/bin/sh
-  > IFS= read -r target < "$0.target"
-  > exec "$target" "$@"
-  > EOF
-  >   chmod +x "no-melobjinfo-bin/$program"
-  > done
-  $ no_melobjinfo_path="$PWD/no-melobjinfo-bin"
-
-  $ cat > consumer/dune-project <<'EOF'
-  > (lang dune 3.24)
-  > (using melange 1.0)
-  > (package (name consumer))
-  > EOF
-  $ cat > consumer/impl/dune <<'EOF'
-  > (library
-  >  (name impl)
-  >  (public_name consumer.impl)
-  >  (modes melange)
-  >  (implements repro.vlib))
-  > EOF
+  $ setup_no_melobjinfo_path
   $ cat > consumer/impl/virt.ml <<'EOF'
   > let _coerce (x : Shared.t) : int = x
   > let run () = Shared.answer
@@ -99,13 +70,7 @@ melobjinfo.
   $ cat > consumer/impl/other.ml <<'EOF'
   > let run _ = 1
   > EOF
-  $ cat > consumer/dune <<'EOF'
-  > (melange.emit
-  >  (target output)
-  >  (emit_stdlib false)
-  >  (compile_flags :standard --mel-cross-module-opt)
-  >  (libraries impl))
-  > EOF
+  $ write_vlib_emit_stanza
 
   $ PATH="$no_melobjinfo_path" OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
   > dune build --root consumer --sandbox=symlink @melange
@@ -113,30 +78,8 @@ melobjinfo.
 With annotations, dependency analysis should read the precise imports from the
 CMT, including private modules but excluding unused ones.
 
-  $ PATH="$no_melobjinfo_path" OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
-  > dune rules --root consumer --recursive --format=json --deps --display=quiet \
-  > impl/.impl.objs/melange/vlib__Virt.cmj > deps.json
-  $ jq_dune -r '
-  >   [.[] | depsFilePaths
-  >    | select(endswith("vlib__Helper.cmi")
-  >             or endswith("vlib__Helper.cmj")
-  >             or endswith("vlib__Leaf.cmi")
-  >             or endswith("vlib__Leaf.cmj")
-  >             or endswith("vlib__Other.cmi")
-  >             or endswith("vlib__Other.cmj")
-  >             or endswith("vlib__Other_type.cmi")
-  >             or endswith("vlib__Other_type.cmj")
-  >             or endswith("vlib__Type_only.cmi")
-  >             or endswith("vlib__Type_only.cmj")
-  >             or endswith("vlib__Type_runtime.cmi")
-  >             or endswith("vlib__Type_runtime.cmj")
-  >             or endswith("vlib__Unused.cmi")
-  >             or endswith("vlib__Unused.cmj")
-  >             or endswith("vlib__Virt.cmi")
-  >             or endswith("vlib__Virt.cmj"))
-  >    | select(startswith("_build/default/impl/.impl.objs/melange/"))]
-  >   | unique[]
-  > ' deps.json
+  $ show_installed_vlib_deps "$no_melobjinfo_path" \
+  >   Helper Leaf Other Other_type Type_only Type_runtime Unused Virt
   _build/default/impl/.impl.objs/melange/vlib__Helper.cmi
   _build/default/impl/.impl.objs/melange/vlib__Helper.cmj
   _build/default/impl/.impl.objs/melange/vlib__Leaf.cmi
@@ -155,6 +98,7 @@ When melobjinfo is available, it takes precedence over CMT analysis.
 Implementation dependencies are followed through CMJs, while interface-only
 dependencies are followed through CMIs.
 
+  $ mkdir fake-bin
   $ cat > fake-bin/melobjinfo <<'EOF'
   > #!/bin/sh
   > set -eu
@@ -199,25 +143,8 @@ dependencies are followed through CMIs.
   >   '[.[] | processesBrief | select(.prog == "melobjinfo")] | length'
   1
 
-  $ PATH="$PWD/fake-bin:$no_melobjinfo_path" \
-  > OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
-  > dune rules --root consumer --recursive --format=json --deps --display=quiet \
-  > impl/.impl.objs/melange/vlib__Virt.cmj > deps-with-melobjinfo.json
-  $ jq_dune -r '
-  >   [.[] | depsFilePaths
-  >    | select(endswith("vlib__Leaf.cmi")
-  >             or endswith("vlib__Leaf.cmj")
-  >             or endswith("vlib__Other_type.cmi")
-  >             or endswith("vlib__Other_type.cmj")
-  >             or endswith("vlib__Type_only.cmi")
-  >             or endswith("vlib__Type_only.cmj")
-  >             or endswith("vlib__Type_runtime.cmi")
-  >             or endswith("vlib__Type_runtime.cmj")
-  >             or endswith("vlib__Unused.cmi")
-  >             or endswith("vlib__Unused.cmj"))
-  >    | select(startswith("_build/default/impl/.impl.objs/melange/"))]
-  >   | unique[]
-  > ' deps-with-melobjinfo.json
+  $ show_installed_vlib_deps "$PWD/fake-bin:$no_melobjinfo_path" \
+  >   Leaf Other_type Type_only Type_runtime Unused
   _build/default/impl/.impl.objs/melange/vlib__Leaf.cmi
   _build/default/impl/.impl.objs/melange/vlib__Leaf.cmj
   _build/default/impl/.impl.objs/melange/vlib__Other_type.cmi
@@ -234,15 +161,6 @@ level. Even when the missing CMT belongs to an unreachable module, every copied
 object is staged.
 
   $ rm "$PWD/prefix/lib/repro/vlib/melange/.private/vlib__Unused.cmt"
-  $ PATH="$no_melobjinfo_path" OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
-  > dune rules --root consumer --recursive --format=json --deps --display=quiet \
-  > impl/.impl.objs/melange/vlib__Virt.cmj > deps-with-missing-cmt.json
-  $ jq_dune -r '
-  >   [.[] | depsFilePaths
-  >    | select(endswith("vlib__Unused.cmi")
-  >             or endswith("vlib__Unused.cmj"))
-  >    | select(startswith("_build/default/impl/.impl.objs/melange/"))]
-  >   | unique[]
-  > ' deps-with-missing-cmt.json
+  $ show_installed_vlib_deps "$no_melobjinfo_path" Unused
   _build/default/impl/.impl.objs/melange/vlib__Unused.cmi
   _build/default/impl/.impl.objs/melange/vlib__Unused.cmj

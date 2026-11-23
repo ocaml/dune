@@ -1,13 +1,7 @@
 An implementation of an installed Melange virtual library must conservatively
 stage copied objects when binary annotations are unavailable.
 
-  $ mkdir -p producer/vlib consumer/impl fake-bin
-
-  $ cat > producer/dune-project <<'EOF'
-  > (lang dune 3.24)
-  > (using melange 1.0)
-  > (package (name repro))
-  > EOF
+  $ setup_installed_vlib_projects
   $ cat > producer/vlib/dune <<'EOF'
   > (library
   >  (name vlib)
@@ -49,30 +43,7 @@ stage copied objects when binary annotations are unavailable.
 Keep the fallback independent of whether the test environment provides
 melobjinfo.
 
-  $ mkdir no-melobjinfo-bin
-  $ for program in dune melc ocamlc ocamlopt ocamldep ocamlobjinfo; do
-  >   command -v "$program" > "no-melobjinfo-bin/$program.target"
-  >   cat > "no-melobjinfo-bin/$program" <<'EOF'
-  > #!/bin/sh
-  > IFS= read -r target < "$0.target"
-  > exec "$target" "$@"
-  > EOF
-  >   chmod +x "no-melobjinfo-bin/$program"
-  > done
-  $ no_melobjinfo_path="$PWD/no-melobjinfo-bin"
-
-  $ cat > consumer/dune-project <<'EOF'
-  > (lang dune 3.24)
-  > (using melange 1.0)
-  > (package (name consumer))
-  > EOF
-  $ cat > consumer/impl/dune <<'EOF'
-  > (library
-  >  (name impl)
-  >  (public_name consumer.impl)
-  >  (modes melange)
-  >  (implements repro.vlib))
-  > EOF
+  $ setup_no_melobjinfo_path
   $ cat > consumer/impl/virt.ml <<'EOF'
   > let run () = ignore Shared.answer
   > EOF
@@ -83,33 +54,12 @@ not turn copied artifacts into a Virt-to-Reverse module dependency cycle.
   $ cat > consumer/impl/reverse.ml <<'EOF'
   > let answer = Virt.run (); 0
   > EOF
-  $ cat > consumer/dune <<'EOF'
-  > (melange.emit
-  >  (target output)
-  >  (emit_stdlib false)
-  >  (compile_flags :standard --mel-cross-module-opt)
-  >  (libraries impl))
-  > EOF
+  $ write_vlib_emit_stanza
 
   $ PATH="$no_melobjinfo_path" OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
   > dune build --root consumer --sandbox=symlink @melange
 
-  $ PATH="$no_melobjinfo_path" OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
-  > dune rules --root consumer --recursive --format=json --deps --display=quiet \
-  > impl/.impl.objs/melange/vlib__Virt.cmj > deps.json
-  $ jq_dune -r '
-  >   [.[] | depsFilePaths
-  >    | select(endswith("vlib__Helper.cmi")
-  >             or endswith("vlib__Helper.cmj")
-  >             or endswith("vlib__Reverse.cmi")
-  >             or endswith("vlib__Reverse.cmj")
-  >             or endswith("vlib__Unused.cmi")
-  >             or endswith("vlib__Unused.cmj")
-  >             or endswith("vlib__Virt.cmi")
-  >             or endswith("vlib__Virt.cmj"))
-  >    | select(startswith("_build/default/impl/.impl.objs/melange/"))]
-  >   | unique[]
-  > ' deps.json
+  $ show_installed_vlib_deps "$no_melobjinfo_path" Helper Reverse Unused Virt
   _build/default/impl/.impl.objs/melange/vlib__Helper.cmi
   _build/default/impl/.impl.objs/melange/vlib__Helper.cmj
   _build/default/impl/.impl.objs/melange/vlib__Reverse.cmi
@@ -120,6 +70,7 @@ not turn copied artifacts into a Virt-to-Reverse module dependency cycle.
 melobjinfo makes precise dependencies available without CMTs, so unrelated
 copied objects no longer need to be staged.
 
+  $ mkdir fake-bin
   $ cat > fake-bin/melobjinfo <<'EOF'
   > #!/bin/sh
   > for unit do
@@ -134,20 +85,7 @@ copied objects no longer need to be staged.
   > EOF
   $ chmod +x fake-bin/melobjinfo
 
-  $ PATH="$PWD/fake-bin:$no_melobjinfo_path" \
-  > OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
-  > dune rules --root consumer --recursive --format=json --deps --display=quiet \
-  > impl/.impl.objs/melange/vlib__Virt.cmj > deps-with-melobjinfo.json
-  $ jq_dune -r '
-  >   [.[] | depsFilePaths
-  >    | select(endswith("vlib__Helper.cmi")
-  >             or endswith("vlib__Helper.cmj")
-  >             or endswith("vlib__Reverse.cmi")
-  >             or endswith("vlib__Reverse.cmj")
-  >             or endswith("vlib__Unused.cmi")
-  >             or endswith("vlib__Unused.cmj"))
-  >    | select(startswith("_build/default/impl/.impl.objs/melange/"))]
-  >   | unique[]
-  > ' deps-with-melobjinfo.json
+  $ show_installed_vlib_deps "$PWD/fake-bin:$no_melobjinfo_path" \
+  >   Helper Reverse Unused
   _build/default/impl/.impl.objs/melange/vlib__Helper.cmi
   _build/default/impl/.impl.objs/melange/vlib__Helper.cmj

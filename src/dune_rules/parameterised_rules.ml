@@ -24,7 +24,6 @@ type t =
   ; requires : Lib.t list Resolve.t
   ; target : Path.Build.t
   ; o_target : Path.Build.t option
-  ; hidden_targets : Path.Build.t list
   ; hidden_deps : Dep.Set.t Action_builder.t
   }
 
@@ -56,7 +55,7 @@ let build_instance
       ~obj_dir
       ~mode
       ~ocaml:({ Ocaml_toolchain.lib_config; _ } as ocaml)
-      { module_; args; requires; target; o_target = _; hidden_targets; hidden_deps }
+      { module_; args; requires; target; o_target; hidden_deps }
   =
   let include_flags =
     let open Action_builder.O in
@@ -85,13 +84,10 @@ let build_instance
         (let open Action_builder.O in
          let+ args = Resolve.read args in
          Command.Args.Deps args)
-    ; Dyn
-        (let open Action_builder.O in
-         let+ hidden_deps = hidden_deps in
-         Command.Args.Hidden_deps hidden_deps)
+    ; Dyn (Action_builder.map hidden_deps ~f:(fun deps -> Hidden_deps deps))
     ; A "-o"
     ; Target target
-    ; Hidden_targets hidden_targets
+    ; Hidden_targets (Option.to_list o_target)
     ]
 ;;
 
@@ -132,6 +128,20 @@ let build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules =
         [ "info", Lib_info.to_dyn Path.Build.to_dyn lib_info ]
   in
   let* ocaml = Context.ocaml (Super_context.context sctx) in
+  let archive_inputs =
+    let open Action_builder.O in
+    let+ top_sorted_modules = top_sorted_modules in
+    let instances =
+      List.filter_map top_sorted_modules ~f:(fun m ->
+        Module_name.Map.find modules (Module.name m))
+    in
+    let cm = List.map instances ~f:(fun { target; _ } -> Path.build target) in
+    let object_files =
+      List.filter_map instances ~f:(fun { o_target; _ } ->
+        Option.map o_target ~f:Path.build)
+    in
+    Command.Args.S [ Deps cm; Hidden_deps (Dep.Set.of_files object_files) ]
+  in
   add_ocaml_rule
     ~sctx
     ~obj_dir
@@ -139,30 +149,7 @@ let build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules =
     ~ocaml
     [ obj_dir_flags ~mode obj_dir
     ; A "-a"
-    ; Dyn
-        (let open Action_builder.O in
-         let+ top_sorted_modules = top_sorted_modules in
-         let deps =
-           List.filter_map top_sorted_modules ~f:(fun m ->
-             let name = Module.name m in
-             match Module_name.Map.find modules name with
-             | None -> None
-             | Some inst -> Some (Path.build inst.target))
-         in
-         Command.Args.Deps deps)
-    ; Dyn
-        (let open Action_builder.O in
-         let+ top_sorted_modules = top_sorted_modules in
-         let deps =
-           Dep.Set.of_list
-           @@ List.filter_map top_sorted_modules ~f:(fun m ->
-             let name = Module.name m in
-             match Module_name.Map.find modules name with
-             | Some { o_target = Some o_target; _ } ->
-               Some (Dep.file (Path.build o_target))
-             | None | Some { o_target = None; _ } -> None)
-         in
-         Command.Args.Hidden_deps deps)
+    ; Dyn archive_inputs
     ; A "-o"
     ; Target target
     ; Hidden_targets hidden_targets
@@ -237,7 +224,7 @@ let build_modules ~sctx ~obj_dir ~modules_obj_dir ~dep_graph ~mode ~requires ~li
   in
   Memo.List.fold_left modules ~init:Module_name.Map.empty ~f:(fun acc module_ ->
     let instance =
-      let module_cm = Obj_dir.Module.obj_file modules_obj_dir module_ ~kind ~ext in
+      let cm = Obj_dir.Module.obj_file modules_obj_dir module_ ~kind ~ext in
       let module_cmi =
         Obj_dir.Module.cm_file_exn modules_obj_dir module_ ~kind:(Ocaml Cmi)
       in
@@ -247,11 +234,6 @@ let build_modules ~sctx ~obj_dir ~modules_obj_dir ~dep_graph ~mode ~requires ~li
         match mode with
         | Native -> Some (obj_file ~obj_dir ~kind ~ext:ext_obj unique_name)
         | Byte -> None
-      in
-      let hidden_targets =
-        match mode with
-        | Byte -> []
-        | Native -> [ obj_file ~obj_dir ~kind ~ext:ext_obj unique_name ]
       in
       let hidden_deps =
         let open Action_builder.O in
@@ -265,14 +247,7 @@ let build_modules ~sctx ~obj_dir ~modules_obj_dir ~dep_graph ~mode ~requires ~li
         in
         Dep.Set.union lib_hidden_deps (Dep.Set.of_files (module_cmi :: deps))
       in
-      { module_ = module_cm
-      ; args = cm_args
-      ; requires
-      ; target
-      ; o_target
-      ; hidden_targets
-      ; hidden_deps
-      }
+      { module_ = cm; args = cm_args; requires; target; o_target; hidden_deps }
     in
     let+ () = build_instance ~sctx ~obj_dir ~mode ~ocaml instance in
     Module_name.Map.add_exn acc (Module.name module_) instance)

@@ -1,5 +1,6 @@
 Tests Menhir stanzas under env settings.
 
+  $ cp ../parser-fixtures/test_menhir1.mly parser.mly
   $ make_menhir_project 2.2 2.1
   $ cat >dune <<EOF
   > (env (_ (menhir_flags :standard "--comment")))

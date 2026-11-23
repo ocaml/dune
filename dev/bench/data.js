@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795412684171,
+  "lastUpdate": 1795412690846,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -495144,6 +495144,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 40.138758964279994,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "26364a0e8b9d2f4b3395794a8cdbf9267b173c97",
+          "message": "test(ocamllex): reproduce dialect collision (#17029)\n\nAn ocamllex build succeeds until `.mll` is registered as an\nimplementation dialect, then fails with a duplicate-module error even\nwithout a formatter.\n\nRefs #17030.\n\nSigned-off-by: Ali Caglayan <alizter@gmail.com>",
+          "timestamp": "2026-11-22T21:29:54-08:00",
+          "tree_id": "0e316fd70f3df396a3d57886bb99de0d6c2a70f1",
+          "url": "https://github.com/ocaml/dune/commit/26364a0e8b9d2f4b3395794a8cdbf9267b173c97"
+        },
+        "date": 1795412689995,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.39142866285333344,
             "unit": "seconds"
           }
         ]

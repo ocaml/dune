@@ -455,6 +455,19 @@ create_mock_repo() {
 	EOF
 }
 
+write_portable_lockdir_workspace() {
+  {
+    cat <<-EOF
+	(lang dune 3.20)
+	(repository
+	 (name mock)
+	 (url "$(default_repo_path)"))
+	EOF
+    cat
+    echo '(pkg enabled)'
+  } > dune-workspace
+}
+
 create_mock_repo_with_doc_workspace() {
   cat >dune-workspace <<- EOF
 	(lang dune 3.20)

@@ -16,18 +16,13 @@ Create a package whose build result records the selected operating system.
   > EOF
 
   $ make_portable_lockdirs_project
-  $ cat >dune-workspace <<EOF
-  > (lang dune 3.20)
-  > (repository
-  >  (name mock)
-  >  (url "file://$(pwd)/mock-opam-repository"))
+  $ write_portable_lockdir_workspace <<'EOF'
   > (lock_dir
   >  (repositories mock)
   >  (solver_env (os macos))
   >  (solve_for_platforms
   >   ((arch x86_64) (os linux))
   >   ((arch x86_64) (os macos))))
-  > (pkg enabled)
   > EOF
 
 The lock stanza selects macOS, but the build context still selects Linux.

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795466643948,
+  "lastUpdate": 1795466980845,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -495985,6 +495985,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4437915946866667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "shon.feder@gmail.com",
+            "name": "Shon",
+            "username": "shonfeder"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "002a58170ee03b1adde695fb07d345ce12a5bcf4",
+          "message": "emacs: highlight parameterised library keywords (#17066)\n\nFixes #12567.\n\nAdds `library_parameter` (stanza), `parameters` (field) and\n`instantiate` (builtin) to `dune-mode`'s font-lock lists.",
+          "timestamp": "2026-11-23T15:29:38-05:00",
+          "tree_id": "0c4f4b2eab5687280ea63cf740d7ab9fbbea86d1",
+          "url": "https://github.com/ocaml/dune/commit/002a58170ee03b1adde695fb07d345ce12a5bcf4"
+        },
+        "date": 1795466979366,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 64.82712042023333,
             "unit": "seconds"
           }
         ]

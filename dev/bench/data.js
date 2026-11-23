@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795412690846,
+  "lastUpdate": 1795413559185,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -690431,6 +690431,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.41083332658,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5dbcde8f6c2decdd087b07df2485d530688d979c",
+          "message": "test(melange): cover re-exported emit dependencies (#17183)\n\nCover transitive re-exports through `libraries` and `melange.libraries`\nwhen consumed by `melange.emit`, with implicit transitive dependencies\ndisabled. Also check that `re_export` is rejected in the emit stanza\nitself. Related to #16501.\n\n01a15050-6eae-7cb2-97c9-ed7b73a94c21\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-22T21:49:56-08:00",
+          "tree_id": "53fa57ac5dbdd245e7890b25ddcc95666aa6aede",
+          "url": "https://github.com/ocaml/dune/commit/5dbcde8f6c2decdd087b07df2485d530688d979c"
+        },
+        "date": 1795413317916,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.6964034198599998,
             "unit": "seconds"
           }
         ]

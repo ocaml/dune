@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795451978783,
+  "lastUpdate": 1795451985746,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -495666,6 +495666,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 52.34416945059999,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "be04a11bf1459b79db9fda26ec3abe381b388b9f",
+          "message": "test: share JavaScript and Wasm compiler fixtures (#17203)\n\nStage shared source and runtime files at their original paths in seven\njs_of_ocaml and wasm_of_ocaml tests. Keep the backend-specific build\nsettings and assertions in each test.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-24T00:23:10+08:00",
+          "tree_id": "81c03089e0c5f399b3192c4ab92f759ea44de19c",
+          "url": "https://github.com/ocaml/dune/commit/be04a11bf1459b79db9fda26ec3abe381b388b9f"
+        },
+        "date": 1795451984932,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.45556402322666667,
             "unit": "seconds"
           }
         ]

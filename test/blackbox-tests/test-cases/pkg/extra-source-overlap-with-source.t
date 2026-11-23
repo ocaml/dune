@@ -33,10 +33,10 @@ file in the package's source.
   $ cat foo-source/foo.txt
   from source
 
-The overlay currently overwrites the staged copy, not the original file.
+The installed file comes from the overlay, but the staged copy stays unchanged.
 
   $ cat "$(get_build_pkg_dir foo)/source/foo.txt"
-  from extra source
+  from source
 
 The first package had no explicit build or install command. Dropping the
 overlay must recover the original source for the next recipe, even when its
@@ -71,9 +71,7 @@ Restoring the overlay must also work for an explicit build command.
   $ cat foo-source/foo.txt
   from source
 
-A lockdir .files overlay should install its contents without changing the
-staged copy. With no explicit commands, the package rule tries to overwrite
-that copy directly. This can fail if the staged file is read-only.
+A lockdir .files overlay also leaves the staged copy unchanged.
 
   $ mkdir bar-source
   $ echo 'from source' >bar-source/foo.txt
@@ -87,7 +85,13 @@ that copy directly. This can fail if the staged file is read-only.
   > EOF
   $ bar=$(get_build_pkg_dir bar)
   $ overlay="${source_lock_dir}/bar.files/foo.txt"
-  $ dune build "$bar/target" >overlay.log 2>&1 &&
-  >   cmp -s "$bar/target/share/bar/foo.txt" "$overlay" &&
-  >   cmp -s "$bar/source/foo.txt" bar-source/foo.txt
-  [1]
+  $ dune build "$bar/target"
+  $ cmp "$bar/target/share/bar/foo.txt" "$overlay"
+  $ cmp "$bar/source/foo.txt" bar-source/foo.txt
+
+Removing the overlay alone restores the original file at the same target.
+
+  $ rm "$overlay"
+  $ test "$(get_build_pkg_dir bar)" = "$bar"
+  $ dune build "$bar/target"
+  $ cmp "$bar/target/share/bar/foo.txt" bar-source/foo.txt

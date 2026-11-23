@@ -6,6 +6,17 @@
  (alias runtest-js))
 
 (cram
+ (applies_to simple.t no-check-prim.t)
+ (deps
+  (source_tree ../js-compiler-fixtures/technologic/common)
+  (source_tree ../js-compiler-fixtures/technologic/js)))
+
+(cram
+ (applies_to jsoo-config.t jsoo-config-effects.t)
+ (deps
+  (source_tree ../js-compiler-fixtures/config)))
+
+(cram
  (applies_to inline-tests.t)
  (enabled_if
   (<> "macosx" %{ocaml-config:system}))

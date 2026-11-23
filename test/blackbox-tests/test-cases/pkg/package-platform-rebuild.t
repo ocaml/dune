@@ -2,15 +2,6 @@ Package build keys should describe the selected platform, not inactive branches
 or the lock directory's representation. Record the current extra builds.
 
   $ export DUNE_TRACE=+cache
-  $ misses() {
-  >   dune trace cat | jq -cs '
-  >     [ .[]
-  >       | select(.cat == "cache" and .name == "workspace_local_miss")
-  >       | select(.args.target | contains("foo.") and endswith("/target"))
-  >       | .args.reason | split(":")[0]
-  >     ]
-  >   '
-  > }
   $ make_dune_project 3.26
   $ make_lockdir
   $ cat > dune.lock/lock.dune <<EOF
@@ -27,7 +18,7 @@ or the lock directory's representation. Record the current extra builds.
   $ digest=$(dune pkg print-digest foo)
   $ build_pkg foo
   $ build_pkg foo
-  $ misses
+  $ package_target_miss_reasons foo
   []
 
 Editing only the macOS command currently changes the Linux package key.
@@ -42,7 +33,7 @@ Editing only the macOS command currently changes the Linux package key.
   $ test "$digest" = "$(dune pkg print-digest foo)"
   [1]
   $ build_pkg foo
-  $ misses
+  $ package_target_miss_reasons foo
   ["never seen this target before"]
 
 Adding another supported platform also invalidates the unchanged Linux build.
@@ -55,7 +46,7 @@ Adding another supported platform also invalidates the unchanged Linux build.
   $ test "$digest" = "$(dune pkg print-digest foo)"
   [1]
   $ build_pkg foo
-  $ misses
+  $ package_target_miss_reasons foo
   ["never seen this target before"]
 
 An equivalent non-portable lock directory should reuse the build.
@@ -69,7 +60,7 @@ An equivalent non-portable lock directory should reuse the build.
   $ test "$digest" = "$(dune pkg print-digest foo)"
   [1]
   $ build_pkg foo
-  $ misses
+  $ package_target_miss_reasons foo
   ["never seen this target before"]
 
 Spelling out an empty dependency list should have no effect either.
@@ -79,5 +70,5 @@ Spelling out an empty dependency list should have no effect either.
   $ test "$digest" = "$(dune pkg print-digest foo)"
   [1]
   $ build_pkg foo
-  $ misses
+  $ package_target_miss_reasons foo
   ["never seen this target before"]

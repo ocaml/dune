@@ -9,15 +9,6 @@ lockfile. Its artifacts must not be reused on a different OS or architecture.
   > (install
   >  (system "echo \$DUNE_CONFIG__OS/\$DUNE_CONFIG__ARCH > %{prefix}/platform"))
   > EOF
-  $ misses() {
-  >   dune trace cat | jq -cs '
-  >     [ .[]
-  >       | select(.cat == "cache" and .name == "workspace_local_miss")
-  >       | select(.args.target | contains("foo.") and endswith("/target"))
-  >       | .args.reason | split(":")[0]
-  >     ]
-  >   '
-  > }
   $ linux_digest=$(dune pkg print-digest foo)
   $ build_pkg foo
   $ cat "$pkg_root/$linux_digest/target/platform"
@@ -30,7 +21,7 @@ has no target-rule miss and incorrectly reuses the first platform's artifact.
   $ test "$linux_digest" != "$macos_digest"
   [1]
   $ DUNE_CONFIG__OS=macos dune build "$pkg_root/$macos_digest/target"
-  $ misses
+  $ package_target_miss_reasons foo
   []
   $ cat "$pkg_root/$macos_digest/target/platform"
   linux/x86_64
@@ -41,7 +32,7 @@ Changing architecture has the same problem.
   $ test "$linux_digest" != "$arm_digest"
   [1]
   $ DUNE_CONFIG__ARCH=arm64 dune build "$pkg_root/$arm_digest/target"
-  $ misses
+  $ package_target_miss_reasons foo
   []
   $ cat "$pkg_root/$arm_digest/target/platform"
   linux/x86_64

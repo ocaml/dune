@@ -48,6 +48,15 @@ build_pkg() {
   fi
 }
 
+package_target_miss_reasons() {
+  dune trace cat | jq -cs --arg package "$1" '
+    [ .[]
+      | select(.cat == "cache" and .name == "workspace_local_miss")
+      | select(.args.target | contains($package + ".") and endswith("/target"))
+      | .args.reason | split(":")[0]
+    ]'
+}
+
 show_pkg() {
   local pkg=$1
   local prefix

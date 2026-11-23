@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795405176273,
+  "lastUpdate": 1795405306004,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -494941,6 +494941,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4402129725400001,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4634629acbfbd1df590698f232495715a2314953",
+          "message": "test(watch): avoid counting eager runtest server messages (#17177)\n\nThe RPC ping waits for the server, not for its initial eager build. If\nthe forwarded `runtest` request arrives during that build, the watch\nloop interrupts it and incorporates the request into the next iteration.\nAs a result, the background server need not print two success lines.\n\nCapture the watch output separately and check that the test action ran.\nKeep checking the client result and the `runtest` request trace. This\nfollows the approach used for the eager `exec` test in #16435.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-23T11:27:15+08:00",
+          "tree_id": "898622bb0939b298a2f22e6f6a8613e47062b04b",
+          "url": "https://github.com/ocaml/dune/commit/4634629acbfbd1df590698f232495715a2314953"
+        },
+        "date": 1795405303678,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 43.42008298256667,
             "unit": "seconds"
           }
         ]

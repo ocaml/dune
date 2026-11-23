@@ -11,10 +11,11 @@ Define a test that just prints "Hello, World!"
   >  (action (echo "Hello, World!")))
   > EOF
 
-  $ dune build --watch &
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
-  Hello, World!
+Capture the watch server's output separately. The initial build may not
+finish before the RPC request arrives, so its status messages can vary.
+
+  $ dune build --watch > .#dune-output 2>&1 &
+  $ watch_pid=$!
 
 Make sure the RPC server is properly started:
   $ dune rpc ping --wait
@@ -26,7 +27,9 @@ mode:
   Success
 
   $ dune shutdown
-  $ wait
+  $ wait "$watch_pid"
+  $ grep -x 'Hello, World!' .#dune-output
+  Hello, World!
 
   $ dune trace cat | jq -r '
   >   select(.cat == "rpc" and .name == "request" and .args.meth == "runtest")

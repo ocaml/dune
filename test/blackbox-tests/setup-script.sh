@@ -89,6 +89,22 @@ EOF
 EOF
 }
 
+setup_shared_cache_history_project() {
+  make_dune_project 2.1 || return
+  local version
+  for version in v1 v2; do
+    cat >"dune-$version" <<-EOF || return
+	(rule
+	 (targets t1)
+	 (action (bash "echo running; echo $version > t1")))
+	(rule
+	 (deps t1)
+	 (targets t2)
+	 (action (bash "echo running; cat t1 t1 > t2")))
+	EOF
+  done
+}
+
 init_oxcaml_project() {
   cat > "dune-project" <<- EOF
 	(lang dune 3.20)

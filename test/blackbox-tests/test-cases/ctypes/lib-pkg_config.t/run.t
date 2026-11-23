@@ -7,6 +7,8 @@ run the executable that tests the library through the cstubs.
 
 This test tries a single function description stanza.
 
+  $ cp ../example-bindings/function_description.ml \
+  >   ../example-bindings/type_description.ml stubgen/
   $ LIBEX=$(realpath "$PWD/../libexample")
   $ DYLD_LIBRARY_PATH="$LIBEX" LD_LIBRARY_PATH="$LIBEX"  PKG_CONFIG_PATH="$LIBEX/pkgconfig" PKG_CONFIG_ARGN="--define-prefix"  dune exec ./example.exe
   4

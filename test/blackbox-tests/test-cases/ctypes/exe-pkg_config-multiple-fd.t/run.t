@@ -7,6 +7,10 @@ run the executable that tests the library through the cstubs.
 
 This test also tests multiple function description modules.
 
+  $ cp ../example-bindings/type_description.ml \
+  >   ../example-bindings/function_description_unlocked.ml .
+  $ cp ../example-bindings/function_description.ml \
+  >   function_description_sequential.ml
   $ LIBEX=$(realpath "$PWD/../libexample")
 
 Pkg-config remains unsandboxed before Dune language 3.25.

@@ -1,5 +1,7 @@
 This test generates documentation using odoc for a library:
 
+  $ cp ../simple-project/dune ../simple-project/dune-project \
+  >   ../simple-project/*.opam .
   $ dune build @doc
 
 This test if `.odocl` files are generated

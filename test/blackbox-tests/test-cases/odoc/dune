@@ -1,3 +1,18 @@
+(data_only_dirs simple-project)
+
 (cram
  (applies_to :whole_subtree)
  (deps %{bin:odoc} %{bin:sherlodoc}))
+
+(cram
+ (applies_to odoc-simple.t)
+ (deps
+  simple-project/dune
+  simple-project/dune-project
+  simple-project/bar.opam
+  simple-project/foo.opam))
+
+(cram
+ (applies_to odoc-new-sherlodoc.t odoc-no-sherlodoc.t odoc-sherlodoc.t)
+ (deps
+  (source_tree simple-project)))

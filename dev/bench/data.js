@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795452218886,
+  "lastUpdate": 1795452230615,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -691272,6 +691272,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.85015786998,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0395f1df861801bda2e76c15f9f34618876f484e",
+          "message": "test(menhir): share parser fixtures across examples (#17204)\n\nStage the same source tree in both Menhir extension-version tests and\nreuse its lexer and grammar in the cmly, env, and promotion tests. Keep\nthe original filenames and assertions.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-24T00:27:53+08:00",
+          "tree_id": "ed0bd300f5a4aa2c1387d4f873d5882ab766b61d",
+          "url": "https://github.com/ocaml/dune/commit/0395f1df861801bda2e76c15f9f34618876f484e"
+        },
+        "date": 1795451926747,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.6000089047866672,
             "unit": "seconds"
           }
         ]

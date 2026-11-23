@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795443307987,
+  "lastUpdate": 1795443502127,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -690982,6 +690982,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8836481812400003,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "543cdd1f2fecdac61c5e430a81cfc050e76e6eb7",
+          "message": "test(melange): reproduce missing melange.libraries select modules (#17185)\n\nReproduce missing selected modules when `select` is declared only in\n`melange.libraries`, with ordinary `libraries` as a working control.\nRelated to #16501.\n\n01a15050-6eae-7cb2-97c9-ed7b73a94c21\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-23T06:03:52-08:00",
+          "tree_id": "e8e358521c6abad34552c9fe786afa7587f43783",
+          "url": "https://github.com/ocaml/dune/commit/543cdd1f2fecdac61c5e430a81cfc050e76e6eb7"
+        },
+        "date": 1795443077731,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 4.100580182733332,
             "unit": "seconds"
           }
         ]

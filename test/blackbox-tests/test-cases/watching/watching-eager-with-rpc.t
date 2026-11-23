@@ -8,12 +8,10 @@ Demonstrate building through rpc when server is running in eager watch
 
   $ dune build @all
   $ dune build --watch > .#dune-output 2>&1 &
+  $ DUNE_PID=$!
   $ wait_for_rpc_server
 
-  $ dune rpc build --wait .
+  $ build .
   Success
 
-  $ dune shutdown
-  $ wait
-  $ grep -m1 "Success, waiting" .#dune-output
-  Success, waiting for filesystem changes...
+  $ stop_dune_quiet

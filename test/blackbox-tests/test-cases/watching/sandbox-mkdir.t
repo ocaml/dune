@@ -29,8 +29,8 @@ memoization).
   $ build test
   Success
 
-  $ stop_dune | sed -e 's#.sandbox/[^/]*/default/test/subdir#.sandbox/<hash>/default/test/subdir#'
+  $ stop_dune_quiet
+  $ grep -v ', waiting for filesystem changes\.\.\.$' .#dune-output \
+  >   | sed -e 's#.sandbox/[^/]*/default/test/subdir#.sandbox/<hash>/default/test/subdir#'
   $TESTCASE_ROOT/_build/.sandbox/<hash>/default/test/subdir
-  Success, waiting for filesystem changes...
   $TESTCASE_ROOT/_build/.sandbox/<hash>/default/test/subdir
-  Success, waiting for filesystem changes...

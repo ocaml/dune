@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795414217561,
+  "lastUpdate": 1795436966494,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -690692,6 +690692,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.9271754252266664,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fb00d20b4bf794ce7079715ad7b96d692bd1e16d",
+          "message": "test(rules): share installed-package cram fixtures (#17195)\n\nShare the installed-package setup and dependency queries across four\ncram tests. Keep each test’s package masks, unavailable libraries,\nforeign artifacts, and expected results explicit.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-23T20:14:49+08:00",
+          "tree_id": "5f9aad652b8fecc0dc63b75b402ac562958ae0f4",
+          "url": "https://github.com/ocaml/dune/commit/fb00d20b4bf794ce7079715ad7b96d692bd1e16d"
+        },
+        "date": 1795436550679,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7264664784133337,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,6 @@
 Test which "with-doc" and "with-dev-setup" dependencies are locked. Starting
 with Dune 3.26, like "with-test", they are selected for local packages only.
+"with-dev-setup" is enabled by default, "with-doc" is not.
 
   $ mkrepo
   $ add_mock_repo_if_needed
@@ -42,8 +43,8 @@ Before Dune 3.26, doc and dev-setup dependencies are not locked:
   Dependencies common to all supported platforms:
   - dep.0.0.1
 
-Starting with Dune 3.26, doc and dev-setup dependencies of local packages are
-locked, but not those of locked packages:
+Starting with Dune 3.26, dev-setup dependencies of local packages are locked,
+but not those of locked packages:
 
   $ write_project 3.26
   $ dune pkg lock
@@ -52,7 +53,6 @@ locked, but not those of locked packages:
   Dependencies common to all supported platforms:
   - dep.0.0.1
   - dev-setup-dep.0.0.1
-  - doc-dep.0.0.1
 
 The doc and dev-setup build steps of locked packages are disabled:
 
@@ -84,7 +84,7 @@ The workspace can disable them:
 
   $ dune pkg validate-lockdir
 
-Setting them to true is the same as leaving them unset:
+Setting them to true only applies to local packages:
 
   $ cat > dune-workspace <<EOF
   > (lang dune 3.26)

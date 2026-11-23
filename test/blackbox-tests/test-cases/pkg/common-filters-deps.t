@@ -16,8 +16,8 @@ included.
   $ mkpkg dev-setup <<EOF
   > EOF
 
-Like with-test, with-doc and with-dev-setup are enabled for local packages, so
-their dependencies are included in the solution.
+Like with-test, with-dev-setup is enabled for local packages, so its
+dependencies are included in the solution. with-doc is disabled.
 
 Dune will also not include dependencies marked `post` in the lock directory.
 
@@ -25,5 +25,4 @@ Dune will also not include dependencies marked `post` in the lock directory.
   Solution for dune.lock:
   - build.0.0.1
   - dev-setup.0.0.1
-  - doc.0.0.1
   - test.0.0.1

@@ -24,9 +24,8 @@ val extend : t -> t -> t
 
 (** A [t] with default values for some variables:
     - "opam-version" is set to the version of opam vendored in dune
-    - "with-doc" and "with-dev-setup" are set to "false" before Dune 3.26.
-      Starting with Dune 3.26 they are left unset, so that the doc and
-      dev-setup dependencies of local packages are selected. *)
+    - "with-doc" is set to "false"
+    - "with-dev-setup" is set to "false" before Dune 3.26 *)
 val with_defaults : dune_version:Dune_lang.Syntax.Version.t -> t
 
 val pp : t -> 'a Pp.t

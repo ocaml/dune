@@ -34,8 +34,8 @@ let is_subset =
     Variable_value.equal value of_)
 ;;
 
-(* The Dune language version from which "with-doc" and "with-dev-setup" are
-   enabled by default for local packages. *)
+(* The Dune language version from which "with-dev-setup" is enabled by default,
+   and "with-doc" and "with-dev-setup" only apply to local packages. *)
 let doc_and_dev_setup_enabled_since = 3, 26
 
 (* Setting [variables] to "true" is the same as leaving them unset: they then
@@ -93,14 +93,12 @@ let with_defaults ~dune_version =
   ([ ( Package_variable_name.opam_version
      , OpamVersion.to_string OpamVersion.current |> Variable_value.string )
    ; Package_variable_name.post, Variable_value.true_
+   ; Package_variable_name.with_doc, Variable_value.false_
    ]
    @
    if dune_version >= doc_and_dev_setup_enabled_since
    then []
-   else
-     [ Package_variable_name.with_doc, Variable_value.false_
-     ; Package_variable_name.with_dev_setup, Variable_value.false_
-     ])
+   else [ Package_variable_name.with_dev_setup, Variable_value.false_ ])
   |> List.fold_left ~init:empty ~f:(fun acc (name, value) -> set acc name value)
 ;;
 

@@ -939,7 +939,11 @@ module Generated_modules = struct
             | None, None -> None
             | Some m, None | None, Some m -> Some m
             | Some f1, Some f2 ->
-              if Path.equal (Module.File.path f1) (Module.File.path f2)
+              if
+                Path.equal (Module.File.path f1) (Module.File.path f2)
+                || Path.equal
+                     (Module.File.original_path f1)
+                     (Module.File.original_path f2)
               then Some f2
               else (
                 let dir =

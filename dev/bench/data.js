@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795405375078,
+  "lastUpdate": 1795405381590,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -495028,6 +495028,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 38.77379791597334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "55ebabeb98cba6a235445e2a18903636bc7d238b",
+          "message": "refactor(rules): share duplicate library diagnostics (#17165)\n\nRender both declaration locations through one helper for\nduplicate-library errors. Each caller keeps its existing message and\nwhether the main declaration is shown as the primary location.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-23T11:27:50+08:00",
+          "tree_id": "e4a8a01ac5e6bbbdce03f7a4cc5cf6dc086c3cab",
+          "url": "https://github.com/ocaml/dune/commit/55ebabeb98cba6a235445e2a18903636bc7d238b"
+        },
+        "date": 1795405380737,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.3788294291333334,
             "unit": "seconds"
           }
         ]

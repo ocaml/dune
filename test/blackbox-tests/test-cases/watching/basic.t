@@ -57,28 +57,23 @@ Basic tests for the file-watching mode.
   $ cat _build/default/y
   new-contents3
 
-  $ with_timeout dune shutdown
-  $ cat .#dune-output
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
-  File "dune", lines 1-4, characters 0-59:
-  1 | (rule
-  2 |  (target y)
-  3 |  (deps x)
-  4 |  (action (system "cat x > y")))
-  Error: No rule found for x
-  Had 1 error, waiting for filesystem changes...
-  File "dune", lines 1-4, characters 0-59:
-  1 | (rule
-  2 |  (target y)
-  3 |  (deps x)
-  4 |  (action (system "cat x > y")))
-  Error: No rule found for x
-  Had 1 error, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
+Check the diagnostics, not the watch summaries: the client can get its result
+before the server prints the summary.
 
-  $ wait_for_dune_exit
+  $ stop_dune_quiet
+  $ grep -v ', waiting for filesystem changes\.\.\.$' .#dune-output
+  File "dune", lines 1-4, characters 0-59:
+  1 | (rule
+  2 |  (target y)
+  3 |  (deps x)
+  4 |  (action (system "cat x > y")))
+  Error: No rule found for x
+  File "dune", lines 1-4, characters 0-59:
+  1 | (rule
+  2 |  (target y)
+  3 |  (deps x)
+  4 |  (action (system "cat x > y")))
+  Error: No rule found for x
 
 ------------------------------------------------------------------------------
 * Sibling directory targets

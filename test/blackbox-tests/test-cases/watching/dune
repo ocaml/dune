@@ -65,8 +65,8 @@
  (enabled_if
   (<> %{ocaml-config:system} win)))
 
-;; Disabled due to timeouts
+;; Disabled due to timeouts in sigpipe.t.
 
 (cram
  (enabled_if false)
- (applies_to watching-eager-concurrent-build-command.t sigpipe.t))
+ (applies_to sigpipe.t))

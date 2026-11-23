@@ -17,13 +17,12 @@ Promotion happens on the running RPC server.
   $ build "(alias my_test)"
   Success
 
-  $ stop_dune
+  $ stop_dune_quiet
+  $ grep -v ', waiting for filesystem changes\.\.\.$' .#dune-output
   File "my_test.t", line 1, characters 0-0:
   --- my_test.t
   +++ my_test.t.corrected
   @@ -1 +1,2 @@
      $ echo hello
   +  hello
-  Had 1 error, waiting for filesystem changes...
   Promoting _build/default/my_test.t.corrected to my_test.t.
-  Success, waiting for filesystem changes...

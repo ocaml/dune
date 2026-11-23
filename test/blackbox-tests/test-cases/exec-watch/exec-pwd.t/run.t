@@ -10,13 +10,13 @@ In normal (non-watching) mode, pwd is the folder from which dune is launched
 
 In watch mode, pwd is also the folder from which dune is launched.
   $ cd bin
-  $ dune exec --root .. -w -- pwd > $OUTPUT &
-  Success, waiting for filesystem changes...
+  $ dune exec --root .. -w -- pwd > "$OUTPUT" 2> .#dune-stderr &
   $ PID=$!
-  $ until test -s $OUTPUT; do sleep 0.1; done;
+  $ wait_for_line_with_timeout "$OUTPUT" '..*' 200
   $ kill $PID
   $ wait $PID
   [130]
+  $ sed '/, waiting for filesystem changes\.\.\.$/d' .#dune-stderr
   $ cat $OUTPUT
   $TESTCASE_ROOT/bin
   $ rm -rf $OUTPUT

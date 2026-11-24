@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795500423064,
+  "lastUpdate": 1795500429758,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -496652,6 +496652,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 45.37265004982,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a4aa30e0f31e1a962f2c42671c9530977adec370",
+          "message": "refactor(melange): attach Stdlib dependencies directly to flags (#17215)\n\nUse Action_builder.dyn_deps to attach implicit Stdlib dependencies\ndirectly to Melange flags. Follow-up to #17188.\n\n019ffd87-afd6-7983-99f9-1a7139620b20\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-23T21:53:51-08:00",
+          "tree_id": "72a3a4170fbc8669c84ced033ddf9740d2cc0137",
+          "url": "https://github.com/ocaml/dune/commit/a4aa30e0f31e1a962f2c42671c9530977adec370"
+        },
+        "date": 1795500428812,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.41094452856,
             "unit": "seconds"
           }
         ]

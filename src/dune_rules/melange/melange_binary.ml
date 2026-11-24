@@ -26,9 +26,11 @@ let where =
       Memo.of_reproducible_fiber
       @@ Process.run_capture_line ~display:Quiet Strict bin [ "--where" ]
     in
-    where
+    Bin.parse_path where
   in
-  let memo = Memo.create "melange-where" ~input:(module Path) ~cutoff:String.equal impl in
+  let memo =
+    Memo.create "melange-where" ~input:(module Path) ~cutoff:(List.equal Path.equal) impl
+  in
   fun sctx ~loc ~dir ->
     let* env = Super_context.env_node sctx ~dir >>= Env_node.external_env in
     match Env.get env (Env.Var.of_string "MELANGELIB") with
@@ -53,9 +55,7 @@ let where =
       let* melc = melc sctx ~loc ~dir in
       (match melc with
        | Error _ -> Memo.return []
-       | Ok melc ->
-         let+ res = Memo.exec memo melc in
-         Bin.parse_path res)
+       | Ok melc -> Memo.exec memo melc)
 ;;
 
 let stdlib_glob =

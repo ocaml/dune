@@ -19,7 +19,7 @@ correctly under both default and copy sandboxing.
   >  ))
   > EOF
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
 
   $ cat >dune <<'EOF'
   > (rule

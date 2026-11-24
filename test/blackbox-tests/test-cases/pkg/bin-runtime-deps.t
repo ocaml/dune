@@ -15,7 +15,7 @@ beside that executable changes.
   >   (run cp data.txt %{pkg-self:share}/data.txt)))
   > EOF
 
-  $ make_dune_project 3.24
+  $ make_dune_project 3.26
   $ provider_target="$(get_build_pkg_dir provider)/target"
   $ runtime_target="$(get_build_pkg_dir runtime)/target"
   $ provider_data="$PWD/$provider_target/share/provider/data.txt"

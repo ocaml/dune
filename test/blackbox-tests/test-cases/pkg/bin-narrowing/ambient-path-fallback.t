@@ -42,7 +42,7 @@ A [mybin] on the ambient PATH ("from system"):
   >  (action (with-stdout-to path-output (bash "echo $PATH"))))
   > EOF
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (package (name mypkg) (allow_empty) (dir .))
   > EOF

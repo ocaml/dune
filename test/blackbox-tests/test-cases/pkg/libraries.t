@@ -7,7 +7,7 @@ We set up a library that will be installed as part of the package:
 
 Now we set up a lock file with this package and then attempt to use it:
 
-  $ make_dune_project 3.11
+  $ make_dune_project 3.26
 
   $ make_lockdir
   $ make_lockpkg mypkg <<EOF

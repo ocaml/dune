@@ -1,14 +1,9 @@
 open Import
 
 (** Evaluate the filters in a filtered formula returning the resulting formula.
-    Variables bound in the environment take precedence. The "with-dev-setup",
-    "with-doc" and "with-test" variables default to [default_with_dev_setup],
-    [default_with_doc] and [default_with_test] when they are not bound. *)
+    The environment must bind "with-test", "with-doc" and "with-dev-setup". *)
 val apply_filter
   :  OpamFilter.env
-  -> default_with_dev_setup:bool
-  -> default_with_doc:bool
-  -> default_with_test:bool
   -> formula:OpamTypes.filtered_formula
   -> OpamTypes.formula
 
@@ -60,9 +55,6 @@ type deps =
     dependencies. *)
 val filtered_formula_to_package_names
   :  env:OpamFilter.env
-  -> default_with_dev_setup:bool
-  -> default_with_doc:bool
-  -> default_with_test:bool
   -> packages:Package_version.t Package_name.Map.t
   -> OpamTypes.filtered_formula
   -> (deps, unsatisfied_formula) result

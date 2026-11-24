@@ -3,7 +3,7 @@ open Import
 type t =
   { local_packages : Local_package.t Package_name.Map.t
   ; lock_dir : Lock_dir.t
-  ; platform : Solver_env.t
+  ; platform : Solver_env.Variables.t
   ; version_by_package_name : Package_version.t Package_name.Map.t
   }
 
@@ -46,10 +46,9 @@ let version_by_package_name ~platform local_packages (lock_dir : Lock_dir.t) =
       ]
 ;;
 
-let lock_dir_filter_env t =
+let lock_dir_solver_env t =
   Solver_stats.Expanded_variable_bindings.to_solver_env
     t.lock_dir.expanded_solver_variable_bindings
-  |> Solver_env.to_env
 ;;
 
 let unsatisfied_dependencies_error
@@ -76,7 +75,7 @@ let concrete_dependencies_of_local_package t local_package_name ~with_test =
   match
     Lock_pkg.local_package_dependencies
       (Local_package.for_solver local_package)
-      ~env:(lock_dir_filter_env t)
+      ~solver_env:(lock_dir_solver_env t)
       ~with_test
       ~packages:t.version_by_package_name
       ~dune_version:(Package_version.of_opam_package_version Dune_dep.version)
@@ -91,7 +90,7 @@ let selected_dependencies_of_local_package t local_package_name ~with_test =
   match
     Lock_pkg.local_package_dependencies_with_depopts
       (Local_package.for_solver local_package)
-      ~env:(lock_dir_filter_env t)
+      ~solver_env:(lock_dir_solver_env t)
       ~with_test
       ~packages:t.version_by_package_name
       ~dune_version:(Package_version.of_opam_package_version Dune_dep.version)

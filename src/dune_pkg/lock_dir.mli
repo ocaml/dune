@@ -42,15 +42,15 @@ module Conditional_choice : sig
   type 'a t
 
   val empty : 'a t
-  val singleton : Solver_env.t -> 'a -> 'a t
+  val singleton : Solver_env.Variables.t -> 'a -> 'a t
 
   (** Create a conditional choice with a condition covering multiple platforms.
       Used when a single solve produces a result valid for all platforms. *)
-  val singleton_multi : Solver_env.t list -> 'a -> 'a t
+  val singleton_multi : Solver_env.Variables.t list -> 'a -> 'a t
 
   (** Returns the first value whose associated environment is a subset of the
       specified environment. *)
-  val choose_for_platform : 'a t -> platform:Solver_env.t -> 'a option
+  val choose_for_platform : 'a t -> platform:Solver_env.Variables.t -> 'a option
 end
 
 module Depexts : sig
@@ -68,7 +68,7 @@ module Pkg : sig
     ; depexts : Depexts.t list
     ; info : Pkg_info.t
     ; exported_env : String_with_vars.t Action.Env_update.t list
-    ; enabled_on_platforms : Solver_env.t list
+    ; enabled_on_platforms : Solver_env.Variables.t list
     }
 
   val remove_locs : t -> t
@@ -99,10 +99,14 @@ module Packages : sig
   type t
 
   val to_pkg_list : t -> Pkg.t list
-  val pkgs_on_platform_by_name : t -> platform:Solver_env.t -> Pkg.t Package_name.Map.t
+
+  val pkgs_on_platform_by_name
+    :  t
+    -> platform:Solver_env.Variables.t
+    -> Pkg.t Package_name.Map.t
 
   (** All the packages grouped by the platforms where they are enabled. *)
-  val pkgs_by_platform : t -> Pkg.t list Solver_env.Map.t
+  val pkgs_by_platform : t -> Pkg.t list Solver_env.Variables.Map.t
 end
 
 type t = private
@@ -118,7 +122,7 @@ type t = private
     (** Stores the solver variables that were evaluated while solving
       dependencies. Can be used to determine if a lockdir is compatible
       with a particular system. *)
-  ; solved_for_platforms : Loc.t * Solver_env.t list
+  ; solved_for_platforms : Loc.t * Solver_env.Variables.t list
   }
 
 val remove_locs : t -> t
@@ -141,7 +145,7 @@ val create_latest_version
   -> ocaml:(Loc.t * Package_name.t) option
   -> repos:Opam_repo.t list option
   -> expanded_solver_variable_bindings:Solver_stats.Expanded_variable_bindings.t
-  -> solved_for_platforms:Solver_env.t list
+  -> solved_for_platforms:Solver_env.Variables.t list
   -> portable_lock_dir:bool
   -> t
 
@@ -185,7 +189,7 @@ end
     platforms, a description of the current platform must also be provided. *)
 val transitive_dependency_closure
   :  t
-  -> platform:Solver_env.t
+  -> platform:Solver_env.Variables.t
   -> Package_name.Set.t
   -> (Package_name.Set.t, [ `Missing_packages of Package_name.Set.t ]) result
 
@@ -196,7 +200,10 @@ val compute_missing_checksums : t -> pinned_packages:Package_name.Set.t -> t Fib
 (** Returns the packages contained in the solution on the given platform. If
     the lockdir does not contain a solution compatible with the given platform
     then a [User_error] is raised. *)
-val packages_on_platform : t -> platform:Solver_env.t -> Pkg.t Package_name.Map.t
+val packages_on_platform
+  :  t
+  -> platform:Solver_env.Variables.t
+  -> Pkg.t Package_name.Map.t
 
 (** Returns the path that the lock dir would be in the source. Might return
     paths that don't exist, if the lock dir wasn't copied from there. *)

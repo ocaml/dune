@@ -4,7 +4,7 @@ Show that the depexts that a project has can be printed.
 
 Make a project:
 
-  $ make_dune_project 3.13
+  $ make_dune_project 3.26
 
 Create a lockdir with a package that features some depexts.
 

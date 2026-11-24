@@ -77,6 +77,12 @@ Print the contents of each file in the lockdir:
    (complete false)
    (used))
   
+  (expanded_solver_variable_bindings
+   (with
+    (with-test local)
+    (with-doc none)
+    (with-dev-setup none)))
+  
   (solved_for_platforms
    ((arch x86_64)
     (os linux))
@@ -133,6 +139,12 @@ Run the solver again preferring oldest versions of dependencies:
   (repositories
    (complete false)
    (used))
+  
+  (expanded_solver_variable_bindings
+   (with
+    (with-test local)
+    (with-doc none)
+    (with-dev-setup none)))
   
   (solved_for_platforms
    ((arch x86_64)

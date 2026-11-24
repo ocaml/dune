@@ -22,7 +22,7 @@ This is similar to how compilers install binaries (e.g., ocamlc -> ocamlc.opt).
   >    && touch %{lib}/%{pkg-self:name}/META"))
   > EOF
 
-  $ make_package_project 3.22 foo
+  $ make_package_project 3.26 foo
 
 Build the package:
 

@@ -2,7 +2,7 @@ Requesting to build a single package should not build unrelated things:
 
   $ make_lockdir
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
 
   $ cat > dune-workspace <<EOF
   > (lang dune 3.20)
@@ -128,7 +128,7 @@ directory-target diagnostic. Neither package should be built.
   $ mkdir query-project query-source
   $ ln -s loop query-source/loop
   $ cd query-project
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ make_lockdir
   $ cat > dune-workspace <<EOF
   > (lang dune 3.20)

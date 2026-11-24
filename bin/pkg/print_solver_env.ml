@@ -7,17 +7,12 @@ let print_solver_env_for_lock_dir
       ~solver_env_from_current_system
       lock_dir_path
   =
-  let solver_env_from_context =
-    Option.bind (Workspace.find_lock_dir workspace lock_dir_path) ~f:(fun lock_dir ->
-      lock_dir.solver_env)
-  in
+  let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
   let solver_env =
-    solver_env
+    Workspace.Lock_dir.combined_solver_env
+      lock_dir
       ~dune_version
-      ~solver_env_from_current_system
-      ~solver_env_from_context
-      ~unset_solver_vars_from_context:
-        (Pkg_common.unset_solver_vars_of_workspace workspace ~lock_dir_path)
+      ~current_system:solver_env_from_current_system
   in
   Console.print
     [ Pp.textf

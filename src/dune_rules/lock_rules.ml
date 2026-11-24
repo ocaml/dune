@@ -26,7 +26,7 @@ module Spec = struct
     ; packages : Local_package.t Package.Name.Map.t
     ; repos : Opam_repo.t list
     ; solver_env : Solver_env.t
-    ; platform_overlays : Solver_env.t list
+    ; platform_overlays : Solver_env.Variables.t list
     ; portable_lock_dir : bool
     ; constraints : Package_dependency.t list
     ; selected_depopts : Package.Name.t list
@@ -69,9 +69,15 @@ module Spec = struct
         , List
             (List.map repos ~f:(fun repo ->
                Sexp.Atom (Opam_repo.content_digest repo |> Dune_digest.to_string))) )
-      ; "solver_env", Dune_lang.to_sexp (Solver_env.encode solver_env)
+      ; ( "solver_env"
+        , Dune_lang.to_sexp
+            (Solver_env.Variables.encode (Solver_env.variables solver_env)) )
+      ; ( "with"
+        , Dune_lang.to_sexp
+            (Dune_lang.List (Solver_env.With.encode (Solver_env.with_ solver_env))) )
       ; ( "platform_overlays"
-        , Dune_lang.to_sexp (Dune_lang.Encoder.list Solver_env.encode platform_overlays) )
+        , Dune_lang.to_sexp
+            (Dune_lang.Encoder.list Solver_env.Variables.encode platform_overlays) )
       ; "portable_lock_dir", Atom (Bool.to_string portable_lock_dir)
       ; ( "constraints"
         , List
@@ -274,11 +280,10 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.t =
          | Some { version_preference = Some vp; _ } -> vp
        in
        let solver_env =
-         Solver_env.combine
+         Workspace.Lock_dir.combined_solver_env
+           lock_dir
            ~dune_version
            ~current_system:(Some solver_env_from_current_system)
-           ~context:(Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env))
-           ~unset:(Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.unset_solver_vars))
        in
        let portable_lock_dir =
          match Config.get Compile_time.portable_lock_dir with
@@ -288,7 +293,7 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.t =
        let solver_env, platform_overlays =
          Opam_solver.base_solver_env_and_platforms
            solver_env
-           ~solve_for_platforms:Solver_env.popular_platform_envs
+           ~solve_for_platforms:Solver_env.Variables.popular_platform_envs
            ~portable_lock_dir
        in
        lock_action

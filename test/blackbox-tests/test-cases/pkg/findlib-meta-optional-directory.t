@@ -27,7 +27,7 @@ Reproduces #11405
   $ mkdir external_sources/yes
   $ touch external_sources/yes/yes.cma
 
-  $ make_dune_project 3.17
+  $ make_dune_project 3.26
 
   $ make_lockdir
 

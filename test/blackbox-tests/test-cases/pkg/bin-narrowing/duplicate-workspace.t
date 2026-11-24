@@ -31,7 +31,7 @@ A consumer that only depends on [pkg-a]:
   > (rule (with-stdout-to dup-out (run %{bin:dup})))
   > EOF
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (package (name pkg-a) (allow_empty) (dir a))
   > (package (name pkg-b) (allow_empty) (dir b))

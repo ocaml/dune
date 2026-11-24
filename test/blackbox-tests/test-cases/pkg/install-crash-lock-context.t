@@ -8,7 +8,7 @@ crashes because it calls `Build_system.build_dir` outside `Build_system.run` by
 Create a minimal project with a package.
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.23)
+  > (lang dune 3.26)
   > (package
   >  (name mypkg)
   >  (allow_empty))

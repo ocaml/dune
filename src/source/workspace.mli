@@ -7,21 +7,34 @@ module Pin_stanza := Dune_lang.Pin_stanza
 module Lib_name := Dune_lang.Lib_name
 
 module Lock_dir : sig
+  (** A parsed "lock_dir" stanza. *)
   type t =
     { loc : Loc.t
     ; path : Path.Source.t
     ; version_preference : Dune_pkg.Version_preference.t option
-    ; solver_env : Dune_pkg.Solver_env.t option
+    ; solver_env : Dune_pkg.Solver_env.Variables.t option (** The "solver_env" stanza. *)
+    ; with_ : Dune_pkg.Solver_env.With.Value.t option Dune_pkg.Solver_env.With.t
+      (** The "with-dev-setup", "with-doc" and "with-test" stanzas. *)
     ; unset_solver_vars : Dune_lang.Package_variable_name.Set.t option
+      (** The "unset_solver_vars" stanza. *)
     ; repositories : (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
     ; constraints : Dune_lang.Package_dependency.t list
     ; pins : (Loc.t * string) list
     ; depopts : (Loc.t * Package.Name.t) list
-    ; solve_for_platforms : Dune_pkg.Solver_env.t list
+    ; solve_for_platforms : Dune_pkg.Solver_env.Variables.t list
     }
 
   val equal : t -> t -> bool
   val to_dyn : t -> Dyn.t
+
+  (** [combined_solver_env t ~dune_version ~current_system] combines
+      [current_system] with the solver environment set by the lock directory
+      [t], if any. See [Dune_pkg.Solver_env.combine]. *)
+  val combined_solver_env
+    :  t option
+    -> dune_version:Dune_lang.Syntax.Version.t
+    -> current_system:Dune_pkg.Solver_env.Variables.t option
+    -> Dune_pkg.Solver_env.t
 end
 
 module Lock_dir_selection : sig

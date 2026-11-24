@@ -41,7 +41,7 @@ With the default full-lockdir lookup, [check-env] is found and the rule is
 enabled & [mybin] is found and executed, without the need for explicitly
 declaring any package dependencies:
 
-  $ make_dune_project 3.24
+  $ make_dune_project 3.26
 
   $ cat >dune <<'EOF'
   > (rule
@@ -85,7 +85,7 @@ All the packages' bin directories are added to $PATH:
 With a package defined in the project, *without a dir field*, the behavior is
 the same.
 
-  $ make_dune_project 3.24
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (package
   >   (allow_empty)
@@ -111,7 +111,7 @@ With a package defined in the project, *with a dir field, but no dependencies*,
 the program mybin is not found in PATH or via the bin pform, since the rule for
 building it gets disabled:
 
-  $ make_dune_project 3.24
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (package
   >   (allow_empty)
@@ -141,7 +141,7 @@ on only [check-env]*, the program mybin is not found via the bin pform or on
 the PATH.
 
 
-  $ make_dune_project 3.24
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (package
   >   (allow_empty)
@@ -189,7 +189,7 @@ With a package defined in the project, *with a dir field, and explicit depends
 on only [provider]*, the rules for building [mybin] are disabled since the
 [check-env] binary is not available.
 
-  $ make_dune_project 3.24
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (package
   >   (allow_empty)
@@ -219,7 +219,7 @@ With a package defined in the project, *with a dir field, and explicit depends
 on both [check-env] and [provider]*, mybin is found both on the PATH and via
 the bin pform.
 
-  $ make_dune_project 3.24
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (package
   >   (allow_empty)

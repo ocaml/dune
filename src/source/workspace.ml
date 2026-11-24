@@ -22,13 +22,14 @@ module Lock_dir = struct
     { loc : Loc.t
     ; path : Path.Source.t
     ; version_preference : Dune_pkg.Version_preference.t option
-    ; solver_env : Solver_env.t option
+    ; solver_env : Solver_env.Variables.t option
+    ; with_ : Solver_env.With.Value.t option Solver_env.With.t
     ; unset_solver_vars : Package_variable_name.Set.t option
     ; repositories : (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
     ; constraints : Dune_lang.Package_dependency.t list
     ; pins : (Loc.t * string) list
     ; depopts : (Loc.t * Package.Name.t) list
-    ; solve_for_platforms : Solver_env.t list
+    ; solve_for_platforms : Solver_env.Variables.t list
     }
 
   let repr =
@@ -40,10 +41,12 @@ module Lock_dir = struct
           "version_preference"
           (Repr.option (Repr.abstract Dune_pkg.Version_preference.to_dyn))
           ~get:(fun t -> t.version_preference)
+      ; Repr.field "solver_env" (Repr.option Solver_env.Variables.repr) ~get:(fun t ->
+          t.solver_env)
       ; Repr.field
-          "solver_env"
-          (Repr.option (Repr.abstract Solver_env.to_dyn))
-          ~get:(fun t -> t.solver_env)
+          "with"
+          (Solver_env.With.repr (Repr.option Solver_env.With.Value.repr))
+          ~get:(fun t -> t.with_)
       ; Repr.field
           "unset_solver_vars"
           (Repr.option (Repr.abstract Package_variable_name.Set.to_dyn))
@@ -63,7 +66,7 @@ module Lock_dir = struct
           ~get:(fun t -> List.map t.depopts ~f:snd)
       ; Repr.field
           "solve_for_platforms"
-          (Repr.list (Repr.abstract Solver_env.to_dyn))
+          (Repr.list Solver_env.Variables.repr)
           ~get:(fun t -> t.solve_for_platforms)
       ]
   ;;
@@ -75,6 +78,7 @@ module Lock_dir = struct
         ; path
         ; version_preference
         ; solver_env
+        ; with_
         ; unset_solver_vars
         ; repositories
         ; constraints
@@ -88,6 +92,7 @@ module Lock_dir = struct
       , path
       , version_preference
       , solver_env
+      , with_
       , unset_solver_vars
       , repositories
       , constraints
@@ -101,6 +106,7 @@ module Lock_dir = struct
         ; path
         ; version_preference
         ; solver_env
+        ; with_
         ; unset_solver_vars
         ; repositories
         ; constraints
@@ -116,7 +122,8 @@ module Lock_dir = struct
          Dune_pkg.Version_preference.equal
          version_preference
          t.version_preference
-    && Option.equal Solver_env.equal solver_env t.solver_env
+    && Option.equal Solver_env.Variables.equal solver_env t.solver_env
+    && Solver_env.With.equal (Option.equal Solver_env.With.Value.equal) with_ t.with_
     && Option.equal Package_variable_name.Set.equal unset_solver_vars t.unset_solver_vars
     && List.equal
          (Tuple.T2.equal Loc.equal Dune_pkg.Pkg_workspace.Repository.Name.equal)
@@ -125,7 +132,15 @@ module Lock_dir = struct
     && List.equal Dune_lang.Package_dependency.equal constraints t.constraints
     && List.equal (Tuple.T2.equal Loc.equal String.equal) pins t.pins
     && List.equal (Tuple.T2.equal Loc.equal Package.Name.equal) depopts t.depopts
-    && List.equal Solver_env.equal solve_for_platforms t.solve_for_platforms
+    && List.equal Solver_env.Variables.equal solve_for_platforms t.solve_for_platforms
+  ;;
+
+  let with_field name =
+    field_o
+      name
+      (Dune_lang.Syntax.since Stanza.syntax (3, 26)
+       >>> maybe Solver_env.With.Value.decode
+       >>| Option.value ~default:Solver_env.With.Value.Local)
   ;;
 
   let decode ~dir =
@@ -143,7 +158,10 @@ module Lock_dir = struct
       and+ path =
         let+ path = field ~default:"dune.lock" "path" string in
         Path.Source.relative dir path
-      and+ solver_env = field_o "solver_env" Solver_env.decode
+      and+ solver_env = field_o "solver_env" (located Solver_env.Variables.decode)
+      and+ with_test = with_field "with-test"
+      and+ with_doc = with_field "with-doc"
+      and+ with_dev_setup = with_field "with-dev-setup"
       and+ unset_solver_vars =
         field_o "unset_solver_vars" (repeat (located Package_variable_name.decode))
       and+ version_preference =
@@ -157,9 +175,9 @@ module Lock_dir = struct
         let+ loc, solve_for_platforms =
           located
           @@ field
-               ~default:Solver_env.popular_platform_envs
+               ~default:Solver_env.Variables.popular_platform_envs
                "solve_for_platforms"
-               (repeat @@ enter Solver_env.decode)
+               (repeat @@ enter Solver_env.Variables.decode)
         in
         if List.is_empty solve_for_platforms
         then
@@ -173,12 +191,44 @@ module Lock_dir = struct
               ];
         solve_for_platforms
       in
+      let with_ =
+        let check variable value =
+          Option.iter value ~f:(fun (_ : Solver_env.With.Value.t) ->
+            Option.iter solver_env ~f:(fun (loc, solver_env) ->
+              if Solver_env.Variables.mem solver_env variable
+              then
+                User_error.raise
+                  ~loc
+                  [ Pp.textf
+                      "%S is set both in 'solver_env' and in its own field, which is not \
+                       allowed."
+                      (Package_variable_name.to_string variable)
+                  ]);
+            Option.iter unset_solver_vars ~f:(fun unset_solver_vars ->
+              List.iter unset_solver_vars ~f:(fun (loc, variable') ->
+                if Package_variable_name.equal variable variable'
+                then
+                  User_error.raise
+                    ~loc
+                    [ Pp.textf
+                        "%S is set in its own field and unset in 'unset_solver_vars', \
+                         which is not allowed."
+                        (Package_variable_name.to_string variable)
+                    ])));
+          value
+        in
+        { Solver_env.With.with_test = check Package_variable_name.with_test with_test
+        ; with_doc = check Package_variable_name.with_doc with_doc
+        ; with_dev_setup = check Package_variable_name.with_dev_setup with_dev_setup
+        }
+      in
+      let solver_env = Option.map solver_env ~f:snd in
       Option.iter solver_env ~f:(fun solver_env ->
         Option.iter
           unset_solver_vars
           ~f:
             (List.iter ~f:(fun (loc, variable) ->
-               if Option.is_some (Solver_env.get solver_env variable)
+               if Solver_env.Variables.mem solver_env variable
                then
                  User_error.raise
                    ~loc
@@ -194,6 +244,7 @@ module Lock_dir = struct
       { loc
       ; path
       ; solver_env
+      ; with_
       ; unset_solver_vars
       ; version_preference
       ; repositories = repositories_of_ordered_set repositories
@@ -204,6 +255,18 @@ module Lock_dir = struct
       }
     in
     fields decode
+  ;;
+
+  let combined_solver_env t ~dune_version ~current_system =
+    Solver_env.combine
+      ~dune_version
+      ~current_system
+      ~context:(Option.bind t ~f:(fun t -> t.solver_env))
+      ~with_:
+        (match t with
+         | None -> Solver_env.With.unset
+         | Some t -> t.with_)
+      ~unset:(Option.bind t ~f:(fun t -> t.unset_solver_vars))
   ;;
 end
 

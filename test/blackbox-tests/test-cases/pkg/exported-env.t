@@ -70,7 +70,7 @@ Workspace rules receive exports both through explicit package dependencies
 and through their directory environment. Both must record the environment
 dependency even when package artifact paths change after a lock edit.
 
-  $ make_dune_project 3.24
+  $ make_dune_project 3.26
   $ cat >dune <<'EOF'
   > (rule
   >  (target workspace-output)
@@ -112,7 +112,7 @@ Use a separate project with an empty package: no binary lookup is involved.
 
   $ mkdir cross-context
   $ cd cross-context
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >>dune-project <<'EOF'
   > (package (name consumer) (allow_empty) (dir .) (depends provider))
   > EOF
@@ -190,7 +190,7 @@ With no owning package, the directory sees all host packages. The suppressor
 clears their PATH. Neither the implicit action nor an explicit dependency on
 the suppressor should track the inherited PATH.
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ rm target.lock/provider.pkg
   $ cat >dune <<'EOF'
   > (rule

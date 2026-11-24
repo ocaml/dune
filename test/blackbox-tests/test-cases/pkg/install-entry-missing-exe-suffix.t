@@ -22,7 +22,7 @@ whose .install file references it without .exe (as ocamlfind does):
 Building the package fails because Dune looks for "foo" but only "foo.exe"
 exists:
 
-  $ make_dune_project 3.22
+  $ make_dune_project 3.26
 
   $ cat >dune <<EOF
   > (rule

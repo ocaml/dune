@@ -20,7 +20,7 @@ with bare-name lookup through the action's PATH.
 Create explicit host and target contexts, and enable package management for the
 workspace:
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >>dune-project <<'EOF'
   > (package (name mypkg) (allow_empty) (dir .) (depends provider))
   > EOF

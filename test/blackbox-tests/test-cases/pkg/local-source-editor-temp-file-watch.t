@@ -18,7 +18,7 @@ skips temporary files.
   > EOF
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.22)
+  > (lang dune 3.26)
   > (package
   >  (name x)
   >  (allow_empty)

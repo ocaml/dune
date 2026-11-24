@@ -26,7 +26,7 @@ Test that shows what happens when dune.lock is ignored.
   > let () = ()
   > EOF
   > cat > dune-project <<EOF
-  > (lang dune 3.16)
+  > (lang dune 3.26)
   > EOF
 
 Building test works when the dune.lock is visible to dune.

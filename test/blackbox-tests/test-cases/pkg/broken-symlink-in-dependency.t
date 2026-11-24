@@ -51,7 +51,7 @@ Set up a fake web server to serve the source archive for the package "bar".
 
 Make a project file that depends on all the packages.
   $ cat > dune-project <<EOF
-  > (lang dune 3.17)
+  > (lang dune 3.26)
   > (package
   >  (name x)
   >  (allow_empty)

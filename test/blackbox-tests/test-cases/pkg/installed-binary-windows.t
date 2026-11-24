@@ -23,7 +23,7 @@ Create a package that installs a .exe binary. We pre-create the binary and
 
 The binary should be visible in the workspace via %{bin:foo}:
 
-  $ make_dune_project 3.22
+  $ make_dune_project 3.26
 
   $ cat >dune <<EOF
   > (rule

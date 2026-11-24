@@ -9,7 +9,7 @@ type t
 (** Create a universe for a given platform.
     TODO: Consider changing this to cover all platforms simultaneously. *)
 val create
-  :  platform:Solver_env.t
+  :  platform:Solver_env.Variables.t
   -> Local_package.t Package_name.Map.t
   -> Lock_dir.t
   -> (t, User_message.t) result
@@ -18,7 +18,7 @@ val create
     the local packages, so the lockdir may contain packages which no local
     package needs. Raises if a package is both local and in the lockdir. *)
 val create_unvalidated
-  :  platform:Solver_env.t
+  :  platform:Solver_env.Variables.t
   -> Local_package.t Package_name.Map.t
   -> Lock_dir.t
   -> t

@@ -13,7 +13,7 @@ Binaries installed by lock-dir dependencies can be run with `dune exec`.
   >   (system "chmod +x mybin")
   >   (system "echo 'bin: [ \"mybin\" ]' > foo.install")))
   > EOF
-  $ make_dune_project 3.24
+  $ make_dune_project 3.26
 
   $ command -v mybin || echo "mybin not on PATH"
   mybin not on PATH

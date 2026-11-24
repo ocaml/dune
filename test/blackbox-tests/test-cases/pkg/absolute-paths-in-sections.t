@@ -9,7 +9,7 @@ Test that section pforms are substituted with absolute paths.
   > EOF
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.13)
+  > (lang dune 3.26)
   > (package
   >  (name foo)
   >  (allow_empty)

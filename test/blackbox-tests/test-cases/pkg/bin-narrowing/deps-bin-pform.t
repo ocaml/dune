@@ -33,7 +33,7 @@ invokes it by bare name through the shell, without declaring a dependency on
   >  (action (with-stdout-to via-deps (system producer-bin))))
   > EOF
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (package (name producer) (allow_empty) (dir producer))
   > (package (name consumer) (allow_empty) (dir consumer))
@@ -93,7 +93,7 @@ A declared lockdir binary and an undeclared sibling of the same name
 [consumer] declares the lockdir package [provider], but not the workspace
 sibling [sibling]:
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (package (name sibling) (allow_empty) (dir sibling))
   > (package (name consumer) (allow_empty) (dir consumer) (depends provider))
@@ -146,7 +146,7 @@ A name installed by two workspace packages
   >  (action (with-stdout-to via-path (system dup))))
   > EOF
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (package (name pkg-a) (allow_empty) (dir a))
   > (package (name pkg-b) (allow_empty) (dir b))

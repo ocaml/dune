@@ -13,11 +13,11 @@ val add_self_to_filter_env
     [name] and [version] are bound as self variables and the running version
     of Dune is injected into [packages]. Only regular (non-post) dependencies
     are returned. Dune is removed from the returned list because it is a
-    pseudo-package that is not written to lockdirs. [env] is the filter
-    environment before the self bindings are added. *)
+    pseudo-package that is not written to lockdirs. "with-test" is disabled
+    unless [with_test]. *)
 val local_package_dependencies
   :  Local_package.For_solver.t
-  -> env:OpamFilter.env
+  -> solver_env:Solver_env.t
   -> with_test:bool
   -> packages:Package_version.t Package_name.Map.t
   -> dune_version:Package_version.t
@@ -28,7 +28,7 @@ val local_package_dependencies
     the solver actually selected for the package. *)
 val local_package_dependencies_with_depopts
   :  Local_package.For_solver.t
-  -> env:OpamFilter.env
+  -> solver_env:Solver_env.t
   -> with_test:bool
   -> packages:Package_version.t Package_name.Map.t
   -> dune_version:Package_version.t

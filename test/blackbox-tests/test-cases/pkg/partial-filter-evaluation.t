@@ -64,8 +64,7 @@ Make a custom solver env:
   >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
 
-Run the solver using the new env. The "with-doc" variable only applies to local
-packages, so "@doc" is still omitted:
+Run the solver using the new env:
   $ solve a
   Solution for dune.lock:
   - a.0.0.1
@@ -74,4 +73,5 @@ packages, so "@doc" is still omitted:
   
   (build
    (all_platforms
-    ((action (run dune build -p %{pkg-self:name} -j %{jobs} --foobar @install)))))
+    ((action
+      (run dune build -p %{pkg-self:name} -j %{jobs} --foobar @install @doc)))))

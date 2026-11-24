@@ -21,7 +21,7 @@ Clarify the behavior when the `dune` in PATH is not the one used to start the bu
 Make a project that depends on the test packages:
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.13)
+  > (lang dune 3.26)
   > (package
   >  (name x)
   >  (allow_empty)

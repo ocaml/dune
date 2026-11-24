@@ -68,6 +68,12 @@ strongest checksum to the lockfile for this package.
    (complete false)
    (used))
   
+  (expanded_solver_variable_bindings
+   (with
+    (with-test local)
+    (with-doc none)
+    (with-dev-setup local)))
+  
   (solved_for_platforms
    ((arch x86_64)
     (os linux))

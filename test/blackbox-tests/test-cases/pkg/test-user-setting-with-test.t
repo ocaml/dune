@@ -69,8 +69,7 @@ test dependencies in the solution.
   Dependencies common to all supported platforms:
   - foo.0.0.1
 
-Setting the value of with-test to true is the same as the default: test
-dependencies of local packages are included:
+Setting the value of with-test to true applies it to all packages:
 
   $ cat >dune-workspace <<EOF
   > (lang dune 3.21)
@@ -106,7 +105,7 @@ Now change workspace to with-test to default value again:
 The env variable is not longer set to false:
 
   $ dune pkg print-solver-env 2>&1 | grep with-test
-  [1]
+  - with-test = local
 
 However, validate-lockdir and @pkg-install don't catch the change:
 

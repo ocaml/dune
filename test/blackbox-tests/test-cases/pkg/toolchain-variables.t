@@ -64,7 +64,7 @@ location.
 We generate a fake package to use it
 
   $ cat > dune-project << EOF
-  > (lang dune 3.18)
+  > (lang dune 3.26)
   > (package
   >  (name foo)
   >  (depends ocaml-base-compiler baz))

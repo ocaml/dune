@@ -86,7 +86,7 @@ Now we finally make the OCaml package for testing through the lock file:
   > ))
   > EOF
 
-  $ make_dune_project 3.11
+  $ make_dune_project 3.26
 
   $ mkdir mycamlsources
   $ cat >mycamlsources/ocamlc <<EOF

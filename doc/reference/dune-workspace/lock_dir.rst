@@ -37,12 +37,25 @@ changed if desired.
 
       It consists of a sequence of ``(<name> <value>)`` pairs.
 
-      Starting with Dune 3.26, ``with-dev-setup`` is enabled by default, and
-      ``with-doc`` and ``with-dev-setup`` only apply to local packages, like
-      ``with-test``. Before 3.26, both are disabled by default and enabling
-      them applies to all packages.
+   .. describe:: (with-test <packages>)
+   .. describe:: (with-doc <packages>)
+   .. describe:: (with-dev-setup <packages>)
 
-   .. describe:: (unset_variables <name list>)
+      .. versionadded:: 3.26
+
+      Selects the packages whose test, documentation or development setup
+      dependencies are locked: ``none``, ``local`` for the workspace packages
+      only, or ``all`` for the locked packages too. ``(with-X)`` is the same as
+      ``(with-X local)``.
+
+      By default, ``with-test`` is ``local``, ``with-doc`` is ``none`` and
+      ``with-dev-setup`` is ``local`` if the project's ``(lang dune)`` is 3.26
+      or later, ``none`` otherwise.
+
+      These fields cannot be combined with the same variable in ``solver_env``
+      or ``unset_solver_vars``.
+
+   .. describe:: (unset_solver_vars <name list>)
 
       A list of variables that are used in solving that are deliberately unset
       even if the solver could provide bindings for them.

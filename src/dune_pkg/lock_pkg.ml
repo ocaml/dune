@@ -14,7 +14,7 @@ let add_self_to_filter_env package env variable =
 
 let local_package_dependencies
       (local_package : Local_package.For_solver.t)
-      ~env
+      ~solver_env
       ~with_test
       ~packages
       ~dune_version
@@ -24,13 +24,13 @@ let local_package_dependencies
       (Package_name.to_opam_package_name local_package.name)
       (Package_version.to_opam_package_version local_package.version)
   in
-  let env = add_self_to_filter_env opam_package env in
+  let solver_env = if with_test then solver_env else Solver_env.without_test solver_env in
+  let env =
+    Solver_env.to_env solver_env ~local:true |> add_self_to_filter_env opam_package
+  in
   let packages = Package_name.Map.set packages Dune_dep.name dune_version in
   Resolve_opam_formula.filtered_formula_to_package_names
     ~env
-    ~default_with_dev_setup:true
-    ~default_with_doc:true
-    ~default_with_test:with_test
     ~packages
     (Dependency_formula.to_filtered_formula local_package.dependencies)
   |> Result.map ~f:(fun { Resolve_opam_formula.regular; post = _ } ->
@@ -39,34 +39,18 @@ let local_package_dependencies
 
 let local_package_dependencies_with_depopts
       (local_package : Local_package.For_solver.t)
-      ~env
+      ~solver_env
       ~with_test
       ~packages
       ~dune_version
   =
-  local_package_dependencies local_package ~env ~with_test ~packages ~dune_version
+  local_package_dependencies local_package ~solver_env ~with_test ~packages ~dune_version
   |> Result.map ~f:(fun depends ->
     let depopts =
       List.filter_map local_package.depopts ~f:(fun (depopt : Package_dependency.t) ->
         Option.some_if (Package_name.Map.mem packages depopt.name) depopt.name)
     in
     depends @ depopts)
-;;
-
-let simplify_filter get_solver_var =
-  OpamFilter.partial_eval (fun var ->
-    match OpamVariable.Full.scope var with
-    | Global ->
-      let name = OpamVariable.Full.variable var |> Package_variable_name.of_opam in
-      (match get_solver_var name with
-       | Some value -> Some (Variable_value.to_opam_variable_contents value)
-       | None ->
-         (* Unless set in the solver environment, these variables only apply to
-            local packages, for which we don't generate lockfiles. *)
-         Option.some_if
-           (Package_variable_name.Set.mem Package_variable_name.local_only name)
-           (OpamVariable.B false))
-    | _ -> None)
 ;;
 
 let partial_eval_filter = function
@@ -335,19 +319,19 @@ let filter_to_blang ~packages_in_solution ~package ~loc filter =
 
 let opam_commands_to_actions
       ~packages_in_solution
-      get_solver_var
+      env
       loc
       package
       (commands : OpamTypes.command list)
   =
   List.filter_map commands ~f:(fun (args, filter) ->
-    let filter = Option.map filter ~f:(simplify_filter get_solver_var) in
+    let filter = Option.map filter ~f:(OpamFilter.partial_eval env) in
     match partial_eval_filter filter with
     | `Skip -> None
     | `Filter filter ->
       let terms =
         List.filter_map args ~f:(fun ((simple_arg : OpamTypes.simple_arg), filter) ->
-          let filter = Option.map filter ~f:(simplify_filter get_solver_var) in
+          let filter = Option.map filter ~f:(OpamFilter.partial_eval env) in
           match partial_eval_filter filter with
           | `Skip -> None
           | `Filter filter ->
@@ -536,15 +520,12 @@ let opam_package_to_lock_file_pkg_single
   let depends =
     let resolve what =
       Resolve_opam_formula.filtered_formula_to_package_names
-        ~default_with_dev_setup:false
-        ~default_with_doc:false
-        ~default_with_test:false
         ~packages:version_by_package_name
         ~env:
           (add_self_to_filter_env
              opam_package
              (Solver_env.add_sentinel_values_for_unset_platform_vars solver_env
-              |> Solver_env.to_env))
+              |> Solver_env.to_env ~local:false))
         what
     in
     let depends =
@@ -573,9 +554,9 @@ let opam_package_to_lock_file_pkg_single
     | [] -> action
     | env_update -> Action.Withenv (env_update, action)
   in
-  let get_solver_var variable_name =
-    Solver_stats.Updater.expand_variable stats_updater variable_name;
-    Solver_env.get solver_env variable_name
+  let filter_env =
+    Solver_env.to_env solver_env ~local:false
+    |> Solver_stats.Updater.wrap_env stats_updater
   in
   let packages_in_solution = version_by_package_name in
   let build_command =
@@ -612,7 +593,7 @@ let opam_package_to_lock_file_pkg_single
       and build_step =
         opam_commands_to_actions
           ~packages_in_solution
-          get_solver_var
+          filter_env
           loc
           opam_package
           (OpamFile.OPAM.build opam_file)
@@ -627,7 +608,7 @@ let opam_package_to_lock_file_pkg_single
      platforms. [lockfile_field_choice value] creates a choice with a single
      possible value predicated by the platform this package is enabled on. *)
   let lockfile_field_choice value =
-    Lock_dir.Conditional_choice.singleton_multi [ solver_env ] value
+    Lock_dir.Conditional_choice.singleton_multi [ Solver_env.variables solver_env ] value
   in
   let build_command =
     Option.map build_command ~f:lockfile_field_choice
@@ -645,7 +626,7 @@ let opam_package_to_lock_file_pkg_single
       let external_package_names =
         OpamFile.OPAM.depexts opam_file
         |> List.concat_map ~f:(fun (sys_pkgs, filter) ->
-          let env = Solver_env.to_env solver_env in
+          let env = Solver_env.to_env solver_env ~local:false in
           if OpamFilter.eval_to_bool ~default:false env filter
           then OpamSysPkg.Set.to_list_map OpamSysPkg.to_string sys_pkgs
           else [])
@@ -656,7 +637,7 @@ let opam_package_to_lock_file_pkg_single
   in
   let install_command =
     OpamFile.OPAM.install opam_file
-    |> opam_commands_to_actions ~packages_in_solution get_solver_var loc opam_package
+    |> opam_commands_to_actions ~packages_in_solution filter_env loc opam_package
     |> make_action
     |> Option.map ~f:(fun action -> lockfile_field_choice (build_env action))
     |> Option.value ~default:Lock_dir.Conditional_choice.empty
@@ -667,7 +648,10 @@ let opam_package_to_lock_file_pkg_single
   let depends = lockfile_field_choice depends in
   let enabled_on_platforms =
     if portable_lock_dir
-    then [ Solver_env.remove_all_except_platform_specific solver_env ]
+    then
+      [ Solver_env.Variables.remove_all_except_platform_specific
+          (Solver_env.variables solver_env)
+      ]
     else []
   in
   { Lock_dir.Pkg.build_command

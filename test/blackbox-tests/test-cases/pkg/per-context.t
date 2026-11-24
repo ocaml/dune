@@ -16,6 +16,11 @@ TODO: versioning will be added once this feature is stable
   $ mkdir foo.lock
   $ cat >foo.lock/lock.dune <<EOF
   > (lang package 0.1)
+  > (expanded_solver_variable_bindings
+  >  (with
+  >   (with-test local)
+  >   (with-doc none)
+  >   (with-dev-setup local)))
   > EOF
   $ cat >foo.lock/test.pkg <<EOF
   > (version 0.0.1)
@@ -26,6 +31,11 @@ TODO: versioning will be added once this feature is stable
   $ mkdir bar.lock
   $ cat >bar.lock/lock.dune <<EOF
   > (lang package 0.1)
+  > (expanded_solver_variable_bindings
+  >  (with
+  >   (with-test local)
+  >   (with-doc none)
+  >   (with-dev-setup local)))
   > EOF
   $ cat >bar.lock/test.pkg <<EOF
   > (version 0.0.2)

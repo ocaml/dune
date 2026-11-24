@@ -3,34 +3,36 @@ module Digest_feed = Dune_digest.Feed
 
 module Solver_env_disjunction = struct
   (* A disjunction of solver envs consisting of only platform-specific solver variables. *)
-  type t = Solver_env.t list
+  type t = Solver_env.Variables.t list
 
   let singleton solver_env : t =
     let solver_env_with_only_platform_specific_vars =
-      Solver_env.remove_all_except_platform_specific solver_env
+      Solver_env.Variables.remove_all_except_platform_specific solver_env
     in
     [ solver_env_with_only_platform_specific_vars ]
   ;;
 
-  let to_dyn = Dyn.list Solver_env.to_dyn
-  let normalize t = List.sort t ~compare:Solver_env.compare
-  let equal a b = List.equal Solver_env.equal (normalize a) (normalize b)
-  let hash t = List.hash Solver_env.hash (normalize t)
-  let repr = Repr.view (Repr.list Solver_env.repr) ~to_:normalize
+  let to_dyn = Dyn.list Solver_env.Variables.to_dyn
+  let normalize t = List.sort t ~compare:Solver_env.Variables.compare
+  let equal a b = List.equal Solver_env.Variables.equal (normalize a) (normalize b)
+  let hash t = List.hash Solver_env.Variables.hash (normalize t)
+  let repr = Repr.view (Repr.list Solver_env.Variables.repr) ~to_:normalize
 
   let encode t =
     let open Encoder in
-    list sexp (List.map ~f:Solver_env.encode t)
+    list sexp (List.map ~f:Solver_env.Variables.encode t)
   ;;
 
   let decode =
     let open Decoder in
-    enter @@ repeat (enter Solver_env.decode)
+    enter @@ repeat (enter Solver_env.Variables.decode)
   ;;
 
   (* [matches_platform t ~platform] is true iff there exists a solver env in
      [t] whose bindings are a subset of those in [platform] *)
-  let matches_platform t ~platform = List.exists t ~f:(Solver_env.is_subset ~of_:platform)
+  let matches_platform t ~platform =
+    List.exists t ~f:(Solver_env.Variables.is_subset ~of_:platform)
+  ;;
 end
 
 module Conditional = struct
@@ -100,7 +102,7 @@ module Conditional_choice = struct
      a result valid for all platforms. *)
   let singleton_multi conditions value =
     let condition =
-      List.map conditions ~f:Solver_env.remove_all_except_platform_specific
+      List.map conditions ~f:Solver_env.Variables.remove_all_except_platform_specific
     in
     [ { Conditional.condition; value } ]
   ;;
@@ -108,7 +110,7 @@ module Conditional_choice = struct
   (* A choice where a given value will be chosen unconditionally. This is only
      used to help support both portable and non-portable lockdirs with the same
      codebase and can be removed when portable lockdirs is the only option. *)
-  let singleton_all_platforms value = singleton Solver_env.empty value
+  let singleton_all_platforms value = singleton Solver_env.Variables.empty value
   let equal value_equal = List.equal (Conditional.equal value_equal)
   let hash t ~f = List.hash (Conditional.hash ~f) t
   let repr value_repr = Repr.list (Conditional.repr value_repr)
@@ -123,7 +125,7 @@ module Conditional_choice = struct
      disjunction in any conditional in [t]. *)
   let contains_solver_env t solver_env =
     List.exists t ~f:(fun (conditional : _ Conditional.t) ->
-      List.mem conditional.condition solver_env ~equal:Solver_env.equal)
+      List.mem conditional.condition solver_env ~equal:Solver_env.Variables.equal)
   ;;
 
   (* Append a [_ Conditional.t] to the choice [t]. If the new conditional has a
@@ -140,7 +142,7 @@ module Conditional_choice = struct
      | Some solver_env ->
        Code_error.raise
          "Tried to add duplicate solver env to lockdir conditional choice"
-         [ "solver_env", Solver_env.to_dyn solver_env ]
+         [ "solver_env", Solver_env.Variables.to_dyn solver_env ]
      | None -> ());
     let rec loop t =
       match t with
@@ -323,7 +325,7 @@ module Enabled_on_platforms = struct
     match t with
     | All -> string "all"
     | Only solver_envs ->
-      Dune_lang.List (string "only" :: List.map ~f:Solver_env.encode solver_envs)
+      Dune_lang.List (string "only" :: List.map ~f:Solver_env.Variables.encode solver_envs)
   ;;
 
   let decode =
@@ -331,7 +333,7 @@ module Enabled_on_platforms = struct
     sum
       [ "all", return All
       ; ( "only"
-        , let+ solver_envs = repeat (enter Solver_env.decode) in
+        , let+ solver_envs = repeat (enter Solver_env.Variables.decode) in
           Only solver_envs )
       ]
   ;;
@@ -1044,9 +1046,9 @@ module Packages = struct
 
   let pkgs_by_platform t =
     to_pkg_list t
-    |> List.fold_left ~init:Solver_env.Map.empty ~f:(fun acc (pkg : Pkg.t) ->
+    |> List.fold_left ~init:Solver_env.Variables.Map.empty ~f:(fun acc (pkg : Pkg.t) ->
       List.fold_left pkg.enabled_on_platforms ~init:acc ~f:(fun acc platform ->
-        Solver_env.Map.add_multi acc platform pkg))
+        Solver_env.Variables.Map.add_multi acc platform pkg))
   ;;
 end
 
@@ -1057,7 +1059,7 @@ type t =
   ; ocaml : (Loc.t * Package_name.t) option
   ; repos : Repositories.t
   ; expanded_solver_variable_bindings : Solver_stats.Expanded_variable_bindings.t
-  ; solved_for_platforms : Loc.t * Solver_env.t list
+  ; solved_for_platforms : Loc.t * Solver_env.Variables.t list
   }
 
 let remove_locs t =
@@ -1089,7 +1091,7 @@ let equal
   && Solver_stats.Expanded_variable_bindings.equal
        expanded_solver_variable_bindings
        t.expanded_solver_variable_bindings
-  && (Tuple.T2.equal Loc.equal (List.equal Solver_env.equal))
+  && (Tuple.T2.equal Loc.equal (List.equal Solver_env.Variables.equal))
        solved_for_platforms
        t.solved_for_platforms
 ;;
@@ -1116,7 +1118,10 @@ let to_dyn
     ; ( "expanded_solver_variable_bindings"
       , Solver_stats.Expanded_variable_bindings.to_dyn expanded_solver_variable_bindings )
     ; ( "solved_for_platforms"
-      , Tuple.T2.to_dyn Loc.to_dyn_hum (Dyn.list Solver_env.to_dyn) solved_for_platforms )
+      , Tuple.T2.to_dyn
+          Loc.to_dyn_hum
+          (Dyn.list Solver_env.Variables.to_dyn)
+          solved_for_platforms )
     ]
 ;;
 
@@ -1192,7 +1197,9 @@ let create_latest_version
       complete, Some used
   in
   let solved_for_platforms_platform_specific_only =
-    List.map solved_for_platforms ~f:Solver_env.remove_all_except_platform_specific
+    List.map
+      solved_for_platforms
+      ~f:Solver_env.Variables.remove_all_except_platform_specific
   in
   let expanded_solver_variable_bindings =
     match portable_lock_dir with
@@ -1253,15 +1260,12 @@ let encode_metadata
      | None -> []
      | Some ocaml -> [ list sexp [ string "ocaml"; Package_name.encode (snd ocaml) ] ])
   @ [ list sexp (string "repositories" :: Repositories.encode repos) ]
-  @ (if Solver_stats.Expanded_variable_bindings.is_empty expanded_solver_variable_bindings
-     then []
-     else
-       [ list
-           sexp
-           (string "expanded_solver_variable_bindings"
-            :: Solver_stats.Expanded_variable_bindings.encode
-                 expanded_solver_variable_bindings)
-       ])
+  @ [ list
+        sexp
+        (string "expanded_solver_variable_bindings"
+         :: Solver_stats.Expanded_variable_bindings.encode
+              expanded_solver_variable_bindings)
+    ]
   @
   if portable_lock_dir
   then (
@@ -1269,7 +1273,7 @@ let encode_metadata
     [ list
         sexp
         (string "solved_for_platforms"
-         :: List.map ~f:Solver_env.encode solved_for_platforms)
+         :: List.map ~f:Solver_env.Variables.encode solved_for_platforms)
     ])
   else []
 ;;
@@ -1287,7 +1291,9 @@ let decode_metadata =
          ~default:Solver_stats.Expanded_variable_bindings.empty
          Solver_stats.Expanded_variable_bindings.decode
      and+ solved_for_platforms =
-       field_o "solved_for_platforms" (located (repeat (enter Solver_env.decode)))
+       field_o
+         "solved_for_platforms"
+         (located (repeat (enter Solver_env.Variables.decode)))
      in
      ( ocaml
      , dependency_hash
@@ -1827,7 +1833,7 @@ let check_if_solved_for_platform { solved_for_platforms; _ } ~platform =
             "The lockdir does not contain a solution compatible with the current \
              platform."
         ; Pp.text "The current platform is:"
-        ; Solver_env.pp platform
+        ; Solver_env.Variables.pp platform
         ]
         ~hints:
           [ Pp.text "Try adding the following to dune-workspace:"
@@ -1841,14 +1847,14 @@ let check_if_solved_for_platform { solved_for_platforms; _ } ~platform =
                  Package_variable_name.Set.of_list
                    [ Package_variable_name.arch; Package_variable_name.os ]
                in
-               Solver_env.remove_all_except platform variables_to_keep
+               Solver_env.Variables.remove_all_except platform variables_to_keep
              in
              let sexp_for_dune_workspace =
                List
                  [ Atom (Atom.of_string "lock_dir")
                  ; List
                      [ Atom (Atom.of_string "solve_for_platforms")
-                     ; Solver_env.encode suggested_env
+                     ; Solver_env.Variables.encode suggested_env
                      ]
                  ]
              in

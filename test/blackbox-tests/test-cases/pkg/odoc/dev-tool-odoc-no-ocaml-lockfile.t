@@ -2,7 +2,7 @@ Exercise the behaviour of "dune ocaml doc" when the lockdir
 doesn't contain a lockfile for the "ocaml" package.
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.16)
+  > (lang dune 3.26)
   > 
   > (package
   >  (name foo)

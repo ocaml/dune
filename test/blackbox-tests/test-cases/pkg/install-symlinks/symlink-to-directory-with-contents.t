@@ -26,7 +26,7 @@ code is exercised:
   >    && touch %{lib}/%{pkg-self:name}/META"))
   > EOF
 
-  $ make_package_project 3.22 foo
+  $ make_package_project 3.26 foo
 
   $ build_pkg foo
 

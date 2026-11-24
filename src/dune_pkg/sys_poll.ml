@@ -284,8 +284,8 @@ let solver_env_from_current_system t =
     ; entry Package_variable_name.os_family os_family
     ; entry Package_variable_name.sys_ocaml_version sys_ocaml_version
     ]
-  >>| List.fold_left ~init:Solver_env.empty ~f:(fun solver_env (var, data) ->
+  >>| List.fold_left ~init:Solver_env.Variables.empty ~f:(fun solver_env (var, data) ->
     match data with
-    | Some value -> Solver_env.set solver_env var value
+    | Some value -> Solver_env.Variables.set solver_env var value
     | None -> solver_env)
 ;;

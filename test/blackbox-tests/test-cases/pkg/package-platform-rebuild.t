@@ -16,6 +16,11 @@ or the lock directory's representation. Record the current extra builds.
   $ cat > dune.lock/lock.dune <<EOF
   > (lang package 0.1)
   > (solved_for_platforms ((os linux)) ((os macos)))
+  > (expanded_solver_variable_bindings
+  >  (with
+  >   (with-test local)
+  >   (with-doc none)
+  >   (with-dev-setup local)))
   > EOF
   $ make_lockpkg foo <<EOF
   > (version 1)
@@ -51,6 +56,11 @@ Adding another supported platform also invalidates the unchanged Linux build.
   $ cat > dune.lock/lock.dune <<EOF
   > (lang package 0.1)
   > (solved_for_platforms ((os linux)) ((os macos)) ((os win32)))
+  > (expanded_solver_variable_bindings
+  >  (with
+  >   (with-test local)
+  >   (with-doc none)
+  >   (with-dev-setup local)))
   > EOF
   $ test "$digest" = "$(dune pkg print-digest foo)"
   [1]

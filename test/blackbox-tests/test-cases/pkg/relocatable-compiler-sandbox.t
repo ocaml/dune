@@ -123,7 +123,7 @@ not compare the declared version with the compiler's own reported version.
   > EOF
 
   $ cat > dune-project <<'EOF'
-  > (lang dune 3.24)
+  > (lang dune 3.26)
   > (using menhir 2.0)
   > (package
   >  (name repro)

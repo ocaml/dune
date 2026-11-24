@@ -16,7 +16,7 @@ Make a fake ocamlformat package that appends a comment to the end of its input.
 
 The foo package depends on the bar package.
   $ cat > dune-project <<EOF
-  > (lang dune 3.16)
+  > (lang dune 3.26)
   > (package
   >  (name foo)
   >  (depends bar))

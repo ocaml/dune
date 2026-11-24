@@ -1,6 +1,6 @@
 Test which "with-doc" and "with-dev-setup" dependencies are locked. Starting
-with Dune 3.26, like "with-test", they are selected for local packages only.
-"with-dev-setup" is enabled by default, "with-doc" is not.
+with Dune 3.26, "with-dev-setup" applies to local packages by default, like
+"with-test". The workspace selects which packages each of them applies to.
 
   $ mkrepo
   $ add_mock_repo_if_needed
@@ -64,18 +64,19 @@ The doc and dev-setup build steps of locked packages are disabled:
 
 The workspace can disable them:
 
-  $ cat > dune-workspace <<EOF
+  $ write_workspace() {
+  > cat > dune-workspace <<EOF
   > (lang dune 3.26)
   > (lock_dir
   >  (repositories mock)
-  >  (solver_env
-  >   (with-doc false)
-  >   (with-dev-setup false)))
+  >  $1)
   > (repository
   >  (name mock)
   >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
+  > }
 
+  $ write_workspace "(with-doc none) (with-dev-setup none)"
   $ dune pkg lock
   Solution for dune.lock
   
@@ -84,20 +85,9 @@ The workspace can disable them:
 
   $ dune pkg validate-lockdir
 
-Setting them to true only applies to local packages:
+Or enable them for local packages, which is the default value of these fields:
 
-  $ cat > dune-workspace <<EOF
-  > (lang dune 3.26)
-  > (lock_dir
-  >  (repositories mock)
-  >  (solver_env
-  >   (with-doc true)
-  >   (with-dev-setup true)))
-  > (repository
-  >  (name mock)
-  >  (url "file://$(pwd)/mock-opam-repository"))
-  > EOF
-
+  $ write_workspace "(with-doc) (with-dev-setup local)"
   $ dune pkg lock
   Solution for dune.lock
   
@@ -110,9 +100,9 @@ Setting them to true only applies to local packages:
   (build
    (all_platforms ((action (run echo build)))))
 
-Before Dune 3.26, setting them to true applies to all packages:
+Or enable them for all packages:
 
-  $ write_project 3.25
+  $ write_workspace "(with-doc all) (with-dev-setup all)"
   $ dune pkg lock
   Solution for dune.lock
   
@@ -122,3 +112,44 @@ Before Dune 3.26, setting them to true applies to all packages:
   - doc-dep.0.0.1
   - transitive-dev-setup-dep.0.0.1
   - transitive-doc-dep.0.0.1
+
+  $ grep -A 3 '^(build' ${default_lock_dir}/dep.*.pkg
+  (build
+   (all_platforms
+    ((action (progn (run echo build) (run echo doc) (run echo dev-setup))))))
+  
+
+Setting them in "solver_env" is still supported: "true" applies them to all
+packages and "false" to none:
+
+  $ write_workspace "(solver_env (with-doc true) (with-dev-setup false))"
+  $ dune pkg lock
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - dep.0.0.1
+  - doc-dep.0.0.1
+  - transitive-doc-dep.0.0.1
+
+They cannot be set both ways:
+
+  $ write_workspace "(with-doc) (solver_env (with-doc true))"
+  $ dune pkg lock
+  File "dune-workspace", line 4, characters 24-39:
+  4 |  (with-doc) (solver_env (with-doc true)))
+                              ^^^^^^^^^^^^^^^
+  Error: "with-doc" is set both in 'solver_env' and in its own field, which is
+  not allowed.
+  [1]
+
+The fields are only available starting with Dune 3.26:
+
+  $ write_workspace "(with-doc)"
+  $ sed -i.bak 's/(lang dune 3.26)/(lang dune 3.25)/' dune-workspace
+  $ dune pkg lock
+  File "dune-workspace", line 4, characters 1-11:
+  4 |  (with-doc))
+       ^^^^^^^^^^
+  Error: 'with-doc' is only available since version 3.26 of the dune language.
+  Please update your dune-project file to have (lang dune 3.26).
+  [1]

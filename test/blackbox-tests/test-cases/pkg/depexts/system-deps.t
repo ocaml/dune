@@ -5,7 +5,7 @@ and no 'libraries' field, we don't fail nor do we print a hint
   $ add_mock_repo_if_needed
 
   $ cat > dune-project << EOF
-  > (lang dune 3.20)
+  > (lang dune 3.26)
   > (package
   >  (name foo)
   >  (depends conf-foobar))

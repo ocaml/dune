@@ -122,7 +122,10 @@ let%expect_test "encode/decode round trip test for lockdir with no deps" =
     ; ocaml = None
     ; repos = { complete = true; used = None }
     ; expanded_solver_variable_bindings =
-        { variable_values = []; unset_variables = [] }
+        { variable_values = []
+        ; unset_variables = []
+        ; with = { with-test = local; with-doc = none; with-dev-setup = none }
+        }
     ; solved_for_platforms = ("<none>:1", [])
     }
     |}]
@@ -162,6 +165,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
            { Expanded_variable_bindings.variable_values =
                [ Package_variable_name.os, Variable_value.string "linux" ]
            ; unset_variables = [ Package_variable_name.os_family ]
+           ; with_ = Expanded_variable_bindings.empty.with_
            }
          ~solved_for_platforms:[]
          ~portable_lock_dir:false
@@ -221,6 +225,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
     ; expanded_solver_variable_bindings =
         { variable_values = [ ("os", "linux") ]
         ; unset_variables = [ "os-family" ]
+        ; with = { with-test = local; with-doc = none; with-dev-setup = none }
         }
     ; solved_for_platforms = ("<none>:1", [])
     }
@@ -231,7 +236,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
   let module Action = Dune_lang.Action in
   let module String_with_vars = Dune_lang.String_with_vars in
   let make_conditional value =
-    Lock_dir.Conditional_choice.singleton Dune_pkg.Solver_env.empty value
+    Lock_dir.Conditional_choice.singleton Dune_pkg.Solver_env.Variables.empty value
   in
   let lock_dir =
     let pkg_a =
@@ -437,7 +442,10 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
         ; used = Some [ opam_repo_serializable "https://github.com/ocaml/dune" ]
         }
     ; expanded_solver_variable_bindings =
-        { variable_values = []; unset_variables = [] }
+        { variable_values = []
+        ; unset_variables = []
+        ; with = { with-test = local; with-doc = none; with-dev-setup = none }
+        }
     ; solved_for_platforms = ("<none>:1", [])
     }
     |}]
@@ -557,7 +565,10 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
               ]
         }
     ; expanded_solver_variable_bindings =
-        { variable_values = []; unset_variables = [] }
+        { variable_values = []
+        ; unset_variables = []
+        ; with = { with-test = local; with-doc = none; with-dev-setup = none }
+        }
     ; solved_for_platforms = ("<none>:1", [])
     }
     |}]

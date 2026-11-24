@@ -18,7 +18,7 @@ looking up binaries in the workspace.
   >  (:= PATH $PWD/_bin))
   > EOF
 
-  $ make_dune_project 3.13
+  $ make_dune_project 3.26
 
   $ cat >dune <<EOF
   > (rule

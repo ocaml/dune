@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795490101094,
+  "lastUpdate": 1795490253276,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -496043,6 +496043,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5892864656933333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3bdb5995c7e395a2f7926ccc7975bcc77adcd971",
+          "message": "test(pkg): share package target cache-miss query (#17209)\n\nUse one parameterized trace query to report workspace-local cache misses\nfor a package target. The four package build and platform tests keep\ntheir existing assertions.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-24T11:04:21+08:00",
+          "tree_id": "bc8985ce26d4f01b017031bd6390a88096fdee5a",
+          "url": "https://github.com/ocaml/dune/commit/3bdb5995c7e395a2f7926ccc7975bcc77adcd971"
+        },
+        "date": 1795490250858,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 43.26031741742667,
             "unit": "seconds"
           }
         ]

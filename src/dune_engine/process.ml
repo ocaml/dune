@@ -344,6 +344,30 @@ module Io = struct
     | Must_be_empty ->
       check_stdout ~loc (truncate_output (`String contents) ~n:(output_limit t))
   ;;
+
+  let cat t ~loc paths =
+    let copy_files out =
+      List.iter paths ~f:(fun path ->
+        Stdune.Io.with_file_in path ~f:(fun input -> Stdune.Io.copy_channels input out))
+    in
+    match captured_stdout_policy t with
+    | Print -> copy_files (out_channel t)
+    | (Swallow | Must_be_empty) as policy ->
+      let path = Temp.create File ~prefix:"dune" ~suffix:"stdout" in
+      Exn.protect
+        ~finally:(fun () -> Temp.destroy File path)
+        ~f:(fun () ->
+          match Stdune.Io.with_file_out path ~f:copy_files with
+          | () ->
+            (match policy with
+             | Print | Swallow -> ()
+             | Must_be_empty -> check_stdout ~loc (read_output path ~n:(output_limit t)))
+          | exception exn ->
+            let exn = Exn_with_backtrace.capture exn in
+            output_string (out_channel t) (read_output path ~n:(output_limit t));
+            flush t;
+            Exn_with_backtrace.reraise exn)
+  ;;
 end
 
 module Build = struct

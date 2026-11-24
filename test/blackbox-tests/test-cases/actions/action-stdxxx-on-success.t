@@ -256,12 +256,13 @@ With builtin cat
   $ printf 'from cat\n' > input
   $ echo '(rule (alias default) (action (cat input)))' > dune
 
-CR: `cat` still prints its output under both policies.
+`swallow` suppresses output from `cat`; `must-be-empty` rejects it.
 
   $ dune build --action-stdout-on-success=swallow
-  from cat
   $ dune build --action-stdout-on-success=must-be-empty > log 2>&1
-  $ cat log
+  [1]
+  $ grep -A 1 '^Error:' log
+  Error: Action produced unexpected output on stdout.
   from cat
 
 Explicit redirection still writes the output to its target.

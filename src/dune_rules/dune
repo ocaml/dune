@@ -68,16 +68,13 @@
 (rule
  (alias runtest)
  (target setup.defaults.ml.gen)
- (deps
-  (:stdlib %{ocaml_where})
-  (:configure %{project_root}/boot/configure.ml))
  (action
   (chdir
    %{project_root}
    (setenv
     DUNE_CONFIGURE_OUTPUT
     "%{target}"
-    (run %{ocaml} -noinit -I %{stdlib} %{configure})))))
+    (run %{exe:../../boot/configure.exe})))))
 
 (rule
  (alias runtest)

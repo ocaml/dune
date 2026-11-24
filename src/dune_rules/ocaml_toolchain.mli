@@ -40,3 +40,7 @@ val compiler : t -> Ocaml.Mode.t -> Action.Prog.t
 val best_mode : t -> Mode.t
 
 val register_response_file_support : t -> unit
+
+(** Interpret compiler-reported standard library paths inside a registered build
+    context as build artifacts. Other paths remain external. *)
+val localize_stdlib_dir : Path.t -> Path.t Memo.t

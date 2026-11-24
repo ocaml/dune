@@ -10,3 +10,10 @@ val melobjinfo
 
 val available : Super_context.t -> dir:Path.Build.t -> bool Memo.t
 val where : Super_context.t -> loc:Loc.t option -> dir:Path.Build.t -> Path.t list Memo.t
+
+val stdlib_deps
+  :  Super_context.t
+  -> loc:Loc.t option
+  -> dir:Path.Build.t
+  -> cm_kind:Melange.Cm_kind.t
+  -> Dep.Set.t Memo.t

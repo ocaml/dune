@@ -328,7 +328,27 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t) =
      then A "-opaque"
      else Command.Args.empty
    in
-   let flags = Command.Args.dyn (Ocaml_flags.get (Compilation_context.flags cctx) mode) in
+   let flags =
+     let flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
+     match cm_kind with
+     | Ocaml _ -> Command.Args.dyn flags
+     | Melange cm_kind ->
+       Command.Args.Dyn
+         (let open Action_builder.O in
+          let* flags = flags in
+          let+ stdlib_deps =
+            if List.mem flags "-nostdlib" ~equal:String.equal
+            then Action_builder.return Dep.Set.empty
+            else
+              Melange_binary.stdlib_deps
+                sctx
+                ~loc:(Compilation_context.loc cctx)
+                ~dir
+                ~cm_kind
+              |> Action_builder.of_memo
+          in
+          Command.Args.S [ As flags; Hidden_deps stdlib_deps ])
+   in
    let pp_flags, sandbox =
      match Module.pp_flags m with
      | None -> Command.Args.empty, sandbox

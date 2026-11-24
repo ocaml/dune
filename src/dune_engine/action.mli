@@ -100,9 +100,6 @@ include Monoid with type t := t
 
 val digest : Dune_digest.Manual.t -> t -> unit
 
-(** Return the list of directories the action chdirs to *)
-val chdirs : t -> Path.Build.Set.t
-
 (** The empty action that does nothing. *)
 val empty : t
 

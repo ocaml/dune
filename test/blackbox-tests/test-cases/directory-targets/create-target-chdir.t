@@ -21,8 +21,8 @@ Attempt to create a directory with chdir + with-stdout-to:
   - output/x
   [1]
 
-A sequence may create its directory before changing into it. Preparing all
-working directories before running the first command changes that ordering.
+A sequence may create its directory before changing into it. The directory
+should not be created until the action reaches `chdir`.
 
   $ cat > dune <<'EOF'
   > (rule
@@ -35,7 +35,5 @@ working directories before running the first command changes that ordering.
   >    )
   >    (chdir ordered (run touch result)))))
   > EOF
-  $ dune build ordered > build.log 2>&1
-  [1]
-  $ grep '^precreated$' build.log
-  precreated
+  $ dune build ordered
+  $ test -f _build/default/ordered/result

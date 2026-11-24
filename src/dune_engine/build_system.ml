@@ -490,10 +490,6 @@ and execute_action_for_rule
         then Action.with_stdout_to stamp_file action
         else Action.progn [ action; Action.write_file stamp_file "" ]
     in
-    let () =
-      Action.chdirs action
-      |> Path.Build.Set.iter ~f:(fun p -> Path.mkdir_p (Path.build p))
-    in
     let context = Build_context.of_build_path targets.root in
     let root =
       match context with

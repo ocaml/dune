@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795529314981,
+  "lastUpdate": 1795529322834,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -496942,6 +496942,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 63.29370903279332,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "54eb6481a61e172bfff728c79182b61a072502ed",
+          "message": "test(melange): cover interface-only Stdlib dependencies (#17217)\n\nCheck that compiling an interface in a copy sandbox builds the implicit\nStdlib interface without building implementation artifacts. Follow-up to\n#17188.\n\n019ffd87-afd6-7983-99f9-1a7139620b20\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-24T05:49:02-08:00",
+          "tree_id": "82ab6fe71bb00d3b26812a49ca8bce4f172c2122",
+          "url": "https://github.com/ocaml/dune/commit/54eb6481a61e172bfff728c79182b61a072502ed"
+        },
+        "date": 1795529322070,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5239276608066666,
             "unit": "seconds"
           }
         ]

@@ -153,7 +153,9 @@ failure.
   > (rule
   >  (target slow-stop)
   >  (action
-  >   (bash "touch '$slow_started'; trap \"touch '$cancelled'; exit 0\" TERM; while true; do sleep 1; done")))
+  >   (bash "trap \"touch '$cancelled'; exit 0\" TERM;
+  >          touch '$slow_started';
+  >          while true; do sleep 1; done")))
   > EOF
 
   $ start_dune -j 2 --stop-on-first-error
@@ -161,8 +163,8 @@ failure.
   $ FAIL=$!
   $ dune rpc build --wait slow-stop > slow-stop.out 2>&1 &
   $ SLOW=$!
-  $ with_timeout dune_cmd wait-for-file-to-appear "$fail_started"
-  $ with_timeout dune_cmd wait-for-file-to-appear "$slow_started"
+  $ wait_for_file_with_timeout "$fail_started"
+  $ wait_for_file_with_timeout "$slow_started"
 
   $ printf '.\n' > "$fail_release"
   $ wait_for_pid_to_exit_with_timeout "$FAIL" 200 || (cat fail-stop.out; false)
@@ -170,7 +172,7 @@ failure.
   [1]
   $ cat fail-stop.out
   Failure
-  $ with_timeout dune_cmd wait-for-file-to-appear "$cancelled"
+  $ wait_for_file_with_timeout "$cancelled"
 
   $ if wait_for_pid_to_exit_with_timeout "$SLOW" 200; then
   >   echo "slow rpc request finished"

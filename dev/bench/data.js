@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795499032454,
+  "lastUpdate": 1795499235642,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -496507,6 +496507,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.34748011702666676,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b5f41acd4412f9a7f99d0361b99e15f6cd6c32ea",
+          "message": "fix(melange): track implicit Stdlib compilation dependencies (#17188)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-23T21:25:49-08:00",
+          "tree_id": "970689ae8f4a11059e3ae04e557155eac04ceef5",
+          "url": "https://github.com/ocaml/dune/commit/b5f41acd4412f9a7f99d0361b99e15f6cd6c32ea"
+        },
+        "date": 1795499235134,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 40.050607787813334,
             "unit": "seconds"
           }
         ]

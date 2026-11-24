@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795533236769,
+  "lastUpdate": 1795535844236,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -693302,6 +693302,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.147936635646667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "47d74f3ae5b532530ee60c522fe577ec321f4d03",
+          "message": "fix(engine): frame directory-target dependency digests (#17222)\n\nInclude entry counts and names in the directory-target dependency digest\nso different directory layouts no longer appear unchanged. Update the\nexisting regression test to expect the consumer to rebuild when only the\ndirectory layout changes.",
+          "timestamp": "2026-11-24T23:45:38+08:00",
+          "tree_id": "a3631c42d49ebe8862e0a1ca0d29bdc8a51e8202",
+          "url": "https://github.com/ocaml/dune/commit/47d74f3ae5b532530ee60c522fe577ec321f4d03"
+        },
+        "date": 1795535508764,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.1610356614266664,
             "unit": "seconds"
           }
         ]

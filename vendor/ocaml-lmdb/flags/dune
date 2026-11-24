@@ -1,13 +1,31 @@
 (rule
- (deps
-  (:stdlib %{ocaml_where}))
+ (enabled_if
+  (<> %{os_type} "Win32"))
+ (target c_flags.sexp)
+ (action
+  (write-file %{target} "()\n")))
+
+(rule
+ (enabled_if
+  (and
+   (= %{os_type} "Win32")
+   (= %{ocaml-config:ccomp_type} "msvc")))
+ (target c_flags.sexp)
+ (action
+  (write-file
+   %{target}
+   "(\"/wd5287\" \"/wd4333\" \"/wd4172\" \"/wd4146\" \"/wd4244\")\n")))
+
+(rule
+ (enabled_if
+  (and
+   (= %{os_type} "Win32")
+   (<> %{ocaml-config:ccomp_type} "msvc")))
+ (target c_flags.sexp)
  (action
   (with-stdout-to
-   c_flags.sexp
-   (run
-    %{ocaml}
-    -noinit
-    -I
-    %{stdlib}
-    %{dep:gen_c_flags.ml}
-    %{ocaml-config:ccomp_type}))))
+   %{target}
+   (echo
+    "(-Wno-return-local-addr"
+    -Wno-unused-label
+    "-Wno-unused-but-set-variable)\n"))))

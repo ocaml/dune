@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795536377332,
+  "lastUpdate": 1795536385455,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -497174,6 +497174,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.563295174866674,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ac0f2003558b898c6e8158ba6e63a65f54abeea9",
+          "message": "refactor(pkg): remove pkg digests (#16292)\n\nKey package targets by owner and name instead of lock digest. Remove\n`dune pkg print-digest`. Dev tools no longer share compiler or helper\ntargets\n([`dev-tool-merlin-stale-compiler.t`](https://github.com/ocaml/dune/pull/16292/files#diff-3bced8e7c75548e5c7813d167832fca98394cd6756b40327ea1157bf12ba8088)).\n\nNo longer triggers a package rebuild:\n- Editing the macOS recipe or adding Windows to the lock while building\non Linux\n([`package-platform-rebuild.t`](https://github.com/ocaml/dune/pull/16292/files#diff-f74a927967af9a8a4830c34ae5888247144254f82c124ecbb1c19110c0e19de8)).\n- Switching to an equivalent non-portable lock or writing `(depends)`\ninstead of omitting it\n([`package-platform-rebuild.t`](https://github.com/ocaml/dune/pull/16292/files#diff-f74a927967af9a8a4830c34ae5888247144254f82c124ecbb1c19110c0e19de8)).\n- Changing only `(avoid)` or a `depexts` hint\n([`package-build-metadata.t`](https://github.com/ocaml/dune/pull/16292/files#diff-8fd74690f9797c0b1433efe61be270ddc61e6760647f85f564f1ceba2aa98dcc)).\n\nThe source-overlay regression was fixed on `main` in #17219.\n\nKnown regressions:\n- Change a transitive export from `FOO=bar` to `FOO=baz`: incremental\ninstalls `bar/1.2.3`; fresh installs `baz/1.2.3`\n([`exported-env.t`](https://github.com/ocaml/dune/pull/16292/files#diff-c7c70fe8b69ea61216920e8b569a9389e6f59c809dec1001acbb27604d3073c5)).\n- Reorder two providers of `foo`: incremental keeps the old provider;\nfresh picks the other\n([`installed-binary.t`](https://github.com/ocaml/dune/pull/16292/files#diff-930a79378895a539df0daa9cf288207bb9997ca5329eb14dec767561898b52e3)).\n\nPart of #8652.",
+          "timestamp": "2026-11-24T16:46:40+01:00",
+          "tree_id": "c29be45d34ef0abee22c0b43b3f098ad2e0412a0",
+          "url": "https://github.com/ocaml/dune/commit/ac0f2003558b898c6e8158ba6e63a65f54abeea9"
+        },
+        "date": 1795536384228,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5352316737200001,
             "unit": "seconds"
           }
         ]

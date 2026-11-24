@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795490372827,
+  "lastUpdate": 1795490379769,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -496188,6 +496188,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 52.15572769571333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "185cd2d43e5b25d8f64c53b088bd44a8975741c4",
+          "message": "test(watch): wait for cancellation handlers before interrupting builds (#17212)\n\nIn the RPC cancellation tests, signal readiness only after installing\nthe TERM handler. Wait for that signal before disconnecting the client,\nshutting down the server, or releasing the failing build. Bound the\nwaits for both readiness and cancellation.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-24T11:03:36+08:00",
+          "tree_id": "2bea9390195239085f534c8bd216467f1a18d08f",
+          "url": "https://github.com/ocaml/dune/commit/185cd2d43e5b25d8f64c53b088bd44a8975741c4"
+        },
+        "date": 1795490378831,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4716725836066667,
             "unit": "seconds"
           }
         ]

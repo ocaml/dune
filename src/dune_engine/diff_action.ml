@@ -215,42 +215,34 @@ let plan_tree_diff ({ mode; source_root; _ } as t) =
     | Missing, Directory ->
       let entries = list_target_directory rel in
       let plan = add_create_directory ~announce:(List.is_empty entries) plan rel in
-      List.fold_left entries ~init:plan ~f:(fun plan name ->
-        let rel = Path.Local.relative_fname rel name in
-        loop rel Missing (kind_of_target rel) plan)
+      List.fold_left entries ~init:plan ~f:(visit_target rel)
     | File, Directory ->
       let plan = add_create_directory ~announce:false plan rel in
       let name = path_name rel in
       let msg = Pp.textf "File %s should be replaced with a directory" name in
       collect_children rel (add_message plan msg) (list_target_directory rel)
     | Directory, Directory ->
-      let rec merge source_entries target_entries plan =
-        match source_entries, target_entries with
-        | [], [] -> plan
-        | name :: source_entries, [] ->
-          let rel = Path.Local.relative_fname rel name in
-          let plan = loop rel (kind_of_source rel) Missing plan in
-          merge source_entries [] plan
-        | [], name :: target_entries ->
-          let rel = Path.Local.relative_fname rel name in
-          let plan = loop rel Missing (kind_of_target rel) plan in
-          merge [] target_entries plan
-        | source_name :: source_entries, target_name :: target_entries ->
-          (match Filename.compare source_name target_name with
-           | Lt ->
-             let rel = Path.Local.relative_fname rel source_name in
-             let plan = loop rel (kind_of_source rel) Missing plan in
-             merge source_entries (target_name :: target_entries) plan
+      let visit_source plan name =
+        let rel = Path.Local.relative_fname rel name in
+        loop rel (kind_of_source rel) Missing plan
+      in
+      let rec merge sources targets plan =
+        match sources, targets with
+        | [], targets -> List.fold_left targets ~init:plan ~f:(visit_target rel)
+        | sources, [] -> List.fold_left sources ~init:plan ~f:visit_source
+        | source :: rest_sources, target :: rest_targets ->
+          (match Filename.compare source target with
+           | Lt -> merge rest_sources targets (visit_source plan source)
+           | Gt -> merge sources rest_targets (visit_target rel plan target)
            | Eq ->
-             let rel = Path.Local.relative_fname rel source_name in
+             let rel = Path.Local.relative_fname rel source in
              let plan = loop rel (kind_of_source rel) (kind_of_target rel) plan in
-             merge source_entries target_entries plan
-           | Gt ->
-             let rel = Path.Local.relative_fname rel target_name in
-             let plan = loop rel Missing (kind_of_target rel) plan in
-             merge (source_name :: source_entries) target_entries plan)
+             merge rest_sources rest_targets plan)
       in
       merge (list_directory ~loc:t.loc (source_path rel)) (list_target_directory rel) plan
+  and visit_target rel plan name =
+    let rel = Path.Local.relative_fname rel name in
+    loop rel Missing (kind_of_target rel) plan
   in
   let { changes; promotions } =
     loop

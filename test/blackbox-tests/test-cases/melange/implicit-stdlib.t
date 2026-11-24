@@ -70,6 +70,15 @@ the interface remains unchanged.
   >   | select(.prog == "melc" and (.args | index("-o")))] | length'
   2
 
+Compiling an interface needs Stdlib's interface, but not its implementation.
+
+  $ echo 'val value : int' > stdlib/stdlib.mli
+  $ dune build --build-dir _build_cmi --sandbox=copy \
+  >   consumer/.consumer.objs/melange/consumer.cmi
+  $ test -e _build_cmi/default/stdlib/.stdlib.objs/melange/stdlib.cmi
+  $ test ! -e _build_cmi/default/stdlib/.stdlib.objs/melange/stdlib.cmj
+  $ test ! -e _build_cmi/default/consumer/.consumer.objs/melange/consumer.cmj
+
 Absolute and compiler-relative MELANGELIB overrides also identify build inputs.
 
   $ MELANGELIB="$PWD/_build_absolute/default/stdlib/.stdlib.objs/melange" \

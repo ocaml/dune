@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795490746108,
+  "lastUpdate": 1795490753440,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -496362,6 +496362,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 57.66658889952,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f2e7ce6b1030bcb77fe63e25e63a9ae7ab0b387b",
+          "message": "test(install): share stub selection fixtures (#17207)\n\nReuse the producer setup, C stubs, and installation steps across four\nstublibs tests. Keep each test’s library layout and runtime assertions\nin the test itself.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-24T11:05:14+08:00",
+          "tree_id": "a0c2e5d1e785bfee3cdd7d960daa904bfe63068f",
+          "url": "https://github.com/ocaml/dune/commit/f2e7ce6b1030bcb77fe63e25e63a9ae7ab0b387b"
+        },
+        "date": 1795490752267,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4779780948266667,
             "unit": "seconds"
           }
         ]

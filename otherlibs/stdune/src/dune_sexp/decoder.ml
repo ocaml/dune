@@ -508,17 +508,11 @@ and eval : type a k. (a, k) parser -> k context -> k -> a * k =
     let (Fields (loc, _, uc)) = ctx in
     (match find_single uc state name with
      | None -> field_missing loc name
-     | Some { values; entry; _ } ->
-       let ctx = Values (Ast.loc entry, Some name, uc) in
-       let x = result ctx (eval t ctx values) in
-       x, Fields.consume state name)
+     | Some field -> read_field t uc name field, Fields.consume state name)
   | Field_with_options { name; default; on_dup; t } ->
     let (Fields (loc, _, uc)) = ctx in
     (match find_single uc state name ?on_dup with
-     | Some { values; entry; _ } ->
-       let ctx = Values (Ast.loc entry, Some name, uc) in
-       let x = result ctx (eval t ctx values) in
-       x, Fields.consume state name
+     | Some field -> read_field t uc name field, Fields.consume state name
      | None ->
        (match default with
         | Some v -> v, Fields.add_known state name
@@ -527,16 +521,14 @@ and eval : type a k. (a, k) parser -> k context -> k -> a * k =
     let (Fields (_, _, uc)) = ctx in
     (match find_single uc state name with
      | None -> None, Fields.add_known state name
-     | Some { values; entry; _ } ->
-       let ctx = Values (Ast.loc entry, Some name, uc) in
-       let x = result ctx (eval t ctx values) in
+     | Some field ->
+       let x = read_field t uc name field in
        Some x, Fields.consume state name)
   | Field_optional_with_on_dup { name; on_dup; t } ->
     let (Fields (_, _, uc)) = ctx in
     (match find_single uc state name ~on_dup with
-     | Some { values; entry; _ } ->
-       let ctx = Values (Ast.loc entry, Some name, uc) in
-       let x = result ctx (eval t ctx values) in
+     | Some field ->
+       let x = read_field t uc name field in
        Some x, Fields.consume state name
      | None -> None, Fields.add_known state name)
   | Multi_field { name; t } -> eval_multi_field name t ctx state
@@ -738,17 +730,19 @@ and enum
     in
     res, sexps
 
+and read_field : type a. a t -> Univ_map.t -> string -> Fields.Unparsed.t -> a =
+  fun t uc name { values; entry; _ } ->
+  let ctx = Values (Ast.loc entry, Some name, uc) in
+  result ctx (eval t ctx values)
+
 and eval_multi_field
   : type a. string -> (a, values) parser -> fields context -> fields -> a list * fields
   =
   let rec loop t uc name acc (field : Fields.Unparsed.t option) =
     match field with
     | None -> acc
-    | Some { values; prev; entry } ->
-      let x =
-        let ctx = Values (Ast.loc entry, Some name, uc) in
-        result ctx (eval t ctx values)
-      in
+    | Some ({ prev; _ } as field) ->
+      let x = read_field t uc name field in
       loop t uc name (x :: acc) prev
   in
   fun name t (Fields (_, _, uc)) (state : Fields.t) ->

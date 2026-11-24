@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795490287903,
+  "lastUpdate": 1795490310274,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -691910,6 +691910,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8834719421333332,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2027097a85e27125a279bfa0043048052fd8b694",
+          "message": "test(directory-targets): drop manual empty-subdirectory deletion case (#17208)\n\nRemove the case from #17175 that manually deletes an empty subdirectory\nunder `_build`. It tests recovery after modifying build artifacts, not a\nfailure during normal incremental builds. Keep the directory digest\nregression that changes a declared input instead.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-24T11:04:34+08:00",
+          "tree_id": "4591c0bfa306d4afe893b04495a1b80b482d13bc",
+          "url": "https://github.com/ocaml/dune/commit/2027097a85e27125a279bfa0043048052fd8b694"
+        },
+        "date": 1795489889030,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7261111382933336,
             "unit": "seconds"
           }
         ]

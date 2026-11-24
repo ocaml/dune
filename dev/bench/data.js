@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795498554736,
+  "lastUpdate": 1795498561173,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -496478,6 +496478,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 36.82867228472666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5170e0f6ed362871cabfbfc83043f1ffb8d2aa1b",
+          "message": "test(melange): reproduce missing emit module artifact lookups (#17190)\n\nReproduce failed artifact lookup for modules owned by melange.emit,\nincluding qualified references and overlapping stanzas.\n\nRelated to #17179 and #17181.\n\n019f9d01-ed38-7332-a1c0-ec56614ff605\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-23T21:14:01-08:00",
+          "tree_id": "1abe39838dbde11709063ead718a09d4e902160f",
+          "url": "https://github.com/ocaml/dune/commit/5170e0f6ed362871cabfbfc83043f1ffb8d2aa1b"
+        },
+        "date": 1795498560326,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.34748011702666676,
             "unit": "seconds"
           }
         ]

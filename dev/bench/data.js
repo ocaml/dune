@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795539269392,
+  "lastUpdate": 1795539354973,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -693505,6 +693505,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8462776112933335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3ba095a9f386a61a28ac26792d978d5effaf1ef7",
+          "message": "refactor(sexp): reuse field entry decoding (#17224)\n\nUse one helper to decode entries for required, optional, and repeated\nS-expression fields. Preserve the field name and location used in\nerrors.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-25T00:44:23+08:00",
+          "tree_id": "cfd26048e2f76d02c35c8f24c894f196235982af",
+          "url": "https://github.com/ocaml/dune/commit/3ba095a9f386a61a28ac26792d978d5effaf1ef7"
+        },
+        "date": 1795539017579,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.157822498406667,
             "unit": "seconds"
           }
         ]

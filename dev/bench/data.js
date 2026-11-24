@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795528280787,
+  "lastUpdate": 1795528288723,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -496826,6 +496826,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 64.85122777991333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e189291130b79ea100bacad5e630133bc1c20d2a",
+          "message": "fix(pkg): isolate source overlays in package builds (#17219)\n\nPackage build rules without any build or install instrutions may still\nuse .files or extra_sources and these may mutate the sources. Therefore\nwe should always be sandboxing these particular rules.\n\nWithout sandboxing we may mutate _build in an untracked way and cause\nconsumers of source/ to miss invalidation. The current pkg digests mask\nthis rebuild by creating a new rule. In\nhttps://github.com/ocaml/dune/pull/16292 we remove the pkg digests\nwhich exposed this particular bug.\n\nThe bug can be observed directly on main in the cram test, but basically\nhas no ill-effect at the moment.\n\nReproduced in #17213. Related to #16292.",
+          "timestamp": "2026-11-24T14:31:34+01:00",
+          "tree_id": "95aad2bce5966a7a5392eb270d3ac007245b6479",
+          "url": "https://github.com/ocaml/dune/commit/e189291130b79ea100bacad5e630133bc1c20d2a"
+        },
+        "date": 1795528287805,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5590777816533333,
             "unit": "seconds"
           }
         ]

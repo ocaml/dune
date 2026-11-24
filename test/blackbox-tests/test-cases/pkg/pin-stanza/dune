@@ -1,0 +1,3 @@
+(cram
+ (applies_to workspace.t)
+ (deps %{bin:diff}))

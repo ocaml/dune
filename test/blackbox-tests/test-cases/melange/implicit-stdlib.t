@@ -98,7 +98,24 @@ An explicit library dependency remains valid.
   > EOF
   $ dune build --build-dir _build_bundle --sandbox=copy @bundle
 
-Libraries compiled with -nostdlib do not build or depend on the implicit Stdlib.
+Compiling with -nostdlib does not query, build, or depend on the implicit Stdlib.
+Use a context without Merlin rules to isolate compilation from editor metadata.
+
+  $ cat > dune-workspace <<'EOF'
+  > (lang dune 3.26)
+  > (context
+  >  (default
+  >   (name no_merlin)))
+  > EOF
+
+  $ cat > bin/melc <<'EOF'
+  > #!/bin/sh
+  > if [ "$1" = --where ]; then
+  >   echo "unexpected Stdlib discovery" >&2
+  >   exit 1
+  > fi
+  > exec "$REAL_MELC" "$@"
+  > EOF
 
   $ cat > consumer/dune <<'EOF'
   > (library
@@ -108,5 +125,5 @@ Libraries compiled with -nostdlib do not build or depend on the implicit Stdlib.
   > EOF
   $ echo 'let value = 0' > consumer/consumer.ml
   $ dune build --build-dir _build_nostdlib \
-  >   consumer/.consumer.objs/melange/consumer.cmj
-  $ test ! -e _build_nostdlib/default/stdlib/.stdlib.objs/melange/stdlib.cmi
+  >   _build_nostdlib/no_merlin/consumer/.consumer.objs/melange/consumer.cmj
+  $ test ! -e _build_nostdlib/no_merlin/stdlib/.stdlib.objs/melange/stdlib.cmi

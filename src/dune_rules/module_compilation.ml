@@ -333,21 +333,22 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t) =
      match cm_kind with
      | Ocaml _ -> Command.Args.dyn flags
      | Melange cm_kind ->
-       Command.Args.Dyn
-         (let open Action_builder.O in
-          let* flags = flags in
-          let+ stdlib_deps =
-            if List.mem flags "-nostdlib" ~equal:String.equal
-            then Action_builder.return Dep.Set.empty
-            else
-              Melange_binary.stdlib_deps
-                sctx
-                ~loc:(Compilation_context.loc cctx)
-                ~dir
-                ~cm_kind
-              |> Action_builder.of_memo
-          in
-          Command.Args.S [ As flags; Hidden_deps stdlib_deps ])
+       (let open Action_builder.O in
+        let* flags = flags in
+        let+ stdlib_deps =
+          if List.mem flags "-nostdlib" ~equal:String.equal
+          then Action_builder.return Dep.Set.empty
+          else
+            Melange_binary.stdlib_deps
+              sctx
+              ~loc:(Compilation_context.loc cctx)
+              ~dir
+              ~cm_kind
+            |> Action_builder.of_memo
+        in
+        flags, stdlib_deps)
+       |> Action_builder.dyn_deps
+       |> Command.Args.dyn
    in
    let pp_flags, sandbox =
      match Module.pp_flags m with

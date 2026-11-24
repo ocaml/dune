@@ -111,25 +111,7 @@ No cache misses should appear in the trace.
 
 Test that the cache stores all historical build results.
 
-  $ make_dune_project 2.1
-  $ cat > dune-v1 <<EOF
-  > (rule
-  >   (targets t1)
-  >   (action (bash "echo running; echo v1 > t1")))
-  > (rule
-  >   (deps t1)
-  >   (targets t2)
-  >   (action (bash "echo running; cat t1 t1 > t2")))
-  > EOF
-  $ cat > dune-v2 <<EOF
-  > (rule
-  >   (targets t1)
-  >   (action (bash "echo running; echo v2 > t1")))
-  > (rule
-  >   (deps t1)
-  >   (targets t2)
-  >   (action (bash "echo running; cat t1 t1 > t2")))
-  > EOF
+  $ setup_shared_cache_history_project
   $ cp dune-v1 dune
   $ dune build --config-file=config t2
   running

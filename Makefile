@@ -68,7 +68,7 @@ install-ocamlformat:
 
 .PHONY: dev-deps
 dev-deps:
-	opam install -y . --deps-only --with-dev-setup
+	opam install -y . --deps-only --with-test
 
 .PHONY: dev-deps-sans-melange
 dev-deps-sans-melange: dev-deps
@@ -83,7 +83,7 @@ dev-switch:
 		opam switch create -y . $(TEST_OCAMLVERSION) --no-install ; \
 	fi
 	opam pin add -y . -n --with-version=dev
-	opam install -y . --deps-only --with-test --with-dev-setup
+	opam install -y . --deps-only --with-test
 	$(MAKE) install-ocamlformat
 	opam install -y $(DEV_DEPS)
 

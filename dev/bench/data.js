@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795555509747,
+  "lastUpdate": 1795555786779,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -497435,6 +497435,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5012779858866666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27388d2b9cb018fa5d43b795bfa3c1b8e82a4d3c",
+          "message": "build(lmdb): generate C flags without the OCaml interpreter (#17229)\n\nChoose the existing warning flags from the target OS and C compiler\nconfiguration rather than running an OCaml script. Non-Windows targets\nstill get no extra flags.",
+          "timestamp": "2026-11-24T22:13:29+01:00",
+          "tree_id": "903240f93f73c65988fd070a6be4cf667e500d0d",
+          "url": "https://github.com/ocaml/dune/commit/27388d2b9cb018fa5d43b795bfa3c1b8e82a4d3c"
+        },
+        "date": 1795555784941,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 52.64820840796,
             "unit": "seconds"
           }
         ]

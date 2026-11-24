@@ -17,7 +17,6 @@ variables.
   > depends: [ "ocaml" "tool-support" ]
   > EOF
   $ mkpkg tool-support <<'EOF'
-  > build: [ [ "echo" "build private helper" ] ]
   > EOF
   $ mkpkg project-only <<'EOF'
   > EOF
@@ -79,16 +78,9 @@ removed from its dependency closure.
   $ dune build >project-output 2>&1
   $ dune tools exec ocamlmerlin >merlin-output 2>&1
   $ dune tools exec ocamllsp >lsp-output 2>&1
-  $ for output in project-output merlin-output lsp-output; do
-  >   printf '%s: ' "$output"
-  >   grep -c '^build compiler ' "$output" || :
-  > done
-  project-output: 1
-  merlin-output: 1
-  lsp-output: 0
-
-Both tools use the same relocatable compiler target. Check their final edges
-as well as the build count: a cache hit is not a shared target.
+The three locks select the same compiler version, but each owns its compiler
+target. Inspect the dependencies of the installed tools rather than counting
+recipe executions: a cache hit is not a shared target.
 
   $ dependency_target() {
   >   exe=$(dune tools which "$1") || return 1
@@ -106,21 +98,20 @@ as well as the build count: a cache hit is not a shared target.
   false
   false
   $ merlin_compiler=$(dependency_target ocamlmerlin relocatable-compiler)
-  $ test "$merlin_compiler" = "$(dependency_target ocamllsp relocatable-compiler)"
+  $ lsp_compiler=$(dependency_target ocamllsp relocatable-compiler)
   $ project_compiler=$(get_build_pkg_dir relocatable-compiler)/target
-  $ test "$merlin_compiler" = "$project_compiler"
-  [1]
+  $ test -d "$project_compiler"
+  $ test "$merlin_compiler" != "$project_compiler"
+  $ test "$lsp_compiler" != "$project_compiler"
+  $ test "$merlin_compiler" != "$lsp_compiler"
 
-Compare reuse of an ordinary package which both tools lock identically.
+An ordinary helper selected identically by both tools is private too.
 
   $ merlin_private=$(dependency_target ocamlmerlin tool-support)
   $ lsp_private=$(dependency_target ocamllsp tool-support)
-  $ test "$merlin_private" = "$lsp_private"
-  $ grep -c "^build private helper$" merlin-output
-  1
-  $ grep -c "^build private helper$" lsp-output
-  0
-  [1]
+  $ test "$merlin_private" != "$lsp_private"
+  $ stale_target=$(dependency_target ocamllsp old-compiler-dependency)
+  $ test -d "$stale_target"
   $ grep -q old-compiler-dependency \
   >   "$dev_tool_lock_dir"/relocatable-compiler*.pkg
   $ grep -q old-compiler-dependency \
@@ -128,8 +119,8 @@ Compare reuse of an ordinary package which both tools lock identically.
 
 Keep both dev-tool lock directories stale while changing the relocatable
 compiler's closure without changing the project compiler's name or version.
-Regenerate the explicit project lock and remove the package build tree so that
-any attempt to build the stale dependency is observable.
+Regenerate the project lock and remove the stale dependency's installed target
+so that a later attempt to build it is observable.
 
   $ cat >"$compiler_pkg/opam" <<'EOF'
   > opam-version: "2.0"
@@ -143,15 +134,14 @@ any attempt to build the stale dependency is observable.
   >     "%{_:name}%" "%{compiler-cloning:version}%" ]
   > ]
   > EOF
-  $ rm -rf dune.lock "$pkg_root"
+  $ rm -rf dune.lock "$pkg_root" "$stale_target"
   $ dune pkg lock >/dev/null 2>&1
   $ grep -q new-compiler-dependency \
   >   dune.lock/relocatable-compiler*.pkg
   $ dune build >/dev/null 2>&1
 
 Delete and relock only Merlin. Ocamllsp's lock directory still contains the old
-compiler, but this must not prevent Merlin from running. Merlin currently
-rebuilds the project compiler despite it already being built.
+compiler, but Merlin must use the dependency from its new lock.
 
   $ rm -rf "$dev_tool_lock_dir"
   $ dune tools exec ocamlmerlin >merlin-output 2>&1
@@ -159,12 +149,11 @@ rebuilds the project compiler despite it already being built.
   >   "$dev_tool_lock_dir"/relocatable-compiler*.pkg
   $ grep -q old-compiler-dependency \
   >   "$ocamllsp_lock_dir"/relocatable-compiler*.pkg
-  $ grep "build compiler" merlin-output
-  build compiler d00ed00ed00ed00ed00ed00ed00ed00e relocatable-compiler enabled
+  $ dependency_target ocamlmerlin new-compiler-dependency >/dev/null
 
-The stale dev-tool closure is currently included in @pkg-install, so its old
-compiler dependency is built again.
+The project package set does not include the stale tool's dependency.
 
   $ dune build @pkg-install >output 2>&1
   $ grep "building old compiler dependency" output
-  building old compiler dependency
+  [1]
+  $ test ! -e "$stale_target"

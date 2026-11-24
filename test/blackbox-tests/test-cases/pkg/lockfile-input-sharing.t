@@ -12,8 +12,7 @@ files are shipped alongside the lockfile. No-op actions isolate input staging.
   > original
   > EOF
   $ cp -R dune.lock other.lock
-  $ digest=$(dune pkg print-digest foo)
-  $ target=$pkg_root/$digest/target
+  $ target=$(get_build_pkg_dir foo)/target
   $ misses() {
   >   dune trace cat | jq -cs --arg target "$target" '
   >     [ .[]
@@ -28,15 +27,14 @@ files are shipped alongside the lockfile. No-op actions isolate input staging.
   $ misses
   []
 
-The package key and inputs are unchanged, but selecting the copy currently
-invalidates the rule.
+The lock contents are unchanged, but switching to the copy changes the paths
+of the adjacent inputs. The rule rebuilds at the same target.
 
   $ cat > dune-workspace <<EOF
   > (lang dune 3.26)
   > (lock_dir (path other.lock))
   > (context (default (lock_dir other.lock)))
   > EOF
-  $ test "$digest" = "$(dune pkg print-digest foo)"
   $ dune build "$target"
   $ misses
   ["rule or dependencies changed"]

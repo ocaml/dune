@@ -1,8 +1,6 @@
-A compiler-integrated tool that has no explicit opam dependency on OCaml must
-still be built with the project's compiler. Bake a value supplied by the
-compiler into the installed tool. Changing only the project recipe (not the
-version or the tool repository) distinguishes using the target from re-solving
-for an independently built compiler of the same version.
+Record which compiler Merlin sees at install time when its opam package does
+not depend on OCaml. Constraining the compiler version in the tool solve
+does not put the project's installed compiler on the recipe's PATH.
 
   $ mkrepo
   $ mk_ocaml 5.5.0
@@ -26,7 +24,7 @@ for an independently built compiler of the same version.
   $ run_merlin
   no-compiler
 
-The tool lock can be reused while the solver choices are unchanged.
+Check whether the existing tool lock is reused on a second invocation.
 
   $ touch "$dev_tool_lock_dir/relock-sentinel"
   $ run_merlin
@@ -34,10 +32,22 @@ The tool lock can be reused while the solver choices are unchanged.
   $ test -e "$dev_tool_lock_dir/relock-sentinel"
   [1]
 
-Use an authoritative edit that cannot be obtained by re-solving the tool.
+Changing only the project compiler's recipe does not make it visible to Merlin.
 
   $ set -- dune.lock/ocaml-base-compiler*.pkg
   $ dune_cmd subst compiler-v1 compiler-v2 <"$1" >updated
   $ mv updated "$1"
   $ run_merlin
   no-compiler
+
+Now give Merlin an explicit compiler dependency and solve its lock again. The
+installed project compiler reports v2, but Merlin builds with its own v1.
+
+  $ build_pkg ocaml-base-compiler
+  $ "$(get_build_pkg_dir ocaml-base-compiler)/target/bin/compiler-id"
+  compiler-v2
+  $ merlin_opam="$mock_packages/merlin/merlin.0.0.1/opam"
+  $ echo 'depends: [ "ocaml-base-compiler" ]' >>"$merlin_opam"
+  $ mv "$dev_tool_lock_dir" "$dev_tool_lock_dir.orig"
+  $ run_merlin
+  compiler-v1

@@ -57,8 +57,8 @@ The rule dependencies confirm that the selected binary belongs to the host
 context, and that it is staged in the host context's [.binaries] directory:
 
   $ dune rules --format=json _build/target/pform-output | jq_dune '.[] | ruleDepFilePaths' | censor
-  "_build/_private/host/.binaries/$DIGEST1/tool"
-  "_build/_private/host/.pkg/provider.0.0.1-$DIGEST2/target/bin/tool"
+  "_build/_private/host/.binaries/$DIGEST/tool"
+  "_build/_private/host/.pkg/provider/target/bin/tool"
 
 Bare-name lookup succeeds too:
 

@@ -3,10 +3,7 @@ installed bytecode. The installed program must run after moving the prefix and
 making the original build trees unavailable. See #9979.
 
   $ mkdir -p producer local elsewhere
-  $ cat >producer/dune-project <<'EOF'
-  > (lang dune 3.13)
-  > (package (name pkg))
-  > EOF
+  $ (cd producer && make_dune_project_with_package 3.13 pkg)
   $ cat >producer/dune <<'EOF'
   > (library
   >  (name b)
@@ -14,13 +11,8 @@ making the original build trees unavailable. See #9979.
   >  (foreign_stubs (language c) (names b_stubs)))
   > EOF
   $ echo 'external value : unit -> int = "b_value"' >producer/b.ml
-  $ cat >producer/b_stubs.c <<'EOF'
-  > #include <caml/mlvalues.h>
-  > CAMLprim value b_value(value unit) { return Val_int(20); }
-  > EOF
-  $ dune build --root producer @install
-  $ dune install --root producer --prefix "$PWD/prefix" 2>/dev/null
-  $ export OCAMLPATH="$PWD/prefix/lib"
+  $ write_stublibs_primitive producer/b_stubs.c b_value 20
+  $ install_stublibs_producer
 
 The program mixes a local library with the already installed dependency.
 
@@ -42,10 +34,7 @@ The program mixes a local library with the already installed dependency.
   >  (foreign_stubs (language c) (names a_stubs)))
   > EOF
   $ echo 'external value : unit -> int = "a_value"' >local/a.ml
-  $ cat >local/a_stubs.c <<'EOF'
-  > #include <caml/mlvalues.h>
-  > CAMLprim value a_value(value unit) { return Val_int(10); }
-  > EOF
+  $ write_stublibs_primitive local/a_stubs.c a_value 10
   $ cat >main.ml <<'EOF'
   > let () = Printf.printf "%d %d\n" (A.value ()) (B.value ())
   > EOF

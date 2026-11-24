@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795528989165,
+  "lastUpdate": 1795529053742,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -496855,6 +496855,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5590777816533333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5b3ee1be2070cb8c9ad10fd3b44e26e2e57098ad",
+          "message": "test(melange): ensure -nostdlib skips Stdlib discovery (#17218)\n\nVerify that compilation with -nostdlib does not query melc --where,\nindependently of Merlin metadata. Follow-up to #17188.\n\n019ffd87-afd6-7983-99f9-1a7139620b20\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-24T05:49:30-08:00",
+          "tree_id": "7e2cb36fbac14d43fb0c387ef90e6aaf704c529c",
+          "url": "https://github.com/ocaml/dune/commit/5b3ee1be2070cb8c9ad10fd3b44e26e2e57098ad"
+        },
+        "date": 1795529052417,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 40.82254357233334,
             "unit": "seconds"
           }
         ]

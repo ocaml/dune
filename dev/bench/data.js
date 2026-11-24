@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795553578649,
+  "lastUpdate": 1795553897404,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -497377,6 +497377,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.36676718846000006,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5ae8548af852d320cb3de84ecab3e7a72043e077",
+          "message": "build(sha): generate C flags without the OCaml interpreter (#17230)\n\nChoose between the existing flag lists using the target toolchain’s OS\ntype. This removes the toplevel invocation and makes cross-builds use\nthe flags for their target.",
+          "timestamp": "2026-11-24T21:38:57+01:00",
+          "tree_id": "6ac0979adc45fca229164f9cebb08b777e97be52",
+          "url": "https://github.com/ocaml/dune/commit/5ae8548af852d320cb3de84ecab3e7a72043e077"
+        },
+        "date": 1795553896020,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 61.66983088974666,
             "unit": "seconds"
           }
         ]

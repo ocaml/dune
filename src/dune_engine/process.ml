@@ -1254,20 +1254,29 @@ let spawn
   }
 ;;
 
+(* The worker opens its own descriptor, so it cannot share the file offset
+   or the contents of an already-open output redirection. *)
+let runner_can_open_file (io : _ Io.t) =
+  match io.status with
+  | Close_after_exec -> not (Lazy.is_val io.fd)
+  | Keep_open | Closed -> false
+;;
+
 let runner_input_of_io (io : Io.input Io.t) =
   match io.kind with
   | Null -> Some Process_runner.Input.Null
   | Terminal _ -> Some Process_runner.Input.Terminal
-  | File { path; _ } -> Some (Process_runner.Input.File path)
-  | External -> None
+  | File { path; _ } when runner_can_open_file io -> Some (Process_runner.Input.File path)
+  | File _ | External -> None
 ;;
 
 let runner_output_of_io (io : Io.output Io.t) =
   match io.kind with
   | Null -> Some Process_runner.Output.Null
   | Terminal _ -> Some Process_runner.Output.Terminal
-  | File { path; perm } -> Some (Process_runner.Output.File { path; perm })
-  | External -> None
+  | File { path; perm } when runner_can_open_file io ->
+    Some (Process_runner.Output.File { path; perm })
+  | File _ | External -> None
 ;;
 
 let runner_request

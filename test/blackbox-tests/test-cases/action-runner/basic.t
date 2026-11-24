@@ -149,9 +149,7 @@ regardless of whether the commands run in the action runner.
   first
   second
 
-CR: The runner reopens the redirection for the second command and truncates
-what the first command wrote.
-
   $ dune build --action-runner runner.out
   $ cat _build/default/runner.out
+  first
   second

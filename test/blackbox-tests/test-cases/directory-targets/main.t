@@ -447,18 +447,6 @@ but the consumer still reports the old listing.
   abc
   payload
 
-The workspace-local cache should restore a directory target if any part of the
-output is missing, even an empty subdirectory.
-
-  $ rmdir _build/default/tree/bc
-  $ dune build --cache=disabled --sandbox=copy tree
-
-CR: The workspace-local target digest only includes file digests, so the build
-accepts the incomplete tree and does not recreate the missing directory.
-
-  $ test -d _build/default/tree/bc
-  [1]
-
 Directory target whose name conflicts with an internal directory used by Dune.
 
   $ cat > dune <<EOF

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795529322834,
+  "lastUpdate": 1795529360360,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -693128,6 +693128,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.8073273937933334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6646a9413464b3178e8618d0b7cae5e437dc5ffc",
+          "message": "refactor(melange): cache parsed Stdlib paths (#17216)\n\nCache parsed melc --where paths in the existing memo instead of\nreparsing them for each caller. Follow-up to #17188.\n\n019ffd87-afd6-7983-99f9-1a7139620b20\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-24T05:55:12-08:00",
+          "tree_id": "e0f53817ad72eacd0cba213e48ace486a0cd8ba1",
+          "url": "https://github.com/ocaml/dune/commit/6646a9413464b3178e8618d0b7cae5e437dc5ffc"
+        },
+        "date": 1795528933370,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7255358246466663,
             "unit": "seconds"
           }
         ]

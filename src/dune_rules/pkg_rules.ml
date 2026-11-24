@@ -1114,18 +1114,12 @@ module Action_expander = struct
     }
   ;;
 
-  let sandbox = Sandbox_mode.Set.singleton Sandbox_mode.copy
-
   let expand context (pkg : Pkg.t) action =
     let+ action =
       let expander = expander context pkg in
       expand action ~expander >>| Action.chdir pkg.paths.source_dir
     in
-    (* TODO copying is needed for build systems that aren't dune and those
-       with an explicit install step *)
-    Action.Full.make ~sandbox action
-    |> Action_builder.return
-    |> Action_builder.with_no_targets
+    Action.Full.make action |> Action_builder.return |> Action_builder.with_no_targets
   ;;
 
   let build_command context (pkg : Pkg.t) =
@@ -2321,7 +2315,9 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
    Action_builder.with_no_targets (Action_builder.dyn_deps deps))
   (* TODO should we add env deps on these? *)
   >>> add_env (Pkg.exported_env pkg) build_action
-  |> Action_builder.With_targets.map ~f:Action.Full.disable_sandbox_policy
+  |> Action_builder.With_targets.map ~f:(fun action ->
+    Action.Full.add_sandbox (Sandbox_mode.Set.singleton Sandbox_mode.copy) action
+    |> Action.Full.disable_sandbox_policy)
 ;;
 
 let gen_rules ({ DB.pkg_digest_table; _ } as db) ~package_universe pkg_digest =

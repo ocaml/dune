@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795490259827,
+  "lastUpdate": 1795490287903,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -691881,6 +691881,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.198831580906667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2757e3ada78e9839354533fad27c11dbf2035a72",
+          "message": "test(cache): share the historical build fixture (#17211)\n\nGenerate both versions of the historical build fixture in one helper\nshared by the copy and hardlink cache tests. Keep the cache settings and\nassertions in each test.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-24T11:03:54+08:00",
+          "tree_id": "379415bf51ed4b0b4d40607081f4e840b16a8595",
+          "url": "https://github.com/ocaml/dune/commit/2757e3ada78e9839354533fad27c11dbf2035a72"
+        },
+        "date": 1795489860671,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.8834719421333332,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795490310274,
+  "lastUpdate": 1795490342431,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -496101,6 +496101,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.39574129610000003,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f481c4fc7d2a69c04de89917023d8ebc4960d668",
+          "message": "test(pkg): cover copying a dependency file during install (#17206)\n\nRecord that an install command using `cp -P` can copy a dependency file\ntoday because package rules provide a regular copy. This gives #17126 a\nbaseline for an intentional behavior change: with symlink sandboxing,\n`cp -P` preserves the relative symlink, which no longer resolves from\nthe install destination.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-24T11:05:28+08:00",
+          "tree_id": "ca631c45b95e0f6a648ad4d6e61c0bfc73903f61",
+          "url": "https://github.com/ocaml/dune/commit/f481c4fc7d2a69c04de89917023d8ebc4960d668"
+        },
+        "date": 1795490339198,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 47.11706748807333,
             "unit": "seconds"
           }
         ]

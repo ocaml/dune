@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795499798079,
+  "lastUpdate": 1795500006042,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -496565,6 +496565,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.38505569091999997,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cdf29d63f01655b607fe80e27810ea6d8df28e8e",
+          "message": "perf(melange): reuse implicit Stdlib dependency globs (#17214)\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-23T21:37:35-08:00",
+          "tree_id": "abbdfb7d87965cea80b6befb8361cc5013201c64",
+          "url": "https://github.com/ocaml/dune/commit/cdf29d63f01655b607fe80e27810ea6d8df28e8e"
+        },
+        "date": 1795500005202,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 39.80459754632667,
             "unit": "seconds"
           }
         ]

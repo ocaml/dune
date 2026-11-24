@@ -264,7 +264,7 @@ let digest_env_subset d deps env =
 
 (* The current version of the rule digest scheme. We should increment it when
    making any changes to the scheme, to avoid collisions. *)
-let rule_digest_version = 38
+let rule_digest_version = 39
 
 let compute_rule_digest ~targets ~facts ~action ~sandbox_mode ~execution_parameters =
   let { Action.Full.action; props } = action in
@@ -743,8 +743,8 @@ and execute_rule_action
             in
             Fiber.return (produced_targets, exec_result.dynamic_deps_stages)
         in
-        (* We do not include target names into [targets_digest] because they
-           are already included into the rule digest. *)
+        (* For file-only rules the target names are already in [rule_digest].
+           Paths inside directory targets are only known after execution. *)
         Rule_cache.Workspace_local.store
           ~targets:produced_targets
           ~head_target:(Targets.Validated.head targets)

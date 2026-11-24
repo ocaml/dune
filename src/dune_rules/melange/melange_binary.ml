@@ -58,18 +58,22 @@ let where =
          Bin.parse_path res)
 ;;
 
-let stdlib_deps sctx ~loc ~dir ~(cm_kind : Melange.Cm_kind.t) =
-  let* dirs = where sctx ~loc ~dir in
-  let+ dirs = Memo.List.map dirs ~f:Ocaml_toolchain.localize_stdlib_dir in
-  let kinds =
-    match cm_kind with
-    | Cmi -> [ Melange.Cm_kind.Cmi ]
-    | Cmj -> [ Cmi; Cmj ]
-  in
-  let glob =
+let stdlib_glob =
+  let glob kinds =
     List.map kinds ~f:(fun kind -> Lib_mode.Cm_kind.ext (Melange kind))
     |> Glob.matching_extensions
   in
+  let cmi = glob [ Melange.Cm_kind.Cmi ] in
+  let cmj = glob [ Cmi; Cmj ] in
+  function
+  | Melange.Cm_kind.Cmi -> cmi
+  | Cmj -> cmj
+;;
+
+let stdlib_deps sctx ~loc ~dir ~cm_kind =
+  let* dirs = where sctx ~loc ~dir in
+  let+ dirs = Memo.List.map dirs ~f:Ocaml_toolchain.localize_stdlib_dir in
+  let glob = stdlib_glob cm_kind in
   List.map dirs ~f:(fun dir -> File_selector.of_glob ~dir glob |> Dep.file_selector)
   |> Dep.Set.of_list
 ;;

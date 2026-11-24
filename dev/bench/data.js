@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795529691461,
+  "lastUpdate": 1795532960015,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -693215,6 +693215,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.7255358246466663,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "191136a28e4e96cccd6a4fa6fe01d3922bc31dcc",
+          "message": "test(cram): give timeout tests more watchdog headroom (#17220)\n\nUnder CPU contention, the outer 3-second watchdog can exit with status\n124 before Dune reports its own timeout, leaving the expected process\ntrace entry missing. Give the outer watchdog 10 seconds of headroom\nwithout changing Dune’s 0.5-second timeout or the assertions that both\nruns execute.\n\nReport the nested command’s exit status and output when the timeout\ncheck fails, so an outer watchdog expiry is distinguishable from an\nunexpected successful build.\n\n---------\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-24T22:55:09+08:00",
+          "tree_id": "53578c3e0058549a221c7e289baf0a12557aa8a4",
+          "url": "https://github.com/ocaml/dune/commit/191136a28e4e96cccd6a4fa6fe01d3922bc31dcc"
+        },
+        "date": 1795532539015,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.147936635646667,
             "unit": "seconds"
           }
         ]

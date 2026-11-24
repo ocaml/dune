@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795551313210,
+  "lastUpdate": 1795551320602,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -497348,6 +497348,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 37.1998968017,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0eb15f1b5eae3d11c5a8ad71187dc6286a904da4",
+          "message": "test(pkg): declare executable dependencies for cram tests (#17231)\n\nDeclare Menhir, odoc, `diff`, `cmp`, and the system `which` as scoped\ncram inputs rather than leaving those tools untracked. This draft still\nneeds to retain the `cmp` declaration for `ocamlformat-exported-env.t`,\nwhich continues to use it.",
+          "timestamp": "2026-11-24T21:00:31+01:00",
+          "tree_id": "9642e30b43e400dda894098fb02a5686167ff103",
+          "url": "https://github.com/ocaml/dune/commit/0eb15f1b5eae3d11c5a8ad71187dc6286a904da4"
+        },
+        "date": 1795551319011,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.36676718846000006,
             "unit": "seconds"
           }
         ]

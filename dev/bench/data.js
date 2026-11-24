@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795536385455,
+  "lastUpdate": 1795539269392,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -693476,6 +693476,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.7687658207533334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9c76690fd4fcca435ebb7fadd1e0a5e564e54461",
+          "message": "fix(cache): hash directory target structure in the workspace cache (#17227)\n\nThe workspace-local cache could accept a different directory tree as the\noutput of a rule when the ordered file digests matched. Hash entry names\nand nesting as well as file digests, while keeping the cheaper output\ndigest for file-only rules.\n\nThe existing install test exposes this during a normal incremental\nbuild: after switching from a directory install to a glob and back, the\nmanifest should list `etc/baz/baz.txt` rather than the glob’s\n`etc/baz/b.txt`.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-25T00:40:09+08:00",
+          "tree_id": "cc2e45c9c189fbe89346729fd5a90784fca2b2bd",
+          "url": "https://github.com/ocaml/dune/commit/9c76690fd4fcca435ebb7fadd1e0a5e564e54461"
+        },
+        "date": 1795538843897,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.8462776112933335,
             "unit": "seconds"
           }
         ]

@@ -2,15 +2,6 @@ Solver preferences and system-package hints do not change a package's build.
 Currently they change its key and unnecessarily rerun even a no-op action.
 
   $ export DUNE_TRACE=+cache
-  $ misses() {
-  >   dune trace cat | jq -cs '
-  >     [ .[]
-  >       | select(.cat == "cache" and .name == "workspace_local_miss")
-  >       | select(.args.target | contains("foo.") and endswith("/target"))
-  >       | .args.reason | split(":")[0]
-  >     ]
-  >   '
-  > }
   $ make_dune_project 3.26
   $ make_lockdir
   $ make_lockpkg foo <<EOF
@@ -21,7 +12,7 @@ Currently they change its key and unnecessarily rerun even a no-op action.
   $ digest=$(dune pkg print-digest foo)
   $ build_pkg foo
   $ build_pkg foo
-  $ misses
+  $ package_target_miss_reasons foo
   []
 
 Changing only the solver's avoid preference currently invalidates the build.
@@ -30,7 +21,7 @@ Changing only the solver's avoid preference currently invalidates the build.
   $ test "$digest" = "$(dune pkg print-digest foo)"
   [1]
   $ build_pkg foo
-  $ misses
+  $ package_target_miss_reasons foo
   ["never seen this target before"]
 
 Changing only a system-package hint also invalidates it.
@@ -40,5 +31,5 @@ Changing only a system-package hint also invalidates it.
   $ test "$digest" = "$(dune pkg print-digest foo)"
   [1]
   $ build_pkg foo
-  $ misses
+  $ package_target_miss_reasons foo
   ["never seen this target before"]

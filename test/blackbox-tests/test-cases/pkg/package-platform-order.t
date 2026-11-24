@@ -2,15 +2,6 @@ Reordering supported platforms must not invalidate an unchanged package.
 Use no-op build actions and inspect cache misses for its target rule.
 
   $ export DUNE_TRACE=+cache
-  $ misses() {
-  >   dune trace cat | jq -cs '
-  >     [ .[]
-  >       | select(.cat == "cache" and .name == "workspace_local_miss")
-  >       | select(.args.target | contains("foo.") and endswith("/target"))
-  >       | .args.reason | split(":")[0]
-  >     ]
-  >   '
-  > }
   $ make_dune_project 3.26
   $ make_lockdir
   $ cat > dune.lock/lock.dune <<EOF
@@ -23,10 +14,10 @@ Use no-op build actions and inspect cache misses for its target rule.
   > EOF
   $ digest=$(dune pkg print-digest foo)
   $ build_pkg foo
-  $ misses
+  $ package_target_miss_reasons foo
   ["never seen this target before"]
   $ build_pkg foo
-  $ misses
+  $ package_target_miss_reasons foo
   []
 
 Only the platform order changes. The package key and target rule stay cached.
@@ -37,7 +28,7 @@ Only the platform order changes. The package key and target rule stay cached.
   > EOF
   $ test "$digest" = "$(dune pkg print-digest foo)"
   $ build_pkg foo
-  $ misses
+  $ package_target_miss_reasons foo
   []
 
 The order of alternatives within an explicit platform condition also should
@@ -51,7 +42,7 @@ not matter.
   > EOF
   $ digest=$(dune pkg print-digest foo)
   $ build_pkg foo
-  $ misses
+  $ package_target_miss_reasons foo
   ["never seen this target before"]
   $ make_lockpkg foo <<EOF
   > (version 1)
@@ -61,5 +52,5 @@ not matter.
   > EOF
   $ test "$digest" = "$(dune pkg print-digest foo)"
   $ build_pkg foo
-  $ misses
+  $ package_target_miss_reasons foo
   []

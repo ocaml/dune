@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795524071664,
+  "lastUpdate": 1795524353484,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -496739,6 +496739,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.47463472980000004,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "abef27cf8fb144f6380021a02f30374a5f7078be",
+          "message": "test(pkg): cover duplicate install-cookie entries (#17074)\n\nRecord the duplicate install-cookie entries produced when an install\naction copies a file also declared by its `.install` manifest. Cover the\nbin section and confirm a dependent package can still read the installed\nfile; installation behavior is unchanged.\n\nFound when working on #16995",
+          "timestamp": "2026-11-24T13:26:07+01:00",
+          "tree_id": "53f4ea3e4891fcc9ff988af23be649188177419b",
+          "url": "https://github.com/ocaml/dune/commit/abef27cf8fb144f6380021a02f30374a5f7078be"
+        },
+        "date": 1795524351304,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 53.80953525067334,
             "unit": "seconds"
           }
         ]

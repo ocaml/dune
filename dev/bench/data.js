@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795523528102,
+  "lastUpdate": 1795523800203,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -496681,6 +496681,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.41094452856,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b774ab048e27eca293a2fe6dd8673a54f7b98700",
+          "message": "test(pkg): expose writes to staged sources by overlays (#17213)\n\nRecord two overlay failures in install-only packages: `extra_sources`\noverwrites the staged copy, and a lockdir `.files` collision can fail\nwhen the staged file is read-only. No production behavior changes.",
+          "timestamp": "2026-11-24T13:20:34+01:00",
+          "tree_id": "f8f7daa0e88e39396cdff2072847826aa27bf344",
+          "url": "https://github.com/ocaml/dune/commit/b774ab048e27eca293a2fe6dd8673a54f7b98700"
+        },
+        "date": 1795523798616,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 51.97805599124667,
             "unit": "seconds"
           }
         ]

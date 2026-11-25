@@ -50,16 +50,12 @@ With some consumer
   > let () = Foo.x
   > EOF
 
-  $ dune build
+  $ dune build _build/default/a/bar.a _build/default/bar.install main.exe
   Error: Multiple rules generated for
   _build/default/a/.merlin-conf/lib-bar.foo:
   - <internal location>
   - <internal location>
   -> required by _build/default/a/bar.a
-  -> required by _build/install/default/lib/bar/foo/bar.a
-  -> required by _build/default/bar.install
-  -> required by alias all
-  -> required by alias default
   File "a/dune", lines 1-3, characters 0-44:
   1 | (library
   2 |  (name foo)

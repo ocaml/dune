@@ -30,3 +30,13 @@ writer ready so that an unexpected read cannot block the test.
   [1]
   $ { kill "$writer"; wait "$writer"; } 2>/dev/null || true
   $ rm src/link src/pipe
+
+Other stat failures retain the source-copy diagnostic.
+
+  $ ln -s loop src/loop
+  $ dune build src/loop
+  File "src/loop", line 1, characters 0-0:
+  Error: File unavailable: src/loop
+  stat(src/loop): Too many levels of symbolic links
+  [1]
+  $ rm src/loop

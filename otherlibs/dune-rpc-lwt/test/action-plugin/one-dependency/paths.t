@@ -248,10 +248,11 @@ reached through a symlink.
   third
 
 This is a bug: the same symlinked build directory breaks external absolute
-inputs, even though they work with the physical build-directory path.
+inputs, even though they work with the physical build-directory path. The
+misresolved source-tree dependency is rejected during RPC request conversion.
 
   $ dune build --build-dir=_build-external-link external-output > linked-external.log 2>&1
   [1]
-  $ grep -q '^File unavailable:' linked-external.log
+  $ grep -q '^dune rpc error: server error$' linked-external.log
   $ test ! -e _build-external-link/default/external-output
   $ rm "$external_input"

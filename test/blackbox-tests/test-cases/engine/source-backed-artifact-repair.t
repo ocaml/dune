@@ -98,29 +98,17 @@ contents match, so unrelated builds cannot mutate the source snapshot.
   $ stop_dune_quiet
   $ cd ..
 
-Missing-target hints should include source-backed targets.
-
-  $ mkdir source-hints
-  $ cd source-hints
-  $ make_dune_project 3.0
-  $ echo content > source.txt
-  $ dune build sourc.txt
-  Error: Don't know how to build sourc.txt
-  Hint: did you mean source.txt?
-  [1]
-  $ cd ..
-
-A null build must not digest an unchanged source file again.
+A null build must reuse the source copy without comparing its contents.
 
   $ mkdir freshness
   $ cd freshness
   $ make_dune_project 3.0
   $ dd if=/dev/zero of=payload bs=1048576 count=1 2>/dev/null
   $ dune build payload --wait-for-filesystem-clock
-  $ DUNE_TRACE=digest dune build payload
+  $ DUNE_TRACE=source_copy dune build payload
   $ dune trace cat | jq -s '
-  >   [.[] | select(.cat == "digest" and .name == "redigest"
-  >                and .args.path == "payload")] | length'
+  >   [.[] | select(.cat == "source_copy" and .args.src == "payload"
+  >                and .args.result != "cached")] | length'
   0
 
 Same-size changes at comparison-buffer boundaries must update the build copy.

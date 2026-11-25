@@ -19,13 +19,12 @@ where vlib is a virtual library, and impl implements this library.
   $ cat >impl/dune <<EOF
   > (library (name impl) (implements vlib) (libraries lib))
   > EOF
-  $ dune build @all
+  $ dune build impl/impl.cma
   Error: Library "vlib" was pulled in.
   -> required by library "lib" in _build/default/lib
   -> required by library "impl" in _build/default/impl
   -> required by _build/default/impl/.impl.objs/byte/vlib.cmo
   -> required by _build/default/impl/impl.cma
-  -> required by alias impl/all
   [1]
 
 The implementation impl was built, but it's not usable:

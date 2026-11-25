@@ -70,13 +70,11 @@ module With : sig
     type t =
       | None (** Disabled globally. *)
       | Local (** Enabled only for workspace packages. *)
-      | All (** Enabled globally. *)
 
     val equal : t -> t -> bool
     val repr : t Repr.t
     val to_dyn : t -> Dyn.t
     val to_string : t -> string
-    val decode : t Decoder.t
   end
 
   type 'a t =
@@ -92,8 +90,11 @@ module With : sig
   val unset : 'a option t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
+
+  (** [encode t] lists the qualifiers that are {!Value.Local} in [t]. *)
   val encode : Value.t t -> Dune_lang.t list
-  val decode : Value.t t Decoder.fields_parser
+
+  val decode : Value.t t Decoder.t
 end
 
 (** An environment in which package dependencies are solved. *)

@@ -45,10 +45,7 @@ Create a custom dune-workspace to solve for openbsd.
    (used))
   
   (expanded_solver_variable_bindings
-   (with
-    (with-test local)
-    (with-doc none)
-    (with-dev-setup none)))
+   (qualifiers with-test))
   
   (solved_for_platforms
    ((arch x86_64)
@@ -77,9 +74,9 @@ Build as though we were on openbsd.
 
 Now building on linux won't work:
   $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=x86_64 DUNE_CONFIG__OS_FAMILY=debian DUNE_CONFIG__OS_DISTRIBUTION=ubuntu DUNE_CONFIG__OS_VERSION=24.11 dune build
-  File "dune.lock/lock.dune", lines 16-17, characters 1-31:
-  16 |  ((arch x86_64)
-  17 |   (os openbsd)))
+  File "dune.lock/lock.dune", lines 13-14, characters 1-31:
+  13 |  ((arch x86_64)
+  14 |   (os openbsd)))
   Error: The lockdir does not contain a solution compatible with the current
   platform.
   The current platform is:

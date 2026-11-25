@@ -571,10 +571,7 @@ make_lockdir() {
 	(lang package 0.1)
 	(repositories (complete true))
 	(expanded_solver_variable_bindings
-	 (with
-	  (with-test local)
-	  (with-doc none)
-	  (with-dev-setup ${1:-local})))
+	 (qualifiers with-test with-dev-setup))
 	EOF
 }
 

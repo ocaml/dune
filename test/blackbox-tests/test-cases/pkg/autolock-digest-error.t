@@ -20,10 +20,7 @@ an unrelated rule.
   $ cat > dune.lock/lock.dune <<EOF
   > (lang package 0.1)
   > (expanded_solver_variable_bindings
-  >  (with
-  >   (with-test local)
-  >   (with-doc none)
-  >   (with-dev-setup local)))
+  >  (qualifiers with-test with-dev-setup))
   > EOF
   $ echo '(rule (target completed) (action (write-file %{target} done)))' > dune
   $ dune build _build/_private/default/.lock/bad.lock completed > failed-output 2>&1

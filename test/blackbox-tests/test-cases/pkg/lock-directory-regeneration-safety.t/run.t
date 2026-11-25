@@ -25,10 +25,7 @@ Create a lock directory that didn't originally exist
    (used))
   
   (expanded_solver_variable_bindings
-   (with
-    (with-test local)
-    (with-doc none)
-    (with-dev-setup local)))
+   (qualifiers with-test with-dev-setup))
   
   (solved_for_platforms
    ((arch x86_64)
@@ -52,10 +49,7 @@ Re-create a lock directory in the newly created lock dir
    (used))
   
   (expanded_solver_variable_bindings
-   (with
-    (with-test local)
-    (with-doc none)
-    (with-dev-setup local)))
+   (qualifiers with-test with-dev-setup))
   
   (solved_for_platforms
    ((arch x86_64)

@@ -67,7 +67,7 @@ module Expanded_variable_bindings = struct
            (repeat (pair Package_variable_name.decode Variable_value.decode))
        and+ unset_variables =
          field "unset_variables" ~default:[] (repeat Package_variable_name.decode)
-       and+ with_ = field "with" ~default:default_with (fields Solver_env.With.decode) in
+       and+ with_ = field "qualifiers" ~default:default_with Solver_env.With.decode in
        { variable_values; unset_variables; with_ })
   ;;
 
@@ -89,7 +89,7 @@ module Expanded_variable_bindings = struct
              (string "unset_variables"
               :: List.map ~f:Package_variable_name.encode unset_variables)
          ])
-    @ [ Dune_sexp.List (string "with" :: Solver_env.With.encode with_) ]
+    @ [ Dune_sexp.List (string "qualifiers" :: Solver_env.With.encode with_) ]
   ;;
 
   let equal { variable_values; unset_variables; with_ } t =

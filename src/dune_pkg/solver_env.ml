@@ -6,9 +6,8 @@ module With = struct
       type t =
         | None
         | Local
-        | All
 
-      let all = [ "none", None; "local", Local; "all", All ]
+      let all = [ "none", None; "local", Local ]
       let enum = Repr.Enum.make "solver-env-with-value" all
       let repr = Repr.Enum.repr enum
     end
@@ -18,14 +17,11 @@ module With = struct
 
     let to_dyn = Repr.to_dyn repr
     let to_string = Repr.Enum.to_string enum
-    let encode t = Encoder.string (to_string t)
-    let decode = Decoder.enum all
 
     let to_bool t ~local =
       match t with
       | None -> false
       | Local -> local
-      | All -> true
     ;;
   end
 
@@ -68,20 +64,35 @@ module With = struct
   ;;
 
   let encode { with_test; with_doc; with_dev_setup } =
-    let open Encoder in
-    record_fields
-      [ field "with-test" Value.encode with_test
-      ; field "with-doc" Value.encode with_doc
-      ; field "with-dev-setup" Value.encode with_dev_setup
+    List.filter_map
+      [ Package_variable_name.with_test, with_test
+      ; Package_variable_name.with_doc, with_doc
+      ; Package_variable_name.with_dev_setup, with_dev_setup
       ]
+      ~f:(fun (variable, value) ->
+        match value with
+        | Value.Local -> Some (Package_variable_name.encode variable)
+        | Value.None -> None)
   ;;
 
   let decode =
     let open Decoder in
-    let+ with_test = field "with-test" Value.decode
-    and+ with_doc = field "with-doc" Value.decode
-    and+ with_dev_setup = field "with-dev-setup" Value.decode in
-    { with_test; with_doc; with_dev_setup }
+    let+ qualifiers = repeat (located Package_variable_name.decode) in
+    List.fold_left
+      qualifiers
+      ~init:{ with_test = Value.None; with_doc = Value.None; with_dev_setup = Value.None }
+      ~f:(fun t (loc, variable) ->
+        if Package_variable_name.equal variable Package_variable_name.with_test
+        then { t with with_test = Value.Local }
+        else if Package_variable_name.equal variable Package_variable_name.with_doc
+        then { t with with_doc = Value.Local }
+        else if Package_variable_name.equal variable Package_variable_name.with_dev_setup
+        then { t with with_dev_setup = Value.Local }
+        else
+          User_error.raise
+            ~loc
+            [ Pp.textf "Unknown qualifier %S." (Package_variable_name.to_string variable)
+            ])
   ;;
 
   (* The Dune language version from which "with-dev-setup" applies to local

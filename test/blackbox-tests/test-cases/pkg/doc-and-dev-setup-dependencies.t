@@ -76,7 +76,7 @@ The workspace can disable them:
   > EOF
   > }
 
-  $ write_workspace "(with-doc none) (with-dev-setup none)"
+  $ write_workspace "(qualifiers with-test)"
   $ dune pkg lock
   Solution for dune.lock
   
@@ -85,9 +85,9 @@ The workspace can disable them:
 
   $ dune pkg validate-lockdir
 
-Or enable them for local packages, which is the default value of these fields:
+Or enable them for local packages, which is the default for "with-dev-setup":
 
-  $ write_workspace "(with-doc) (with-dev-setup local)"
+  $ write_workspace "(qualifiers with-test with-doc with-dev-setup)"
   $ dune pkg lock
   Solution for dune.lock
   
@@ -99,25 +99,6 @@ Or enable them for local packages, which is the default value of these fields:
   $ grep -A 3 '^(build' ${default_lock_dir}/dep.*.pkg
   (build
    (all_platforms ((action (run echo build)))))
-
-Or enable them for all packages:
-
-  $ write_workspace "(with-doc all) (with-dev-setup all)"
-  $ dune pkg lock
-  Solution for dune.lock
-  
-  Dependencies common to all supported platforms:
-  - dep.0.0.1
-  - dev-setup-dep.0.0.1
-  - doc-dep.0.0.1
-  - transitive-dev-setup-dep.0.0.1
-  - transitive-doc-dep.0.0.1
-
-  $ grep -A 3 '^(build' ${default_lock_dir}/dep.*.pkg
-  (build
-   (all_platforms
-    ((action (progn (run echo build) (run echo doc) (run echo dev-setup))))))
-  
 
 Setting them in "solver_env" is still supported: "true" applies them to all
 packages and "false" to none:
@@ -133,23 +114,23 @@ packages and "false" to none:
 
 They cannot be set both ways:
 
-  $ write_workspace "(with-doc) (solver_env (with-doc true))"
+  $ write_workspace "(qualifiers with-doc) (solver_env (with-doc true))"
   $ dune pkg lock
-  File "dune-workspace", line 4, characters 24-39:
-  4 |  (with-doc) (solver_env (with-doc true)))
-                              ^^^^^^^^^^^^^^^
-  Error: "with-doc" is set both in 'solver_env' and in its own field, which is
+  File "dune-workspace", line 4, characters 35-50:
+  4 |  (qualifiers with-doc) (solver_env (with-doc true)))
+                                         ^^^^^^^^^^^^^^^
+  Error: "with-doc" is set both in 'solver_env' and in 'qualifiers', which is
   not allowed.
   [1]
 
-The fields are only available starting with Dune 3.26:
+The field is only available starting with Dune 3.26:
 
-  $ write_workspace "(with-doc)"
+  $ write_workspace "(qualifiers with-doc)"
   $ sed -i.bak 's/(lang dune 3.26)/(lang dune 3.25)/' dune-workspace
   $ dune pkg lock
-  File "dune-workspace", line 4, characters 1-11:
-  4 |  (with-doc))
-       ^^^^^^^^^^
-  Error: 'with-doc' is only available since version 3.26 of the dune language.
-  Please update your dune-project file to have (lang dune 3.26).
+  File "dune-workspace", line 4, characters 1-22:
+  4 |  (qualifiers with-doc))
+       ^^^^^^^^^^^^^^^^^^^^^
+  Error: 'qualifiers' is only available since version 3.26 of the dune
+  language. Please update your dune-project file to have (lang dune 3.26).
   [1]

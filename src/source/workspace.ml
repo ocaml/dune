@@ -135,14 +135,6 @@ module Lock_dir = struct
     && List.equal Solver_env.Variables.equal solve_for_platforms t.solve_for_platforms
   ;;
 
-  let with_field name =
-    field_o
-      name
-      (Dune_lang.Syntax.since Stanza.syntax (3, 26)
-       >>> maybe Solver_env.With.Value.decode
-       >>| Option.value ~default:Solver_env.With.Value.Local)
-  ;;
-
   let decode ~dir =
     let repositories_of_ordered_set ordered_set =
       Dune_lang.Ordered_set_lang.eval
@@ -159,9 +151,10 @@ module Lock_dir = struct
         let+ path = field ~default:"dune.lock" "path" string in
         Path.Source.relative dir path
       and+ solver_env = field_o "solver_env" (located Solver_env.Variables.decode)
-      and+ with_test = with_field "with-test"
-      and+ with_doc = with_field "with-doc"
-      and+ with_dev_setup = with_field "with-dev-setup"
+      and+ qualifiers =
+        field_o
+          "qualifiers"
+          (Dune_lang.Syntax.since Stanza.syntax (3, 26) >>> Solver_env.With.decode)
       and+ unset_solver_vars =
         field_o "unset_solver_vars" (repeat (located Package_variable_name.decode))
       and+ version_preference =
@@ -192,35 +185,37 @@ module Lock_dir = struct
         solve_for_platforms
       in
       let with_ =
-        let check variable value =
-          Option.iter value ~f:(fun (_ : Solver_env.With.Value.t) ->
-            Option.iter solver_env ~f:(fun (loc, solver_env) ->
-              if Solver_env.Variables.mem solver_env variable
-              then
-                User_error.raise
-                  ~loc
-                  [ Pp.textf
-                      "%S is set both in 'solver_env' and in its own field, which is not \
-                       allowed."
-                      (Package_variable_name.to_string variable)
-                  ]);
-            Option.iter unset_solver_vars ~f:(fun unset_solver_vars ->
-              List.iter unset_solver_vars ~f:(fun (loc, variable') ->
-                if Package_variable_name.equal variable variable'
+        Option.iter qualifiers ~f:(fun (_ : Solver_env.With.Value.t Solver_env.With.t) ->
+          List.iter
+            [ Package_variable_name.with_test
+            ; Package_variable_name.with_doc
+            ; Package_variable_name.with_dev_setup
+            ]
+            ~f:(fun variable ->
+              Option.iter solver_env ~f:(fun (loc, solver_env) ->
+                if Solver_env.Variables.mem solver_env variable
                 then
                   User_error.raise
                     ~loc
                     [ Pp.textf
-                        "%S is set in its own field and unset in 'unset_solver_vars', \
-                         which is not allowed."
+                        "%S is set both in 'solver_env' and in 'qualifiers', which is \
+                         not allowed."
                         (Package_variable_name.to_string variable)
-                    ])));
-          value
-        in
-        { Solver_env.With.with_test = check Package_variable_name.with_test with_test
-        ; with_doc = check Package_variable_name.with_doc with_doc
-        ; with_dev_setup = check Package_variable_name.with_dev_setup with_dev_setup
-        }
+                    ]);
+              Option.iter unset_solver_vars ~f:(fun unset_solver_vars ->
+                List.iter unset_solver_vars ~f:(fun (loc, variable') ->
+                  if Package_variable_name.equal variable variable'
+                  then
+                    User_error.raise
+                      ~loc
+                      [ Pp.textf
+                          "%S is set in 'qualifiers' and unset in 'unset_solver_vars', \
+                           which is not allowed."
+                          (Package_variable_name.to_string variable)
+                      ]))));
+        match qualifiers with
+        | None -> Solver_env.With.unset
+        | Some qualifiers -> Solver_env.With.map qualifiers ~f:Option.some
       in
       let solver_env = Option.map solver_env ~f:snd in
       Option.iter solver_env ~f:(fun solver_env ->

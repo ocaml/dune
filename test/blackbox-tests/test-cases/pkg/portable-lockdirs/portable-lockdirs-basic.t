@@ -39,10 +39,7 @@ The SAT engine runs once across all requested platforms.
    (used))
   
   (expanded_solver_variable_bindings
-   (with
-    (with-test local)
-    (with-doc none)
-    (with-dev-setup none)))
+   (qualifiers with-test))
   
   (solved_for_platforms
    ((arch x86_64)

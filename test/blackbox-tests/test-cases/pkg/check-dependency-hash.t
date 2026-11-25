@@ -23,10 +23,7 @@ Start with a project with a single package with no dependencies:
    (used))
   
   (expanded_solver_variable_bindings
-   (with
-    (with-test local)
-    (with-doc none)
-    (with-dev-setup none)))
+   (qualifiers with-test))
   
   (solved_for_platforms
    ((arch x86_64)
@@ -75,10 +72,7 @@ Add a non-local dependency to the package:
    (used))
   
   (expanded_solver_variable_bindings
-   (with
-    (with-test local)
-    (with-doc none)
-    (with-dev-setup none)))
+   (qualifiers with-test))
   
   (solved_for_platforms
    ((arch x86_64)

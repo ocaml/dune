@@ -91,10 +91,7 @@ Solve the packages again, this time with the variables set.
    (used))
   
   (expanded_solver_variable_bindings
-   (with
-    (with-test local)
-    (with-doc none)
-    (with-dev-setup local)))
+   (qualifiers with-test with-dev-setup))
   Solution for dune.lock:
   - dynamic-deps.1.0
   - no-deps-a.1.0
@@ -111,10 +108,7 @@ Solve the packages again, this time with the variables set.
    (variable_values
     (os linux)
     (arch arm))
-   (with
-    (with-test local)
-    (with-doc none)
-    (with-dev-setup local)))
+   (qualifiers with-test with-dev-setup))
   Solution for dune.lock:
   - dynamic-deps-lazy.1.0
   - no-deps-a.1.0
@@ -133,10 +127,7 @@ Solve the packages again, this time with the variables set.
     (os-family dunefamily)
     (os linux)
     (arch arm))
-   (with
-    (with-test local)
-    (with-doc none)
-    (with-dev-setup local)))
+   (qualifiers with-test with-dev-setup))
 
 Test that variables referred to in filters on build and install commands are
 stored in the lockdir metadata:
@@ -184,10 +175,7 @@ stored in the lockdir metadata:
     (os linux)
     (arch arm))
    (unset_variables x)
-   (with
-    (with-test local)
-    (with-doc none)
-    (with-dev-setup none)))
+   (qualifiers with-test))
 
 Automatic lock keys include polled solver values, not just workspace overrides.
 Changing only the system environment must update the solution.

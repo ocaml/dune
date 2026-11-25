@@ -17,10 +17,7 @@ Use no-op build actions and inspect cache misses for its target rule.
   > (lang package 0.1)
   > (solved_for_platforms ((os linux)) ((os macos)))
   > (expanded_solver_variable_bindings
-  >  (with
-  >   (with-test local)
-  >   (with-doc none)
-  >   (with-dev-setup local)))
+  >  (qualifiers with-test with-dev-setup))
   > EOF
   $ make_lockpkg foo <<EOF
   > (version 1)
@@ -40,10 +37,7 @@ Only the platform order changes. The package key and target rule stay cached.
   > (lang package 0.1)
   > (solved_for_platforms ((os macos)) ((os linux)))
   > (expanded_solver_variable_bindings
-  >  (with
-  >   (with-test local)
-  >   (with-doc none)
-  >   (with-dev-setup local)))
+  >  (qualifiers with-test with-dev-setup))
   > EOF
   $ test "$digest" = "$(dune pkg print-digest foo)"
   $ build_pkg foo

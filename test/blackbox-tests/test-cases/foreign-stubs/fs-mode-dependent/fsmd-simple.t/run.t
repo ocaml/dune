@@ -1,5 +1,6 @@
 Tests mode-dependent foreign stubs.
 
+  $ cp ../c_stubs.c .
   $ dune exec ./stubs_exe.exe
   Byte (0) or native (1) ? 1
 

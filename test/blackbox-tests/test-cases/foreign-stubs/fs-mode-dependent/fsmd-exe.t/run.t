@@ -3,6 +3,7 @@ Project Toggle
 ##############
 
 Without the toggle, we get an error message for using the new mode subfield
+  $ cp ../c_stubs.c lib/c_stubs_lib.c
   $ make_dune_project 3.5
 
   $ dune build 2>&1 | head -n 6 || true

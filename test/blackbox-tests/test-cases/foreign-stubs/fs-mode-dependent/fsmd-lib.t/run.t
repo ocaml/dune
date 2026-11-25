@@ -1,6 +1,7 @@
 In the following tests, the first line of the output should be different
 depending on the compilation mode but not the second one: 
 
+  $ cp ../c_stubs.c lib/
   $ dune exec ./stubs_exe.exe 
   Running[]: Byte (0) or native (1) ? 1
   Running[]: Byte and native (42) ? 42

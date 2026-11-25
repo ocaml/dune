@@ -1,18 +1,22 @@
+  $ cp ../c_stubs.c .
   $ cat >stubs_exe.ml <<EOF
   > external stub_byte_or_native : unit -> int = "caml_b_or_n"
   > let () = 
   >   Printf.printf "Byte (0) or native (1) ? %i\n" (stub_byte_or_native ())
   > EOF
-
-
-We can have one stub that is mode-dependent:
-  $ cat >dune <<EOF
+  $ write_stubs_executable() {
+  >   {
+  >     cat <<'EOF'
   > (executable
   >  (modes native byte_complete)
   >  (modules stubs_exe)
   >  (name stubs_exe)
   >  (foreign_stubs
-  >   (mode native)
+  > EOF
+  >     if [ "$1" != both ]; then
+  >       printf '  (mode %s)\n' "$1"
+  >     fi
+  >     cat <<'EOF'
   >   (language c)
   >   (flags :standard -DNATIVE_CODE)
   >   (names c_stubs))
@@ -22,6 +26,11 @@ We can have one stub that is mode-dependent:
   >   (flags :standard)
   >   (names c_stubs)))
   > EOF
+  >   } >dune
+  > }
+
+We can have one stub that is mode-dependent:
+  $ write_stubs_executable native
 
   $ dune exec ./stubs_exe.exe
   Byte (0) or native (1) ? 1
@@ -31,21 +40,7 @@ We can have one stub that is mode-dependent:
 
 If one of the two is not specified, it will be used for both byte and native mode
 and then a duplicated symbol error will happen
-  $ cat >dune <<EOF
-  > (executable
-  >  (modes native byte_complete)
-  >  (modules stubs_exe)
-  >  (name stubs_exe)
-  >  (foreign_stubs
-  >   (language c)
-  >   (flags :standard -DNATIVE_CODE)
-  >   (names c_stubs))
-  >  (foreign_stubs
-  >   (mode byte)
-  >   (language c)
-  >   (flags :standard)
-  >   (names c_stubs)))
-  > EOF
+  $ write_stubs_executable both
 
   $ dune exec ./stubs_exe.exe
   Byte (0) or native (1) ? 1
@@ -55,22 +50,7 @@ FIXME: we could detect this earlier and display a better error message
   [1]
 
 But two foreign stubs for the same file and mode is an error:
-  $ cat >dune <<EOF
-  > (executable
-  >  (modes native byte_complete)
-  >  (modules stubs_exe)
-  >  (name stubs_exe)
-  >  (foreign_stubs
-  >   (mode byte)
-  >   (language c)
-  >   (flags :standard -DNATIVE_CODE)
-  >   (names c_stubs))
-  >  (foreign_stubs
-  >   (mode byte)
-  >   (language c)
-  >   (flags :standard)
-  >   (names c_stubs)))
-  > EOF
+  $ write_stubs_executable byte
 
   $ dune exec ./stubs_exe.exe
   File "dune", line 9, characters 9-16:

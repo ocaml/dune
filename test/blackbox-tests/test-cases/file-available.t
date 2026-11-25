@@ -92,3 +92,31 @@ Check that a file path can be used which is also the target of another rule.
 
   $ dune build @runtest4
   target output.txt available: true
+
+`file-available` should distinguish a file from a directory even when both
+are produced inside a directory target.
+
+  $ make_dune_project 3.24
+  $ mkdir source-dir
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target (dir tree))
+  >  (action (system "mkdir -p tree/nested; echo ok > tree/file")))
+  > (rule
+  >  (alias available)
+  >  (action
+  >   (progn
+  >    (echo "source directory: %{file-available:source-dir}\n")
+  >    (echo "target directory: %{file-available:tree}\n")
+  >    (echo "nested directory: %{file-available:tree/nested}\n")
+  >    (echo "nested file: %{file-available:tree/file}\n"))))
+  > EOF
+
+CR: A nested directory is reported as a file, unlike a source directory or
+the directory target itself.
+
+  $ dune build @available
+  source directory: false
+  target directory: false
+  nested directory: true
+  nested file: true

@@ -86,6 +86,13 @@ module External : sig
   val relative : t -> string -> t
   val relative_fname : t -> Filename.t -> t
   val of_filename_relative_to_initial_cwd : string -> t
+
+  (** [normalize t] is [t] with symlinks, "." and ".." resolved.
+
+    Components that cannot be resolved are kept verbatim and appended to
+    first ancestor that can be normalized. *)
+  val normalize : t -> t
+
   val append_local : t -> Local.t -> t
 
   module Table : Hashtbl.S with type key = t

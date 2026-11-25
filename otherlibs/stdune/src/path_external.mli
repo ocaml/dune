@@ -13,4 +13,11 @@ val as_local : t -> string
 val reach : t -> from:t -> string
 val append_local : t -> Local.t -> t
 val of_filename_relative_to_initial_cwd : string -> t
+
+(** [normalize t] is [t] with symlinks, "." and ".." resolved.
+
+    Components that cannot be resolved are kept verbatim and appended to
+    first ancestor that can be normalized. *)
+val normalize : t -> t
+
 val to_dyn : t -> Dyn.t

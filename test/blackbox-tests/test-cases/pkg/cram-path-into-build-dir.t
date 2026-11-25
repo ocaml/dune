@@ -88,4 +88,33 @@ are removed, whether they hold lock directory or workspace binaries:
   +  [127]
   [1]
 
+Entries are compared as directories rather than spellings: the build directory
+reached through [.], or through a symlink, is removed as well, while a directory
+outside of it reached through [_build/..] is kept:
+
+  $ mkdir host-bin
+  $ cat > host-bin/hosttool <<EOF
+  > #!/bin/sh
+  > echo host
+  > EOF
+  $ chmod +x host-bin/hosttool
+  $ ln -s _build/install/default/bin linked-bin
+  $ cat > t.t <<EOF
+  >   \$ helper 2> /dev/null
+  >   \$ wsbin 2> /dev/null
+  >   \$ hosttool 2> /dev/null
+  > EOF
+  $ PATH="$PWD/./$(get_build_pkg_dir provider)/target/bin:$PWD/linked-bin:$PWD/_build/../host-bin:$PATH" dune test
+  File "t.t", line 1, characters 0-0:
+  --- t.t
+  +++ t.t.corrected
+  @@ -1,3 +1,6 @@
+     $ helper 2> /dev/null
+  +  [127]
+     $ wsbin 2> /dev/null
+  +  [127]
+     $ hosttool 2> /dev/null
+  +  host
+  [1]
+
   $ cd ..

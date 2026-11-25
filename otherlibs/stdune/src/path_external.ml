@@ -116,6 +116,16 @@ let of_filename_relative_to_initial_cwd fn =
   if Filename.is_relative fn then relative initial_cwd fn else of_string fn
 ;;
 
+let rec normalize t =
+  match Unix.realpath t with
+  | t -> t
+  | exception Unix.Unix_error _ ->
+    let parent = Filename.dirname t in
+    if String.equal parent t
+    then t
+    else Filename.concat (normalize parent) (Filename.basename t)
+;;
+
 include (
   Comparator.Operators (struct
     type nonrec t = t

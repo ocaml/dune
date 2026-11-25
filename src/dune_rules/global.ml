@@ -8,19 +8,20 @@ let remove_build_dir_from_path env =
   match Env.get env Env_path.var with
   | None -> env
   | Some path ->
+    let physical filename =
+      Path.External.of_filename_relative_to_initial_cwd filename
+      |> Path.External.normalize
+    in
+    let build_dir = physical (Path.to_absolute_filename Path.build_dir) in
     let value =
-      let build_dir =
-        Path.External.of_filename_relative_to_initial_cwd
-          (Path.to_absolute_filename Path.build_dir)
-      in
       Bin.parse path
       |> List.filter ~f:(function
         | "" -> true
         | dir ->
+          let dir = physical dir in
           not
-            (Path.External.is_descendant
-               (Path.External.of_filename_relative_to_initial_cwd dir)
-               ~of_:build_dir))
+            (Path.External.equal dir build_dir
+             || Path.External.is_descendant dir ~of_:build_dir))
       |> Bin.encode_strings
     in
     Env.add env ~var:Env_path.var ~value

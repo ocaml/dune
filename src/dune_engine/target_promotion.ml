@@ -129,12 +129,7 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
            ~unix_error:(Some unix_error)
            (Pp.textf "Cannot promote to directory %S."))
   in
-  let relocate =
-    match promote.into with
-    | None -> Path.Source.append_local destination_root
-    | Some _ ->
-      fun path -> Path.Source.relative_fname destination_root (Path.Local.basename path)
-  in
+  let relocate = Path.Source.append_local destination_root in
   let directory_target_error ~unix_error ~dst_dir msgs =
     User_error.raise
       ~needs_stack_trace:true

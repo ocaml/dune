@@ -314,10 +314,7 @@ let module_deps (m : Module.t) ~odoc_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
     (let open Action_builder.O in
      let+ deps =
        let graphs =
-         if Module.has m ~ml_kind:Intf then
-           dep_graphs.intf
-         else
-           dep_graphs.impl
+         if Module.has m ~ml_kind:Intf then dep_graphs.intf else dep_graphs.impl
        in
        Dep_graph.deps_of graphs m
      in

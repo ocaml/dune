@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795625829795,
+  "lastUpdate": 1795626912951,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -694433,6 +694433,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.9771210475800003,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1904980e6d460a5ee0b2c6969d647fa328331e0e",
+          "message": "refactor(promote): organize promotion traversals (#17240)\n\nKeep target selection and lifetime handling next to the file-promotion\nloop, and use pipelines consistently for traversal and filesystem\nlookups. This is a behavior-preserving refactor ahead of #17236.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T00:56:38+08:00",
+          "tree_id": "63e0935b867debbee8a7a13dedd831133f76bbc8",
+          "url": "https://github.com/ocaml/dune/commit/1904980e6d460a5ee0b2c6969d647fa328331e0e"
+        },
+        "date": 1795626400736,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.4857535429533333,
             "unit": "seconds"
           }
         ]

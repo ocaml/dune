@@ -1,5 +1,6 @@
-Check odoc dependencies after preprocessing and through an implementation of
-a virtual library.
+Building a single .odoc file should also build the .odoc dependencies added
+by preprocessing. This test also records the current failure to document a
+library that depends on a virtual library implementation.
 
   $ make_dune_project_with_package 3.0 my_pkg
 

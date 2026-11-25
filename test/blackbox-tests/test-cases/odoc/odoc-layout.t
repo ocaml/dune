@@ -1,5 +1,7 @@
-Show where the documentation artifacts of each kind of library and package
-pages are produced.
+Building @doc and @doc-private produces documentation for package pages,
+public libraries, and private libraries with or without a package. Library
+.odoc files go in their object directories; page .odoc files, .odocl files,
+and HTML go under _doc.
 
   $ make_dune_project_with_package 3.25 my_pkg
   $ mkdir foo bar priv solo

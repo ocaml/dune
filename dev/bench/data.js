@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795646970082,
+  "lastUpdate": 1795646978709,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -498160,6 +498160,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.18466932699334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e5ebcdb1443b7fdb4f52a6ea2d5f3961dbd46631",
+          "message": "test(odoc): cover private docs and artifact name collisions (#17247)\n\nRecord existing behavior ahead of the odoc layout refactor:\n`@doc-private` skips libraries with no compilation modes and documents\npackage-less virtual library implementations. Check that a package page\nand a library both produce HTML when the library’s public name matches\nthe page’s compiled filename.\n\nRefs #17071",
+          "timestamp": "2026-11-25T23:29:57+01:00",
+          "tree_id": "c4ad4a28609e9f0ea9a46e8ffe1b1b7e8d5aaeb5",
+          "url": "https://github.com/ocaml/dune/commit/e5ebcdb1443b7fdb4f52a6ea2d5f3961dbd46631"
+        },
+        "date": 1795646977514,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5197418869466667,
             "unit": "seconds"
           }
         ]

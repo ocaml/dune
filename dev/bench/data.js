@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795618142432,
+  "lastUpdate": 1795622193426,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -693998,6 +693998,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.2482857460933334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "14553a7ef396577a0f4e63d3a95fef987e41d795",
+          "message": "test: share the cross-library open-flag fixture (#17223)\n\nUse one three-library fixture for the bare, dotted, and chained `-open`\ncases. Keep each test’s exact compiler flags and sandboxed build.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-25T23:42:27+08:00",
+          "tree_id": "bf72ab5a7a21f58152b14fa35912647ff7176c9d",
+          "url": "https://github.com/ocaml/dune/commit/14553a7ef396577a0f4e63d3a95fef987e41d795"
+        },
+        "date": 1795621769344,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.770092835286667,
             "unit": "seconds"
           }
         ]

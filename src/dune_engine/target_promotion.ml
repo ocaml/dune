@@ -117,7 +117,7 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
           into_dir
           ~error_loc:loc
       in
-      let promote_into_error ?unix_error msg =
+      let promote_into_error ~unix_error msg =
         let extra_messages =
           match unix_error with
           | None -> []
@@ -132,19 +132,19 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
       >>| (function
        | Ok S_DIR | Error (ENOENT, _, _) ->
          fun src -> Path.Source.relative_fname into_dir (Path.Build.basename src)
-       | Ok _other_kind -> promote_into_error (Pp.textf "%S is not a directory.")
+       | Ok _other_kind ->
+         promote_into_error ~unix_error:None (Pp.textf "%S is not a directory.")
        | Error unix_error ->
-         promote_into_error ~unix_error (Pp.textf "Cannot promote to directory %S."))
+         promote_into_error
+           ~unix_error:(Some unix_error)
+           (Pp.textf "Cannot promote to directory %S."))
   in
-  let directory_target_error ?unix_error ~dst_dir msgs =
-    let msgs =
-      match unix_error with
-      | None -> msgs
-      | Some error -> Unix_error.Detailed.pp_reason error :: msgs
-    in
+  let directory_target_error ~unix_error ~dst_dir msgs =
     User_error.raise
-      (Pp.textf "Cannot promote files to %S." (Path.to_string dst_dir) :: msgs)
       ~needs_stack_trace:true
+      (Pp.textf "Cannot promote files to %S." (Path.to_string dst_dir)
+       :: Unix_error.Detailed.pp_reason unix_error
+       :: msgs)
   in
   let create_directory_if_needed ~dir =
     let dst_dir = relocate dir in

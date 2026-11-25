@@ -17,7 +17,7 @@ let dune_sites_env ~default_ocamlpath ~stdlib =
   |> Env.of_string_map
 ;;
 
-let package_sites context stanzas packages =
+let sites_by_context =
   let add_site m pkg site section =
     Package.Name.Map.update m pkg ~f:(fun sections ->
       let sections = Option.value sections ~default:Section.Map.empty in
@@ -26,40 +26,37 @@ let package_sites context stanzas packages =
       in
       Some (Section.Map.set sections section (Site.Set.add sites site)))
   in
-  let+ package_sites =
-    let* package_db = Package_db.create context in
-    Dune_file.Memo_fold.fold_static_stanzas
-      stanzas
-      ~init:Package.Name.Map.empty
-      ~f:(fun _ stanza acc ->
-        match Stanza.repr stanza with
-        | Install_conf.T { section = _, Site { pkg; site; loc }; _ }
-        | Plugin.T { site = loc, (pkg, site); _ } ->
-          Package_db.find_package package_db pkg
-          >>| (function
-           | None -> acc
-           | Some package ->
-             let section = Package_db.section_of_any_package_site package pkg loc site in
-             add_site acc pkg site section)
-        | _ -> Memo.return acc)
-  in
-  Package.Name.Map.foldi
-    packages
-    ~init:package_sites
-    ~f:(fun package_name (package : Package.t) acc ->
-      Package.sites package
-      |> Site.Map.foldi ~init:acc ~f:(fun site section acc ->
-        add_site acc package_name site section))
-;;
-
-let sites_by_context =
   Memo.create
     "site-package-sites"
     ~input:(module Context_name)
     (fun context ->
        let* stanzas = Dune_load.dune_files context
        and* packages = Dune_load.packages () in
-       package_sites context stanzas packages)
+       let+ referenced_sites =
+         (* A stanza may refer to a site in an external package. *)
+         let* package_db = Package_db.create context in
+         Dune_file.Memo_fold.fold_static_stanzas
+           stanzas
+           ~init:Package.Name.Map.empty
+           ~f:(fun _ stanza acc ->
+             match Stanza.repr stanza with
+             | Install_conf.T { section = _, Site { pkg; site; loc }; _ }
+             | Plugin.T { site = loc, (pkg, site); _ } ->
+               Package_db.find_package package_db pkg
+               >>| (function
+                | None -> acc
+                | Some package ->
+                  let section =
+                    Package_db.section_of_any_package_site package pkg loc site
+                  in
+                  add_site acc pkg site section)
+             | _ -> Memo.return acc)
+       in
+       (* Include local sites even when no stanza names them. *)
+       Package.Name.Map.foldi packages ~init:referenced_sites ~f:(fun pkg package acc ->
+         Package.sites package
+         |> Site.Map.foldi ~init:acc ~f:(fun site section acc ->
+           add_site acc pkg site section)))
   |> Memo.exec
 ;;
 
@@ -78,17 +75,11 @@ let entry_parents ~root entries =
     then parents
     else add_parents (Path.Build.parent_exn dir) (Path.Build.Set.add parents dir)
   in
+  (* Directory entries themselves are handled by [covered_by_directory]. *)
   Path.Build.Map.foldi
-    entries
+    (Path.Build.Map.remove entries root)
     ~init:Path.Build.Set.empty
-    ~f:(fun dst (entry : _ Install.Entry.Expanded.t) parents ->
-      let { Install.Entry.kind; _ } = entry in
-      let dir =
-        match kind with
-        | File -> Path.Build.parent_exn dst
-        | Directory -> dst
-      in
-      add_parents dir parents)
+    ~f:(fun dst _ parents -> add_parents (Path.Build.parent_exn dst) parents)
 ;;
 
 type layout =

@@ -24,6 +24,14 @@ These packages are in a nested env, the option is disabled, should success with 
   File "sub_env/bar_lib/bar.mli", line 1, characters 7-7:
   Warning: End of text is not allowed in '[...]' (code).
 
+Link warnings also respect the nested environment. An unresolved reference
+warns without failing the build:
+
+  $ dune build --only-packages=baz_lib @doc 2>&1 \
+  >   | dune_cmd subst 'unresolvedroot\(Baz\)' Baz
+  File "sub_env/baz_lib/baz.mli", line 1, characters 8-22:
+  Warning: Failed to resolve reference Baz.missing Couldn't find "missing"
+
 In release mode, no error:
 
   $ dune build -p foo_doc,foo_lib @doc 2>&1 | censor

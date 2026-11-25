@@ -1,4 +1,0 @@
-(env
- (dev
-  (odoc
-   (warnings nonfatal))))

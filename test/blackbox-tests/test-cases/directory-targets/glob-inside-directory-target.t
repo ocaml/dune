@@ -77,9 +77,7 @@ raise an internal error.
   >  (action (echo %{deps})))
   > EOF
 
-CR: Dune calls its directory-target builder on the generated file instead of
-handling a glob rooted at a non-directory.
-
   $ dune build @glob-in-file > build.log 2>&1
   [1]
-  $ grep -Fq 'build_dir called on a file target' build.log
+  $ grep -F 'Error:' build.log
+  Error: "tree/root.txt" is not a directory.

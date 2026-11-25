@@ -328,7 +328,28 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t) =
      then A "-opaque"
      else Command.Args.empty
    in
-   let flags = Command.Args.dyn (Ocaml_flags.get (Compilation_context.flags cctx) mode) in
+   let flags =
+     let flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
+     match cm_kind with
+     | Ocaml _ -> Command.Args.dyn flags
+     | Melange cm_kind ->
+       (let open Action_builder.O in
+        let* flags = flags in
+        let+ stdlib_deps =
+          if List.mem flags "-nostdlib" ~equal:String.equal
+          then Action_builder.return Dep.Set.empty
+          else
+            Melange_binary.stdlib_deps
+              sctx
+              ~loc:(Compilation_context.loc cctx)
+              ~dir
+              ~cm_kind
+            |> Action_builder.of_memo
+        in
+        flags, stdlib_deps)
+       |> Action_builder.dyn_deps
+       |> Command.Args.dyn
+   in
    let pp_flags, sandbox =
      match Module.pp_flags m with
      | None -> Command.Args.empty, sandbox
@@ -419,7 +440,7 @@ let build_module_rules ?(force_write_cmi = false) ?(precompiled_cmi = false) cct
            (* Build *.cmo.js / *.wasmo *)
            let sctx = Compilation_context.super_context cctx in
            let dir = Compilation_context.dir cctx in
-           let action_with_targets =
+           let action () =
              Jsoo_rules.build_cm
                cctx
                ~dir
@@ -429,6 +450,28 @@ let build_module_rules ?(force_write_cmi = false) ?(precompiled_cmi = false) cct
                ~obj_dir
                ~deps:module_deps
                ~config:None
+           in
+           let action_with_targets =
+             let target =
+               Jsoo_rules.cm_target ~mode ~src:(Path.build src) ~obj_dir ~config:None
+             in
+             let build =
+               let open Action_builder.O in
+               let* { With_targets.build; targets } = Action_builder.delayed action in
+               let expected = Targets.Validated.file target in
+               match Targets.validate targets with
+               | Valid actual
+                 when Path.Build.equal actual.root expected.root
+                      && Filename.Set.equal actual.files expected.files
+                      && Filename.Set.is_empty actual.dirs -> build
+               | _ ->
+                 Code_error.raise
+                   "Deferred compilation targets differ from their declaration"
+                   [ "target", Path.Build.to_dyn target
+                   ; "actual", Targets.to_dyn targets
+                   ]
+             in
+             Action_builder.with_targets build ~targets:(Targets.File.create target)
            in
            Super_context.add_rule sctx ~dir action_with_targets)))
   | Melange ->

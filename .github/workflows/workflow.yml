@@ -289,6 +289,12 @@ jobs:
           opam exec -- make dev-deps
         if: ${{ matrix.run_tests }}
 
+      - name: Install OCamlFormat
+        run: |
+          opam exec -- make install-ocamlformat
+          opam exec -- ocamlformat --version
+        if: ${{ matrix.run_tests }}
+
       - name: Run test suite on Unix
         run: opam exec -- make test
         if: ${{ matrix.os != 'windows-latest' && matrix.run_tests }}

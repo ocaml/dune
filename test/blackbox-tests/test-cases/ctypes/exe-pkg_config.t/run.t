@@ -5,6 +5,8 @@ loaded.
 Then generate cstubs for it, build an executable that uses those cstubs, and
 run the executable that tests the library through the cstubs.
 
+  $ cp ../example-bindings/function_description.ml \
+  >   ../example-bindings/type_description.ml .
   $ LIBEX=$(realpath "$PWD/../libexample")
 
 Pkg-config runs in a sandbox starting with Dune language 3.25.

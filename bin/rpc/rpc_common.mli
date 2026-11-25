@@ -72,5 +72,13 @@ val wrap_build_outcome_exn
   -> Dune_rpc.Build_outcome_with_diagnostics.t
   -> unit
 
+(** Build a file using the running server. *)
+val build_file
+  :  config:Dune_config.t
+  -> lock_held_by:Global_lock.Lock_held_by.t
+  -> Common.Builder.t
+  -> Path.t
+  -> unit Fiber.t
+
 (** Warn the user that since a RPC server is running, some arguments are ignored. *)
 val warn_ignore_arguments : Global_lock.Lock_held_by.t -> unit

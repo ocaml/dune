@@ -40,11 +40,11 @@ kills the test.
   >   $ echo skipped
   > EOF
 
-The cram test blocks forever unless it is killed. We make sure this fails
-earlier by passing a timeout command in front of dune. Our expected behaviour is
-for dune to present the partially assembled diff.
+The cram test blocks forever unless it is killed. Give the outer watchdog
+headroom for Dune to start and report its own 0.5-second timeout, including the
+partial diff, even on a busy runner.
 
-  $ timeout 3 dune test test.t 2>&1 | sed 's/echo hi/command/'
+  $ timeout 10 dune test test.t 2>&1 | sed 's/echo hi/command/'
   File "test.t", line 1, characters 0-0:
   --- test.t
   +++ test.t.corrected
@@ -73,7 +73,7 @@ Partial output from timed-out commands should still be sanitized.
   >   > cat block
   > EOF
 
-  $ timeout 3 dune test test.t 2>&1
+  $ timeout 10 dune test test.t 2>&1
   File "test.t", line 1, characters 0-0:
   --- test.t
   +++ test.t.corrected
@@ -94,6 +94,15 @@ Timeouts should not be cached as successful cram output.
   >   dune trace cat | jq_dune \
   >     'processes | select(.args.categories == ["cram"]) | .args | {error,name}'
   > }
+  $ expect_dune_timeout () {
+  >   timeout 10 dune test test.t >output 2>&1
+  >   status=$?
+  >   if [ "$status" -ne 1 ] || ! grep -q '^Error: Cram test timed out$' output; then
+  >     printf 'Expected a Dune cram timeout (exit 1); got exit %s\n' "$status"
+  >     cat output
+  >     return 1
+  >   fi
+  > }
 
   $ cat > test.t <<EOF
   >   $ echo hi
@@ -102,13 +111,13 @@ Timeouts should not be cached as successful cram output.
   >   > cat block
   > EOF
 
-  $ timeout 3 dune test test.t >output 2>&1; [ $? -eq 1 ]
+  $ expect_dune_timeout
   $ cram_process_trace
   {
     "error": "got signal KILL",
     "name": "test.t"
   }
-  $ timeout 3 dune test test.t >output 2>&1; [ $? -eq 1 ]
+  $ expect_dune_timeout
   $ cram_process_trace
   {
     "error": "got signal KILL",
@@ -131,7 +140,7 @@ contents of the cram test.
   >   [not ran]
   > EOF
 
-  $ timeout 3 dune test test.t 2>&1
+  $ timeout 10 dune test test.t 2>&1
   File "test.t", line 1, characters 0-0:
   Error: Cram test timed out
   A time limit of 0.50s has been set in dune:2

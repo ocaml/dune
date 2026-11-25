@@ -28,15 +28,13 @@ We could potentially resolve them during the copy.
 
   $ build_pkg foo 2>&1 | censor
   Error: Is a directory
-  -> required by
-     _build/_private/default/.pkg/foo.0.0.1-$DIGEST/source/link_to_dir
-  -> required by
-     _build/_private/default/.pkg/foo.0.0.1-$DIGEST/target
+  -> required by _build/_private/default/.pkg/foo/source/link_to_dir
+  -> required by _build/_private/default/.pkg/foo/target
   [1]
 
 Only the real directory was partially copied:
 
-  $ ls _build/_private/default/.pkg/foo.*/source
+  $ ls _build/_private/default/.pkg/foo/source
   real_dir
 
 --------------------------------------------------------------------------------
@@ -63,7 +61,7 @@ This is now fixed
 
 
 The tarball was fully extracted (including the symlink):
-  $ ls _build/_private/default/.pkg/bar.*/source
+  $ ls _build/_private/default/.pkg/bar/source
   link_to_dir
   real_dir
 

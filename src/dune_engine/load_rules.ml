@@ -188,10 +188,7 @@ let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
 
 let remove_subdir_if_stale ~dir ~subdirs_to_keep fn =
   if not (Subdir_set.mem subdirs_to_keep fn)
-  then (
-    let path = Path.Build.relative_fname dir fn in
-    let () = Rule_cache.Workspace_local.remove_subtree path in
-    Path.rm_rf (Path.build path))
+  then Rule_cache.Workspace_local.delete_subtree (Path.Build.relative_fname dir fn)
 ;;
 
 let remove_old_artifacts

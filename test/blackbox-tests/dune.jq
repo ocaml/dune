@@ -113,6 +113,22 @@ def ruleHasDepFileOrMatchingGlob($path; $dir; $predicate):
   or any(ruleDepGlobEntries;
          .dir == $dir and .predicate == $predicate);
 
+def rulePackageDependencyReport($dir; $library; $metadata):
+  ($dir + "/" + $library) as $stem
+  | { reader: $metadata,
+      required_interface:
+        ruleHasDepFileOrMatchingGlob($stem + ".cmi"; $dir; "*.cmi"),
+      required_archive:
+        ruleHasDepFileOrMatchingGlob($stem + ".cma"; $dir; "*.cma"),
+      required_metadata: ruleHasDepFile($dir + "/" + $metadata) };
+
+def ruleSiblingLibraryDependencyReport($dir; $library):
+  ($dir + "/" + $library) as $stem
+  | { unrelated_interface:
+        ruleHasDepFileOrMatchingGlob($stem + ".cmi"; $dir; "*.cmi"),
+      unrelated_archive:
+        ruleHasDepFileOrMatchingGlob($stem + ".cma"; $dir; "*.cma") };
+
 def ruleActionNodes:
   .action | .. | arrays | select(length > 0 and (.[0] | type) == "string");
 

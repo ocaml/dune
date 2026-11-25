@@ -3,32 +3,12 @@ Execution must still use the implementation belonging to the selected library.
 See #9979.
 
   $ mkdir -p producer local
-  $ (cd producer && make_dune_project_with_package 3.13 pkg)
-  $ cat >producer/dune <<'EOF'
-  > (library
-  >  (name a)
-  >  (public_name pkg.a)
-  >  (modules a)
-  >  (foreign_stubs (language c) (names a_stubs)))
-  > (library
-  >  (name b)
-  >  (public_name pkg.b)
-  >  (modules b)
-  >  (foreign_stubs (language c) (names b_stubs)))
-  > EOF
+  $ write_stublibs_ab_producer
   $ echo 'external value : unit -> int = "a_value"' >producer/a.ml
   $ echo 'external value : unit -> int = "b_value"' >producer/b.ml
-  $ cat >producer/a_stubs.c <<'EOF'
-  > #include <caml/mlvalues.h>
-  > CAMLprim value a_value(value unit) { return Val_int(1); }
-  > EOF
-  $ cat >producer/b_stubs.c <<'EOF'
-  > #include <caml/mlvalues.h>
-  > CAMLprim value b_value(value unit) { return Val_int(2); }
-  > EOF
-  $ dune build --root producer @install
-  $ dune install --root producer --prefix "$PWD/prefix" 2>/dev/null
-  $ export OCAMLPATH="$PWD/prefix/lib"
+  $ write_stublibs_primitive producer/a_stubs.c a_value 1
+  $ write_stublibs_primitive producer/b_stubs.c b_value 2
+  $ install_stublibs_producer
   $ export CAML_LD_LIBRARY_PATH="$PWD/prefix/lib/stublibs"
 
 The executable uses private local a, whose primitive returns 10 rather than 1.
@@ -50,10 +30,7 @@ The executable uses private local a, whose primitive returns 10 rather than 1.
   >  (foreign_stubs (language c) (names a_stubs)))
   > EOF
   $ cp producer/a.ml local/a.ml
-  $ cat >local/a_stubs.c <<'EOF'
-  > #include <caml/mlvalues.h>
-  > CAMLprim value a_value(value unit) { return Val_int(10); }
-  > EOF
+  $ write_stublibs_primitive local/a_stubs.c a_value 10
   $ cat >main.ml <<'EOF'
   > let () = Printf.printf "%d %d\n" (A.value ()) (B.value ())
   > EOF

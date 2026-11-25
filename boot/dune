@@ -46,6 +46,8 @@
  (modules pps)
  (flags -ml))
 
+(copy_files# ../src/ocaml/compiler_gc.{ml,mli})
+
 (executable
  (name duneboot)
  (modules :standard \ configure bootstrap)

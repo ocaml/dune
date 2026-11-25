@@ -64,7 +64,7 @@
                "copy_files" "copy_files#" "include" "tests" "test" "dirs"
                "env" "ignored_subdirs" "include_subdirs" "data_only_dirs"
                "documentation" "cinaps" "coqlib" "coq.theory" "coq.pp"
-               "foreign_library")
+               "foreign_library" "library_parameter")
              ) "\\(?:\\_>\\|[[:space:]]\\)"))
   "Stanzas in dune files.")
 
@@ -85,6 +85,8 @@
        ;; + virtual libraries
        "virtual_modules" "implements" "variant" "default_implementation"
        "allow_overlapping_dependencies"
+       ;; + parameterised libraries
+       "parameters"
        ;; + for "executable" and "executables":
        "package" "link_flags" "link_deps" "names" "public_names" "variants"
        "forbidden_libraries"
@@ -127,7 +129,9 @@
                "extends"
                ;; Dependency specification
                "file" "alias" "alias_rec" "glob_files" "files_recursively_in"
-               "universe" "package" "source_tree" "env_var")
+               "universe" "package" "source_tree" "env_var"
+               ;; Library dependencies
+               "instantiate")
              t)
             "\\(?:\\_>\\|[[:space:]]\\)"))
   "Builtin sub-fields in dune.")

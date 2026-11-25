@@ -241,6 +241,12 @@ let define_all_alias ~dir ~project ~js_targets =
 ;;
 
 let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_dir =
+  let gen_parser ~enabled_if ~for_ =
+    Expander.eval_blang expander enabled_if
+    >>= function
+    | false -> Memo.return ()
+    | true -> Parser_generator_rules.gen_rules sctx ~dir_contents ~dir:ctx_dir ~for_
+  in
   let src_dir = Dune_file.dir dune_file in
   let* stanzas = Dune_file.stanzas dune_file
   and* scope = Scope.DB.find_by_dir ctx_dir in
@@ -266,25 +272,9 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
     Memo.parallel_iter stanzas ~f:(fun stanza ->
       match Stanza.repr stanza with
       | Parser_generators.Ocamllex.T ocamllex ->
-        Expander.eval_blang expander ocamllex.enabled_if
-        >>= (function
-         | false -> Memo.return ()
-         | true ->
-           Parser_generator_rules.gen_rules
-             sctx
-             ~dir_contents
-             ~dir:ctx_dir
-             ~for_:(Ocamllex ocamllex))
+        gen_parser ~enabled_if:ocamllex.enabled_if ~for_:(Ocamllex ocamllex)
       | Parser_generators.Ocamlyacc.T ocamlyacc ->
-        Expander.eval_blang expander ocamlyacc.enabled_if
-        >>= (function
-         | false -> Memo.return ()
-         | true ->
-           Parser_generator_rules.gen_rules
-             sctx
-             ~dir_contents
-             ~dir:ctx_dir
-             ~for_:(Ocamlyacc ocamlyacc))
+        gen_parser ~enabled_if:ocamlyacc.enabled_if ~for_:(Ocamlyacc ocamlyacc)
       | Menhir_stanza.T m ->
         Expander.eval_blang expander m.enabled_if
         >>= (function

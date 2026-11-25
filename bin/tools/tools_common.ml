@@ -12,13 +12,6 @@ let add_dev_tools_to_path env =
 
 let dev_tool_exe_path dev_tool = Path.build @@ Pkg_dev_tool.exe_path dev_tool
 
-let dev_tool_build_target dev_tool =
-  Dune_lang.Dep_conf.File
-    (Dune_lang.String_with_vars.make_text
-       Loc.none
-       (Path.to_string (dev_tool_exe_path dev_tool)))
-;;
-
 let build_dev_tool_directly dev_tool =
   let open Fiber.O in
   let+ result =
@@ -36,28 +29,14 @@ let build_dev_tool_directly dev_tool =
   | Ok () -> ()
 ;;
 
-let try_build_dev_tool_via_rpc ~config builder lock_held_by dev_tool =
-  let target = dev_tool_build_target dev_tool in
-  let targets = Rpc.Rpc_common.prepare_targets [ target ] in
-  let open Fiber.O in
-  Rpc.Rpc_common.fire_request_with_progress
-    ~name:"build"
-    ~wait:false
-    ~lock_held_by
-    ~config
-    builder
-    Dune_rpc_impl.Decl.build
-    targets
-  >>| Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:false
-;;
-
 let lock_and_build_dev_tool ~common ~config builder dev_tool =
   let open Fiber.O in
   match Global_lock.lock () with
   | Error lock_held_by ->
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
       let* () = Lock_dev_tool.lock_dev_tool dev_tool |> Memo.run in
-      try_build_dev_tool_via_rpc ~config builder lock_held_by dev_tool)
+      let path = dev_tool_exe_path dev_tool in
+      Rpc.Rpc_common.build_file ~config ~lock_held_by builder path)
   | Ok () ->
     Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
       build_dev_tool_directly dev_tool)

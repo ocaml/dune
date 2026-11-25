@@ -21,39 +21,24 @@ end = struct
 
   let escape_to s ~dst:s' ~ofs =
     let n = ref ofs in
+    let escape c =
+      Bytes.unsafe_set s' !n '\\';
+      incr n;
+      Bytes.unsafe_set s' !n c
+    in
     let len = String.length s in
     for i = 0 to len - 1 do
       (match String.unsafe_get s i with
-       | ('\"' | '\\') as c ->
-         Bytes.unsafe_set s' !n '\\';
-         incr n;
-         Bytes.unsafe_set s' !n c
-       | '\n' ->
-         Bytes.unsafe_set s' !n '\\';
-         incr n;
-         Bytes.unsafe_set s' !n 'n'
-       | '\t' ->
-         Bytes.unsafe_set s' !n '\\';
-         incr n;
-         Bytes.unsafe_set s' !n 't'
-       | '\r' ->
-         Bytes.unsafe_set s' !n '\\';
-         incr n;
-         Bytes.unsafe_set s' !n 'r'
-       | '\b' ->
-         Bytes.unsafe_set s' !n '\\';
-         incr n;
-         Bytes.unsafe_set s' !n 'b'
-       | '%' when i + 1 < len && s.[i + 1] = '{' ->
-         Bytes.unsafe_set s' !n '\\';
-         incr n;
-         Bytes.unsafe_set s' !n '%'
+       | ('\"' | '\\') as c -> escape c
+       | '\n' -> escape 'n'
+       | '\t' -> escape 't'
+       | '\r' -> escape 'r'
+       | '\b' -> escape 'b'
+       | '%' when i + 1 < len && s.[i + 1] = '{' -> escape '%'
        | ' ' .. '~' as c -> Bytes.unsafe_set s' !n c
        | c ->
          let a = Char.code c in
-         Bytes.unsafe_set s' !n '\\';
-         incr n;
-         Bytes.unsafe_set s' !n (Char.unsafe_chr (48 + (a / 100)));
+         escape (Char.unsafe_chr (48 + (a / 100)));
          incr n;
          Bytes.unsafe_set s' !n (Char.unsafe_chr (48 + (a / 10 mod 10)));
          incr n;

@@ -257,22 +257,7 @@ let build_prog_via_rpc_if_necessary ~dir ~config ~no_rebuild builder lock_held_b
         if Fpath.exists (Path.to_string path)
         then Fiber.return ()
         else program_not_built_yet prog
-      else (
-        let target =
-          Dune_lang.Dep_conf.File
-            (Dune_lang.String_with_vars.make_text Loc.none (Path.to_string path))
-        in
-        let targets = Rpc.Rpc_common.prepare_targets [ target ] in
-        let open Fiber.O in
-        Rpc.Rpc_common.fire_request_with_progress
-          ~name:"build"
-          ~wait:false
-          ~lock_held_by
-          ~config
-          builder
-          Dune_rpc_impl.Decl.build
-          targets
-        >>| Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:false)
+      else Rpc.Rpc_common.build_file ~config ~lock_held_by builder path
     in
     Path.to_absolute_filename path
   | Absolute ->

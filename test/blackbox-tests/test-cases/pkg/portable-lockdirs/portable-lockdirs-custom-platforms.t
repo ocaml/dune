@@ -14,17 +14,12 @@ Create a package that writes a different value to some files depending on the os
   > EOF
 
 Create a custom dune-workspace to solve for openbsd.
-  $ cat > dune-workspace <<EOF
-  > (lang dune 3.20)
-  > (repository
-  >  (name mock)
-  >  (url "file://$(pwd)/mock-opam-repository"))
+  $ write_portable_lockdir_workspace <<'EOF'
   > (lock_dir
   >  (repositories mock)
   >  (solve_for_platforms
   >   ((arch x86_64)
   >    (os openbsd))))
-  > (pkg enabled)
   > EOF
 
   $ make_portable_lockdirs_project
@@ -65,7 +60,7 @@ CR: it currently uses the default platform list instead.
 Build as though we were on openbsd.
   $ export DUNE_CONFIG__OS=openbsd DUNE_CONFIG__ARCH=x86_64
   $ dune build
-  $ cat $pkg_root/$(dune pkg print-digest foo)/target/share/kernel
+  $ cat $pkg_root/foo/target/share/kernel
   OpenBSD
   $ unset DUNE_CONFIG__OS DUNE_CONFIG__ARCH
 

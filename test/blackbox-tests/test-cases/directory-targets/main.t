@@ -332,14 +332,7 @@ Depending on a glob in a missing subdirectory of a directory target is an error.
   [1]
 
 Depending on a directory target directly (rather than on individual files) works
-too. Note that this can be achieved in two ways:
-
-(1) By depending on the recursively computed digest of the directory's contents;
-
-(2) By depending on the mtime of the directory.
-
-Currently Dune implements (2) but we'd like to switch to (1) because it supports
-the early cutoff optimisation and is also more reliable.
+too. Dune computes a digest of the directory tree for these dependencies.
 
 The [src_c] dependency is unused in the rule's action but we use it to force the
 rule to rerun when needed.
@@ -375,8 +368,7 @@ rule to rerun when needed.
   b:
   b
 
-We wait for the file system's clock to advance to make sure the directory's
-mtime changes when the rule reruns. We can delete this when switching to (1).
+Wait for the file system's clock to advance before editing the source file.
 
   $ dune_cmd wait-for-fs-clock-to-advance
   $ echo new-b > src_b
@@ -416,6 +408,45 @@ Note that the stale "output/a" file got removed.
   $ ls _build/default/output | sort
   new-a
   subdir
+
+A rule depending on a directory target should rerun when its tree changes,
+even if its file contents stay the same.
+
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target (dir tree))
+  >  (deps layout)
+  >  (action
+  >   (system "\| mkdir tree
+  >           "\| touch tree/payload
+  >           "\| for d in $(cat layout); do mkdir tree/$d; done
+  >   )))
+  > (rule
+  >  (target listing)
+  >  (deps tree (sandbox always))
+  >  (action (with-stdout-to listing (run ls tree))))
+  > EOF
+  $ echo abc > layout
+  $ dune build --cache=disabled --sandbox=copy listing
+  $ cat _build/default/listing
+  abc
+  payload
+
+Replacing `abc` with `a` and `bc` must change the dependency digest. The
+consumer should report the new listing even though the names concatenate to
+the same string.
+
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ echo 'a bc' > layout
+  $ dune build --cache=disabled --sandbox=copy listing
+  $ ls _build/default/tree
+  a
+  bc
+  payload
+  $ cat _build/default/listing
+  a
+  bc
+  payload
 
 Directory target whose name conflicts with an internal directory used by Dune.
 

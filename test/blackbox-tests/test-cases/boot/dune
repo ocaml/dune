@@ -5,7 +5,13 @@
   %{project_root}/boot/duneboot.ml
   %{project_root}/boot/pps.mli
   %{project_root}/boot/pps.mll
+  %{project_root}/src/ocaml/compiler_gc.ml
   %{bin:bootstrap.exe}))
+
+(cram
+ (applies_to compiler-gc.t)
+ (enabled_if
+  (<> %{os_type} Win32)))
 
 (cram
  (applies_to secondary-compiler.t)

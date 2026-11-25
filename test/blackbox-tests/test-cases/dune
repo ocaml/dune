@@ -22,6 +22,8 @@
    ../utils/sherlodoc.exe
    ../utils/ocaml_index.exe)))
 
+(data_only_dirs js-compiler-fixtures)
+
 (cram
  (applies_to pp-cwd.t)
  (deps %{bin:dunepp}))

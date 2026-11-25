@@ -13,6 +13,18 @@ let project t = t.project
 let libs t = t.db
 let rocq_libs t = t.rocq_db
 
+let raise_duplicate_library ~show_location ~previous_loc ~main_loc text =
+  let compound = Compound_user_error.duplicate ~main_loc ~previous_loc text in
+  let loc = Option.some_if show_location main_loc in
+  User_error.raise
+    ?loc
+    ~compound
+    [ text
+    ; Pp.textf "- %s" (Loc.to_file_colon_line previous_loc)
+    ; Pp.textf "- %s" (Loc.to_file_colon_line main_loc)
+    ]
+;;
+
 module DB = struct
   type scope = t
   type t = { by_dir : scope Path.Source.Map.t }
@@ -158,18 +170,11 @@ module DB = struct
                      let main_message =
                        Pp.textf "Library %s is defined twice:" (Lib_name.to_string name)
                      in
-                     let compound =
-                       Compound_user_error.duplicate
-                         ~main_loc:loc2
-                         ~previous_loc:loc1
-                         main_message
-                     in
-                     User_error.raise
-                       ~compound
-                       [ main_message
-                       ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-                       ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-                       ]))
+                     raise_duplicate_library
+                       ~show_location:false
+                       ~main_loc:loc2
+                       ~previous_loc:loc1
+                       main_message))
             in
             let by_name =
               Lib_name.Map.update by_name name ~f:(function
@@ -576,19 +581,11 @@ module DB = struct
                     "Public library %s is defined twice:"
                     (Lib_name.to_string public_name)
                 in
-                let compound =
-                  Compound_user_error.duplicate
-                    ~main_loc:loc2
-                    ~previous_loc:loc1
-                    main_message
-                in
-                User_error.raise
-                  ~compound
-                  ~loc:loc2
-                  [ main_message
-                  ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-                  ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-                  ]))
+                raise_duplicate_library
+                  ~show_location:true
+                  ~main_loc:loc2
+                  ~previous_loc:loc1
+                  main_message))
         in
         libs
   ;;

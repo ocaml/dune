@@ -2,20 +2,15 @@ open Stdune
 module Runparam = Ocaml.Runparam
 
 let () = Dune_tests_common.init ()
-
-let add_defaults =
-  Runparam.add_defaults
-    ~minor_heap_size:(2 * 1024 * 1024)
-    ~small_heap_limit:(Some 16777216)
-;;
+let add_defaults = Runparam.add_defaults ~word_size:64 ~use_small_heap_limit:true
 
 let%expect_test "compose runtime parameters in one override" =
   add_defaults ~inherited:Env.empty ~overrides:Env.empty
   |> Env.to_unix
   |> List.iter ~f:print_endline;
   Runparam.add_defaults
-    ~minor_heap_size:(2 * 1024 * 1024)
-    ~small_heap_limit:None
+    ~word_size:64
+    ~use_small_heap_limit:false
     ~inherited:Env.empty
     ~overrides:Env.empty
   |> Env.to_unix

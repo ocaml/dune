@@ -47,3 +47,30 @@ Since the symlink was resolved to a hardlink, caching works:
   $ build_pkg foo
   $ count_trace BUILDING_FOO_PACKAGE
   0
+
+An install command copies a dependency's file without dereferencing symlinks.
+The destination is at a different directory depth than the dependency file.
+
+  $ make_lockpkg provider <<'EOF'
+  > (version 0.0.1)
+  > (install (system "echo payload > %{pkg-self:bin}/marker"))
+  > EOF
+  $ make_lockpkg consumer <<'EOF'
+  > (version 0.0.1)
+  > (depends provider)
+  > (install
+  >  (system "cp -P %{pkg:provider:bin}/marker %{pkg-self:share}/marker"))
+  > EOF
+  $ cat > symlink-config <<'EOF'
+  > (lang dune 3.25)
+  > (sandboxing_preference none symlink)
+  > EOF
+  $ pkg_dir=$(get_build_pkg_dir consumer)
+  $ if dune build --cache=disabled --config-file symlink-config \
+  >   "$pkg_dir/target" > install.log 2>&1; then
+  >   cat "$pkg_dir/target/share/consumer/marker"
+  > else
+  >   dune_cmd subst 'readlink\([^)]*\)' 'readlink(...)' < install.log | censor
+  >   false
+  > fi
+  payload

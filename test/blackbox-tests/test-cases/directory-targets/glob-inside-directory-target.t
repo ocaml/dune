@@ -41,3 +41,45 @@ rule also produces sibling directory and file targets.
   changed
   right
   $ dune build left/nested/shared.txt right/nested/shared.txt ordinary.txt
+
+A recursive glob rooted at a directory target should include generated files
+from its subdirectories as well as its root.
+
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target (dir tree))
+  >  (action
+  >   (system "\| mkdir -p tree/sub
+  >           "\| echo root > tree/root.txt
+  >           "\| echo nested > tree/sub/nested.txt
+  >   )))
+  > (rule
+  >  (target report)
+  >  (deps (glob_files_rec tree/*.txt) (sandbox always))
+  >  (action (with-stdout-to report (run cat %{deps}))))
+  > EOF
+  $ dune build --sandbox=copy report
+  $ test -f _build/default/tree/sub/nested.txt
+
+CR: The recursive glob only discovers subdirectories in the source tree, so
+it silently omits the generated nested file.
+
+  $ cat _build/default/report
+  root
+
+A glob whose directory component is actually a generated file should not
+raise an internal error.
+
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (alias glob-in-file)
+  >  (deps (glob_files tree/root.txt/*))
+  >  (action (echo %{deps})))
+  > EOF
+
+CR: Dune calls its directory-target builder on the generated file instead of
+handling a glob rooted at a non-directory.
+
+  $ dune build @glob-in-file > build.log 2>&1
+  [1]
+  $ grep -Fq 'build_dir called on a file target' build.log

@@ -19,11 +19,7 @@ counting the same package once per selected platform.
   > depends: [ "linux-alt" | "macos-alt" | "common" ]
   > EOF
 
-  $ cat >dune-workspace <<EOF
-  > (lang dune 3.20)
-  > (repository
-  >  (name mock)
-  >  (url "file://$(pwd)/mock-opam-repository"))
+  $ write_portable_lockdir_workspace <<'EOF'
   > (lock_dir
   >  (repositories mock)
   >  (solve_for_platforms
@@ -31,7 +27,6 @@ counting the same package once per selected platform.
   >    (os linux))
   >   ((arch x86_64)
   >    (os macos))))
-  > (pkg enabled)
   > EOF
   $ write_portable_lockdirs_project
 

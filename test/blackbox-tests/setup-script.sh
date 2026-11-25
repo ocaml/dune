@@ -89,6 +89,22 @@ EOF
 EOF
 }
 
+setup_shared_cache_history_project() {
+  make_dune_project 2.1 || return
+  local version
+  for version in v1 v2; do
+    cat >"dune-$version" <<-EOF || return
+	(rule
+	 (targets t1)
+	 (action (bash "echo running; echo $version > t1")))
+	(rule
+	 (deps t1)
+	 (targets t2)
+	 (action (bash "echo running; cat t1 t1 > t2")))
+	EOF
+  done
+}
+
 init_oxcaml_project() {
   cat > "dune-project" <<- EOF
 	(lang dune 3.20)
@@ -267,6 +283,34 @@ make_mypkg_stubs_project() {
 	#include <caml/mlvalues.h>
 	CAMLprim value mypkg_stub(value unit) { return Val_unit; }
 	EOF
+}
+
+write_stublibs_ab_producer() {
+  (cd producer && make_dune_project_with_package 3.13 pkg) || return
+  local lib
+  for lib in a b; do
+    cat <<-EOF
+	(library
+	 (name $lib)
+	 (public_name pkg.$lib)
+	 (modules $lib)
+	 (foreign_stubs (language c) (names ${lib}_stubs)))
+	EOF
+  done >producer/dune
+}
+
+write_stublibs_primitive() {
+  local file="$1" primitive="$2" result="$3"
+  cat >"$file" <<-EOF
+	#include <caml/mlvalues.h>
+	CAMLprim value $primitive(value unit) { return Val_int($result); }
+	EOF
+}
+
+install_stublibs_producer() {
+  dune build --root producer @install &&
+    dune install --root producer --prefix "$PWD/prefix" 2>/dev/null &&
+    export OCAMLPATH="$PWD/prefix/lib"
 }
 
 make_install_include_project() {
@@ -1698,6 +1742,10 @@ wait_for_file () {
     do
         sleep 0.01
     done
+}
+
+wait_for_file_with_timeout () {
+    with_timeout_quiet dune_cmd wait-for-file-to-appear "$1"
 }
 
 file_status() {

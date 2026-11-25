@@ -42,6 +42,22 @@ No partial lock directory is written:
 
   $ test ! -e dune.lock
 
+A macOS build should be able to autolock without a Linux solution (#17127).
+Instead, autolocking fails because the package is not available on Linux.
+
+  $ enable_pkg
+  $ DUNE_CONFIG__OS=macos dune build
+  File "default/.lock/_unknown_", line 1, characters 0-0:
+  Error: Couldn't solve the package dependency formula.
+  Selected candidates: foo.0.0.1 x.dev
+  - foo -> (problem) on arch = arm64; os = linux
+      No usable implementations:
+        foo.0.0.1: Availability condition not satisfied
+  - foo -> (problem) on arch = x86_64; os = linux
+      No usable implementations:
+        foo.0.0.1: Availability condition not satisfied
+  [1]
+
 A package required on only one of several requested platforms must still name
 that platform when it cannot be selected anywhere:
 

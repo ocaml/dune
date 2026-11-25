@@ -1,3 +1,18 @@
+(data_only_dirs parser-fixtures)
+
 (cram
  (applies_to :whole_subtree)
  (deps %{bin:menhir}))
+
+(cram
+ (applies_to general.t general-2.0.t)
+ (deps
+  (source_tree parser-fixtures)))
+
+(cram
+ (applies_to cmly.t)
+ (deps parser-fixtures/lexer1.mll parser-fixtures/test_menhir1.mly))
+
+(cram
+ (applies_to env.t promote.t)
+ (deps parser-fixtures/test_menhir1.mly))

@@ -132,14 +132,51 @@ let setup_dialect_rules sctx ~sandbox ~dir ~expander (m : Module.t) =
   ml
 ;;
 
-let add_corrected_suffix_binding expander suffix =
-  let bindings = Pform.Map.singleton (Var Corrected_suffix) [ Value.String suffix ] in
-  Expander.add_bindings expander ~bindings
-;;
-
-let driver_flags expander ~corrected_suffix ~driver_flags ~standard =
-  let expander = add_corrected_suffix_binding expander corrected_suffix in
-  Expander.expand_and_eval_set expander driver_flags ~standard
+let unstaged_ppx =
+  let cutoff =
+    let strings_equal = List.equal String.equal in
+    Tuple.T3.equal Path.Build.equal strings_equal strings_equal
+  in
+  fun ctx ~for_ ~expander ~lib_name ~scope kind spec ->
+    let ({ loc; pps; flags; staged = _ } : _ Preprocess.Pps.t) = spec in
+    let suffix =
+      match kind with
+      | `Lint -> ".lint-corrected"
+      | `Preprocess -> ".ppx-corrected"
+    in
+    let resolved =
+      let open Action_builder.O in
+      Action_builder.memoize ~cutoff "ppx driver and flags"
+      @@ let* () = Action_builder.return () in
+         let* exe, driver, args =
+           Ppx_driver.ppx_driver_and_flags
+             ctx
+             ~for_
+             ~expander
+             ~loc
+             ~lib_name
+             ~flags
+             ~scope
+             pps
+         in
+         let flags, standard =
+           match kind with
+           | `Lint -> Ppx_driver.Driver.lint_flags driver, []
+           | `Preprocess -> Ppx_driver.Driver.flags driver, [ "--as-ppx" ]
+         in
+         let expander =
+           let bindings =
+             Pform.Map.singleton (Var Corrected_suffix) [ Value.String suffix ]
+           in
+           Expander.add_bindings expander ~bindings
+         in
+         let+ expanded =
+           let standard = Action_builder.return standard in
+           Expander.expand_and_eval_set expander flags ~standard
+         in
+         exe, expanded, args
+    in
+    suffix, resolved
 ;;
 
 let lint_module sctx ~for_ ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope =
@@ -157,43 +194,16 @@ let lint_module sctx ~for_ ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name 
           Module.iter source ~f:(fun _ (src : Module.File.t) ->
             let src = Path.as_in_build_dir_exn (Module.File.path src) in
             add_alias ~loc (action_for_pp ~sandbox ~loc ~expander ~action ~src))
-      | Pps { loc; pps; flags; staged } ->
+      | Pps ({ loc; staged; pps = _; flags = _ } as spec) ->
         if staged
         then
           User_error.raise
             ~loc
             [ Pp.text "Staged ppx rewriters cannot be used as linters." ];
-        let corrected_suffix = ".lint-corrected" in
         let ctx = Super_context.context sctx in
         let command_dir = Context.build_dir ctx |> Path.build in
-        let driver_and_flags =
-          Action_builder.memoize
-            ~cutoff:
-              (Tuple.T3.equal
-                 Path.Build.equal
-                 (List.equal String.equal)
-                 (List.equal String.equal))
-            "ppx driver and flags"
-            (let* () = Action_builder.return () in
-             let* exe, driver, flags =
-               Ppx_driver.ppx_driver_and_flags
-                 ctx
-                 ~for_
-                 ~expander
-                 ~loc
-                 ~lib_name
-                 ~flags
-                 ~scope
-                 pps
-             in
-             let+ ppx_flags =
-               driver_flags
-                 expander
-                 ~corrected_suffix
-                 ~driver_flags:(Ppx_driver.Driver.lint_flags driver)
-                 ~standard:(Action_builder.return [])
-             in
-             exe, ppx_flags, flags)
+        let corrected_suffix, driver_and_flags =
+          unstaged_ppx ctx ~for_ ~expander ~lib_name ~scope `Lint spec
         in
         fun ~source ~ast ->
           Module.iter ast ~f:(fun ml_kind src ->
@@ -264,7 +274,7 @@ let pp_one_module
     in
     let+ () = Memo.when_ lint (fun () -> lint_module ~ast ~source:m) in
     ast
-  | Pps { loc; pps; flags; staged } ->
+  | Pps ({ loc; pps; flags; staged } as spec) ->
     Staged.stage
     @@
     if staged
@@ -313,35 +323,8 @@ let pp_one_module
         let+ () = Memo.when_ lint (fun () -> lint_module ~ast ~source:m) in
         Module.set_pp ast pp)
     else (
-      let corrected_suffix = ".ppx-corrected" in
-      let driver_and_flags =
-        Action_builder.memoize
-          ~cutoff:
-            (Tuple.T3.equal
-               Path.Build.equal
-               (List.equal String.equal)
-               (List.equal String.equal))
-          "ppx driver and flags"
-          (let* () = Action_builder.return () in
-           let* exe, driver, flags =
-             Ppx_driver.ppx_driver_and_flags
-               context
-               ~for_
-               ~expander
-               ~loc
-               ~lib_name
-               ~flags
-               ~scope
-               pps
-           in
-           let+ ppx_flags =
-             driver_flags
-               expander
-               ~corrected_suffix
-               ~driver_flags:(Ppx_driver.Driver.flags driver)
-               ~standard:(Action_builder.return [ "--as-ppx" ])
-           in
-           exe, ppx_flags, flags)
+      let corrected_suffix, driver_and_flags =
+        unstaged_ppx context ~for_ ~expander ~lib_name ~scope `Preprocess spec
       in
       let sandbox = sandbox_of_setting sandbox in
       fun m ~lint ->

@@ -585,19 +585,11 @@ let path_with_stats ~allow_dirs path stats =
     stats
 ;;
 
-let path_with_stats_async ~allow_dirs path (stats : Stats_for_digest.t) =
-  let f () =
-    path_with_stats_internal
-      ~allow_dirs
-      ~string_digest:string_pooled
-      ~directory_digest:(directory_digest_with repr_pooled)
-      ~file_with_executable_bit:file_with_executable_bit_pooled
-      path
-      stats
-  in
+let path_with_stats_async ~allow_dirs path stats =
+  let digest () = path_with_stats ~allow_dirs path stats in
   match Config.(get background_digests) with
-  | `Disabled -> Fiber.return (f ())
-  | `Enabled -> Dune_scheduler.Scheduler.async_exn f
+  | `Disabled -> Fiber.return (digest ())
+  | `Enabled -> Dune_scheduler.Scheduler.async_exn digest
 ;;
 
 let file_with_executable_bit ~executable path =

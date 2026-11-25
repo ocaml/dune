@@ -5,20 +5,9 @@ Installed a returns 2. Workspace a returns B.value + 10, workspace b returns
 100, and installed b returns 1. The expected result 11 distinguishes both
 workspace-root precedence and fallback to the installed dependency.
 
-  $ mkdir -p source/b/unrelated prefix masked-dune/a-src masked-dune/b-src
-  $ mkdir masked-meta
-  $ cat >source/dune-project <<'EOF'
-  > (lang dune 3.24)
-  > (package (name a))
-  > (package (name b))
-  > EOF
-  $ cat >source/dune <<'EOF'
-  > (library
-  >  (public_name a)
-  >  (modes byte)
-  >  (libraries b))
-  > EOF
-  $ echo 'let value = B.value + 1' >source/a.ml
+  $ setup_package_a_requiring_b
+  $ mkdir -p source/b/unrelated prefix masked-meta \
+  >   masked-dune/a-src masked-dune/b-src
   $ echo '(library (public_name b) (modes byte))' >source/b/dune
   $ echo 'let value = 1' >source/b/b.ml
   $ cat >source/b/unrelated/dune <<'EOF'
@@ -76,20 +65,10 @@ includes its sibling library even though workspace b is masked.
   $ dune rules --root masked-dune --only-packages a --format=json main.exe \
   > >dune-rules.json
   $ jq_dune --arg b "$b_lib" --arg metadata dune-package '
-  >   rulesMatchingTarget("main.exe") | {
-  >     reader: $metadata,
-  >     required_interface:
-  >       ruleHasDepFileOrMatchingGlob($b + "/b.cmi"; $b; "*.cmi"),
-  >     required_archive:
-  >       ruleHasDepFileOrMatchingGlob($b + "/b.cma"; $b; "*.cma"),
-  >     required_metadata: ruleHasDepFile($b + "/" + $metadata),
-  >     unrelated_interface:
-  >       ruleHasDepFileOrMatchingGlob(
-  >         $b + "/unrelated/unrelated.cmi"; $b + "/unrelated"; "*.cmi"),
-  >     unrelated_archive:
-  >       ruleHasDepFileOrMatchingGlob(
-  >         $b + "/unrelated/unrelated.cma"; $b + "/unrelated"; "*.cma")
-  >   }' dune-rules.json
+  >   rulesMatchingTarget("main.exe")
+  >   | rulePackageDependencyReport($b; "b"; $metadata)
+  >     + ruleSiblingLibraryDependencyReport($b + "/unrelated"; "unrelated")
+  > ' dune-rules.json
   {
     "reader": "dune-package",
     "required_interface": true,
@@ -110,20 +89,10 @@ META-only package dependencies.
   $ dune rules --root masked-meta --only-packages a --format=json main.exe \
   > >meta-rules.json
   $ jq_dune --arg b "$b_lib" --arg metadata META '
-  >   rulesMatchingTarget("main.exe") | {
-  >     reader: $metadata,
-  >     required_interface:
-  >       ruleHasDepFileOrMatchingGlob($b + "/b.cmi"; $b; "*.cmi"),
-  >     required_archive:
-  >       ruleHasDepFileOrMatchingGlob($b + "/b.cma"; $b; "*.cma"),
-  >     required_metadata: ruleHasDepFile($b + "/" + $metadata),
-  >     unrelated_interface:
-  >       ruleHasDepFileOrMatchingGlob(
-  >         $b + "/unrelated/unrelated.cmi"; $b + "/unrelated"; "*.cmi"),
-  >     unrelated_archive:
-  >       ruleHasDepFileOrMatchingGlob(
-  >         $b + "/unrelated/unrelated.cma"; $b + "/unrelated"; "*.cma")
-  >   }' meta-rules.json
+  >   rulesMatchingTarget("main.exe")
+  >   | rulePackageDependencyReport($b; "b"; $metadata)
+  >     + ruleSiblingLibraryDependencyReport($b + "/unrelated"; "unrelated")
+  > ' meta-rules.json
   {
     "reader": "META",
     "required_interface": false,

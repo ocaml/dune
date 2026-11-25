@@ -332,18 +332,15 @@ struct
     ;;
 
     let lookup_method_generic t ~menu ~table ~key ~method_ k s =
+      let fail message =
+        let name = Method.Name.to_string method_ in
+        let payload = Sexp.record [ "method", Atom name ] in
+        k (Version_error.create ~message ~payload ())
+      in
       match get t table key, Menu.find menu method_ with
       | Some subtable, Some version -> s (subtable, version)
-      | None, _ ->
-        let payload = Sexp.record [ "method", Atom (Method.Name.to_string method_) ] in
-        k (Version_error.create ~message:"invalid method" ~payload ())
-      | _, None ->
-        let payload = Sexp.record [ "method", Atom (Method.Name.to_string method_) ] in
-        k
-          (Version_error.create
-             ~message:"remote and local have no common version for method"
-             ~payload
-             ())
+      | None, _ -> fail "invalid method"
+      | _, None -> fail "remote and local have no common version for method"
     ;;
 
     let to_handler t ~session_version =

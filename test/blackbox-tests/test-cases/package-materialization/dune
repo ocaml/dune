@@ -12,5 +12,13 @@
  (deps %{bin:ocamlfind}))
 
 (cram
+ (applies_to
+  installed-foreign-object.t
+  installed-only-packages-fallback.t
+  installed-package.t
+  installed-unavailable-sublibrary.t)
+ (setup_scripts installed-package-helpers.sh))
+
+(cram
  (applies_to installed-package.t)
  (deps %{bin:cmp}))

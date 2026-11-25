@@ -146,19 +146,16 @@ module Produced : sig
   val iter_files : 'a t -> f:(Path.Local.t -> 'a -> unit) -> unit
   val iter_dirs : 'a t -> f:(Path.Local.t -> unit) -> unit
 
-  val iteri_dir_contents
-    :  'a dir_contents
-    -> f:(Path.Local.t -> 'a -> unit)
-    -> d:(Path.Local.t -> unit)
-    -> unit
-
   (** Iterate on all [f]iles & [d]irs in the targets.
       All [Path.Local.t]s are relative to [t.root]. *)
   val iteri : 'a t -> f:(Path.Local.t -> 'a -> unit) -> d:(Path.Local.t -> unit) -> unit
 
   val parallel_map : 'a t -> f:(Path.Local.t -> 'a -> 'b Fiber.t) -> 'b t Fiber.t
 
-  (** Aggregate all content digests. *)
+  (** Digest file names, file digests, and the directory structure. *)
+  val digest_dir_contents : Digest.t dir_contents -> Digest.t
+
+  (** Aggregate all content digests, including the structure of directory targets. *)
   val digest : Digest.t t -> Digest.t
 
   (* The odd type of [d] and [f] is due to the fact that [map_with_errors]

@@ -70,6 +70,20 @@ let update_var ctx key f =
   { ctx with parent = ctx; vars }
 ;;
 
+let[@inline always] enter_map_reduce (type errors) ctx monoid on_error k =
+  let (module M : Monoid with type t = errors) = monoid in
+  let map_reduce_context =
+    { ctx; k; on_error; combine = M.combine; ref_count = 1; errors = M.empty }
+  in
+  { ctx with
+    parent = ctx
+  ; on_error = Collect_errors
+  ; map_reduce_context = Map_reduce_context map_reduce_context
+  }
+;;
+
+let[@inline always] collect ctx k = enter_map_reduce ctx (module Exns) collect_error k
+
 let rec loop : Jobs.t -> step' = function
   | Empty -> Stalled
   | Job (ctx, run, x, jobs) -> exec ctx run x jobs
@@ -151,13 +165,8 @@ and exec : type a. context -> a continuation -> a -> Jobs.t -> step' =
     in
     exec ctx k x jobs
   | Finalize_body_complete (finally, k) ->
-    map_reduce_errors
-      ctx
-      (module Exns)
-      collect_error
-      finally
-      (Finalize_finally_complete (x, k))
-      jobs
+    let k = Finalize_finally_complete (x, k) in
+    exec_fiber_thunk (collect ctx k) finally (Unwind_map_reduce_to k) jobs
   | Finalize_now_complete (finally, k) ->
     (match finalize_now_result x finally with
      | Ok x -> exec ctx k x jobs
@@ -249,31 +258,17 @@ and exec_effect ctx eff jobs =
   | With_error_handler (on_error, f, k) -> with_error_handler ctx on_error f k jobs
   | Map_reduce_errors (m, on_error, f, k) -> map_reduce_errors ctx m on_error f k jobs
   | Run_collect_errors (f, k) ->
-    map_reduce_errors ctx (module Exns) collect_error f (Collect_errors_complete k) jobs
+    let k = Collect_errors_complete k in
+    exec_fiber_thunk (collect ctx k) f (Unwind_map_reduce_to k) jobs
   | Run_finalize (f, finally, k) ->
-    map_reduce_errors
-      ctx
-      (module Exns)
-      collect_error
-      f
-      (Finalize_body_complete (finally, k))
-      jobs
+    let k = Finalize_body_complete (finally, k) in
+    exec_fiber_thunk (collect ctx k) f (Unwind_map_reduce_to k) jobs
   | Run_finalize_now (f, finally, k) ->
-    map_reduce_errors
-      ctx
-      (module Exns)
-      collect_error
-      f
-      (Finalize_now_complete (finally, k))
-      jobs
+    let k = Finalize_now_complete (finally, k) in
+    exec_fiber_thunk (collect ctx k) f (Unwind_map_reduce_to k) jobs
   | Run_finally (finally, body_result, k) ->
-    map_reduce_errors
-      ctx
-      (module Exns)
-      collect_error
-      finally
-      (Finalize_finally_complete (body_result, k))
-      jobs
+    let k = Finalize_finally_complete (body_result, k) in
+    exec_fiber_thunk (collect ctx k) finally (Unwind_map_reduce_to k) jobs
   | End_of_fiber () ->
     let (Map_reduce_context r) = ctx.map_reduce_context in
     deref r jobs
@@ -338,23 +333,14 @@ and exec_fiber : type a. context -> a t -> a continuation -> Jobs.t -> step' =
   | With_error_handler_t (f, on_error) -> with_error_handler ctx on_error f k jobs
   | Map_reduce_errors_t (m, on_error, f) -> map_reduce_errors ctx m on_error f k jobs
   | Collect_errors_t f ->
-    map_reduce_errors ctx (module Exns) collect_error f (Collect_errors_complete k) jobs
+    let k = Collect_errors_complete k in
+    exec_fiber_thunk (collect ctx k) f (Unwind_map_reduce_to k) jobs
   | Finalize_t (f, finally) ->
-    map_reduce_errors
-      ctx
-      (module Exns)
-      collect_error
-      f
-      (Finalize_body_complete (finally, k))
-      jobs
+    let k = Finalize_body_complete (finally, k) in
+    exec_fiber_thunk (collect ctx k) f (Unwind_map_reduce_to k) jobs
   | Finalize_now_t (f, finally) ->
-    map_reduce_errors
-      ctx
-      (module Exns)
-      collect_error
-      f
-      (Finalize_now_complete (finally, k))
-      jobs
+    let k = Finalize_now_complete (finally, k) in
+    exec_fiber_thunk (collect ctx k) f (Unwind_map_reduce_to k) jobs
   | Suspend_t f ->
     let k = { ctx; run = k } in
     f k;
@@ -485,17 +471,8 @@ and map_reduce_errors
     -> Jobs.t
     -> step'
   =
-  fun ctx (module M : Monoid with type t = errors) on_error f k jobs ->
-  let map_reduce_context =
-    { ctx; k; on_error; combine = M.combine; ref_count = 1; errors = M.empty }
-  in
-  let ctx =
-    { ctx with
-      parent = ctx
-    ; on_error = Collect_errors
-    ; map_reduce_context = Map_reduce_context map_reduce_context
-    }
-  in
+  fun ctx monoid on_error f k jobs ->
+  let ctx = enter_map_reduce ctx monoid on_error k in
   exec_fiber_thunk ctx f (Unwind_map_reduce_to k) jobs
 ;;
 

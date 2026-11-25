@@ -33,5 +33,7 @@ module Workspace_local : sig
 
   val remove : Targets.Validated.t -> unit
   val remove_target : Path.Build.t -> unit
-  val remove_subtree : Path.Build.t -> unit
+
+  (** Invalidate cached digests for the subtree, then delete it from disk. *)
+  val delete_subtree : Path.Build.t -> unit
 end

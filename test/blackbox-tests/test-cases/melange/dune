@@ -12,6 +12,13 @@
  (alias runtest-melange))
 
 (cram
+ (applies_to
+  installed-virtual-lib-deps.t
+  installed-virtual-lib-deps-no-cmt.t
+  installed-virtual-lib-metadata.t)
+ (setup_scripts installed-vlib-helpers.sh))
+
+(cram
  (deps
   (package ppxlib))
  (applies_to

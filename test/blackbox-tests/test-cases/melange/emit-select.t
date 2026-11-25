@@ -57,3 +57,30 @@ A neighboring library can exclude the emit stanza's selected modules.
   >    (!fakefoobar -> foo.no_fake.ml))))
   > EOF
   $ dune build @mel
+
+Select targets in qualified subdirectories retain their module paths.
+
+  $ make_melange_project 3.26 1.0
+  $ mkdir -p qualified/group
+  $ cat >qualified/dune <<EOF
+  > (include_subdirs qualified)
+  > (melange.emit
+  >  (target output)
+  >  (emit_stdlib false)
+  >  (libraries
+  >   (select group/choice.ml from
+  >    (melange.dom -> group/choice.available.ml)
+  >    (!melange.dom -> group/choice.unavailable.ml))))
+  > EOF
+  $ cat >qualified/group/choice.available.ml <<EOF
+  > let message = "hello from a qualified select"
+  > EOF
+  $ cat >qualified/group/choice.unavailable.ml <<EOF
+  > let message = "dependency unavailable"
+  > EOF
+  $ cat >qualified/main.ml <<EOF
+  > let () = print_endline Group.Choice.message
+  > EOF
+  $ dune build @qualified/melange
+  $ node _build/default/qualified/output/qualified/main.js
+  hello from a qualified select

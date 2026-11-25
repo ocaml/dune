@@ -35,6 +35,12 @@ let is_in_registered_build_context path =
        Context_name.Map.mem contexts name)
 ;;
 
+let localize_stdlib_dir path =
+  let localized = Path.Expert.try_localize_external path in
+  let+ registered = is_in_registered_build_context localized in
+  if registered then localized else path
+;;
+
 let make_ocaml_config ~env ~ocamlc =
   let+ vars =
     Process.run_capture_lines ~display:Quiet ~env Strict ocamlc [ "-config" ]
@@ -118,9 +124,7 @@ let make name ~which ~env ~get_ocaml_tool =
        stdlib must then be a dune artifact. Anything else under [_build] was
        put there by something other than dune and stays external. *)
     let path = Path.of_string (Ocaml_config.standard_library ocaml_config) in
-    let localized = Path.Expert.try_localize_external path in
-    let+ registered = is_in_registered_build_context localized in
-    if registered then localized else path
+    localize_stdlib_dir path
   in
   let lib_config = Lib_config.create ocaml_config ~ocamlopt ~stdlib_dir in
   let version = Ocaml.Version.of_ocaml_config ocaml_config in

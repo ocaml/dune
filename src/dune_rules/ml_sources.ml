@@ -1317,7 +1317,14 @@ let modules_of_stanzas =
           Memo.List.fold_left stanzas ~init:modules ~f:(fun modules stanza ->
             let enabled_if, libraries =
               match Stanza.repr stanza with
-              | Library.T lib -> lib.enabled_if, lib.buildable.libraries
+              | Library.T lib ->
+                let { Buildable.libraries; melange_libraries; _ } = lib.buildable in
+                let libraries =
+                  match for_, melange_libraries with
+                  | Melange, Some libraries -> libraries
+                  | Melange, None | Ocaml, _ -> libraries
+                in
+                lib.enabled_if, libraries
               | Executables.T exes -> exes.enabled_if, exes.buildable.libraries
               | Tests.T tests -> tests.exes.enabled_if, tests.exes.buildable.libraries
               | Melange_stanzas.Emit.T mel -> mel.enabled_if, mel.libraries

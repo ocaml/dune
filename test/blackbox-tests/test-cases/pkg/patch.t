@@ -48,8 +48,7 @@ Ed-format patches are not supported and should give a clear error:
   $ build_pkg ed-test 2>&1 | censor
   Error: Could not parse the patch file. Only unified diff format is supported.
   Context diffs and ed commands are not supported.
-  -> required by
-     _build/_private/default/.pkg/ed-test.0.0.1-$DIGEST/target
+  -> required by _build/_private/default/.pkg/ed-test/target
   [1]
 
 Demonstrate that the original source shouldn't be modified:
@@ -84,8 +83,7 @@ without sources).
 
   $ build_pkg no-source 2>&1 | censor
   Error: Cannot edit file "foo.ml": file does not exist
-  -> required by
-     _build/_private/default/.pkg/no-source.0.0.1-$DIGEST/target
+  -> required by _build/_private/default/.pkg/no-source/target
   [1]
 
 Empty patches are treated as a no-op, matching Opam behavior:
@@ -108,3 +106,67 @@ Empty patches are treated as a no-op, matching Opam behavior:
 
   $ build_pkg empty-test
   original content
+
+A package can edit its own sources in place. Even when hardlink sandboxing
+is preferred, Dune copies both the sources and the installed outputs of the
+dependencies.
+
+  $ make_lockpkg dep <<'EOF'
+  > (version 0.0.1)
+  > (install (system "echo dependency > %{pkg-self:bin}/marker"))
+  > EOF
+  $ mkdir -p edit-source/nested
+  $ echo original > edit-source/nested/input
+  $ make_lockpkg edit-test <<EOF
+  > (version 0.0.1)
+  > (depends dep)
+  > (source (copy $PWD/edit-source))
+  > (build
+  >  (system
+  >   "\| dune_cmd stat kind %{pkg:dep:bin}/marker
+  >   "\| dune_cmd stat hardlinks %{pkg:dep:bin}/marker
+  >   "\| dune_cmd stat kind nested/input
+  >   "\| dune_cmd stat hardlinks nested/input
+  >   "\| echo edited > nested/input
+  >   "\| cat nested/input
+  >  ))
+  > EOF
+  $ cat > hardlink-config <<'EOF'
+  > (lang dune 3.25)
+  > (sandboxing_preference none hardlink)
+  > EOF
+  $ pkg_dir=$(get_build_pkg_dir edit-test)
+  $ dune build --cache=disabled --config-file hardlink-config \
+  >   "$pkg_dir/target"
+  regular file
+  1
+  regular file
+  1
+  edited
+  $ cat "$pkg_dir/source/nested/input"
+  original
+
+The dependency and source file are also copied when symlink sandboxing is
+preferred. Editing the source still leaves the staged source intact.
+Skip this case on Windows, where Dune does not support symlink sandboxing.
+
+  $ cat > symlink-config <<'EOF'
+  > (lang dune 3.25)
+  > (sandboxing_preference none symlink)
+  > EOF
+  $ cat > symlink.expected <<'EOF'
+  > regular file
+  > 1
+  > regular file
+  > 1
+  > edited
+  > original
+  > EOF
+  $ os_type=$(ocamlc -config-var os_type)
+  $ if [ "$os_type" != Win32 ]; then
+  >   rm -r "$pkg_dir/target" &&
+  >   dune build --cache=disabled --config-file symlink-config \
+  >     "$pkg_dir/target" > symlink.out 2>&1 &&
+  >   cat "$pkg_dir/source/nested/input" >> symlink.out &&
+  >   diff symlink.expected symlink.out
+  > fi

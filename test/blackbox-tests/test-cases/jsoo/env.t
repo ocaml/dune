@@ -60,9 +60,21 @@ Selected compilation flags must still report missing inputs for both backends.
   >  (js_of_ocaml (flags (:include js-compile-flags.sexp)))
   >  (wasm_of_ocaml (flags (:include wasm-compile-flags.sexp))))
   > EOF
+
+The backend rules remain available without reading their flags when only bytecode
+is requested.
+
+  $ dune build .a.eobjs/byte/a.cmo
+
   $ PATH="$PWD/bin:$PATH" dune build .a.eobjs/jsoo/a.cmo.js > js-flags.log 2>&1
   [1]
   $ grep -q 'No rule found for js-compile-flags.sexp' js-flags.log
   $ PATH="$PWD/bin:$PATH" dune build .a.eobjs/jsoo/a.wasmo > wasm-flags.log 2>&1
   [1]
   $ grep -q 'No rule found for wasm-compile-flags.sexp' wasm-flags.log
+
+Supplying the missing flags allows both module targets to build.
+
+  $ echo '()' > js-compile-flags.sexp
+  $ echo '()' > wasm-compile-flags.sexp
+  $ PATH="$PWD/bin:$PATH" dune build .a.eobjs/jsoo/a.cmo.js .a.eobjs/jsoo/a.wasmo

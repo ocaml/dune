@@ -1,5 +1,6 @@
 This test generates documentation using odoc for a library:
 
+  $ cp ../simple-project/* .
   $ docs=_build/default/_doc_new/html/docs
   $ dune build \
   >   "$docs/db.js" \

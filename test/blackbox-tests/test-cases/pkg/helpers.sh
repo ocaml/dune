@@ -25,15 +25,7 @@ default_repo_path() {
 # Prints the directory containing the package target and source dirs within the
 # _build directory.
 get_build_pkg_dir() {
-  local package_name=$1
-  local digest
-  digest=$($dune pkg print-digest "$package_name")
-  local status=$?
-  if [ "$status" -eq "0" ]; then
-    echo "$pkg_root/$digest"
-  else
-    return 1
-  fi
+  echo "$pkg_root/$1"
 }
 
 build_pkg() {
@@ -46,6 +38,15 @@ build_pkg() {
   else
     return 1
   fi
+}
+
+package_target_miss_reasons() {
+  dune trace cat | jq -cs --arg package "$1" '
+    [ .[]
+      | select(.cat == "cache" and .name == "workspace_local_miss")
+      | select(.args.target | endswith("/.pkg/" + $package + "/target"))
+      | .args.reason | split(":")[0]
+    ]'
 }
 
 show_pkg() {
@@ -453,6 +454,19 @@ create_mock_repo() {
 	 (name mock)
 	 (url "${repo}"))
 	EOF
+}
+
+write_portable_lockdir_workspace() {
+  {
+    cat <<-EOF
+	(lang dune 3.20)
+	(repository
+	 (name mock)
+	 (url "$(default_repo_path)"))
+	EOF
+    cat
+    echo '(pkg enabled)'
+  } > dune-workspace
 }
 
 create_mock_repo_with_doc_workspace() {

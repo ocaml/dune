@@ -22,35 +22,32 @@ type t =
 let current t = t.current
 let jobs = Svar.create { stamp = 0; current = Id.Map.empty; last_event = None }
 
-let start id pid ~description ~started_at =
+let update event =
   let open Fiber.O in
   let* () = Fiber.return () in
-  let new_jobs =
-    let jobs = Svar.read jobs in
-    match Id.Map.find jobs.current id with
-    | Some _ -> Code_error.raise "running job started twice" [ "id", Id.to_dyn id ]
-    | None ->
-      let job = { pid; description; started_at; id } in
-      let current = Id.Map.set jobs.current id job in
-      { current; stamp = jobs.stamp + 1; last_event = Some (Start job) }
+  let { current; stamp; last_event = _ } = Svar.read jobs in
+  let current =
+    match event with
+    | Start ({ id; _ } as job) ->
+      if Id.Map.mem current id
+      then Code_error.raise "running job started twice" [ "id", Id.to_dyn id ];
+      Id.Map.set current id job
+    | Stop id ->
+      if not (Id.Map.mem current id)
+      then
+        Code_error.raise
+          "running job stopped before it was started"
+          [ "id", Id.to_dyn id ];
+      Id.Map.remove current id
   in
-  Svar.write jobs new_jobs
+  Svar.write jobs { current; stamp = stamp + 1; last_event = Some event }
 ;;
 
-let stop id =
-  let open Fiber.O in
-  let* () = Fiber.return () in
-  let new_jobs =
-    let jobs = Svar.read jobs in
-    match Id.Map.find jobs.current id with
-    | None ->
-      Code_error.raise "running job stopped before it was started" [ "id", Id.to_dyn id ]
-    | Some _ ->
-      let current = Id.Map.remove jobs.current id in
-      { current; stamp = jobs.stamp + 1; last_event = Some (Stop id) }
-  in
-  Svar.write jobs new_jobs
+let start id pid ~description ~started_at =
+  update (Start { pid; description; started_at; id })
 ;;
+
+let stop id = update (Stop id)
 
 let event_equal x y =
   match x, y with

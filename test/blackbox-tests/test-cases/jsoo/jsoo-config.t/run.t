@@ -1,5 +1,8 @@
 tests js_of_ocaml conigs
 
+  $ fixture=../../js-compiler-fixtures/config
+  $ cp "$fixture/bin/"*.ml bin/
+  $ cp "$fixture/lib/"*.ml lib/
   $ dune build bin/bin1.bc.js bin/bin2.bc.js bin/bin3.bc.js
   $ dune trace cat | jq_dune -r '
   >   processes

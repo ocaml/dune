@@ -296,7 +296,7 @@ module Make (X : sig
   end) : S = struct
   include X
 
-  let list () = List.sort String.compare (readdir paths)
+  let list () = List.sort_uniq String.compare (readdir paths)
   let load name = load_plugin paths name
   let load_all () = List.iter load (list ())
 end

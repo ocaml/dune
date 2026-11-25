@@ -271,8 +271,7 @@ let make_default_env_node
             make ~inherit_from:None ~config_stanza:env_nodes.workspace |> Memo.return)))
 ;;
 
-let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
-  let context_name = Context.name context in
+let create ~(context : Context.t) ~(host : t option) =
   let env =
     Memo.lazy_ ~name:"super-context-environment" (fun () ->
       let* base =
@@ -285,12 +284,12 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
            | None -> Env.remove base ~var:Env_path.var
            | Some value -> Env.add base ~var:Env_path.var ~value)
       in
-      Site_env.add_packages_env context_name ~base stanzas packages)
+      Site_env.add_packages_env context ~base)
     |> Memo.Lazy.force
   in
   let artifacts = Artifacts_db.get context in
   let+ root_expander =
-    let public_libs = Scope.DB.public_libs context_name in
+    let public_libs = Scope.DB.public_libs (Context.name context) in
     let artifacts_host, public_libs_host, host_build_dir =
       match Context.for_host context with
       | None -> artifacts, public_libs, Memo.return (Context.build_dir context)
@@ -335,14 +334,13 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
 
 let all =
   Memo.lazy_ ~name:"Super_context.all" (fun () ->
-    let* packages = Dune_load.packages ()
-    and* contexts = Context.DB.all () in
+    let* contexts = Context.DB.all () in
     let rec sctxs =
       lazy
         (Context_name.Map.of_list_map_exn contexts ~f:(fun (c : Context.t) ->
            Context.name c, Memo.Lazy.create ~name:"make_sctx" (fun () -> make_sctx c)))
     and make_sctx (context : Context.t) =
-      let host () =
+      let* host =
         match Context.for_host context with
         | None -> Memo.return None
         | Some h ->
@@ -354,10 +352,7 @@ let all =
           in
           Some sctx
       in
-      let* host, stanzas =
-        Memo.fork_and_join host (fun () -> Dune_load.dune_files (Context.name context))
-      in
-      create ~host ~context ~packages ~stanzas
+      create ~host ~context
     in
     Lazy.force sctxs
     |> Context_name.Map.to_list

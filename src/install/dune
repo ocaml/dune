@@ -30,4 +30,5 @@
   dune_pkg
   dune_engine
   dune_section
+  dune_site_private
   dune_lang))

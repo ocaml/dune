@@ -1,11 +1,13 @@
 open Import
 
-(** [add_packages_env context ~base dune_file packages]
-    Modify [base] in [context] to include the site locations discovered from
-    [packages] and [dune_file] *)
-val add_packages_env
+(** Add dune-site runtime settings and the legacy workspace site locations. *)
+val add_packages_env : Context.t -> base:Env.t -> Env.t Memo.t
+
+(** Site locations contributed by [entries] under [root], without fallbacks.
+    Share the builder to reuse the computed locations for a layout. If
+    locations are contributed, depend on the action's final site binding. *)
+val install_env
   :  Context_name.t
-  -> base:Env.t
-  -> Dune_file.t list
-  -> Package.t Dune_lang.Package_name.Map.t
-  -> Env.t Memo.t
+  -> root:Path.Build.t
+  -> entries:Path.t Install.Entry.Expanded.t Path.Build.Map.t
+  -> Env.t Action_builder.t

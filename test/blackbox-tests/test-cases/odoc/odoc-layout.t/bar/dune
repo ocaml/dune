@@ -1,4 +1,0 @@
-(library
- (name bar)
- (public_name my_pkg.bar)
- (libraries my_pkg.foo))

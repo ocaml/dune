@@ -1,3 +1,0 @@
-(lang dune 3.25)
-
-(package (name my_pkg))

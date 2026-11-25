@@ -1,8 +1,35 @@
 Show where the documentation artifacts of each kind of library and package
 pages are produced.
 
+  $ make_dune_project_with_package 3.25 my_pkg
+  $ mkdir foo bar priv solo
+  $ echo '(documentation (package my_pkg))' > dune
+  $ echo '{0 pkg Page}' > index.mld
+
+  $ cat > foo/dune <<EOF
+  > (library
+  >  (name foo)
+  >  (public_name my_pkg.foo))
+  > EOF
+  $ echo 'let x = 1' > foo/a.ml
+  $ echo 'val x : B.t' > foo/a.mli
+  $ echo 'type t = int' > foo/b.ml
+  $ echo 'type t = int' > foo/b.mli
+
+  $ cat > bar/dune <<EOF
+  > (library
+  >  (name bar)
+  >  (public_name my_pkg.bar)
+  >  (libraries my_pkg.foo))
+  > EOF
+  $ echo 'let y = Foo.A.x' > bar/bar.ml
+  $ echo 'val y : Foo.B.t' > bar/bar.mli
+
+  $ echo '(library (name priv) (package my_pkg))' > priv/dune
   $ echo 'let p = 1' > priv/priv.ml
+  $ echo '(library (name solo))' > solo/dune
   $ echo 'let s = 1' > solo/solo.ml
+
   $ dune build @doc @doc-private
 
   $ find _build/default -name '*.odoc' | LC_ALL=C sort

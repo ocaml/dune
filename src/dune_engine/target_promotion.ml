@@ -101,16 +101,12 @@ let promote_target_if_not_up_to_date
 let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promote_source =
   let open Fiber.O in
   (* Map target paths taking into account the (promote (into <dir>)) field. *)
-  let* (relocate : Path.Build.t -> Path.Source.t) =
+  let* destination_root =
+    let source_root = Path.Build.drop_build_context_exn targets.root in
     match promote.into with
-    | None -> Fiber.return Path.Build.drop_build_context_exn
+    | None -> Fiber.return source_root
     | Some { loc; dir = into_dir } ->
-      let into_dir =
-        Path.Source.relative
-          (Path.Build.drop_build_context_exn targets.root)
-          into_dir
-          ~error_loc:loc
-      in
+      let into_dir = Path.Source.relative source_root into_dir ~error_loc:loc in
       let promote_into_error ~unix_error msg =
         let extra_messages =
           match unix_error with
@@ -125,14 +121,19 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
       Fs_memo.path_kind (In_source_dir into_dir)
       |> Memo.run
       >>| (function
-       | Ok S_DIR | Error (ENOENT, _, _) ->
-         fun src -> Path.Source.relative_fname into_dir (Path.Build.basename src)
+       | Ok S_DIR | Error (ENOENT, _, _) -> into_dir
        | Ok _other_kind ->
          promote_into_error ~unix_error:None (Pp.textf "%S is not a directory.")
        | Error unix_error ->
          promote_into_error
            ~unix_error:(Some unix_error)
            (Pp.textf "Cannot promote to directory %S."))
+  in
+  let relocate =
+    match promote.into with
+    | None -> Path.Source.append_local destination_root
+    | Some _ ->
+      fun path -> Path.Source.relative_fname destination_root (Path.Local.basename path)
   in
   let directory_target_error ~unix_error ~dst_dir msgs =
     User_error.raise
@@ -166,8 +167,7 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
   in
   (* Here we know that the promotion directory exists but we may need to create
      additional subdirectories for [targets.dirs]. *)
-  Targets.Produced.iter_dirs targets ~f:(fun dir ->
-    create_directory_if_needed ~dir:(Path.Build.append_local targets.root dir));
+  Targets.Produced.iter_dirs targets ~f:(fun dir -> create_directory_if_needed ~dir);
   let* () =
     (* Select targets taking into account the (promote (only <glob>)) field. *)
     let selected_for_promotion : Path.Local.t -> bool =
@@ -185,8 +185,8 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
       match selected_for_promotion src with
       | false -> Fiber.return ()
       | true ->
-        let src = Path.Build.append_local targets.root src in
         let dst = relocate src in
+        let src = Path.Build.append_local targets.root src in
         promote_target_if_not_up_to_date
           ~src
           ~src_digest
@@ -197,10 +197,7 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
   (* There can be some files or directories left over from earlier builds, so we
      need to remove them from [targets]. *)
   let remove_stale_files_and_subdirectories ~dir =
-    (* CR-someday rleshchinskiy: This can probably be made more efficient by relocating
-       root once. *)
-    let build_dir = Path.Build.append_local targets.root dir in
-    let dst_dir = relocate build_dir in
+    let dst_dir = relocate dir in
     (* We use a tracked version to subscribe to the correct directory listing.
        In this way, if a user manually creates a file inside a directory target,
        this function will rerun and remove it. *)
@@ -211,6 +208,7 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
     function
     | Error unix_error -> directory_target_error ~unix_error ~dst_dir []
     | Ok dir_contents ->
+      let build_dir = Path.Build.append_local targets.root dir in
       Fs_memo.Dir_contents.iter dir_contents ~f:(fun file_name kind ->
         match kind with
         | S_REG ->

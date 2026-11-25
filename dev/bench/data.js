@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795642136383,
+  "lastUpdate": 1795642458757,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -498073,6 +498073,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.35450896924,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ebafc11b18d2e11bcf4c7f22f5d3d41d7546c8d1",
+          "message": "build: update OxCaml release environments to 5.4 (#16969)\n\nUpdate both Nix and opam CI to OxCaml `5.4.0-ox9`, sharing\ncompiler/repository pins and the upstream odoc port from\nocaml/odoc#1520. Update the affected integration expectations and keep\nthe OxCaml patch guards enabled. Formatting and unrelated CI cleanups\nremain separate follow-ups.\n\nFollows merged #16968, #16985, #16990, and #16994.",
+          "timestamp": "2026-11-25T22:14:54+01:00",
+          "tree_id": "b3f26f7a790f2b650ee1eb30c70d3cd9baa72946",
+          "url": "https://github.com/ocaml/dune/commit/ebafc11b18d2e11bcf4c7f22f5d3d41d7546c8d1"
+        },
+        "date": 1795642457421,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.539160524113335,
             "unit": "seconds"
           }
         ]

@@ -38,13 +38,17 @@ Repeating a package through an include should not repeat its site path.
   $ dune build @repeated-dep
   2 paths, 2 unique
 
-A package with no site entries adds neither a scoped location nor an
-environment dependency. The legacy staging location is still visible.
+A regular file at the exact site path does not populate the site as a directory.
+It adds neither a scoped location nor an environment dependency. The legacy
+staging location is still visible.
 
   $ echo '(package (name bar))' >> dune-project
   $ echo bar > bar.txt
   $ cat >> dune <<'EOF'
-  > (install (package bar) (section share) (files bar.txt))
+  > (install
+  >  (package bar)
+  >  (section share_root)
+  >  (files (bar.txt as foo/data)))
   > (rule
   >  (target no-sites)
   >  (deps (package bar))

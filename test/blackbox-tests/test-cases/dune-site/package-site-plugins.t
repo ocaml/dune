@@ -34,6 +34,31 @@ A package dependency should make a plugin available without building @install.
   $ dune build @without-plugin
   plugin site configured: true
 
+An unrelated package included by an inline test should not hide the plugin's
+libraries from the test.
+
+  $ echo '(package (name extra))' >> dune-project
+  $ echo extra > extra.txt
+  $ echo '((package extra))' > extra-deps.sexp
+  $ cat >> dune <<'EOF'
+  > (install (package extra) (section share) (files extra.txt))
+  > (library
+  >  (name backend)
+  >  (modules ())
+  >  (inline_tests.backend
+  >   (generate_runner (echo "let () = exit (Sys.command \"app\")"))))
+  > (library
+  >  (name check)
+  >  (modules ())
+  >  (inline_tests
+  >   (backend backend)
+  >   (modes byte)
+  >   (deps (package app) (package plugin1) (include extra-deps.sexp))))
+  > EOF
+  $ dune runtest > output 2>&1
+  $ grep -E '^(plugin site configured:|plugin1$|Registration)' output
+  plugin site configured: true
+
 A prebuilt install tree must not make the same plugin appear twice.
 
   $ cat >> dune <<'EOF'

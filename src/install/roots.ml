@@ -138,6 +138,20 @@ let cons_path env ~var path =
     Some (Bin.cons_path ?path_sep:(sep var) (Path.build path) ~_PATH))
 ;;
 
+let merge_site_locations locations fallback =
+  let open Dune_site_private in
+  let decode = decode_dune_dir_locations in
+  match decode locations, decode fallback with
+  | Some locations, Some fallback ->
+    let key entry = encode_dune_dir_locations [ entry ] in
+    let dedupe = String.Table.dedupe_by ~key |> Staged.unstage in
+    encode_dune_dir_locations (dedupe (locations @ fallback))
+  | None, _ | _, None | (exception Invalid_argument _) ->
+    locations ^ String.make 1 path_sep ^ fallback
+;;
+
+let dune_dir_locations = Env.Var.of_string Dune_site_private.dune_dir_locations_env_var
+
 (* CR-soon Alizter: path-like env var manipulation is spread across at
    least four ad-hoc implementations, each with different scope, env
    representation, and semantics around the empty value:
@@ -162,6 +176,13 @@ let cons_path env ~var path =
    sites delegate; the current "pick a world" situation is what made
    [extend_env_concat_path_vars] necessary in the first place. *)
 let extend_env_concat_path_vars a b =
+  let b =
+    match Env.get b dune_dir_locations, Env.get a dune_dir_locations with
+    | Some locations, Some fallback
+      when not (String.is_empty locations || String.is_empty fallback) ->
+      Env.add b ~var:dune_dir_locations ~value:(merge_site_locations locations fallback)
+    | _ -> b
+  in
   let a =
     Env.Var.Set.fold path_vars ~init:a ~f:(fun var env ->
       match Env.get b var with

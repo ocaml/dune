@@ -48,12 +48,10 @@ val cons_path : Env.t -> var:Env.Var.t -> Path.Build.t -> Env.t
     OCAMLTOP_INCLUDE_PATH, and MANPATH. *)
 val path_vars : Env.Var.Set.t
 
-(** [extend_env_concat_path_vars a b] extends [a] with the bindings from [b],
-    with one twist: for every var in {!path_vars}, the value from [b] is
-    prepended (cons-style, respecting per-var separator from {!sep}) to the
-    value from [a] rather than overwriting it. Generalisation of
-    [Env_path.extend_env_concat_path] (which only handles {!Env_path.var}) to
-    every install-managed path var. *)
+(** Extend [a] with the bindings from [b], prepending values for {!path_vars}
+    with their per-variable separator from {!sep}. Merge nonempty
+    [DUNE_DIR_LOCATIONS] bindings in the same order, keeping only the first
+    occurrence of each site location. *)
 val extend_env_concat_path_vars : Env.t -> Env.t -> Env.t
 
 val make : 'a -> relative:('a -> string -> 'a) -> 'a t

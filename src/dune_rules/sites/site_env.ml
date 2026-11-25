@@ -145,30 +145,6 @@ let install_env context ~root ~entries =
     env
 ;;
 
-let merge_locations locations fallback =
-  let open Dune_site_private in
-  let decode = decode_dune_dir_locations in
-  match decode locations, decode fallback with
-  | Some locations, Some fallback ->
-    let key entry = encode_dune_dir_locations [ entry ] in
-    let dedupe = String.Table.dedupe_by ~key |> Staged.unstage in
-    encode_dune_dir_locations (dedupe (locations @ fallback))
-  | None, _ | _, None | (exception Invalid_argument _) ->
-    locations ^ String.make 1 path_sep ^ fallback
-;;
-
-let extend_env ~base env =
-  let var = dune_dir_locations_env_var in
-  let env =
-    match Env.get env var, Env.get base var with
-    | Some locations, Some fallback
-      when not (String.is_empty locations || String.is_empty fallback) ->
-      Env.add env ~var ~value:(merge_locations locations fallback)
-    | _ -> env
-  in
-  Install.Roots.extend_env_concat_path_vars base env
-;;
-
 let add_packages_env context ~base =
   let* base =
     let+ ocaml = Context.ocaml context

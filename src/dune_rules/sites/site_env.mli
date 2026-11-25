@@ -11,8 +11,3 @@ val install_env
   -> root:Path.Build.t
   -> entries:Path.t Install.Entry.Expanded.t Path.Build.Map.t
   -> Env.t Action_builder.t
-
-(** Extend [base] with a contribution, prepending install path variables and
-    site locations rather than replacing them. When combining site bindings,
-    keep the first occurrence of each location. *)
-val extend_env : base:Env.t -> Env.t -> Env.t

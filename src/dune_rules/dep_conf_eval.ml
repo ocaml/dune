@@ -176,7 +176,7 @@ let compose_env expander ~package_env ~bin_names ~include_envs =
   List.fold_left include_envs ~init:base ~f:(fun acc env ->
     let+ acc = acc
     and+ env = env in
-    Site_env.extend_env ~base:acc env)
+    Install.Roots.extend_env_concat_path_vars acc env)
 ;;
 
 let package_dep_swvs (dep : Dep_conf.t) =
@@ -458,7 +458,7 @@ and combined_package_deps_builder expander pkgs =
              ~packages:(Package.Name.Selection.Only lockdir_package_names)
              context.name)
       in
-      Site_env.extend_env ~base:lockdir_env local_env
+      Install.Roots.extend_env_concat_path_vars lockdir_env local_env
   in
   let dune_version = Expander.project expander |> Dune_project.dune_version in
   let+ () =

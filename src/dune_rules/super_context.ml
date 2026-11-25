@@ -171,9 +171,9 @@ let extend_action_env t ~dir action =
   in
   (* Cons path-like vars from the action's environment (bin-layout PATH,
      package-layout OCAMLPATH/etc.) onto the directory env so that both layout
-     and system entries remain visible. Scoped site locations precede inherited
-     ones. Other vars from the action's environment overwrite dir env. *)
-  let env = Site_env.extend_env ~base:env action.props.env in
+     and system entries remain visible. Other vars from the action's environment
+     overwrite dir env. *)
+  let env = Install.Roots.extend_env_concat_path_vars env action.props.env in
   (* [(env (binaries ...))] is the most specific contributor to [PATH], so it is
      added last: a binary staged by [(deps (package ...))] must not shadow one
      the user bound explicitly. *)

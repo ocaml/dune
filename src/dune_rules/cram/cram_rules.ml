@@ -288,7 +288,7 @@ let spec_for_test ~stanzas ~dune_version test =
                 let open Action_builder.O in
                 let+ acc = acc.env
                 and+ env in
-                Site_env.extend_env ~base:acc env
+                Install.Roots.extend_env_concat_path_vars acc env
               in
               acc.deps, sandbox, env
           in

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795625476008,
+  "lastUpdate": 1795625554401,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -694288,6 +694288,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.810706608926667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d0f5c44235e0f66e23dd72666bfbd080a6ac6c5b",
+          "message": "test: share mode-dependent foreign-stub fixtures (#17238)\n\nStage a shared C source in the four mode-dependent foreign-stub tests.\nGenerate the mixed-mode executable stanzas from one helper while keeping\nthe mode and expected diagnostics explicit in each case.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T00:41:13+08:00",
+          "tree_id": "a2ec7eb2ec3e19892fdb1cb3ac7dcb58186e25ea",
+          "url": "https://github.com/ocaml/dune/commit/d0f5c44235e0f66e23dd72666bfbd080a6ac6c5b"
+        },
+        "date": 1795625220405,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.9771210475800003,
             "unit": "seconds"
           }
         ]

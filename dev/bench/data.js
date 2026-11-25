@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795636560190,
+  "lastUpdate": 1795636566276,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -498044,6 +498044,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 42.40121091156,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0cab565a3f2c4d6ccb6655db271f9716a087dd7d",
+          "message": "test(odoc): cover artifact layout, link warnings, and module dependencies (#17245)\n\nThis cherry-picks the tests from #17071 so we can separately improve the\nodoc coverage. Directory cram tests are converted to file cram tests,\nthis makes the tests easier to read and maintain in the future.\n\nI've also improved some of the test prose to be more descriptive.\n\nRefs #17071",
+          "timestamp": "2026-11-25T20:41:44+01:00",
+          "tree_id": "214f2d85158457f4cfab97a5e7b010fbc2c8cca6",
+          "url": "https://github.com/ocaml/dune/commit/0cab565a3f2c4d6ccb6655db271f9716a087dd7d"
+        },
+        "date": 1795636565311,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.35450896924,
             "unit": "seconds"
           }
         ]

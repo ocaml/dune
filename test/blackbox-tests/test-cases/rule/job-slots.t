@@ -196,20 +196,24 @@ job to start first. Requesting all slots does not guarantee exclusivity:
   heavy: 2
   light: 1
 
-The slot calculation should use the same working directory as the action.
-Print its directory to stderr so stdout still contains just the slot count.
+The slot calculation should have its own working directory without the
+rule's inputs. Print its directory to stderr so stdout is still a slot count.
 
+  $ touch rule-input
   $ cat >dune <<'EOF'
   > (rule
   >  (alias sandboxed)
-  >  (deps (sandbox always))
-  >  (job_slots (bash "echo \"job_slots: $(pwd)\" >&2; echo 1"))
-  >  (action (bash "echo \"action: $(pwd)\"")))
+  >  (deps rule-input (sandbox always))
+  >  (job_slots
+  >   (bash "echo \"job_slots: $(pwd)\" >&2; if test -f rule-input; then echo 'job_slots sees rule-input' >&2; fi; echo 1"))
+  >  (action (bash "echo \"action: $(pwd)\"; test -f rule-input")))
   > EOF
 
-CR: Only the main action's working directory is rewritten for the sandbox.
+CR: The probe runs in the regular build directory, where it can see the rule's
+input even though the input is not needed for the slot calculation.
 
   $ dune build @sandboxed > sandboxed.log 2>&1
   $ censor < sandboxed.log
   job_slots: $PWD/_build/default
+  job_slots sees rule-input
   action: $PWD/_build/.sandbox/$DIGEST/default

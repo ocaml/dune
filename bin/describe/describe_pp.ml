@@ -75,7 +75,7 @@ let execute_pp_action ~sctx file pp_file dump_file =
     ; execution_parameters
     ; sandbox = None
     ; action
-    ; job_slots = None
+    ; job_slots = 1
     }
   in
   let ok =

@@ -59,13 +59,16 @@ commands that compute job slots:
   $ dune trace cat | jq -sr '
   >   [.[] | select(.cat == "process" and .name == "start")
   >    | .args | select(.target_files != null)
-  >    | {target: (.target_files[0] | split("/") | last), job_slots}]
+  >    | {target: (.target_files[0] |
+  >        if contains("/.actions/") then "job_slots probe"
+  >        else split("/") | last end), job_slots}]
   >   | group_by(.target)[]
   >   | "\(.[0].target): \(map(.job_slots) | sort)"'
   default: [1]
-  half: [1,2]
-  run: [1,3]
-  too-many: [1,4]
+  half: [2]
+  job_slots probe: [1,1,1]
+  run: [3]
+  too-many: [4]
 
 A change of the total number of job slots does not cause a rebuild:
 
@@ -78,7 +81,7 @@ A change of the job_slots command does not cause a rebuild:
   $ cat >dune <<'EOF'
   > (rule
   >  (target half)
-  >  (job_slots (bash "echo 1"))
+  >  (job_slots (bash "exit 1"))
   >  (action (with-stdout-to %{target} (bash "echo $DUNE_JOB_SLOTS"))))
   > EOF
 
@@ -86,45 +89,59 @@ A change of the job_slots command does not cause a rebuild:
   $ cat _build/default/half
   2
 
-The command must print a positive integer. Non-integers, zero, and negative
-values are rejected before the rule's action runs:
+When the rule needs to run again, the probe uses the new job limit.
 
   $ cat >dune <<'EOF'
   > (rule
-  >  (target bad)
-  >  (job_slots (cat slots))
+  >  (target refresh)
+  >  (deps input)
+  >  (job_slots (bash "echo $DUNE_JOBS"))
   >  (action (with-stdout-to %{target} (bash "echo $DUNE_JOB_SLOTS"))))
   > EOF
+  $ echo first > input
+  $ dune build -j 2 refresh
+  $ cat _build/default/refresh
+  2
+  $ echo second > input
+  $ dune build -j 3 refresh
+  $ cat _build/default/refresh
+  3
 
-  $ echo foo > slots
+The command must print a positive integer. Non-integers, zero, and negative
+values are rejected before the rule's action runs:
+
+  $ write_slot_rule() {
+  >   cat >dune <<EOF
+  > (rule
+  >  (target bad)
+  >  (job_slots (echo $1))
+  >  (action (with-stdout-to %{target} (bash "echo \$DUNE_JOB_SLOTS"))))
+  > EOF
+  > }
+
+  $ write_slot_rule foo
   $ dune build -j 4 ./bad
-  File "dune", lines 1-4, characters 0-112:
-  1 | (rule
-  2 |  (target bad)
-  3 |  (job_slots (cat slots))
-  4 |  (action (with-stdout-to %{target} (bash "echo $DUNE_JOB_SLOTS"))))
+  File "dune", line 3, characters 12-22:
+  3 |  (job_slots (echo foo))
+                  ^^^^^^^^^^
   Error: The job_slots command must print a positive integer, but it printed
   "foo".
   [1]
 
-  $ echo 0 > slots
+  $ write_slot_rule 0
   $ dune build -j 4 ./bad
-  File "dune", lines 1-4, characters 0-112:
-  1 | (rule
-  2 |  (target bad)
-  3 |  (job_slots (cat slots))
-  4 |  (action (with-stdout-to %{target} (bash "echo $DUNE_JOB_SLOTS"))))
+  File "dune", line 3, characters 12-20:
+  3 |  (job_slots (echo 0))
+                  ^^^^^^^^
   Error: The job_slots command must print a positive integer, but it printed
   "0".
   [1]
 
-  $ echo -3 > slots
+  $ write_slot_rule -3
   $ dune build -j 4 ./bad
-  File "dune", lines 1-4, characters 0-112:
-  1 | (rule
-  2 |  (target bad)
-  3 |  (job_slots (cat slots))
-  4 |  (action (with-stdout-to %{target} (bash "echo $DUNE_JOB_SLOTS"))))
+  File "dune", line 3, characters 12-21:
+  3 |  (job_slots (echo -3))
+                  ^^^^^^^^^
   Error: The job_slots command must print a positive integer, but it printed
   "-3".
   [1]
@@ -132,7 +149,7 @@ values are rejected before the rule's action runs:
 
 One slot is accepted:
 
-  $ echo 1 > slots
+  $ write_slot_rule 1
   $ dune build -j 4 ./bad
   $ cat _build/default/bad
   1
@@ -196,8 +213,9 @@ job to start first. Requesting all slots does not guarantee exclusivity:
   heavy: 2
   light: 1
 
-The slot calculation should have its own working directory without the
-rule's inputs. Print its directory to stderr so stdout is still a slot count.
+The slot calculation should have its own sandbox without the rule's inputs,
+even when the sandboxing preference is `none`. Print its directory to stderr
+so stdout is still a slot count.
 
   $ touch rule-input
   $ cat >dune <<'EOF'
@@ -209,11 +227,7 @@ rule's inputs. Print its directory to stderr so stdout is still a slot count.
   >  (action (bash "echo \"action: $(pwd)\"; test -f rule-input")))
   > EOF
 
-CR: The probe runs in the regular build directory, where it can see the rule's
-input even though the input is not needed for the slot calculation.
-
-  $ dune build @sandboxed > sandboxed.log 2>&1
+  $ dune build --sandbox=none @sandboxed > sandboxed.log 2>&1
   $ censor < sandboxed.log
-  job_slots: $PWD/_build/default
-  job_slots sees rule-input
-  action: $PWD/_build/.sandbox/$DIGEST/default
+  job_slots: $PWD/_build/.sandbox/$DIGEST1/default
+  action: $PWD/_build/.sandbox/$DIGEST2/default

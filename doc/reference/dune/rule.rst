@@ -164,7 +164,9 @@ field lets it account for this parallelism by taking more than one job slot.
 The value of the field is an action, usually ``run`` or ``bash``. Before Dune
 runs the rule's action, it runs the ``job_slots`` action with the total number
 of job slots in the ``DUNE_JOBS`` environment variable. The ``job_slots``
-action must print a positive integer; zero and negative values are errors.
+action uses one slot and always runs in its own sandbox. No input files are
+staged for the slot calculation. The ``job_slots`` action must print a
+positive integer; zero and negative values are errors.
 Dune caps this integer at the total number of job slots. Each process that the
 rule's action starts takes this many slots. The rule's action sees the number
 in the ``DUNE_JOB_SLOTS`` environment variable. An action without the field sees

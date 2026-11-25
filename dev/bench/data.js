@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795624119050,
+  "lastUpdate": 1795624126922,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -497638,6 +497638,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 63.96837372504667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d084fed712315ce15a9c4a51567d55ea2bd3d976",
+          "message": "test(engine): reproduce cached universe dependency in watch mode (#17237)\n\nBuild a rule with a `(universe)` dependency twice through the same watch\nserver, changing an input outside the workspace between requests. Record\nthat the watch server reuses the old output while a one-shot build picks\nup the change.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T00:08:16+08:00",
+          "tree_id": "891bd5af3665ba33dc1379d80325059fd2ddf5d3",
+          "url": "https://github.com/ocaml/dune/commit/d084fed712315ce15a9c4a51567d55ea2bd3d976"
+        },
+        "date": 1795624125823,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5164737325200001,
             "unit": "seconds"
           }
         ]

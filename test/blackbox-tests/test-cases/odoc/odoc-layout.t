@@ -59,3 +59,21 @@ and HTML go under _doc.
   _build/default/_doc/_odocls/my_pkg/page-index.odocl
   _build/default/_doc/_odocls/my_pkg/priv.odocl
   _build/default/_doc/_odocls/solo@e3b9de2fb703/solo.odocl
+
+A package page and a library can both be documented when the library's
+public name matches the page's compiled filename, page-example.odoc.
+
+  $ mkdir collision
+  $ cd collision
+  $ touch dune-workspace
+  $ make_dune_project_with_package 3.25 page-example
+  $ cat > dune <<EOF
+  > (documentation (package page-example))
+  > (library (name foo) (public_name page-example.odoc))
+  > EOF
+  $ echo '{0 Example}' > example.mld
+  $ echo 'let x = 1' > foo.ml
+
+  $ dune build @doc
+  $ test -f _build/default/_doc/_html/page-example/example.html
+  $ test -f _build/default/_doc/_html/page-example/Foo/index.html

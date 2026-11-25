@@ -5,6 +5,7 @@ module Cm_kind : sig
     | Cmi
     | Cmj
 
+  val compare : t -> t -> Ordering.t
   val source : t -> Ocaml.Ml_kind.t
   val ext : t -> Filename.Extension.t
   val to_dyn : t -> Dyn.t

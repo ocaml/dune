@@ -147,7 +147,7 @@ let merge_site_locations locations fallback =
     let dedupe = String.Table.dedupe_by ~key |> Staged.unstage in
     encode_dune_dir_locations (dedupe (locations @ fallback))
   | None, _ | _, None | (exception Invalid_argument _) ->
-    locations ^ String.make 1 path_sep ^ fallback
+    String.append_with_char locations ~sep:path_sep fallback
 ;;
 
 let dune_dir_locations = Env.Var.of_string Dune_site_private.dune_dir_locations_env_var

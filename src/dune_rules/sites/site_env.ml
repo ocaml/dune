@@ -19,12 +19,8 @@ let dune_sites_env ~default_ocamlpath ~stdlib =
 
 let sites_by_context =
   let add_site m pkg site section =
-    Package.Name.Map.update m pkg ~f:(fun sections ->
-      let sections = Option.value sections ~default:Section.Map.empty in
-      let sites =
-        Option.value (Section.Map.find sections section) ~default:Site.Set.empty
-      in
-      Some (Section.Map.set sections section (Site.Set.add sites site)))
+    Package.Name.Map.update m pkg ~f:(fun sites ->
+      Some (Site.Map.set (Option.value sites ~default:Site.Map.empty) site section))
   in
   Memo.create
     "site-package-sites"
@@ -32,12 +28,17 @@ let sites_by_context =
     (fun context ->
        let* stanzas = Dune_load.dune_files context
        and* packages = Dune_load.packages () in
-       let+ referenced_sites =
-         (* A stanza may refer to a site in an external package. *)
+       let declared_sites =
+         Package.Name.Map.filter_map packages ~f:(fun package ->
+           let sites = Package.sites package in
+           Option.some_if (not (Site.Map.is_empty sites)) sites)
+       in
+       let+ sites =
+         (* A stanza may also refer to a site in an external package. *)
          let* package_db = Package_db.create context in
          Dune_file.Memo_fold.fold_static_stanzas
            stanzas
-           ~init:Package.Name.Map.empty
+           ~init:declared_sites
            ~f:(fun _ stanza acc ->
              match Stanza.repr stanza with
              | Install_conf.T { section = _, Site { pkg; site; loc }; _ }
@@ -52,80 +53,78 @@ let sites_by_context =
                   add_site acc pkg site section)
              | _ -> Memo.return acc)
        in
-       (* Include local sites even when no stanza names them. *)
-       Package.Name.Map.foldi packages ~init:referenced_sites ~f:(fun pkg package acc ->
-         Package.sites package
-         |> Site.Map.foldi ~init:acc ~f:(fun site section acc ->
-           add_site acc pkg site section)))
+       Package.Name.Map.map sites ~f:(fun sites ->
+         Site.Map.foldi sites ~init:Section.Map.empty ~f:(fun site section acc ->
+           Section.Map.Multi.cons acc section site)))
   |> Memo.exec
 ;;
 
-let set_locations env = function
+type location =
+  { package : string
+  ; section : Section.t
+  ; dir : Path.Build.t
+  ; sites : Site.t list
+  }
+
+let locations ~root package_sites =
+  let roots = Install.Roots.opam_from_prefix root ~relative:Path.Build.relative in
+  Package.Name.Map.foldi package_sites ~init:[] ~f:(fun pkg sections acc ->
+    let paths = Install.Paths.make ~relative:Path.Build.relative ~package:pkg ~roots in
+    let package = Package.Name.to_string pkg in
+    Section.Map.foldi sections ~init:acc ~f:(fun section sites acc ->
+      { package; section; dir = Install.Paths.get paths section; sites } :: acc))
+;;
+
+let set_locations env ~fallbacks locations =
+  let entries =
+    List.fold_right locations ~init:fallbacks ~f:(fun { package; section; dir; _ } acc ->
+      let dir = Path.to_absolute_filename (Path.build dir) in
+      { Dune_site_private.package; section; dir } :: acc)
+  in
+  match entries with
   | [] -> env
-  | entries ->
+  | _ ->
     Env.add
       env
       ~var:dune_dir_locations_env_var
       ~value:(Dune_site_private.encode_dune_dir_locations entries)
 ;;
 
-let entry_parents ~root entries =
-  let rec add_parents dir parents =
-    if Path.Build.equal dir root || Path.Build.Set.mem parents dir
-    then parents
-    else add_parents (Path.Build.parent_exn dir) (Path.Build.Set.add parents dir)
-  in
-  (* Directory entries themselves are handled by [covered_by_directory]. *)
-  Path.Build.Map.foldi
-    (Path.Build.Map.remove entries root)
-    ~init:Path.Build.Set.empty
-    ~f:(fun dst _ parents -> add_parents (Path.Build.parent_exn dst) parents)
-;;
-
-type layout =
-  | Staging
-  | Scoped of Path.t Install.Entry.Expanded.t Path.Build.Map.t
-
-let locations ~root layout package_sites =
-  let populated =
-    match layout with
-    | Staging -> fun _ _ -> true
-    | Scoped entries ->
-      let parents = entry_parents ~root entries in
-      let rec covered_by_directory dir =
-        match Path.Build.Map.find entries dir with
-        | Some { Install.Entry.kind = Directory; _ } -> true
-        | _ ->
-          (not (Path.Build.equal dir root))
-          && covered_by_directory (Path.Build.parent_exn dir)
+let populated_locations ~root entries = function
+  | [] -> []
+  | locations ->
+    let parents =
+      let rec add dir parents =
+        if Path.Build.equal dir root || Path.Build.Set.mem parents dir
+        then parents
+        else add (Path.Build.parent_exn dir) (Path.Build.Set.add parents dir)
       in
-      fun dir sites ->
-        Site.Set.exists sites ~f:(fun site ->
-          let site_dir = Path.Build.relative dir (Site.to_string site) in
-          Path.Build.Set.mem parents site_dir || covered_by_directory site_dir)
-  in
-  let roots = Install.Roots.opam_from_prefix root ~relative:Path.Build.relative in
-  Package.Name.Map.foldi package_sites ~init:[] ~f:(fun package_name sections acc ->
-    let paths =
-      Install.Paths.make ~relative:Path.Build.relative ~package:package_name ~roots
+      (* Directory entries themselves are handled by [covered_by_directory]. *)
+      Path.Build.Map.foldi
+        (Path.Build.Map.remove entries root)
+        ~init:Path.Build.Set.empty
+        ~f:(fun dst _ parents -> add (Path.Build.parent_exn dst) parents)
     in
-    Section.Map.foldi sections ~init:acc ~f:(fun section sites acc ->
-      let dir = Install.Paths.get paths section in
-      if populated dir sites
-      then (
-        let package = Package.Name.to_string package_name in
-        let dir = Path.to_absolute_filename (Path.build dir) in
-        { Dune_site_private.package; dir; section } :: acc)
-      else acc))
+    let rec covered_by_directory dir =
+      match Path.Build.Map.find entries dir with
+      | Some { Install.Entry.kind = Install.Entry.Expanded.Directory; _ } -> true
+      | _ ->
+        (not (Path.Build.equal dir root))
+        && covered_by_directory (Path.Build.parent_exn dir)
+    in
+    List.filter locations ~f:(fun { dir; sites; _ } ->
+      List.exists sites ~f:(fun site ->
+        let site_dir = Path.Build.relative dir (Site.to_string site) in
+        Path.Build.Set.mem parents site_dir || covered_by_directory site_dir))
 ;;
 
 let install_env context ~root ~entries =
   let site_env =
     Memo.lazy_ ~name:"install-layout-site-env" (fun () ->
       let+ sites = sites_by_context context in
-      if Package.Name.Map.is_empty sites
-      then Env.empty
-      else set_locations Env.empty (locations ~root (Scoped entries) sites))
+      locations ~root sites
+      |> populated_locations ~root entries
+      |> set_locations Env.empty ~fallbacks:[])
   in
   let open Action_builder.O in
   let* env = Action_builder.of_memo (Memo.Lazy.force site_env) in
@@ -161,5 +160,5 @@ let add_packages_env context ~base =
   let context = Context.name context in
   let+ sites = sites_by_context context in
   let root = Install.Context.dir ~context in
-  set_locations base (locations ~root Staging sites @ init)
+  set_locations base ~fallbacks:init (locations ~root sites)
 ;;

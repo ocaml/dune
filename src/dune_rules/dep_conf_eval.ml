@@ -167,8 +167,13 @@ let make_bin_env expander bin_names =
        Install.Roots.cons_path Env.empty ~var:Env_path.var layout_dir)
 ;;
 
-let merge_include_envs outer include_envs =
-  List.fold_left include_envs ~init:outer ~f:(fun acc env ->
+let compose_env expander ~package_env ~bin_names ~include_envs =
+  let base =
+    let+ package_env = package_env
+    and+ bin_env = make_bin_env expander bin_names in
+    Env_path.extend_env_concat_path package_env bin_env
+  in
+  List.fold_left include_envs ~init:base ~f:(fun acc env ->
     let+ acc = acc
     and+ env = env in
     Site_env.extend_env ~base:acc env)
@@ -577,16 +582,7 @@ and named_paths_builder ~expander l =
       let b = Action_builder.memoize "combined-package-deps" b in
       (b >>| fun _ -> []) :: builders, b
   in
-  let bin_env = make_bin_env expander bin_names in
-  let action_env =
-    let outer =
-      let open Action_builder.O in
-      let+ package_env = package_env
-      and+ bin_env = bin_env in
-      Env_path.extend_env_concat_path package_env bin_env
-    in
-    merge_include_envs outer include_envs
-  in
+  let action_env = compose_env expander ~package_env ~bin_names ~include_envs in
   let builder = List.rev builders |> Action_builder.all >>| List.concat in
   builder, bindings, action_env
 ;;
@@ -644,8 +640,6 @@ let unnamed sandbox ~expander l =
       | Some e -> e :: envs
       | None -> envs)
   in
-  let bin_env = make_bin_env expander bin_names in
-  let bin_env = merge_include_envs bin_env include_envs in
   let action_env =
     Action_builder.memoize
       "deps action_env"
@@ -657,9 +651,8 @@ let unnamed sandbox ~expander l =
              let+ () = acc
              and+ _x = to_action_builder (dep expander x) in
              ())
-       and+ package_env = package_env
-       and+ bin_env = bin_env in
-       Site_env.extend_env_concat_path ~base:package_env bin_env)
+       and+ env = compose_env expander ~package_env ~bin_names ~include_envs in
+       env)
   in
   action_env, List.fold_left l ~init:sandbox ~f:add_sandbox_config
 ;;

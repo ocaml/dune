@@ -58,11 +58,10 @@ libraries from the test.
   >   (deps (package app) (package plugin1) (include extra-deps.sexp))))
   > EOF
   $ dune runtest > output 2>&1
-  [1]
   $ grep -E '^(plugin site configured:|plugin1$|Registration)' output
   plugin site configured: true
   plugin1
-  $ grep -q 'The library "plugin1.plugin1_impl" can.t be found' output
+  Registration of Plugin1
 
 A prebuilt install tree must not make the same plugin appear twice.
 

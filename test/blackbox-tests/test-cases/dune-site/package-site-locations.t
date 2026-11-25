@@ -16,8 +16,8 @@ An empty directory-level binding should not be appended as a fallback.
   $ cp dune rules
   $ echo '(env (_ (env-vars (DUNE_DIR_LOCATIONS ""))))' >> dune
   $ dune runtest > output 2>&1
-  [1]
-  $ grep -q 'Invalid value DUNE_DIR_LOCATIONS' output
+  $ grep '^foo\.txt:' output
+  foo.txt: foo
   $ mv rules dune
 
 Repeating a package through an include should not repeat its site path.
@@ -36,7 +36,7 @@ Repeating a package through an include should not repeat its site path.
   >   Printf.printf "%d paths, %d unique\n" (List.length paths) (List.length unique)
   > EOF
   $ dune build @repeated-dep
-  3 paths, 2 unique
+  2 paths, 2 unique
 
 A package with no site entries adds neither a scoped location nor an
 environment dependency. The legacy staging location is still visible.

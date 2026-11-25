@@ -129,40 +129,44 @@ let locations ~root layout package_sites =
 ;;
 
 let install_env context ~root ~entries =
-  let open Action_builder.O in
-  let* site_locations =
-    Action_builder.of_memo
-      (let open Memo.O in
-       let+ sites = sites_by_context context in
-       if Package.Name.Map.is_empty sites
-       then []
-       else locations ~root (Scoped entries) sites)
+  let site_env =
+    Memo.lazy_ ~name:"install-layout-site-env" (fun () ->
+      let+ sites = sites_by_context context in
+      if Package.Name.Map.is_empty sites
+      then Env.empty
+      else set_locations Env.empty (locations ~root (Scoped entries) sites))
   in
-  match site_locations with
-  | [] -> Action_builder.return Env.empty
-  | _ :: _ ->
+  let open Action_builder.O in
+  let* env = Action_builder.of_memo (Memo.Lazy.force site_env) in
+  if Env.is_empty env
+  then Action_builder.return env
+  else
     let+ () = Action_builder.env_var dune_dir_locations_env_var in
-    set_locations Env.empty site_locations
+    env
 ;;
 
-let add_fallbacks ~base env =
-  match
-    Env.get env dune_dir_locations_env_var, Env.get base dune_dir_locations_env_var
-  with
+let merge_locations locations fallback =
+  let open Dune_site_private in
+  let decode = decode_dune_dir_locations in
+  match decode locations, decode fallback with
   | Some locations, Some fallback ->
-    Env.add
-      env
-      ~var:dune_dir_locations_env_var
-      ~value:(locations ^ String.make 1 Dune_site_private.path_sep ^ fallback)
-  | _ -> env
+    let key entry = encode_dune_dir_locations [ entry ] in
+    let dedupe = String.Table.dedupe_by ~key |> Staged.unstage in
+    encode_dune_dir_locations (dedupe (locations @ fallback))
+  | None, _ | _, None | (exception Invalid_argument _) ->
+    locations ^ String.make 1 path_sep ^ fallback
 ;;
 
 let extend_env ~base env =
-  Install.Roots.extend_env_concat_path_vars base (add_fallbacks ~base env)
-;;
-
-let extend_env_concat_path ~base env =
-  Env_path.extend_env_concat_path base (add_fallbacks ~base env)
+  let var = dune_dir_locations_env_var in
+  let env =
+    match Env.get env var, Env.get base var with
+    | Some locations, Some fallback
+      when not (String.is_empty locations || String.is_empty fallback) ->
+      Env.add env ~var ~value:(merge_locations locations fallback)
+    | _ -> env
+  in
+  Install.Roots.extend_env_concat_path_vars base env
 ;;
 
 let add_packages_env context ~base =

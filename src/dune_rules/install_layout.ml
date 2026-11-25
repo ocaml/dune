@@ -97,7 +97,13 @@ let compute_entries context_name root packages =
       ]
 ;;
 
-let entries =
+type layout =
+  { entries : Path.t Install.Entry.Expanded.t Path.Build.Map.t
+  ; rocq_deps : Dep.Set.t Lazy.t
+  ; site_env : Env.t Action_builder.t
+  }
+
+let layout =
   let rocq_deps entries =
     let dirs, deps =
       Path.Build.Map.foldi
@@ -162,22 +168,24 @@ let entries =
          let root = dir ~context ~key in
          let open Memo.O in
          let+ entries = compute_entries context root packages in
-         entries, lazy (rocq_deps entries))
+         { entries
+         ; rocq_deps = lazy (rocq_deps entries)
+         ; site_env = Site_env.install_env context ~root ~entries
+         })
   in
   fun context packages -> Memo.exec memo (context, packages)
 ;;
 
 let root context_name packages = dir ~context:context_name ~key:(Key.encode packages)
 
-let env context_name packages =
-  let open Action_builder.O in
-  let* entries, _ = Action_builder.of_memo (entries context_name packages) in
-  let* () =
-    Path.Build.Map.keys entries |> List.map ~f:Path.build |> Action_builder.paths
-  in
-  let layout_root = root context_name packages in
-  let roots = Install.Roots.opam_from_prefix layout_root ~relative:Path.Build.relative in
-  let+ site_env = Site_env.install_env context_name ~root:layout_root ~entries in
+let env context packages =
+  let open Action_builder in
+  let open O in
+  let* { entries; site_env; _ } = of_memo (layout context packages) in
+  let+ () = Path.Build.Map.keys entries |> Stdune.List.map ~f:Path.build |> paths
+  and+ site_env = site_env in
+  let root = root context packages in
+  let roots = Install.Roots.opam_from_prefix root ~relative:Path.Build.relative in
   Install.Roots.add_to_env roots site_env
 ;;
 
@@ -204,7 +212,7 @@ let gen_rules context_name ~dir rest =
     (match Key.decode key with
      | None -> Memo.return Build_config.Gen_rules.no_rules
      | Some packages ->
-       let+ entries, _ = entries context_name packages in
+       let+ { entries; _ } = layout context_name packages in
        let directory_targets =
          Path.Build.Map.filter_map entries ~f:(fun entry ->
            match (entry.kind : Install.Entry.Expanded.kind) with
@@ -239,13 +247,14 @@ module For_rocq_only = struct
      {!Section.Libexec} excludes root-section content (theory output) while
      keeping METAs, .cmi, .cmxs etc. — all upstream of theory compilation. *)
   let lib_root context_name packages =
-    let open Action_builder.O in
+    let open Action_builder in
+    let open O in
     let+ () =
       if Package.Name.Set.is_empty packages
-      then Action_builder.return ()
+      then return ()
       else
-        let* _, deps = Action_builder.of_memo (entries context_name packages) in
-        Action_builder.deps (Lazy.force deps)
+        let* { rocq_deps; _ } = of_memo (layout context_name packages) in
+        deps (Lazy.force rocq_deps)
     in
     let layout_root = root context_name packages in
     let { Install.Roots.lib_root; _ } =

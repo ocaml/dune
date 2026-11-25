@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795627650058,
+  "lastUpdate": 1795628297703,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -694607,6 +694607,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.4284520021266665,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "61a124ad6ca474c0c6ba6b23090d8cec28334664",
+          "message": "fix(promote): preserve directory targets when promoting into another directory (#17236)\n\nPreserve the relative paths of directory targets and their contents when\nusing `(promote (into ...))`, rather than flattening the contents into\nthe destination. Update the existing regression test to expect the\nnested layout.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T01:21:10+08:00",
+          "tree_id": "23153c8e89f3ba2165b35c5c633e452bbdc6a188",
+          "url": "https://github.com/ocaml/dune/commit/61a124ad6ca474c0c6ba6b23090d8cec28334664"
+        },
+        "date": 1795627863003,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.2320352919600004,
             "unit": "seconds"
           }
         ]

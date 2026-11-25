@@ -638,7 +638,7 @@ module Group = struct
   let default (builder : Builder.t) ~lock ~targets =
     let* path =
       let+ env = builder.env in
-      Env_path.path env
+      Env_path.path (Global.remove_build_dir_from_env env)
     in
     let+ (kind : Kind.t) =
       if lock
@@ -668,8 +668,8 @@ module Group = struct
       match Env.Map.find vars Env_path.var with
       | None ->
         (* CR-someday rgrinberg: Is this even possible? *)
-        Env_path.path env
-      | Some s -> Bin.parse_path s
+        Env_path.path (Global.remove_build_dir_from_env env)
+      | Some s -> Bin.parse_path (Global.remove_build_dir_from_path s)
     in
     let builder = { builder with path; env = Memo.return (Env.extend env ~vars) } in
     create builder ~kind:(Opam switch) ~targets

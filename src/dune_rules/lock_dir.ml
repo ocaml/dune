@@ -25,7 +25,7 @@ module Sys_vars = struct
   let poll =
     let vars =
       lazy
-        (let path = Env_path.path (Global.env ()) in
+        (let path = Env_path.path (Global.rule_env ()) in
          Sys_poll.make ~path)
     in
     let sys_poll_memo key =

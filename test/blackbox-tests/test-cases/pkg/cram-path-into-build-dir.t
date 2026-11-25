@@ -117,4 +117,17 @@ outside of it reached through [_build/..] is kept:
   +  host
   [1]
 
+This only applies to build rules. Commands run on behalf of the user, such as
+`dune exec`, keep the caller's PATH, including dev tools installed in the build
+directory:
+
+  $ mkdir -p _build/extra-bin
+  $ cat > _build/extra-bin/extratool <<EOF
+  > #!/bin/sh
+  > echo extra
+  > EOF
+  $ chmod +x _build/extra-bin/extratool
+  $ PATH="$PWD/_build/extra-bin:$PATH" dune exec -- sh -c extratool
+  extra
+
   $ cd ..

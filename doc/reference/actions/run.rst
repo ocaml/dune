@@ -22,8 +22,9 @@ run
      ``(binaries ...)`` field;
    - or an executable found in ``PATH``. Note that directories of ``PATH``
      inside the build directory, such as those added by ``eval $(dune tools
-     env)``, are ignored: executables built by Dune must be reached through the
-     cases above so that the action depends on them.
+     env)`` or by the workspace configuration, are ignored: executables built
+     by Dune must be reached through the cases above so that the action depends
+     on them.
 
    To run a private executable target from the source tree, refer to it by path,
    such as ``(run ./tool.exe ...)``. To make a private executable available by a

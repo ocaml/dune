@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795555794403,
+  "lastUpdate": 1795617850572,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -693911,6 +693911,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.159506520986667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "00d749c4fc389e53875fc2d3ecf330e9c56cc8f4",
+          "message": "fix(engine): report a user error when a directory dependency is a file (#17233)\n\nReport that the path is not a directory instead of raising an internal\nerror when a glob is rooted at a generated file. Update the existing\nregression test to check the user-facing diagnostic.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-25T22:32:26+08:00",
+          "tree_id": "db6f6ce113d9dddf691d14778284c75a313403d8",
+          "url": "https://github.com/ocaml/dune/commit/00d749c4fc389e53875fc2d3ecf330e9c56cc8f4"
+        },
+        "date": 1795617514081,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.2482857460933334,
             "unit": "seconds"
           }
         ]

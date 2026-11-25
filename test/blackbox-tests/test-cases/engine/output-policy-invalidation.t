@@ -39,3 +39,28 @@ preserve its checks, even though this particular action produces no output.
   >   --action-stderr-on-success=must-be-empty result
   $ misses
   []
+
+A build with `--no-buffer` does not check the subprocess's stdout. Its output
+should not satisfy a subsequent buffered build that requires stdout to be empty.
+
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target noisy)
+  >  (action (system "echo unexpected; touch noisy")))
+  > EOF
+  $ dune build --cache=disabled --no-buffer --action-stdout-on-success=must-be-empty noisy
+  unexpected
+
+CR: The buffered build uses the workspace-local result of the unbuffered
+build instead of validating stdout.
+
+  $ dune build --cache=disabled --action-stdout-on-success=must-be-empty noisy
+  $ test -f _build/default/noisy
+
+A fresh buffered build rejects the same action.
+
+  $ dune build --cache=disabled --build-dir _fresh \
+  >   --action-stdout-on-success=must-be-empty noisy > fresh.log 2>&1
+  [1]
+  $ grep '^unexpected$' fresh.log
+  unexpected

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795625554401,
+  "lastUpdate": 1795625812793,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -497725,6 +497725,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.38834586494666673,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2539e6cc6bad8161fa1a00b4db229d4238df8aa4",
+          "message": "refactor(promote): make error arguments explicit (#17239)\n\nPass Unix errors explicitly when reporting promotion failures. Require a\nUnix error when reporting a directory-target failure, where both callers\nalready have one. Keep the diagnostics unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T00:32:41+08:00",
+          "tree_id": "04a60f3421672bb6c8b6e135b4e7948534e5991d",
+          "url": "https://github.com/ocaml/dune/commit/2539e6cc6bad8161fa1a00b4db229d4238df8aa4"
+        },
+        "date": 1795625810680,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 64.78141663969333,
             "unit": "seconds"
           }
         ]

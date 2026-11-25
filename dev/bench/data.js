@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795624126922,
+  "lastUpdate": 1795624222233,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -497667,6 +497667,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5164737325200001,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "780060e14fd6452df38e74b1353a7b6fd22f425d",
+          "message": "test(engine): reproduce unsandboxed job-slot working directory (#17235)\n\nAdd a regression test showing that the `job_slots` command runs outside\nthe sandbox even when the rule action runs inside it. Record the current\nbehavior so a follow-up fix can update the expectation.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T00:16:45+08:00",
+          "tree_id": "3abfed55cfa21f764933c2ec02a2e6bff10a8587",
+          "url": "https://github.com/ocaml/dune/commit/780060e14fd6452df38e74b1353a7b6fd22f425d"
+        },
+        "date": 1795624219932,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 42.49342136989333,
             "unit": "seconds"
           }
         ]

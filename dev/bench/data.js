@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795627221999,
+  "lastUpdate": 1795627354923,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -694520,6 +694520,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.4857535429533333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "28e3ac5eccb685e6aa4da3d286c11f1ba88c3b1e",
+          "message": "refactor(promote): resolve the destination root before relocating targets (#17242)\n\nResolve the promotion destination once, then relocate targets using\npaths relative to the rule’s target root. Keep the existing\nbasename-only behavior for `(promote (into ...))` so that the behavior\nchange can be reviewed separately in #17236.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T01:09:12+08:00",
+          "tree_id": "16a2ef20ad1acdda3de1fc402525969b2b4e4902",
+          "url": "https://github.com/ocaml/dune/commit/28e3ac5eccb685e6aa4da3d286c11f1ba88c3b1e"
+        },
+        "date": 1795627015945,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.4284520021266665,
             "unit": "seconds"
           }
         ]

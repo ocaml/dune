@@ -106,7 +106,7 @@ let ocamlformat_action ~expander ~dir ~source ~target kind =
     ]
   in
   let action program =
-    Action.chdir (Path.build cwd) (Action.run program args)
+    Action.chdir cwd (Action.run program args)
     |> Action.Full.make ~sandbox:Sandbox_config.needs_sandboxing
   in
   let* ocamlformat_is_locked =

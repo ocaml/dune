@@ -191,7 +191,7 @@ let extend_action t ~dir action =
   |> Action_builder.map ~f:(fun action ->
     Action.Full.map action ~f:(function
       | Chdir _ as a -> a
-      | a -> Chdir (Path.build (Context.build_dir t.context), a)))
+      | a -> Chdir (Context.build_dir t.context, a)))
 ;;
 
 let make_rule t ?mode ?loc ~dir { Action_builder.With_targets.build; targets } =

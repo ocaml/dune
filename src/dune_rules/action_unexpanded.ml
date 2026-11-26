@@ -520,10 +520,13 @@ let rec expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
     Action_plugin.action ~prog ~args |> Action.Full.make
   | Chdir (fn, t) ->
     E.At_rule_eval_stage.path fn ~f:(fun dir ->
+      let dir =
+        Expander0.as_in_build_dir dir ~loc:(String_with_vars.loc fn) ~what:"Directory"
+      in
       A.chdir
-        (Expander0.as_in_build_dir dir ~loc:(String_with_vars.loc fn) ~what:"Directory")
+        dir
         (let+ t = expand t in
-         Action.Full.map t ~f:(fun t -> O.Chdir (dir, t))))
+         Action.Full.map t ~f:(O.chdir dir)))
   | Setenv (var, value, t) ->
     E.At_rule_eval_stage.string var ~f:(fun var ->
       A.set_env
@@ -695,7 +698,7 @@ let expand_no_targets_internal
   let+ sandbox
   and+ env
   and+ action in
-  Action.Full.map action ~f:(fun action -> Action.Chdir (Path.build chdir, action))
+  Action.Full.map action ~f:(Action.chdir chdir)
   |> Action.Full.add_sandbox sandbox
   |> Action.Full.add_env env
 ;;
@@ -792,7 +795,7 @@ let expand_internal
     let+ sandbox
     and+ env
     and+ action in
-    Action.Full.map action ~f:(fun action -> Action.Chdir (Path.build chdir, action))
+    Action.Full.map action ~f:(Action.chdir chdir)
     |> Action.Full.add_sandbox sandbox
     |> Action.Full.add_env env
   in

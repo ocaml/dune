@@ -174,7 +174,7 @@ let run_dyn_prog ~dir ?sandbox ?stdout_to ?env ?(forbid_action_runner = false) p
        | None -> action
        | Some path -> Action.with_stdout_to path action
      in
-     Action.chdir dir action |> Action.Full.make ?sandbox ?env)
+     Action.chdir (Path.as_in_build_dir_exn dir) action |> Action.Full.make ?sandbox ?env)
 ;;
 
 let run ~dir ?sandbox ?stdout_to ?env ?forbid_action_runner prog args =
@@ -198,7 +198,7 @@ let run' ?sandbox ?env ~dir ?(forbid_action_runner = false) prog args =
     | None -> Action_builder.return None
   in
   Action.Run { prog; args; can_run_in_action_runner = not forbid_action_runner }
-  |> Action.chdir dir
+  |> Action.chdir (Path.as_in_build_dir_exn dir)
   |> Action.Full.make ?sandbox ?env
 ;;
 

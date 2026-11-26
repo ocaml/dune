@@ -1055,7 +1055,8 @@ module Action_expander = struct
   let expand context (pkg : Pkg.t) action =
     let+ action =
       let expander = expander context pkg in
-      expand action ~expander >>| Action.chdir pkg.paths.source_dir
+      let dir = Path.as_in_build_dir_exn pkg.paths.source_dir in
+      expand action ~expander >>| Action.chdir dir
     in
     Action.Full.make action |> Action_builder.return |> Action_builder.with_no_targets
   ;;

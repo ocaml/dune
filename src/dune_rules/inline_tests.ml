@@ -64,7 +64,7 @@ let action
       |> Path.build
       |> Action_builder.path
   in
-  Action.chdir (Path.build dir) action
+  Action.chdir dir action
 ;;
 
 module Backend = struct

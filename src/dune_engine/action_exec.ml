@@ -62,10 +62,8 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
     in
     exec t ~ectx ~eenv
   | Chdir (dir, t) ->
-    (match Path.as_in_build_dir dir with
-     | None ->
-       Code_error.raise "chdir outside the build directory" [ "dir", Path.to_dyn dir ]
-     | Some _ -> Path.mkdir_p dir);
+    let dir = Path.build dir in
+    Path.mkdir_p dir;
     exec t ~ectx ~eenv:{ eenv with working_dir = dir }
   | Setenv (var, value, t) ->
     exec

@@ -46,7 +46,7 @@ type t =
       ; can_run_in_action_runner : bool
       }
   | With_accepted_exit_codes of int Predicate_lang.t * t
-  | Chdir of Path.t * t
+  | Chdir of Path.Build.t * t
   | Setenv of string * string * t
   | Redirect_out of Outputs.t * Path.Build.t * File_perm.t * t
   | Redirect_out_atomic of Path.Build.t * t
@@ -158,8 +158,8 @@ let digest =
       loop d t ~dir
     | Chdir (path, t) ->
       int d 2;
-      digest_path d ~dir path;
-      loop d t ~dir:path
+      digest_target d ~dir path;
+      loop d t ~dir:(Path.build path)
     | Setenv (var, value, t) ->
       int d 3;
       string d var;
@@ -300,7 +300,7 @@ let sandbox t sandbox =
   let rec loop = function
     | Run ({ prog; _ } as run) -> Run { run with prog = Result.map prog ~f:path }
     | With_accepted_exit_codes (pred, t) -> With_accepted_exit_codes (pred, loop t)
-    | Chdir (dir, t) -> Chdir (path dir, loop t)
+    | Chdir (dir, t) -> Chdir (target dir, loop t)
     | Setenv (var, value, t) -> Setenv (var, value, loop t)
     | Redirect_out (outputs, fn, perm, t) ->
       Redirect_out (outputs, target fn, perm, loop t)

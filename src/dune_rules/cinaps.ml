@@ -281,7 +281,7 @@ let gen_rules sctx t ~dir ~scope =
         [ Action.Full.make (Action.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ])
         ; Action.Full.concurrent checks
         ]
-      |> Action.Full.map ~f:(Action.chdir (Path.build dir))
+      |> Action.Full.map ~f:(Action.chdir dir)
       |> Action.Full.add_sandbox sandbox
       |> Action.Full.add_env env
     in

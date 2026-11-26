@@ -162,7 +162,7 @@ let cc_vendor_action (ctx : Build_context.t) =
       let+ () = Action_builder.path c_compiler
       and+ env = Action_builder.of_memo (Context.installed_env context) in
       Detect.action { c_compiler; ccomp_type = Ocaml_config.ccomp_type ocaml_config }
-      |> Action.chdir (Path.build ctx.build_dir)
+      |> Action.chdir ctx.build_dir
       |> Action.Full.make
       |> Action.Full.add_env env
   in

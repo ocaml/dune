@@ -132,3 +132,26 @@ Generated ocamldep processes only use the runner when they invoke a preprocessor
   $ dune build --action-runner staged.cma
   $ dune trace cat | jq -s 'include "dune"; ocamldepPreprocessorUsesActionRunner("action-runner")'
   true
+
+Both commands in a sequence should write to the same redirected stdout,
+regardless of whether the commands run in the action runner.
+
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (with-stdout-to local.out
+  >   (progn (run echo first) (run echo second))))
+  > (rule
+  >  (with-stdout-to runner.out
+  >   (progn (run echo first) (run echo second))))
+  > EOF
+  $ dune build local.out
+  $ cat _build/default/local.out
+  first
+  second
+
+CR: The runner reopens the redirection for the second command and truncates
+what the first command wrote.
+
+  $ dune build --action-runner runner.out
+  $ cat _build/default/runner.out
+  second

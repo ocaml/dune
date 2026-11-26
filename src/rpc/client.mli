@@ -4,7 +4,7 @@ include
   Dune_rpc.Client.S with type 'a fiber := 'a Fiber.t and type chan := Csexp_rpc.Session.t
 
 module Connection : sig
-  type t
+  type t = Csexp_rpc.Session.t
 
   val connect : Dune_rpc.Where.t -> (t, User_message.t) result Fiber.t
   val of_fd : Fd.t -> t

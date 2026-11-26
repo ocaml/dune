@@ -9,6 +9,7 @@ module Request = struct
     type t =
       { run_id : Run_id.t
       ; process : Process_runner.request
+      ; fds : Root.Rpc.Csexp_rpc.Session.Fds.t
       }
   end
 

@@ -7,6 +7,7 @@ type stdio =
       { path : Path.t
       ; perm : Permissions.Mode.t
       }
+  | Fd of int
 
 module Stderr : sig
   type t =
@@ -14,9 +15,8 @@ module Stderr : sig
     | Output of stdio
 end
 
-(** The current runner contract is path-based: stdin/stdout/stderr file
-    redirections assume the runner executes in the same filesystem namespace as
-    the parent process. *)
+(** File redirections are either paths opened by the worker or indices into
+    the descriptors transferred with the request. *)
 type request =
   { dir : Path.t option
   ; env : Env.t

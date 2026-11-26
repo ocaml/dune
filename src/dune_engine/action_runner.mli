@@ -26,6 +26,7 @@ val exec_process
   :  t
   -> run_id:Run_id.t
   -> cancellation:Fiber.Cancel.t
+  -> fds:Fd.t list
   -> Process_runner.request
   -> Process_runner.response Fiber.t
 

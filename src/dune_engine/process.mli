@@ -110,6 +110,7 @@ end
     intended for the external worker implementation. *)
 val exec_locally
   :  build:Build.t
+  -> fds:Fd.t array
   -> Process_runner.request
   -> Process_runner.response Fiber.t
 

@@ -21,7 +21,20 @@ module Session : sig
   type t
 
   val close : t -> unit Fiber.t
+
+  (** A private Unix socket session with file descriptor passing enabled. *)
   val of_fd : Fd.t -> t
+
+  module Fds : sig
+    type t
+  end
+
+  (** Send descriptors before the request that references them. The caller
+      retains ownership of its copies. *)
+  val send_fds : t -> Fd.t list -> (Fds.t, [ `Closed ]) result Fiber.t
+
+  (** Claim the received copies. The caller must close them. *)
+  val take_fds : t -> Fds.t -> Fd.t array
 
   (** [write t xs] writes the s-expressions [xs]. *)
   val write : t -> Sexp.t list -> (unit, [ `Closed ]) result Fiber.t

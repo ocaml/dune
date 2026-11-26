@@ -171,17 +171,18 @@ stdin should each read the next byte, writing to separate stdout and stderr.
 Build the rules together so their requests can overlap. The trace should show
 that all six spawned commands run in the worker.
 
-CR: The worker opens each redirection again instead of sharing the original
-file. This loses earlier output and resets the input offset.
-
   $ dune build -j 3 --action-runner runner.out mixed.out bytes.out
   $ cat _build/default/runner.out
+  first
   second
   $ cat _build/default/mixed.out
+  first
+  second
+  third
   fourth
   $ printf 'stdout=%s\nstderr=%s\n' "$(cat _build/default/bytes.out)" "$(cat _build/default/bytes.err)"
-  stdout=
-  stderr=a
+  stdout=a
+  stderr=b
   $ dune trace cat | jq -s '
   >   include "dune";
   >   actionRunnerTraceEvents("action-runner")

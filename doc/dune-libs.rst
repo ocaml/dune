@@ -66,7 +66,8 @@ example:
         [ "HAS_CLOCK_GETTIME", Switch has_clock_gettime ]);
 
 Usually, the module above would be named ``discover.ml``. The next step is to
-invoke it as an executable and tell Dune about the targets that it produces:
+invoke it as an executable and tell Dune about the targets that it produces and
+that it depends on ``dune-configurator``'s configuration file:
 
 .. code-block:: dune
 
@@ -76,6 +77,8 @@ invoke it as an executable and tell Dune about the targets that it produces:
 
   (rule
    (targets config.h)
+   (deps
+    (glob_files %{workspace_root}/.dune/configurator*))
    (action (run ./discover.exe)))
 
 Another common pattern is to produce a flags file with Configurator and then

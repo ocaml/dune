@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795672063265,
+  "lastUpdate": 1795690786300,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -695564,6 +695564,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.1574702369266667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8ecd32543728ea6ff7ed200e7337e88360886679",
+          "message": "perf(pkg): copy only package sources in link-based sandboxes (#17126)\n\nPackage builds currently force copy sandboxing, which duplicates the\ninstalled files of every transitive dependency for each build. Let Dune\nselect the sandbox mode and give only the package’s own sources private,\nwritable copies before running its commands. In symlink and hardlink\nmodes, the installed dependencies stay linked; selecting copy mode still\ncopies all inputs.\n\nIn addition to being a useful optimization, it is also a step towards\ngetting rid of the `copy` sandbox mode.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T18:47:44+08:00",
+          "tree_id": "543ce6cd5a9ab85ad9b5af7f0e6c0e5724050dc7",
+          "url": "https://github.com/ocaml/dune/commit/8ecd32543728ea6ff7ed200e7337e88360886679"
+        },
+        "date": 1795690542144,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.6608951376400003,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795695757179,
+  "lastUpdate": 1795703280594,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -696347,6 +696347,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.444321216946667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bb11676397674cd47efeb92911a5dfe317f083c3",
+          "message": "Upgrade to OCamlformat 0.30.0 (#17266)\n\nOCamlformat 0.30.0 has just been released.\n\nChangelog can be found here:\nhttps://github.com/ocaml-ppx/ocamlformat/releases",
+          "timestamp": "2026-11-26T15:13:35+01:00",
+          "tree_id": "5f909dc62366a6c4a9de6733823c85028ded555e",
+          "url": "https://github.com/ocaml/dune/commit/bb11676397674cd47efeb92911a5dfe317f083c3"
+        },
+        "date": 1795702846503,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.9334519166666673,
             "unit": "seconds"
           }
         ]

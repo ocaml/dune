@@ -54,3 +54,38 @@ Both targets are requested, but only the source-tree rule is invalidated.
   $ cat _build/default/external.result _build/default/tree.result
   original
   changed
+
+Changing a child from an executable regular file to a symlink changes the
+parent directory's stat, but the directory digest should also distinguish
+those two file kinds.
+
+  $ printf target > "$external/entry"
+  $ chmod +x "$external/entry"
+  $ echo referent > "$external/target"
+  $ cat >> dune <<EOF
+  > (rule
+  >  (target entry-kind)
+  >  (deps "$external")
+  >  (action
+  >   (with-stdout-to entry-kind (run dune_cmd stat kind "$external/entry"))))
+  > EOF
+  $ dune build --cache=disabled --wait-for-filesystem-clock entry-kind
+  $ cat _build/default/entry-kind
+  regular file
+  $ rm "$external/entry"
+  $ ln -s target "$external/entry"
+  $ dune_cmd stat kind "$external/entry"
+  symbolic link
+
+CR: The symlink destination and the executable file's contents are the same
+string. The digester hashes them the same way, leaving the result stale.
+
+  $ dune build --cache=disabled --wait-for-filesystem-clock entry-kind
+  $ cat _build/default/entry-kind
+  regular file
+
+A fresh build produces the correct result.
+
+  $ dune build --cache=disabled --build-dir _build-fresh entry-kind
+  $ cat _build-fresh/default/entry-kind
+  symbolic link

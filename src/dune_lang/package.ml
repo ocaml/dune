@@ -202,7 +202,13 @@ let decode =
          field_o
            "dir"
            (let+ loc, s = Syntax.since Stanza.syntax (3, 21) >>> located string in
-            loc, Path.Source.relative ~error_loc:loc dir s)
+            let path = Path.Source.relative ~error_loc:loc dir s in
+            if not (Path.Source.is_descendant path ~of_:dir)
+            then
+              User_error.raise
+                ~loc
+                [ Pp.text "The directory of a package must be inside its project." ];
+            loc, path)
        and+ deprecated_package_names =
          name_map
            (Syntax.since Stanza.syntax (2, 0))

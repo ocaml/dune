@@ -19,5 +19,5 @@ Test that section pforms are substituted with absolute paths.
 Note that currently dune incorrectly substitutes relative paths for pforms that
 appear in string interpolations.
   $ build_pkg test 2>&1 | censor
-  --prefix $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/test/target
-  --prefix=$PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/test/target
+  --prefix $PWD/_build/.sandbox/$DIGEST/default/.pkg/test/_install
+  --prefix=$PWD/_build/.sandbox/$DIGEST/default/.pkg/test/_install

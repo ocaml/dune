@@ -9,7 +9,7 @@ module DB : sig
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
   val hash : t -> int
-  val of_stanza : dir:Path.Source.t -> Pin_stanza.Project.t -> t
+  val of_stanza : dir:Path.Local.t -> Pin_stanza.Project.t -> t
   val combine_exn : t -> t -> t
   val add_opam_pins : t -> Dune_lang.Package.t Package_name.Map.t -> t
 
@@ -32,7 +32,7 @@ end
 
 module Scan_project : sig
   type t =
-    read:(Path.Source.t -> string Fiber.t)
+    read:(Path.Local.t -> string Fiber.t)
     -> files:Filename.Array.Set.t
     -> (DB.t * Dune_lang.Package.t Package_name.Map.t) option Fiber.t
 end

@@ -47,7 +47,7 @@ module Query = struct
       in
       let action =
         let* dune_version =
-          Dune_load.find_project ~dir
+          Partitions.find_project ~dir
           |> Memo.map ~f:Dune_project.dune_version
           |> Action_builder.of_memo
         in

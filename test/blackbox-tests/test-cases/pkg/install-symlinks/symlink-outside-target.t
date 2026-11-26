@@ -33,12 +33,12 @@ Create a package with a symlink pointing outside target:
 
 The symlink is resolved to a hardlink to the external file:
 
-  $ dune_cmd stat kind $(get_build_pkg_dir foo)/target/lib/foo/external.txt
+  $ dune_cmd stat kind $(get_build_pkg_dir foo)/_install/lib/foo/external.txt
   regular file
 
 The content is accessible:
 
-  $ cat $(get_build_pkg_dir foo)/target/lib/foo/external.txt
+  $ cat $(get_build_pkg_dir foo)/_install/lib/foo/external.txt
   outside content
 
 Since the symlink was resolved to a hardlink, caching works:
@@ -67,13 +67,13 @@ The destination is at a different directory depth than the dependency file.
   > EOF
   $ pkg_dir=$(get_build_pkg_dir consumer)
   $ if dune build --cache=disabled --config-file symlink-config \
-  >   "$pkg_dir/target" > install.log 2>&1; then
-  >   cat "$pkg_dir/target/share/consumer/marker"
+  >   "$pkg_dir/_install" > install.log 2>&1; then
+  >   cat "$pkg_dir/_install/share/consumer/marker"
   > else
   >   dune_cmd subst 'readlink\([^)]*\)' 'readlink(...)' < install.log | censor
   >   false
   > fi
   Error:
   readlink(...): No such file or directory
-  -> required by _build/_private/default/.pkg/consumer/target
+  -> required by _build/default/.pkg/consumer/_install
   [1]

@@ -59,7 +59,9 @@ module Processed : sig
 end
 
 val make
-  :  requires_compile:Lib.t list Resolve.t
+  :  scope:Scope.t
+  -> expander:Expander.t
+  -> requires_compile:Lib.t list Resolve.t
   -> requires_hidden:Lib.t list Resolve.t
   -> stdlib_dir:Path.t
   -> flags:Ocaml_flags.t
@@ -81,20 +83,18 @@ val make
 type group
 
 val group : default:t -> alternatives:t list -> group
-val more_src_dirs : Dir_contents.t -> source_dirs:Path.Source.t list -> Path.Source.t list
+val more_src_dirs : Dir_contents.t -> source_dirs:Path.Build.t list -> Path.Build.t list
 
 (** Add rules for generating the merlin configuration of a specific stanza
     identified by [ident] in a directory *)
 val add_rules
   :  Super_context.t
   -> dir:Path.Build.t
-  -> more_src_dirs:Path.Source.t list
-  -> expander:Expander.t
+  -> more_src_dirs:Path.Build.t list
   -> group
   -> unit Memo.t
 
 val pp_config
   :  t
   -> Context.t
-  -> expander:Expander.t
   -> Processed.pp_flag option Module_reference.Per_item.t Action_builder.t

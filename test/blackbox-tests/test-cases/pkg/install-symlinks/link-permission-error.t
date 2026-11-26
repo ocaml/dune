@@ -22,8 +22,8 @@ Build fails with a symlink resolution error:
 
   $ build_pkg foo 2>&1 | censor
   Error:
-  unlink(_build/.sandbox/$DIGEST/_private/default/.pkg/foo/target/lib/foo/link.txt): Permission denied
-  -> required by _build/_private/default/.pkg/foo/target
+  unlink(_build/.sandbox/$DIGEST/default/.pkg/foo/_install/lib/foo/link.txt): Permission denied
+  -> required by _build/default/.pkg/foo/_install
   [1]
 
 Restore permissions for cleanup:

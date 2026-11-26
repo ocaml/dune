@@ -157,7 +157,7 @@ let get_path common sctx ~prog =
   let dir = dir_of_context common sctx in
   match Filename.analyze_program_name prog with
   | In_path ->
-    Super_context.resolve_program_memo sctx ~dir ~loc:None prog
+    Super_context.resolve_command_line_program sctx ~dir prog
     >>= (function
      | Error (_ : Action.Prog.Not_found.t) -> not_found_with_suggestions ~dir ~prog
      | Ok p -> Memo.return p)

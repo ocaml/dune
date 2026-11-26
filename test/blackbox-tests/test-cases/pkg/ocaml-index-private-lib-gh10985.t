@@ -41,6 +41,6 @@ Now we set up a lock file with this package and then attempt to use it:
   $ export PATH="$PWD/.bin:$PATH"
 
   $ dune build @ocaml-index
-  File ".foo.objs/_unknown_", line 1, characters 0-0:
+  File ".pkg/mypkg/.test_lib.objs/_unknown_", line 1, characters 0-0:
   Command exited with code 1.
   [1]

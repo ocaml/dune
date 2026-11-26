@@ -398,7 +398,9 @@ module Valid = struct
         let* mask = Dune_load.mask () in
         Scope.DB.with_all ctx ~f:(fun find ->
           Memo.List.fold_left projects ~init:([], []) ~f:(fun (libs_acc, pkg_acc) proj ->
-            let* vendored = Source_tree.is_vendored (Dune_project.root proj) in
+            let* vendored =
+              Source_tree.is_vendored (Dune_project.root proj |> Path.Source.of_local)
+            in
             if vendored
             then Memo.return (libs_acc, pkg_acc)
             else (
@@ -2012,7 +2014,7 @@ let gen_project_rules sctx project =
   |> Memo.parallel_iter_seq ~f:(fun (_, (pkg : Package.t)) ->
     let dir =
       let pkg_dir = Package.dir pkg in
-      Path.Build.append_source (Context.build_dir ctx) pkg_dir
+      Path.Build.append_local (Context.build_dir ctx) pkg_dir
     in
     let register =
       let alias = Alias.make Alias0.doc_new ~dir in

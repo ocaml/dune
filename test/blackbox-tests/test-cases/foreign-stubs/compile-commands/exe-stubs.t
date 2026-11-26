@@ -22,7 +22,7 @@ Create an executable with a C stub:
 
 Build compile_commands.json:
 
-  $ dune build compile_commands.json
+  $ dune build @compile_commands
 
 Check that the executable's stub appears:
 

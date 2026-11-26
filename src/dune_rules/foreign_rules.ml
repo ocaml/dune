@@ -167,12 +167,14 @@ let include_dir_flags ~expander ~dir ~include_dirs =
              |> Dep.Set.singleton
            in
            Command.Args.Hidden_deps deps
-         | Some (build_dir, source_dir) ->
+         | Some (build_dir, _) ->
            Action_builder.return
            @@ Command.Args.Dyn
                 ((* This branch corresponds to a source directory. We
                     track its contents recursively. *)
-                 Action_builder.of_memo (Source_tree.find_dir source_dir)
+                 Action_builder.of_memo
+                   (Partitions.source_tree_dir
+                      ~dir:(Path.as_in_build_dir_exn include_dir))
                  >>= function
                  | None ->
                    User_error.raise
@@ -190,7 +192,7 @@ let include_dir_flags ~expander ~dir ~include_dirs =
                        ~f:(fun t ->
                          let deps =
                            let dir =
-                             Path.append_source build_dir (Source_tree.Dir.path t)
+                             Path.append_local build_dir (Source_tree.Dir.source_path t)
                            in
                            File_selector.of_predicate_lang ~dir Predicate_lang.true_
                            |> Dep.file_selector
@@ -234,7 +236,7 @@ let compilation_flags ~sctx ~dir ~expander ~loc ~(src : Foreign.Source.t) =
   let open Action_builder.O in
   let kind = Foreign.Source.language src in
   let ctx = Super_context.context sctx in
-  let* project = Action_builder.of_memo (Dune_load.find_project ~dir) in
+  let* project = Action_builder.of_memo (Partitions.find_project ~dir) in
   let* ocaml = Action_builder.of_memo (Context.ocaml ctx) in
   let+ user_flags =
     match Foreign.Source.kind src with
@@ -305,13 +307,9 @@ let build_c ~sctx ~dir ~expander ~include_flags (loc, (src : Foreign.Source.t), 
          [dune-project] file (thus defaulting to [true]), the [:standard] set of
          flags has been overridden and we are not in a vendored project *)
       let has_standard = Ordered_set_lang.Unexpanded.has_standard flags in
-      let* project = Dune_load.find_project ~dir in
+      let* project = Partitions.find_project ~dir in
       let use_standard_flags = Dune_project.use_standard_c_and_cxx_flags project in
-      let+ is_vendored =
-        match Path.Build.drop_build_context dir with
-        | Some src_dir -> Source_tree.is_vendored src_dir
-        | None -> Memo.return false
-      in
+      let+ is_vendored = Partitions.vendored_warnings ~dir in
       if
         Dune_project.dune_version project >= (2, 8)
         && Option.is_none use_standard_flags

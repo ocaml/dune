@@ -70,17 +70,17 @@ Section variables expanded via (system) produce relative paths:
   >   )))
   > EOF
 
-  $ build_pkg system-consumer
-  ../../dep/target/lib/dep
-  ../../dep/target/lib/dep
-  ../../dep/target/bin
-  ../../dep/target/sbin
-  ../../dep/target/share/dep
-  ../../dep/target/etc/dep
-  ../../dep/target/doc/dep
-  ../../dep/target/man
-  ../../dep/target/lib/toplevel
-  ../../dep/target/lib/stublibs
+  $ build_pkg system-consumer 2>&1 | censor | tee direct-output
+  ../../../_private/default/.packages/$DIGEST/lib/dep
+  ../../../_private/default/.packages/$DIGEST/lib/dep
+  ../../../_private/default/.packages/$DIGEST/bin
+  ../../../_private/default/.packages/$DIGEST/sbin
+  ../../../_private/default/.packages/$DIGEST/share/dep
+  ../../../_private/default/.packages/$DIGEST/etc/dep
+  ../../../_private/default/.packages/$DIGEST/doc/dep
+  ../../../_private/default/.packages/$DIGEST/man
+  ../../../_private/default/.packages/$DIGEST/lib/toplevel
+  ../../../_private/default/.packages/$DIGEST/lib/stublibs
   lib-data
   libexec-data
   bin-data
@@ -123,17 +123,18 @@ These currently expand to absolute paths instead of relative ones:
   >   (run cat %{pkg:dep:stublibs}/stublibs-file)))
   > EOF
 
-  $ build_pkg run-consumer 2>&1 | censor | dune_cmd subst '/[^ ]*/cat:' 'cat:'
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/dep/target/lib/dep
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/dep/target/lib/dep
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/dep/target/bin
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/dep/target/sbin
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/dep/target/share/dep
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/dep/target/etc/dep
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/dep/target/doc/dep
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/dep/target/man
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/dep/target/lib/toplevel
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/dep/target/lib/stublibs
+  $ build_pkg run-consumer 2>&1 | censor |
+  >   dune_cmd subst '/[^ ]*/cat:' 'cat:' | tee -a direct-output
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.packages/$DIGEST2/lib/dep
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.packages/$DIGEST2/lib/dep
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.packages/$DIGEST2/bin
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.packages/$DIGEST2/sbin
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.packages/$DIGEST2/share/dep
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.packages/$DIGEST2/etc/dep
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.packages/$DIGEST2/doc/dep
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.packages/$DIGEST2/man
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.packages/$DIGEST2/lib/toplevel
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.packages/$DIGEST2/lib/stublibs
   lib-data
   libexec-data
   bin-data
@@ -144,3 +145,73 @@ These currently expand to absolute paths instead of relative ones:
   man-data
   toplevel-data
   stublibs-data
+
+A Dune project installing the same payload through install stanzas, built
+natively, exposes the sections the same way to both requesters: their output
+matches the direct provider's.
+
+  $ sections="lib libexec bin sbin share etc doc man toplevel stublibs"
+  $ mkdir -p _dep native opaque
+  $ (cd _dep && make_dune_project_with_package 3.25 dep)
+  $ for section in $sections; do
+  >   echo "$section-data" > "_dep/$section-file"
+  >   echo "(install (section $section) (files $section-file))" >> _dep/dune
+  > done
+  $ make_backend_lockdirs dep "$PWD/_dep"
+  $ for backend in native opaque; do
+  >   cp dune.lock/system-consumer.pkg dune.lock/run-consumer.pkg \
+  >     "$backend/dune.lock"
+  > done
+  $ check() (
+  >   cd "$1"
+  >   build_pkg system-consumer 2>&1 | censor
+  >   build_pkg run-consumer 2>&1 | censor |
+  >     dune_cmd subst '/[^ ]*/cat:' 'cat:'
+  > )
+
+  $ check native | diff direct-output -
+  $ test ! -e native/$pkg_root/dep/_install/opaque-recipe
+
+Group two providers' files without mixing their sections or losing an entryless
+dependency's exports. List the binaries in reverse destination order; every
+binary and each provider's own share file must remain available.
+
+  $ for package in left right; do
+  >   make_lockpkg "$package" <<EOF
+  > (version 1.0)
+  > (build
+  >  (progn
+  >   (write-file a "#!/bin/sh\necho $package-a\n")
+  >   (write-file z "#!/bin/sh\necho $package-z\n")
+  >   (run chmod +x a z)
+  >   (write-file payload "$package-data\n")
+  >   (write-file $package.install
+  >    "bin: [ \"z\" {\"z-$package-tool\"} \"a\" {\"a-$package-tool\"} ]\nshare: [ \"payload\" ]")))
+  > EOF
+  > done
+  $ make_lockpkg empty <<'EOF'
+  > (version 1.0)
+  > (exported_env (= EMPTY_MARKER kept))
+  > EOF
+  $ make_lockpkg grouped-consumer <<'EOF'
+  > (version 1.0)
+  > (depends left right empty)
+  > (build
+  >  (progn
+  >   (run a-left-tool)
+  >   (run z-left-tool)
+  >   (run a-right-tool)
+  >   (run z-right-tool)
+  >   (run cat %{pkg:left:share}/payload %{pkg:right:share}/payload)
+  >   (system "echo $EMPTY_MARKER")))
+  > EOF
+  $ build_pkg grouped-consumer
+  left-a
+  left-z
+  right-a
+  right-z
+  left-data
+  right-data
+  kept
+  $ find "$pkg_root/empty/_install" -type f
+  _build/default/.pkg/empty/_install/cookie

@@ -404,11 +404,10 @@ module Run (P : PARAMS) = struct
         | Fallback ->
           let { Ml_kind.Dict.impl; intf = _ } = Module.Source.files_by_ml_kind target in
           let source =
-            Module.File.path (Option.value_exn impl)
-            |> Path.drop_optional_build_context_src_exn
+            Module.File.path (Option.value_exn impl) |> Path.as_in_build_dir_exn
           in
-          let+ files = Source_tree.files_of (Path.Source.parent_exn source) in
-          if Path.Source.Set.mem files source then Action_builder.return [] else impl_deps
+          let+ files = Partitions.source_files ~dir:(Path.Build.parent_exn source) in
+          if Path.Build.Set.mem files source then Action_builder.return [] else impl_deps
       in
       let path = Module.Source.path target in
       let obj_dir = Compilation_context.obj_dir cctx in

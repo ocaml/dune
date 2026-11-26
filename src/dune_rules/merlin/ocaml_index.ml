@@ -135,29 +135,43 @@ let cctx_rules cctx =
   Super_context.add_rule sctx ~dir aggregate
 ;;
 
+(* The indexes of one partition of the context: the workspace's, or those of
+   the mounted package named. *)
 let context_indexes =
   let context_indexes =
-    let module Input : Memo.Input with type t = Context.t * Compilation_mode.t = struct
-      type t = Context.t * Compilation_mode.t
+    let module Input :
+      Memo.Input with type t = Context.t * Compilation_mode.t * Package.Name.t option =
+    struct
+      type t = Context.t * Compilation_mode.t * Package.Name.t option
 
-      let hash = Tuple.T2.hash Context.hash Poly.hash
-      let equal = Tuple.T2.equal Context.equal Compilation_mode.equal
-      let to_dyn = Tuple.T2.to_dyn Context.to_dyn Compilation_mode.to_dyn
+      let hash = Tuple.T3.hash Context.hash Poly.hash (Option.hash Package.Name.hash)
+
+      let equal =
+        Tuple.T3.equal
+          Context.equal
+          Compilation_mode.equal
+          (Option.equal Package.Name.equal)
+      ;;
+
+      let to_dyn =
+        Tuple.T3.to_dyn
+          Context.to_dyn
+          Compilation_mode.to_dyn
+          (Dyn.option Package.Name.to_dyn)
+      ;;
     end
     in
     let memo =
       Action_builder.create_memo
         "indixes"
         ~input:(module Input)
-        (fun (ctx, for_) ->
-           Context.name ctx
-           |> Dune_load.dune_files
+        (fun (ctx, for_, owner) ->
+           (match owner with
+            | None -> Partitions.dune_files (Context.name ctx)
+            | Some package -> Partitions.dune_files_of_package (Context.name ctx) package)
            >>| Dune_file.fold_static_stanzas ~init:[] ~f:(fun dune_file stanza acc ->
              let obj =
-               let dir =
-                 let build_dir = Context.build_dir ctx in
-                 Path.Build.append_source build_dir (Dune_file.dir dune_file)
-               in
+               let dir = Dune_file.output_dir dune_file in
                match Stanza.repr stanza with
                | Executables.T exes | Tests.T { exes; _ } ->
                  Some (Executables.obj_dir ~dir exes)
@@ -177,21 +191,21 @@ let context_indexes =
     in
     Action_builder.exec_memo memo
   in
-  fun ctx ~for_ -> context_indexes (ctx, for_)
+  fun ctx ~for_ ~owner -> context_indexes (ctx, for_, owner)
 ;;
 
 let project_rule sctx project =
   let ctx = Super_context.context sctx in
   Memo.when_ (Context.merlin ctx) (fun () ->
+    let root = Dune_project.root project in
     let ocaml_index_alias =
-      let dir =
-        Path.Build.append_source (Context.build_dir ctx) @@ Dune_project.root project
-      in
+      let dir = Path.Build.append_local (Context.build_dir ctx) root in
       Alias.make Alias0.ocaml_index ~dir
     in
+    let owner = Pkg_rules.package_of_dir_in_context root in
     Rules.Produce.Alias.add_deps
       ocaml_index_alias
       (let open Action_builder.O in
-       let* indexes, _ = context_indexes ctx ~for_:Ocaml in
+       let* indexes, _ = context_indexes ctx ~for_:Ocaml ~owner in
        Action_builder.paths_existing indexes))
 ;;

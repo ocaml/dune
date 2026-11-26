@@ -27,16 +27,11 @@ file in the package's source.
 
   $ export DUNE_CACHE=disabled
   $ echo 'share: [ "foo.txt" ]' >foo-source/foo.install
-  $ target=$(get_build_pkg_dir foo)/target
+  $ target=$(get_build_pkg_dir foo)/_install
   $ dune build "$target"
   $ cat "$target/share/foo/foo.txt"
   from extra source
   $ cat foo-source/foo.txt
-  from source
-
-The installed file comes from the overlay, but the staged copy stays unchanged.
-
-  $ cat "$(get_build_pkg_dir foo)/source/foo.txt"
   from source
 
 The first package had no explicit build or install command. Dropping the
@@ -71,7 +66,7 @@ Restoring the overlay must also work for an explicit build command.
   $ cat foo-source/foo.txt
   from source
 
-A lockdir .files overlay also leaves the staged copy unchanged.
+A lockdir .files overlay is installed too.
 
   $ mkdir bar-source
   $ echo 'from source' >bar-source/foo.txt
@@ -85,12 +80,35 @@ A lockdir .files overlay also leaves the staged copy unchanged.
   > EOF
   $ bar=$(get_build_pkg_dir bar)
   $ overlay="${source_lock_dir}/bar.files/foo.txt"
-  $ dune build "$bar/target"
-  $ cmp "$bar/target/share/bar/foo.txt" "$overlay"
-  $ cmp "$bar/source/foo.txt" bar-source/foo.txt
+  $ dune build "$bar/_install"
+  $ cmp "$bar/_install/share/bar/foo.txt" "$overlay"
 
 Removing the overlay alone restores the original file at the same target.
 
   $ rm "$overlay"
-  $ dune build "$bar/target"
-  $ cmp "$bar/target/share/bar/foo.txt" bar-source/foo.txt
+  $ dune build "$bar/_install"
+  $ cmp "$bar/_install/share/bar/foo.txt" bar-source/foo.txt
+
+An extra source also wins over a lock directory file at the same path. A patch
+that does not lead the recipe is applied by the recipe, not beforehand:
+
+  $ rm foo-source/foo.install
+  $ make_lockpkg_file foo foo.txt <<'EOF'
+  > from lock
+  > EOF
+  $ make_lockpkg_file foo change.patch <<'EOF'
+  > --- a/foo.txt
+  > +++ b/foo.txt
+  > @@ -1 +1 @@
+  > -from extra source
+  > +patched
+  > EOF
+  $ make_lockpkg foo <<EOF
+  > (version 1)
+  > (build (progn (run cat foo.txt) (patch change.patch) (run cat foo.txt)))
+  > (source (copy $PWD/foo-source))
+  > (extra_sources (foo.txt (fetch (url file://$PWD/foo.txt))))
+  > EOF
+  $ build_pkg foo
+  from extra source
+  patched

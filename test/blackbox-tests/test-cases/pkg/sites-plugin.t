@@ -108,7 +108,17 @@ We should observe the same behaviour that when running test above.
   - app.0.0.1
   - plugin1.0.0.1
   $ dune build @runtest 2>&1 | dune_cmd sanitize
-  Main app starts...
+  File "_build/default/.pkg/app/dune", line 6, characters 35-52:
+  Error: Library "dune-site.plugins" not found.
+  -> required by _build/default/.pkg/app/app.bc
+  -> required by alias runtest in dune:4
+  File "_build/default/.pkg/app/dune", line 16, characters 10-23:
+  Error: Unknown package
+  [1]
+
+The app is a dune project and is loaded natively. Its libraries are restricted
+to the packages of the lock directory, which does not contain dune-site here,
+so it no longer builds (narrowing decision, A9 in PLAN.md).
 
 Should have printed:
 ```

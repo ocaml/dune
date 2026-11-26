@@ -105,7 +105,7 @@ Toolchain cache should be empty:
 Check the installed files from the compiler are hardlinked (cached as regular
 package):
 
-  $ dune_cmd stat hardlinks $(get_build_pkg_dir ocaml-base-compiler)/target/bin/ocamlc.opt
+  $ dune_cmd stat hardlinks $(get_build_pkg_dir ocaml-base-compiler)/_install/bin/ocamlc.opt
   3
 
 With the shared cache disabled, building the compiler twice should reuse the
@@ -180,5 +180,5 @@ Toolchain cache should be empty:
 Check the installed files from the compiler are hardlinked (cached as regular
 package):
 
-  $ dune_cmd stat hardlinks $(get_build_pkg_dir ocaml-compiler)/target/bin/ocamlc.opt
+  $ dune_cmd stat hardlinks $(get_build_pkg_dir ocaml-compiler)/_install/bin/ocamlc.opt
   3

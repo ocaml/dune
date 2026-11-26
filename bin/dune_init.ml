@@ -120,7 +120,9 @@ end = struct
     let add (project : Dune_project.t) stanzas = function
       | Text f -> Text f (* Adding a stanza to a text file isn't meaningful *)
       | Dune f ->
-        (match find_conflicting project ~dir:f.dir stanzas f.content with
+        (match
+           find_conflicting project ~dir:(Path.Source.to_local f.dir) stanzas f.content
+         with
          | None -> Dune { f with content = f.content @ stanzas }
          | Some (a, b) ->
            User_error.raise
@@ -235,7 +237,8 @@ end = struct
       | Some p -> p
       | None ->
         Dune_project.anonymous
-          ~dir:Path.Source.root
+          ~dir:Path.Local.root
+          ~display_dir:Path.root
           Package_info.empty
           Package.Name.Map.empty
     in
@@ -483,6 +486,8 @@ module Component = struct
           dir
           (common : Options.Common.t)
       =
+      let display_dir = Stdune.Path.source dir in
+      let dir = Stdune.Path.Source.to_local dir in
       let package =
         Package.create
           ~name:(Options.Common.package_name common)
@@ -510,7 +515,7 @@ module Component = struct
       in
       let packages = Package.Name.Map.singleton (Package.name package) package in
       let info = project_info ~defaults in
-      Dune_project.anonymous ~dir info packages
+      Dune_project.anonymous ~dir ~display_dir info packages
       |> Dune_project.set_generate_opam_files opam_file_gen
     ;;
 
@@ -698,7 +703,7 @@ module Component = struct
           match (pkg : Options.Project.Pkg.t) with
           | Opam ->
             let name = Options.Common.package_name common in
-            let opam_file = Package_name.file name ~dir in
+            let opam_file = Path.Source.relative_fname dir (Package_name.opam_fn name) in
             let content =
               Stanza_cst.opam_file ~defaults:context.defaults context.dir common
             in

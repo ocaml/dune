@@ -31,10 +31,10 @@ specify js mode (#1940).
   > | censor
   .b.eobjs/jsoo/b.cmo.js
   .e.eobjs/jsoo/e.cmo.js
-  .foo.objs/jsoo/effects=disabled/foo.cma.js
-  .js/effects=disabled/.runtime/$DIGEST/runtime.bc.runtime.js
-  .js/effects=disabled/stdlib/std_exit.cmo.js
-  .js/effects=disabled/stdlib/stdlib.cma.js
+  .foo.objs/jsoo/effects=disabled@$DIGEST1/foo.cma.js
+  .js/effects=disabled@$DIGEST1/.runtime/$DIGEST2/runtime.bc.runtime.js
+  .js/effects=disabled@$DIGEST1/stdlib/std_exit.cmo.js
+  .js/effects=disabled@$DIGEST1/stdlib/stdlib.cma.js
   b.bc.js
   e.bc.js
 

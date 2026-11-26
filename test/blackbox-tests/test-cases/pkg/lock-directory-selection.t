@@ -100,13 +100,13 @@ Build macos package on macos amd64:
 Build linux package on macos (will fail):
   $ dune clean
   $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=amd64 build_pkg linux-only
-  Error: Don't know how to build _build/_private/default/.pkg/linux-only/target
+  Error: Don't know how to build _build/default/.pkg/linux-only/_install
   [1]
 
 Build macos package on linux (will fail):
   $ dune clean
   $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=amd64 build_pkg macos-only
-  Error: Don't know how to build _build/_private/default/.pkg/macos-only/target
+  Error: Don't know how to build _build/default/.pkg/macos-only/_install
   [1]
 
 Build linux package on linux:

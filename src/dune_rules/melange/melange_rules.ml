@@ -194,13 +194,13 @@ let impl_only_modules_defined_in_this_lib ~sctx ~scope ~info lib =
           let dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
           let* scope = Scope.DB.find_by_dir dir in
           let* stanzas =
-            Dune_load.stanzas_in_dir dir
+            Partitions.stanzas_in_dir dir
             >>= function
             | None -> Memo.return []
             | Some dune_file -> Dune_file.find_stanzas dune_file Library.key
           in
           let lib_id = Lib_info.lib_id info |> Lib_id.to_local_exn in
-          let src_dir = Path.Build.drop_build_context_exn dir in
+          let src_dir = Dune_project.dir_in_context dir in
           let library =
             List.find stanzas ~f:(fun library ->
               Lib_id.Local.equal (Library.to_lib_id ~src_dir library) lib_id)
@@ -449,8 +449,14 @@ let compute_promote_in_source ~promote_in_source ~project ~dir ~mode ~output ~sr
            in
            Path.reach ~from:dst_dir into_dir
          | Public_library { lib_dir; output_dir; target_dir = _ } ->
+           let root = Dune_project.root project in
+           if Option.is_some (Pkg_rules.package_of_dir_in_context root)
+           then
+             User_error.raise
+               ~loc:(Loc.in_dir dir)
+               [ Pp.text "Promotion is not supported for mounted package sources." ];
            let into_dir =
-             let root = Dune_project.root project in
+             let root = Path.Source.of_local root in
              let into_dir = Path.Source.append_local root output_dir in
              let segment = Path.drop_prefix_exn src_dir ~prefix:lib_dir in
              Path.Source.append_local into_dir segment
@@ -654,6 +660,8 @@ let setup_emit_cmj_rules
     in
     ( cctx
     , Merlin.make
+        ~scope
+        ~expander
         ~requires_compile
         ~requires_hidden
         ~stdlib_dir
@@ -1149,7 +1157,7 @@ let under_melange_emit_target =
          match Path.Build.parent dir with
          | None -> Memo.return None
          | Some parent ->
-           Dune_load.stanzas_in_dir parent
+           Partitions.stanzas_in_dir parent
            >>= (function
             | None -> under_melange_emit_target parent
             | Some stanzas ->
@@ -1220,7 +1228,7 @@ let setup_emit_js_rules sctx ~dir =
        Gen_rules.make ~directory_targets (Memo.return melange))
   | None ->
     (* this should probably be handled by [Dir_status] *)
-    Dune_load.stanzas_in_dir dir
+    Partitions.stanzas_in_dir dir
     >>= (function
      | None -> Memo.return Gen_rules.no_rules
      | Some dune_file ->

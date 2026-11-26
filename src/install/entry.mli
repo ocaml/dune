@@ -32,6 +32,7 @@ module Expanded : sig
 
   type nonrec 'src t = ('src, kind) t
 
+  val make : Section.t -> dst:string -> kind:kind -> 'src -> 'src t
   val set_src : _ t -> 'src -> 'src t
   val add_install_prefix : 'src t -> paths:Path.t Paths.t -> prefix:Path.t -> 'src t
   val gen_install_file : Path.t t list -> string

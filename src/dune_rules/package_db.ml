@@ -9,8 +9,8 @@ type any_package =
   | Build of unit Action_builder.t
 
 let find_package ctx pkg =
-  let* packages = Dune_load.packages () in
-  match Package.Name.Map.find packages pkg with
+  Partitions.find_package ctx pkg
+  >>= function
   | Some p -> Memo.return (Some (Local p))
   | None ->
     Pkg_rules.lock_dir_active ctx
@@ -19,7 +19,7 @@ let find_package ctx pkg =
        Pkg_rules.find_package ctx pkg
        >>| (function
         | None -> None
-        | Some b -> Some (Build b))
+        | Some (_dependencies, build) -> Some (Build build))
      | false ->
        let* findlib = Findlib.create ctx in
        Findlib.find_root_package findlib pkg

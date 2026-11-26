@@ -36,6 +36,7 @@ module Dune_file = Dune_file
 module Rule_plugin_runner = Rule_plugin_runner
 module Artifact_substitution = Artifact_substitution
 module Dune_load = Dune_load
+module Partitions = Partitions
 module Opam_create = Opam_create
 module Link_mode = Link_mode
 module Utop = Utop

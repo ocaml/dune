@@ -45,8 +45,8 @@ Lock and build with explicit dune pkg lock:
   Dependencies common to all supported platforms:
   - foo.0.0.1
 
-  $ dune exec --display short bar 2>&1 | grep "Building"
-      Building foo.0.0.1
+  $ dune exec --display short bar 2>&1 | grep "ocamlopt .pkg/foo/foo\." || echo "no rebuilds"
+      ocamlopt .pkg/foo/foo.{a,cmxa}
 
   $ dune exec bar
   Hello from foo 0.0.1!
@@ -58,7 +58,7 @@ Enable auto-locking:
   $ enable_pkg
 
 Build again - should auto-lock internally and NOT rebuild foo:
-  $ dune exec --display short bar 2>&1 | grep "Building" || echo "no rebuilds"
+  $ dune exec --display short bar 2>&1 | grep "ocamlopt .pkg/foo/foo\." || echo "no rebuilds"
   no rebuilds
 
   $ dune exec bar

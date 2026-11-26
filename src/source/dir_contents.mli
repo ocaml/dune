@@ -12,6 +12,10 @@ end
 type t
 
 val empty : t
+
+(** A listing without inodes; its directories have [File.dummy]. *)
+val of_names : files:Filename.Array.Set.t -> dirs:Filename.Array.Set.t -> t
+
 val dirs : t -> File.t Filename.Array.Map.t
 val files : t -> Filename.Array.Set.t
 val to_dyn : t -> Dyn.t

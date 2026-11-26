@@ -30,8 +30,8 @@ silently tolerates the cycle, deferring the failure to build time:
 
   $ dune pkg validate-lockdir
 
-Second, a cycle between workspace packages. Validation accepts it, and
-querying the transitive dependencies crashes with an internal error:
+A cycle between workspace packages has the same validation behavior. The
+combined traversal terminates without an internal error:
 
   $ cd ..
   $ mkdir workspace-cycle
@@ -52,10 +52,11 @@ querying the transitive dependencies crashes with an internal error:
   (no dependencies to lock)
 
   $ dune pkg validate-lockdir
-  $ dune describe pkg list-locked-dependencies --transitive 2>&1 | head -5
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("cycles aren't allowed because we forbid post deps", {})
-  [1]
+  $ dune describe pkg list-locked-dependencies --transitive
+  Dependencies of local packages locked in dune.lock
+  - Transitive dependencies of local package a.dev
+    - b.dev
+    
+  - Transitive dependencies of local package b.dev
+    - a.dev
+    

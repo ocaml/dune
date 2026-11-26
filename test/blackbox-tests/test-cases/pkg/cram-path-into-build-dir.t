@@ -46,7 +46,7 @@ Declaring the dependency makes the binary available:
 Change the helper source without editing the lock entry. The package is
 rebuilt and the test is rerun:
 
-  $ helper="$(get_build_pkg_dir provider)/target/bin/helper"
+  $ helper="$(get_build_pkg_dir provider)/_install/bin/helper"
   $ printf '#!/bin/sh\necho v2\n' | make_lockpkg_file provider helper
   $ build_pkg provider
   $ "$helper"

@@ -49,15 +49,15 @@ opam-var-unsupported.t
 
   $ build_pkg testpkg 2>&1 | censor
   dune
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/source
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/lib
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/lib
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/bin
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/sbin
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/share
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/doc
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/etc
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/man
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/lib/toplevel
-  $PWD/_build/.sandbox/$DIGEST/_private/default/.pkg/testpkg/target/lib/stublibs
+  $PWD/_build/.sandbox/$DIGEST/default/.pkg/testpkg
+  $PWD/_build/.sandbox/$DIGEST/default/.pkg/testpkg/_install
+  $PWD/_build/.sandbox/$DIGEST/default/.pkg/testpkg/_install/lib
+  $PWD/_build/.sandbox/$DIGEST/default/.pkg/testpkg/_install/lib
+  $PWD/_build/.sandbox/$DIGEST/default/.pkg/testpkg/_install/bin
+  $PWD/_build/.sandbox/$DIGEST/default/.pkg/testpkg/_install/sbin
+  $PWD/_build/.sandbox/$DIGEST/default/.pkg/testpkg/_install/share
+  $PWD/_build/.sandbox/$DIGEST/default/.pkg/testpkg/_install/doc
+  $PWD/_build/.sandbox/$DIGEST/default/.pkg/testpkg/_install/etc
+  $PWD/_build/.sandbox/$DIGEST/default/.pkg/testpkg/_install/man
+  $PWD/_build/.sandbox/$DIGEST/default/.pkg/testpkg/_install/lib/toplevel
+  $PWD/_build/.sandbox/$DIGEST/default/.pkg/testpkg/_install/lib/stublibs

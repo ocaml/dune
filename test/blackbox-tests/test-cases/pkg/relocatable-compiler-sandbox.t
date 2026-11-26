@@ -66,6 +66,11 @@ encountered on macOS everywhere:
   >   OCAMLLIB="$self_dir/../lib/ocaml"
   >   export OCAMLLIB
   >   ;;
+  > ocaml)
+  >   self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+  >   OCAMLLIB="${OCAMLLIB:-$self_dir/../lib/ocaml}"
+  >   export OCAMLLIB
+  >   ;;
   > esac
   > exec "$real_ocaml_bin/$tool" "$@"
   > EOF
@@ -153,7 +158,7 @@ not compare the declared version with the compiler's own reported version.
   > | i = INT EOF { i + 1 }
   > EOF
 
-The compiler runs through the sandbox link, computes its standard library path
-relative to it, and finds nothing there:
+The compiler runs through the sandbox link and finds its declared standard
+library dependency:
 
   $ dune build _build/default/parser__mock.mli.inferred

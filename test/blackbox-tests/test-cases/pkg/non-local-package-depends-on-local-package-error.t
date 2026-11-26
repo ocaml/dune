@@ -1,5 +1,4 @@
-Test that we produce an error message when a non-local package depends on a
-local package.
+A repository package may depend on a supplied workspace package.
 
   $ mkrepo
   $ add_mock_repo_if_needed
@@ -20,7 +19,9 @@ local package.
   > EOF
 
   $ dune pkg lock
-  Error: Dune does not support packages outside the workspace depending on
-  packages in the workspace. The package "remote" is not in the workspace but
-  it depends on the package "local_b" which is in the workspace.
-  [1]
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - remote.0.0.1
+  $ dune pkg validate-lockdir
+  $ test ! -e dune.lock/local_b.dev.pkg

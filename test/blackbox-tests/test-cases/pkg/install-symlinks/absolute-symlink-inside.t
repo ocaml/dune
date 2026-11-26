@@ -28,14 +28,14 @@ Verify the build ran:
 
 The symlink is resolved to a regular file:
 
-  $ dune_cmd stat kind $(get_build_pkg_dir foo)/target/lib/foo/link.txt
+  $ dune_cmd stat kind $(get_build_pkg_dir foo)/_install/lib/foo/link.txt
   regular file
 
 Both files are hardlinked:
 
-  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/target/lib/foo/real.txt
+  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/_install/lib/foo/real.txt
   3
-  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/target/lib/foo/link.txt
+  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/_install/lib/foo/link.txt
   3
 
 Clean and rebuild to verify cache restore:

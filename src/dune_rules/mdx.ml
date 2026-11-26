@@ -271,20 +271,13 @@ let () =
 
 (** Returns the list of files (in _build) to be passed to mdx for the given
     stanza and context *)
-let files_to_mdx t ~sctx ~dir =
+let files_to_mdx t ~dir =
   let must_mdx src_path =
-    let file = Path.Source.basename src_path |> Filename.to_string in
+    let file = Path.Build.basename src_path |> Filename.to_string in
     let standard = default_files_of_version t.version in
     Predicate_lang.Glob.test t.files ~standard file
   in
-  let build_path src_path =
-    Path.Build.append_source (Context.build_dir (Super_context.context sctx)) src_path
-  in
-  Path.Build.drop_build_context_exn dir
-  |> Source_tree.files_of
-  >>| Path.Source.Set.to_list
-  >>| List.filter_map ~f:(fun src_path ->
-    if must_mdx src_path then Some (build_path src_path) else None)
+  Partitions.source_files ~dir >>| Path.Build.Set.to_list >>| List.filter ~f:must_mdx
 ;;
 
 (** Generates the rules for a single [src] file covered covered by the given
@@ -521,7 +514,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
 (** Generates the rules for a given mdx stanza *)
 let gen_rules t ~sctx ~dir ~scope ~expander =
   let register_rules () =
-    let* files_to_mdx = files_to_mdx t ~sctx ~dir in
+    let* files_to_mdx = files_to_mdx t ~dir in
     let mdx_prog =
       Super_context.resolve_program
         sctx
@@ -544,8 +537,10 @@ let gen_rules t ~sctx ~dir ~scope ~expander =
     match t.package with
     | None -> Memo.return true
     | Some package ->
-      let+ mask = Dune_load.mask () in
-      Only_packages.mem_all mask || Only_packages.mem mask (Package.name package)
+      let+ project = Partitions.find_loaded_project ~dir in
+      (match Loaded_project.stanza_mask project with
+       | None -> true
+       | Some packages -> Package.Name.Set.mem packages (Package.name package))
   in
   Memo.when_ do_it register_rules
 ;;

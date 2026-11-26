@@ -15,6 +15,7 @@ type input =
   ; rule_loc : Loc.t
   ; execution_parameters : Execution_parameters.t
   ; sandbox : Process.Sandbox.t option
+  ; promotion : bool (** See [Action.Full.Props.promotion]. *)
   ; action : Action.t
   ; job_slots : Action.t option
     (** An action that prints the number of job slots that [action] takes. It

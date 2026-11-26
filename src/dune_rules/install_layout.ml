@@ -32,7 +32,7 @@ end = struct
 end
 
 let entry_resolver_fdecl
-  : (Context_name.t -> Package.Name.t -> Install.Entry.Sourced.Unexpanded.t list Memo.t)
+  : (Context_name.t -> Package.Name.t -> Path.t Install.Entry.Expanded.t list Memo.t)
       Fdecl.t
   =
   Fdecl.create Dyn.opaque
@@ -46,9 +46,8 @@ let dir ~context ~key =
     [ Context_name.to_string context; ".packages"; key ]
 ;;
 
-(* Resolve the package set's install entries against the layout root: filter
-   out [Source_tree] entries, expand the rest, and key each entry by its
-   materialised path under the layout. Collisions (two packages installing
+(* Key the package set's install entries by their materialised paths under
+   the layout root. Collisions (two packages installing
    to the same destination, which can only happen in _root sections) are
    reported as user errors naming the conflicting packages and entry. *)
 let compute_entries context_name root packages =
@@ -61,26 +60,17 @@ let compute_entries context_name root packages =
       Install.Paths.make ~relative:Path.relative ~package:pkg ~roots
     in
     let+ entries = get_entries context_name pkg in
-    List.filter_map entries ~f:(fun (s : Install.Entry.Sourced.Unexpanded.t) ->
-      let entry = s.entry in
-      match entry.kind with
-      | Install.Entry.Unexpanded.Source_tree -> None
-      | File | Directory ->
-        let relative =
-          Install.Entry.relative_installed_path entry ~paths:install_paths
-          |> Path.as_in_source_tree_exn
-        in
-        let dst = Path.Build.append_source root relative in
-        let expanded =
-          Install.Entry.Expanded.set_src
-            (Install.Entry.Unexpanded.expand entry)
-            (Path.build entry.src)
-        in
-        Some (dst, (pkg, expanded))))
+    List.map entries ~f:(fun entry ->
+      let relative =
+        Install.Entry.relative_installed_path entry ~paths:install_paths
+        |> Path.as_in_source_tree_exn
+      in
+      let dst = Path.Build.append_source root relative in
+      dst, (pkg, entry)))
   >>| List.concat
   >>| Path.Build.Map.of_list
   >>| function
-  | Ok m -> Path.Build.Map.map m ~f:snd
+  | Ok m -> m
   | Error (_, (pkg_a, entry_a), (pkg_b, _)) ->
     User_error.raise
       ~hints:[ Pp.text "Rename one of the install entries." ]
@@ -103,7 +93,7 @@ let entries =
       Path.Build.Map.foldi
         entries
         ~init:(Path.Build.Map.empty, Dep.Set.empty)
-        ~f:(fun dst (entry : Path.t Install.Entry.Expanded.t) (dirs, deps) ->
+        ~f:(fun dst (_, (entry : Path.t Install.Entry.Expanded.t)) (dirs, deps) ->
           let is_lib_entry =
             match (entry.section : Section.t) with
             | Lib | Libexec -> true
@@ -170,24 +160,20 @@ let entries =
 let files context_name packages =
   let open Memo.O in
   let+ entries, _ = entries context_name packages in
-  Path.Build.Map.keys entries |> List.map ~f:Path.build
+  Path.Build.Map.to_list entries
+  |> List.map ~f:(fun (dst, (package, (entry : _ Install.Entry.Expanded.t))) ->
+    package, (entry.section, Path.build dst))
 ;;
 
 let deps context_name packages =
   let open Action_builder.O in
   let* files = Action_builder.of_memo (files context_name packages) in
-  Action_builder.paths files
+  let+ () = Action_builder.paths (List.map files ~f:(fun (_, (_, path)) -> path)) in
+  Package.Name.Map.of_list_multi files
+  |> Package.Name.Map.map ~f:Section.Map.of_list_multi
 ;;
 
 let root context_name packages = dir ~context:context_name ~key:(Key.encode packages)
-
-let env context_name packages =
-  let open Action_builder.O in
-  let+ () = deps context_name packages in
-  let layout_root = root context_name packages in
-  let roots = Install.Roots.opam_from_prefix layout_root ~relative:Path.Build.relative in
-  Install.Roots.add_to_env roots Env.empty
-;;
 
 let make_dispatch ~dir ~directory_targets subdirs f =
   let rules = Rules.collect_unit f in
@@ -214,14 +200,14 @@ let gen_rules context_name ~dir rest =
      | Some packages ->
        let+ entries, _ = entries context_name packages in
        let directory_targets =
-         Path.Build.Map.filter_map entries ~f:(fun entry ->
+         Path.Build.Map.filter_map entries ~f:(fun (_, entry) ->
            match (entry.kind : Install.Entry.Expanded.kind) with
            | File -> None
            | Directory -> Some Loc.none)
        in
        make_dispatch ~dir ~directory_targets Subdir_set.empty (fun () ->
          Path.Build.Map.to_seq entries
-         |> Memo.parallel_iter_seq ~f:(fun (dst, { Install.Entry.kind; src; _ }) ->
+         |> Memo.parallel_iter_seq ~f:(fun (dst, (_, { Install.Entry.kind; src; _ })) ->
            let { Action_builder.With_targets.build; targets } =
              match (kind : Install.Entry.Expanded.kind) with
              | File -> Action_builder.symlink ~src ~dst

@@ -67,27 +67,28 @@ let source_root file =
   Path.as_in_build_dir_exn file |> Path.Build.drop_build_context_maybe_sandboxed_exn
 ;;
 
-let promotion source_file =
+let promotion_annotation source_file =
   { User_message.Diff_annot.in_source = source_file
   ; in_build = Diff_promotion.File.in_staging_area source_file
   }
 ;;
 
-let run_change loc ~patch_back ~sandbox (mode : Diff.Mode.t) = function
+let run_change loc ~promotion ~patch_back ~sandbox (mode : Diff.Mode.t) = function
   | Message messages -> User_error.raise ~loc messages
   | File_diff { source_file; file1; file2 } ->
+    let promotion = Option.some_if promotion (promotion_annotation source_file) in
     (match mode with
      | Text ->
        Print_diff.print
          ~sandbox
          ~patch_back
-         (promotion source_file)
+         promotion
          file1
          file2
          ~skip_trailing_cr:Sys.win32
      | Binary ->
        User_error.raise
-         ~promotion:(promotion source_file)
+         ?promotion
          ~loc
          [ Pp.textf
              "Files %s and %s differ."
@@ -278,6 +279,7 @@ let plan_diff loc { Diff.optional; file1; file2; mode; directory_diffs } =
 
 let exec_plan
       loc
+      ~promotion
       ~patch_back
       ~sandbox
       { Diff.optional; mode; file1; file2; _ }
@@ -294,18 +296,20 @@ let exec_plan
     in
     Fiber.finalize_now
       (fun () ->
-         Fiber.parallel_iter changes ~f:(run_change loc ~patch_back ~sandbox mode))
+         Fiber.parallel_iter
+           changes
+           ~f:(run_change loc ~promotion ~patch_back ~sandbox mode))
       ~finally:(fun () ->
         match optional with
         | false ->
-          if in_source_or_target && not target_is_copied_from_source_tree
+          if promotion && in_source_or_target && not target_is_copied_from_source_tree
           then register_promotions `Copy promotions
         | true ->
-          if in_source_or_target
+          if promotion && in_source_or_target
           then register_promotions `Move promotions
           else remove_intermediate_target file2)
 ;;
 
-let exec ~sandbox loc ~patch_back diff =
-  exec_plan loc ~patch_back ~sandbox diff (plan_diff loc diff)
+let exec ~promotion ~sandbox loc ~patch_back diff =
+  exec_plan loc ~promotion ~patch_back ~sandbox diff (plan_diff loc diff)
 ;;

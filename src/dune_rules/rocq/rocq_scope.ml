@@ -14,7 +14,7 @@
 open Import
 open Memo.O
 
-type t = { scopes : Rocq_lib.DB.t Lazy.t Path.Source.Map.t Memo.Lazy.t }
+type t = { scopes : Rocq_lib.DB.t Lazy.t Path.Build.Map.t Memo.Lazy.t }
 
 let public_theories context public_libs rocq_stanzas =
   let+ installed_theories =
@@ -41,7 +41,7 @@ let rocq_scopes_by_dir
   let find_db dir =
     snd (Find_closest_source_dir.find_by_dir_exn db_by_project_dir ~dir)
   in
-  Path.Source.Map.merge
+  Path.Build.Map.merge
     projects_by_dir
     rocq_stanzas_by_project_dir
     ~f:(fun _dir project rocq_stanzas ->
@@ -59,18 +59,20 @@ let rocq_scopes_by_dir
             |> Rocq_lib.DB.create_from_rocqlib_stanzas ~parent ~find_db))
 ;;
 
-let rocq_stanzas_by_project_dir rocq_stanzas =
-  List.map rocq_stanzas ~f:(fun (dir, (stanza : Rocq_stanza.Theory.t)) ->
-    let project = stanza.project in
-    Dune_project.root project, (dir, stanza))
-  |> Path.Source.Map.of_list_multi
+let rocq_stanzas_by_project_dir projects_by_root rocq_stanzas =
+  List.map rocq_stanzas ~f:(fun (dir, stanza) ->
+    let project = Find_closest_source_dir.find_by_dir_exn projects_by_root ~dir in
+    Loaded_project.output_root project, (dir, stanza))
+  |> Path.Build.Map.of_list_multi
 ;;
 
 let make context ~public_libs ~db_by_project_dir ~projects_by_root rocq_stanzas =
   { scopes =
       Memo.lazy_ ~name:"rocq-scopes" (fun () ->
         let+ public_theories = public_theories context public_libs rocq_stanzas in
-        let rocq_stanzas_by_project_dir = rocq_stanzas_by_project_dir rocq_stanzas in
+        let rocq_stanzas_by_project_dir =
+          rocq_stanzas_by_project_dir projects_by_root rocq_stanzas
+        in
         rocq_scopes_by_dir
           db_by_project_dir
           projects_by_root
@@ -81,5 +83,5 @@ let make context ~public_libs ~db_by_project_dir ~projects_by_root rocq_stanzas 
 
 let find t ~dir =
   let+ scopes = Memo.Lazy.force t.scopes in
-  Path.Source.Map.find_exn scopes dir |> Lazy.force
+  Path.Build.Map.find_exn scopes dir |> Lazy.force
 ;;

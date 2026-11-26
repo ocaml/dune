@@ -35,13 +35,27 @@ detect it and not descend into an infinite loop.
   > return $code
   > }
 
+A locked package may depend on a workspace package, so each solve succeeds.
+Cycles are not looked for when locking.
+
   $ runtest a
-  Error: Dune does not support packages outside the workspace depending on
-  packages in the workspace. The package "b" is not in the workspace but it
-  depends on the package "a" which is in the workspace.
-  [1]
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - b.dev
   $ runtest b
-  Error: Dune does not support packages outside the workspace depending on
-  packages in the workspace. The package "a" is not in the workspace but it
-  depends on the package "b" which is in the workspace.
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - a.dev
+
+The cycle is found when building:
+
+  $ (cd a && dune build @pkg-install 2>&1)
+  Error: Dependency cycle between packages:
+     a
+  -> b
+  -> a
+  -> required by _build/default/.pkg/b/_install
+  -> required by alias pkg-install
   [1]

@@ -29,14 +29,13 @@ Testing install actions
 
   $ show_pkg_cookie test
   { files =
-      [ (LIB_ROOT, [ In_build_dir "_private/default/.pkg/test/target/lib/xxx" ])
-      ]
+      [ (LIB_ROOT, [ In_build_dir "default/.pkg/test/_install/lib/xxx" ]) ]
   ; variables = []
   }
 
-An install manifest should take precedence over the install action's scanner.
-Currently, executable permissions cause the scanner to classify the same file
-as libexec, so the cookie incorrectly records it in both lib and libexec.
+An install manifest takes precedence over the install action's scanner.
+Executable permissions must not cause a file declared in lib to also appear
+in libexec.
 
   $ make_lockpkg overlap <<'EOF'
   > (version 1.0)
@@ -51,19 +50,14 @@ as libexec, so the cookie incorrectly records it in both lib and libexec.
   $ show_pkg_cookie overlap
   { files =
       [ (LIB,
-         [ In_build_dir
-             "_private/default/.pkg/overlap/target/lib/overlap/payload"
-         ])
-      ; (LIBEXEC,
-         [ In_build_dir
-             "_private/default/.pkg/overlap/target/lib/overlap/payload"
-         ])
+         [ In_build_dir "default/.pkg/overlap/_install/lib/overlap/payload" ])
+      ; (LIBEXEC, [])
       ]
   ; variables = []
   }
 
 The same happens within one section: a file the manifest declares in bin and
-the install action also copies there is recorded twice. A dependency can still
+the install action also copies there is recorded once. A dependency can still
 use it.
 
   $ make_lockpkg twice <<'EOF'
@@ -80,11 +74,7 @@ use it.
   $ build_pkg twice
   $ show_pkg_cookie twice
   { files =
-      [ (BIN,
-         [ In_build_dir "_private/default/.pkg/twice/target/bin/shared-tool"
-         ; In_build_dir "_private/default/.pkg/twice/target/bin/shared-tool"
-         ])
-      ]
+      [ (BIN, [ In_build_dir "default/.pkg/twice/_install/bin/shared-tool" ]) ]
   ; variables = []
   }
   $ make_lockpkg consumer <<'EOF'
@@ -94,3 +84,19 @@ use it.
   > EOF
   $ build_pkg consumer
   installed
+
+An install action may leave both "tool" and "tool.exe" in bin, as Windows
+builds do. Once the extension is stripped for lookup, the two names coincide;
+a dependent package's recipe must still be set up.
+
+  $ make_lockpkg both <<'EOF'
+  > (version 1.0)
+  > (install (system "mkdir -p %{bin}; touch %{bin}/tool %{bin}/tool.exe"))
+  > EOF
+  $ make_lockpkg both-consumer <<'EOF'
+  > (version 1.0)
+  > (depends both)
+  > (build (run echo ok))
+  > EOF
+  $ build_pkg both-consumer
+  ok

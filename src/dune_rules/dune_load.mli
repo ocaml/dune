@@ -5,10 +5,18 @@
 
 open Import
 
-val dune_files : Context_name.t -> Dune_file.t list Memo.t
-val projects_by_root : unit -> Dune_project.t Path.Source.Map.t Memo.t
-val find_project : dir:Path.Build.t -> Dune_project.t Memo.t
-val stanzas_in_dir : Path.Build.t -> Dune_file.t option Memo.t
+type t =
+  { dune_files : (Source_tree.Dir.t * Source.Dune_file.t) Appendable_list.t
+  ; packages : Package.t Package.Name.Map.t
+  ; projects : (Dune_project.t * Source_tree.Dir.t) list
+  ; mask : Only_packages.t
+  }
+
+val load : unit -> t Memo.t
+
+(** Evaluate package availability without constructing a build context. *)
+val package_enabled : Package.t -> bool Memo.t
+
 val mask : unit -> Only_packages.t Memo.t
 val packages : unit -> Package.t Package.Name.Map.t Memo.t
 val projects : unit -> Dune_project.t list Memo.t

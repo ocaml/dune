@@ -139,6 +139,10 @@ module Full : sig
         (** Whether spawned processes can be subject to an additional sandbox policy. *)
       ; sandbox : Sandbox_config.t
       ; corrections : Corrections.t option
+      ; promotion : bool
+        (** Whether the diffs this action runs may register promotions: its
+            diff actions and the sandbox's corrections. When [false] a
+            mismatch still fails. *)
       ; job_slots : action option
         (** An action that prints the number of job slots that the action
             takes. This lets an action that runs its own parallel work, such as
@@ -175,6 +179,7 @@ module Full : sig
   val add_sandbox : Sandbox_config.t -> t -> t
   val add_can_go_in_shared_cache : bool -> t -> t
   val disable_sandbox_policy : t -> t
+  val disable_promotion : t -> t
   val add_corrections : Corrections.t -> t -> t
   val add_job_slots : action -> t -> t
 

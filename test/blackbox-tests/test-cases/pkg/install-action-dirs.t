@@ -7,17 +7,17 @@ Install actions should have the switch directory prepared:
   > EOF
 
   $ build_pkg test
-  ../target
-  ../target/bin
-  ../target/doc
-  ../target/doc/test
-  ../target/etc
-  ../target/etc/test
-  ../target/lib
-  ../target/lib/stublibs
-  ../target/lib/test
-  ../target/lib/toplevel
-  ../target/man
-  ../target/sbin
-  ../target/share
-  ../target/share/test
+  ./_install
+  ./_install/bin
+  ./_install/doc
+  ./_install/doc/test
+  ./_install/etc
+  ./_install/etc/test
+  ./_install/lib
+  ./_install/lib/stublibs
+  ./_install/lib/test
+  ./_install/lib/toplevel
+  ./_install/man
+  ./_install/sbin
+  ./_install/share
+  ./_install/share/test

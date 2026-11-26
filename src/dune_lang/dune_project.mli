@@ -15,11 +15,28 @@ type t
 
 val to_dyn : t -> Dyn.t
 val packages : t -> Package.t Package.Name.Map.t
-val exclusive_package : t -> dir:Path.Source.t -> Package_id.t option
+val exclusive_package : t -> dir:Path.Local.t -> Package_id.t option
 val name : t -> Dune_project_name.t
+
+(** The project's name for messages. A project without a name is named by its
+    directory, where [display_path] places it. *)
+val name_hum : t -> string
+
 val version : t -> Package_version.t option
-val root : t -> Path.Source.t
-val stanza_parser : t -> dir:Path.Source.t -> Stanza.t list Decoder.t
+
+(** The project's directory relative to the root of a build context. Whether
+    its files are in the workspace is for the source tree to say. *)
+val root : t -> Path.Local.t
+
+(** Where a directory of the project is, for error messages: a workspace path,
+    or a build path for a project mounted from a locked package. The source
+    tree that loaded the project decides, through [display_dir]. *)
+val display_path : t -> Path.Local.t -> Path.t
+
+(** The place of a build directory inside its context, as [root] names it. *)
+val dir_in_context : Path.Build.t -> Path.Local.t
+
+val stanza_parser : t -> dir:Path.Local.t -> Stanza.t list Decoder.t
 val generate_opam_files : t -> bool
 val set_generate_opam_files : bool -> t -> t
 
@@ -37,7 +54,7 @@ val equal : t -> t -> bool
 val hash : t -> int
 
 (** Return the path of the project file. *)
-val file : t -> Path.Source.t option
+val file : t -> Path.Local.t option
 
 module Lang : sig
   (** [register id stanzas_parser] register a new language. Users will select
@@ -110,7 +127,12 @@ val interpret_lang_and_extensions
 
     - [info] defaults to the empty package info
     - [package] defaults to the empty map of packages *)
-val anonymous : dir:Path.Source.t -> Package_info.t -> Package.t Package.Name.Map.t -> t
+val anonymous
+  :  dir:Path.Local.t
+  -> display_dir:Path.t
+  -> Package_info.t
+  -> Package.t Package.Name.Map.t
+  -> t
 
 (** "dune-project" *)
 val filename : Filename.t
@@ -145,6 +167,7 @@ val dune_site_extension : unit Extension.t
 val opam_file_location : t -> [ `Relative_to_project | `Inside_opam_directory ]
 val allow_approximate_merlin : t -> Loc.t option
 val filter_packages : t -> f:(Package.Name.t -> bool) -> t
+val set_package_version : t -> package:Package.Name.t -> version:Package_version.t -> t
 val including_hidden_packages : t -> Package.t Package.Name.Map.t
 
 module Melange_syntax : sig
@@ -163,14 +186,16 @@ val load
   -> files:Filename.Array.Set.t
   -> infer_from_opam_files:bool
   -> load_opam_file_with_contents:
-       (contents:string -> Path.Source.t -> Package_name.t -> Package.t)
+       (contents:string -> dir:Path.Local.t -> Path.t -> Package_name.t -> Package.t)
   -> t option Memo.t
 
+(** [display_dir] is where [dir] is, for error messages. *)
 val gen_load
-  :  read:(Path.Source.t -> string Memo.t)
-  -> dir:Path.Source.t
+  :  read:(Path.Local.t -> string Memo.t)
+  -> dir:Path.Local.t
+  -> display_dir:Path.t
   -> files:Filename.Array.Set.t
   -> infer_from_opam_files:bool
   -> load_opam_file_with_contents:
-       (contents:string -> Path.Source.t -> Package_name.t -> Package.t)
+       (contents:string -> dir:Path.Local.t -> Path.t -> Package_name.t -> Package.t)
   -> t option Memo.t

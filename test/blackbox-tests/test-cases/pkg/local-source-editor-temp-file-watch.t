@@ -25,7 +25,7 @@ skips temporary files.
   >  (depends foo))
   > EOF
 
-  $ target="$(get_build_pkg_dir foo)/target"
+  $ target="$(get_build_pkg_dir foo)/_install"
 
   $ start_dune
 
@@ -40,7 +40,7 @@ re-read its listing while the autosave file exists:
   $ with_timeout dune rpc flush-file-watcher --wait
   $ build "$target"
   Success
-  $ ls -a $(dirname "$target")/source/lib
+  $ ls -a $(dirname "$target")/lib
   #a.ml#
   .
   ..

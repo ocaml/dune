@@ -44,12 +44,12 @@ module Dir0 = struct
           ~dirs:(Dir_contents.dirs readdir)
       with
       | None -> vcs
-      | Some kind -> This { Vcs.kind; root = Path.(append_source root) path }
+      | Some kind -> This { Vcs.kind; root = Source_tree_file.Dir.path path }
     ;;
   end
 
   type t =
-    { path : Path.Source.t
+    { path : Source_tree_file.Dir.t
     ; status : Source_dir_status.t
     ; files : Filename.Array.Set.t
     ; sub_dirs : sub_dir Filename.Array.Map.t
@@ -65,7 +65,7 @@ module Dir0 = struct
 
   let rec to_dyn { path; status; files; dune_file; sub_dirs; vcs = _; project = _ } =
     Dyn.record
-      [ "path", Path.Source.to_dyn path
+      [ "path", Path.to_dyn (Source_tree_file.Dir.path path)
       ; "status", Source_dir_status.to_dyn status
       ; "files", Dyn.Set (Filename.Array.Set.to_list_map files ~f:Filename.to_dyn)
       ; ( "sub_dirs"
@@ -79,7 +79,7 @@ module Dir0 = struct
     Dyn.record [ "status", Source_dir_status.to_dyn sub_dir_status ]
   ;;
 
-  let path t = t.path
+  let path t = Option.value_exn (Source_tree_file.Dir.as_workspace t.path)
   let status t = t.status
   let filenames t = t.files
   let sub_dirs t = t.sub_dirs
@@ -92,7 +92,7 @@ end
 module Physical_input = struct
   type t =
     { default_vcs : Dir0.Vcs.t
-    ; path : Path.Source.t
+    ; path : Source_tree_file.Dir.t
     ; basename : Filename.t
     ; dirs_visited : Dirs_visited.t
     ; dune_file : Dune_file.t option
@@ -100,13 +100,17 @@ module Physical_input = struct
     ; project : Dune_project.t
     }
 
-  let repr = Repr.view Path.Source.repr ~to_:(fun { path; _ } -> path)
+  let repr =
+    Repr.view Path.Local.repr ~to_:(fun { path; _ } ->
+      Source_tree_file.Dir.source_path path)
+  ;;
+
   let to_dyn = Repr.to_dyn repr
 end
 
 module Virtual_input = struct
   type t =
-    { parent_dir : Path.Source.t
+    { parent_dir : Source_tree_file.Dir.t
     ; basename : Filename.t
     ; dune_file : Dune_file.t option
     ; status : Source_dir_status.t
@@ -114,8 +118,8 @@ module Virtual_input = struct
     }
 
   let repr =
-    Repr.view Path.Source.repr ~to_:(fun { parent_dir; basename; _ } ->
-      Path.Source.relative_fname parent_dir basename)
+    Repr.view Path.Local.repr ~to_:(fun { parent_dir; basename; _ } ->
+      Path.Local.relative_fname (Source_tree_file.Dir.source_path parent_dir) basename)
   ;;
 
   let to_dyn = Repr.to_dyn repr
@@ -158,8 +162,12 @@ let rec physical
     match eval_status ~status_map ~parent_status fn with
     | None -> None
     | Some dir_status ->
-      let path = Path.Source.relative_fname dir fn in
-      let dirs_visited = Dirs_visited.add dirs_visited path file in
+      let path = Source_tree_file.Dir.file dir fn in
+      let dirs_visited =
+        match Source_tree_file.Dir.as_workspace path with
+        | None -> dirs_visited
+        | Some path -> Dirs_visited.add dirs_visited path file
+      in
       Some
         { Dir0.sub_dir_status = dir_status
         ; sub_dir_as_t =
@@ -269,24 +277,37 @@ and find_dir_raw
   let* readdir =
     if virtual_
     then Memo.return Dir_contents.empty
-    else
-      Dir_contents.of_source_path path
-      >>| function
-      | Ok dir -> dir
-      | Error _ -> Dir_contents.empty
+    else Source_tree_file.Dir.contents path
   in
   let* project =
     if status = Data_only
     then Memo.return project
-    else
-      Dune_project.load
-        ~dir:path
-        ~files:(Dir_contents.files readdir)
-        ~infer_from_opam_files:false
-        ~load_opam_file_with_contents:Dune_pkg.Opam_file.load_opam_file_with_contents
-      >>| Option.map
-            ~f:(Only_packages.filter_packages_in_project ~vendored:(status = Vendored))
-      >>| Option.value ~default:project
+    else (
+      let files = Dir_contents.files readdir in
+      let load_opam_file_with_contents =
+        Dune_pkg.Opam_file.load_opam_file_with_contents
+      in
+      (match Source_tree_file.Dir.as_workspace path with
+       | Some dir ->
+         Dune_project.load
+           ~dir
+           ~files
+           ~infer_from_opam_files:false
+           ~load_opam_file_with_contents
+         >>| Option.map
+               ~f:(Only_packages.filter_packages_in_project ~vendored:(status = Vendored))
+       | None ->
+         Dune_project.gen_load
+           ~read:(fun file ->
+             Source_tree_file.Dir.file path (Path.Local.basename file)
+             |> Source_tree_file.File.read
+             >>| Option.value_exn)
+           ~dir:(Source_tree_file.Dir.source_path path)
+           ~display_dir:(Source_tree_file.Dir.path path)
+           ~files
+           ~infer_from_opam_files:false
+           ~load_opam_file_with_contents)
+      >>| Option.value ~default:project)
   in
   contents readdir ~default_vcs ~path ~dune_file ~dirs_visited ~project ~dir_status:status
 
@@ -322,7 +343,7 @@ and virtual_node =
        (fun { Virtual_input.parent_dir; basename; dune_file; status; project } ->
           find_dir_raw
             ~default_vcs:Dir0.Vcs.Ancestor_vcs
-            ~path:(Path.Source.relative_fname parent_dir basename)
+            ~path:(Source_tree_file.Dir.file parent_dir basename)
             ~basename
             ~virtual_:true
             ~dune_file
@@ -343,7 +364,8 @@ let root =
     | Ok dir -> dir
     | Error unix_error -> error_unable_to_load ~path unix_error
   in
-  let vcs = Dir0.Vcs.get_vcs ~default:Ancestor_vcs ~readdir ~path in
+  let dir = Source_tree_file.Dir.workspace path in
+  let vcs = Dir0.Vcs.get_vcs ~default:Ancestor_vcs ~readdir ~path:dir in
   let* project =
     Dune_project.load
       ~dir:path
@@ -352,7 +374,12 @@ let root =
       ~load_opam_file_with_contents:Dune_pkg.Opam_file.load_opam_file_with_contents
     >>| (function
      | Some p -> p
-     | None -> Dune_project.anonymous ~dir:path Package_info.empty Package.Name.Map.empty)
+     | None ->
+       Dune_project.anonymous
+         ~dir:(Path.Source.to_local path)
+         ~display_dir:(Path.source path)
+         Package_info.empty
+         Package.Name.Map.empty)
     >>| Only_packages.filter_packages_in_project ~vendored:(dir_status = Vendored)
   in
   let* dirs_visited =
@@ -364,7 +391,7 @@ let root =
   contents
     readdir
     ~default_vcs:vcs
-    ~path
+    ~path:dir
     ~dune_file:None
     ~dirs_visited
     ~project
@@ -401,13 +428,14 @@ let find_excluded_ancestor path =
          let* child = sub_dir.sub_dir_as_t in
          loop child path
        | None ->
-         Dir_contents.of_source_path dir.path
+         let path = Dir0.path dir in
+         Dir_contents.of_source_path path
          >>| (function
           | Ok contents when Filename.Array.Map.mem (Dir_contents.dirs contents) sub_dir
             ->
             dir.dune_file
             |> Option.bind ~f:Dune_file.dirs_stanza_loc
-            |> Option.map ~f:(fun loc -> Path.Source.relative_fname dir.path sub_dir, loc)
+            |> Option.map ~f:(fun loc -> Path.Source.relative_fname path sub_dir, loc)
           | _ -> None))
   in
   let* root = Memo.Node.read root in
@@ -416,18 +444,25 @@ let find_excluded_ancestor path =
 
 let root () = Memo.Node.read root
 
-let files_of path =
-  find_dir path
-  >>| function
-  | None -> Path.Source.Set.empty
-  | Some dir ->
-    Dir0.filenames dir
-    |> Filename.Array.Set.to_list
-    |> Path.Source.Set.of_list_map ~f:(Path.Source.relative_fname path)
-;;
-
 module Dir = struct
   include Dir0
+
+  let source_path t = Source_tree_file.Dir.source_path t.path
+  let logical_path t = Source_tree_file.Dir.path t.path
+  let file t filename = Source_tree_file.Dir.file t.path filename
+
+  let find_dir t path =
+    let rec loop t = function
+      | [] -> Memo.return (Some t)
+      | name :: rest ->
+        (match Filename.Array.Map.find t.sub_dirs name with
+         | None -> Memo.return None
+         | Some sub_dir -> sub_dir.sub_dir_as_t >>= fun t -> loop t rest)
+    in
+    match Path.Local.descendant path ~of_:(source_path t) with
+    | None -> Memo.return None
+    | Some path -> loop t (Path.Local.explode path)
+  ;;
 
   module Make_map_reduce (M : Memo.S) (Outcome : Monoid) = struct
     open M.O
@@ -462,7 +497,7 @@ module Dir = struct
                    ~name:trace_event_name
                    ~start
                    ~stop
-                   ~dir:t.path
+                   ~dir:(Path.Source.of_local (Source_tree_file.Dir.source_path t.path))
                in
                Dune_trace.Out.emit trace event;
                res)
@@ -472,6 +507,24 @@ module Dir = struct
     ;;
   end
 end
+
+let load_mounted ~loc ~logical_root ~backing_root =
+  let dir = Source_tree_file.Dir.mounted ~loc ~logical_root ~backing_root in
+  find_dir_raw
+    ~default_vcs:Ancestor_vcs
+    ~path:dir
+    ~basename:(Source_tree_file.Dir.basename dir)
+    ~virtual_:false
+    ~dirs_visited:Dirs_visited.empty
+    ~dune_file:None
+    ~status:Normal
+    ~project:
+      (Dune_project.anonymous
+         ~dir:(Source_tree_file.Dir.source_path dir)
+         ~display_dir:(Path.build logical_root)
+         Package_info.empty
+         Package.Name.Map.empty)
+;;
 
 module Make_map_reduce_with_progress (M : Memo.S) (Outcome : Monoid) = struct
   open M.O

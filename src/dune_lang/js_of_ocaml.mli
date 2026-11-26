@@ -11,6 +11,7 @@ module Mode : sig
   val equal : t -> t -> bool
   val compare : t -> t -> Ordering.t
   val decode : t Decoder.t
+  val repr : t Repr.t
   val to_dyn : t -> Dyn.t
   val all : t list
 

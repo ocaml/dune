@@ -145,9 +145,7 @@ let add_sources sources (lockdir : Dune_pkg.Lock_dir.t) =
         | Some source -> source :: sources
       in
       List.fold_left sources ~init:acc ~f:(fun acc source ->
-        match Source.kind source with
-        | `Directory_or_archive _ -> acc
-        | `Fetch -> Path.Build.Map.set acc (make_target ~kind:Dir source) source))
+        Path.Build.Map.set acc (make_target ~kind:Dir source) source))
   in
   Path.Build.Map.superpose sources from_lockdir
 ;;
@@ -199,9 +197,17 @@ let gen_rules_for_source (source : Source.t) =
     fun ~target ~kind ->
       Action_builder.with_no_targets
         (let open Action_builder.O in
-         let+ url = url in
-         action ~url:(loc_url, url) ~checksum ~target ~kind
-         |> Action.Full.make ~can_go_in_shared_cache:true)
+         (* Asked when the target is built: a local source that is missing
+            must only fail what needs it. *)
+         let* source_kind =
+           Action_builder.of_memo (Lock_dir.source_kind source) >>| User_error.ok_exn
+         in
+         (match source_kind with
+          | `Local (_, path) -> Action_builder.path (Path.outside_build_dir path)
+          | `Fetch -> Action_builder.return ())
+         >>> let+ url = url in
+             action ~url:(loc_url, url) ~checksum ~target ~kind
+             |> Action.Full.make ~can_go_in_shared_cache:true)
   in
   let dir_rule =
     let target = make_target ~kind:Dir in

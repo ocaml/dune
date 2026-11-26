@@ -7,9 +7,13 @@ module Local : sig
   module Set : Set.S with type elt = t
 
   val equal : t -> t -> bool
-  val make : loc:Loc.t -> src_dir:Path.Source.t -> Lib_name.t -> t
+  val make : loc:Loc.t -> src_dir:Path.Local.t -> Lib_name.t -> t
   val name : t -> Lib_name.t
   val loc : t -> Loc.t
+
+  (** The directory defining the library, as a place in its build context. *)
+  val src_dir : t -> Path.Local.t
+
   val to_dyn : t -> Dyn.t
 end
 

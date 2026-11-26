@@ -6,7 +6,7 @@ module Expanded : sig
   val to_dyn : t -> Dyn.t
   val src : t -> Path.Build.t
   val dst : t -> string option
-  val dir : t -> Path.Source.t option
+  val dir : t -> Path.Local.t option
   val dst_with_loc : t -> (Loc.t * string) option
   val src_loc : t -> Loc.t
   val dst_path : t -> dir:Path.Build.t -> Path.Build.t
@@ -17,14 +17,14 @@ module Unexpanded : sig
 
   val src : t -> String_with_vars.t
   val dst : t -> String_with_vars.t option
-  val dir : t -> Path.Source.t option
+  val dir : t -> Path.Local.t option
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
   val loc : t -> Loc.t
 
   val expand
     :  t
-    -> dir:Path.Source.t
+    -> dir:Path.Local.t
     -> src:Loc.t * Path.Build.t
     -> dst:(Loc.t * string) option
     -> Expanded.t
@@ -33,7 +33,7 @@ module Unexpanded : sig
     :  src:Loc.t * string
     -> dst:Loc.t * string
     -> dune_syntax:Dune_sexp.Syntax.Version.t
-    -> dir:Path.Source.t option
+    -> dir:Path.Local.t option
     -> t
 
   val decode : t Dune_sexp.Decoder.t

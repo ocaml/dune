@@ -339,6 +339,8 @@ let executables_rules
   let+ merlin =
     let+ requires_hidden = Compilation_context.requires_hidden cctx in
     Merlin.make
+      ~scope
+      ~expander
       ~requires_compile
       ~requires_hidden
       ~stdlib_dir:lib_config.stdlib_dir
@@ -359,6 +361,8 @@ let executables_rules
 
 let rules ~sctx ~dir_contents ~scope ~expander (exes : Executables.t) =
   let dir = Dir_contents.dir dir_contents in
+  let* scope = Scope.DB.for_package scope exes.package in
+  let expander = Expander.for_package expander exes.package in
   let* compile_info = Scope.resolve_executable_deps scope ~db:(Scope.libs scope) exes in
   let f () =
     executables_rules

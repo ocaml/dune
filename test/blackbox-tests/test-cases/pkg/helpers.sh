@@ -11,7 +11,7 @@ export DUNE_CONFIG__SYS_OCAML_VERSION=5.4.0+fake
 
 dune="dune"
 
-pkg_root="_build/_private/default/.pkg"
+pkg_root="_build/default/.pkg"
 
 default_lock_dir="dune.lock"
 source_lock_dir="${default_lock_dir}"
@@ -34,7 +34,7 @@ build_pkg() {
   prefix="$(get_build_pkg_dir "$pkg")"
   local status=$?
   if [ "$status" -eq "0" ]; then
-    $dune build "$prefix/target"
+    $dune build "$prefix/_install"
   else
     return 1
   fi
@@ -44,7 +44,7 @@ package_target_miss_reasons() {
   dune trace cat | jq -cs --arg package "$1" '
     [ .[]
       | select(.cat == "cache" and .name == "workspace_local_miss")
-      | select(.args.target | endswith("/.pkg/" + $package + "/target"))
+      | select(.args.target | endswith("/.pkg/" + $package + "/_install"))
       | .args.reason | split(":")[0]
     ]'
 }
@@ -59,13 +59,13 @@ show_pkg() {
 show_pkg_targets() {
   local pkg=$1
   local prefix
-  prefix="$(get_build_pkg_dir "$pkg")/target"
+  prefix="$(get_build_pkg_dir "$pkg")/_install"
   find "$prefix" | sort | dune_cmd subst "$prefix" ""
 }
 
 show_pkg_cookie() {
   local pkg=$1
-  $dune internal dump "$(get_build_pkg_dir "$pkg")/target/cookie" 2>&1 | censor
+  $dune internal dump "$(get_build_pkg_dir "$pkg")/_install/cookie" 2>&1 | censor
 }
 
 mkrepo() {
@@ -499,6 +499,14 @@ setup_dev_tool_workspace() {
 	EOF
 }
 
+make_host_target_workspace() {
+  cat > dune-workspace <<- EOF
+	(lang dune 3.25)
+	(context (default (name host)))
+	(context (default (name target) (host host)))
+	EOF
+}
+
 make_mock_dev_tool_package() {
   local pkg="$1"
   local exe="$2"
@@ -518,6 +526,51 @@ make_lockpkg() {
   mkdir -p "${source_lock_dir}"
   local f="${source_lock_dir}/$pkg.pkg"
   cat > "$f"
+}
+
+# Exercise installable Dune sources through either backend. A harmless
+# substitution forces the opaque recipe; the native recipe must never run.
+make_dune_source_lockpkg() {
+  local backend="$1"
+  local pkg="$2"
+  local source="$3"
+
+  case "$backend" in
+    native)
+      make_lockpkg "$pkg" <<- EOF
+	(version 0.0.1)
+	(source (copy "$source"))
+	(build (run false))
+	EOF
+      ;;
+    opaque)
+      printf 'opaque\n' > "$source/opaque-recipe.in" || return 1
+      make_lockpkg "$pkg" <<- EOF
+	(version 0.0.1)
+	(source (copy "$source"))
+	(build
+	 (progn
+	  (run mkdir -p %{prefix})
+	  (substitute opaque-recipe.in %{prefix}/opaque-recipe)
+	  (run dune build --release --promote-install-file=true . @install)))
+	EOF
+      ;;
+    *)
+      printf 'Unknown package backend: %s\n' "$backend" >&2
+      return 1
+      ;;
+  esac
+}
+
+make_backend_lockdirs() {
+  local pkg="$1"
+  local source="$2"
+  local backend
+
+  for backend in native opaque; do
+    (cd "$backend" && make_lockdir &&
+      make_dune_source_lockpkg "$backend" "$pkg" "$source") || return 1
+  done
 }
 
 append_to_lockpkg() {
@@ -585,6 +638,13 @@ make_lockdir() {
 	(lang package 0.1)
 	(repositories (complete true))
 	EOF
+}
+
+make_foo_consumer() {
+  make_lockdir
+  make_named_package_project main 3.25 foo
+  echo '(executable (name main) (libraries foo))' > dune
+  echo 'let () = print_endline Foo.message' > main.ml
 }
 
 make_named_package_project() {

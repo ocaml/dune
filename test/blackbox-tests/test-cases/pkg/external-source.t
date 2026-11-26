@@ -17,9 +17,8 @@ Test that can fetch the sources from an external dir
 
   $ show_pkg test
   
-  /source
-  /source/x
-  /target
-  /target/bin
-  /target/bin/x
-  /target/cookie
+  /_install
+  /_install/bin
+  /_install/bin/x
+  /_install/cookie
+  /x

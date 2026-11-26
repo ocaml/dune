@@ -320,30 +320,29 @@ end = struct
 
   let build_dir_is_project_root st_dir =
     let project_root = Source_tree.Dir.project st_dir |> Dune_project.root in
-    Source_tree.Dir.path st_dir |> Path.Source.equal project_root
+    Source_tree.Dir.source_path st_dir |> Path.Local.equal project_root
   ;;
 
   let get_impl dir =
     (match Path.Build.extract_build_context dir with
      | None -> Memo.return None
-     | Some (ctx, dir) ->
-       Source_tree.find_dir dir
+     | Some (ctx, _) ->
+       Partitions.source_tree_dir ~dir
        >>| (function
         | None -> None
         | Some src_dir -> Some (ctx, src_dir)))
     >>= function
     | None -> group_component_or ~dir Generated
     | Some (ctx, st_dir) ->
-      let src_dir = Source_tree.Dir.path st_dir in
       Pkg_rules.lock_dir_path (Context_name.of_string (Filename.to_string ctx))
       >>| (function
        | None -> false
-       | Some of_ -> Path.is_descendant ~of_ (Path.source src_dir))
+       | Some of_ -> Path.is_descendant ~of_ (Source_tree.Dir.logical_path st_dir))
       >>= (function
        | true -> Memo.return (Lock_dir st_dir)
        | false ->
          let build_dir_is_project_root = build_dir_is_project_root st_dir in
-         Dune_load.stanzas_in_dir dir
+         Partitions.stanzas_in_dir dir
          >>= (function
           | Some d -> has_dune_file ~dir st_dir ~build_dir_is_project_root d
           | None ->

@@ -16,8 +16,9 @@ Package resolution creating a cycle
 
   $ build_pkg a
   Error: Dependency cycle between packages:
-     a.0.0.1
-  -> b.0.0.1
-  -> c.0.0.1
-  -> a.0.0.1
+     b
+  -> c
+  -> a
+  -> b
+  -> required by _build/default/.pkg/a/_install
   [1]

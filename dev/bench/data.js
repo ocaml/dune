@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795710945381,
+  "lastUpdate": 1795720618866,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -697043,6 +697043,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.849099016566667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b1f619228c7e57c98790ee8dcc2919b051df749d",
+          "message": "perf(stdune): avoid repeated PATH copies in Env_path.cons_multi (#17265)\n\nReturn the environment unchanged for no directories and reuse cons for\none directory. For multiple directories, keep the right fold but\naccumulate path entries instead of copying a growing PATH on each\niteration. Join the entries once, preserving their order and the\ndistinction between an empty PATH and an unset one.\n\nMedian null-build wall times compared with main (0cab565a3f2):\n\n- ocaml-cohttp (4854618e, 212 lock entries): 2.869 s to 0.979 s\n(-65.9%).\n- ocaml-re (a48c172, 44 lock entries): 546 ms to 391 ms (-28.4%).",
+          "timestamp": "2026-11-26T20:05:27+01:00",
+          "tree_id": "fa550dbd46b73c98c6dd2cb918fe76a36e76f89c",
+          "url": "https://github.com/ocaml/dune/commit/b1f619228c7e57c98790ee8dcc2919b051df749d"
+        },
+        "date": 1795720275426,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.120135045073333,
             "unit": "seconds"
           }
         ]

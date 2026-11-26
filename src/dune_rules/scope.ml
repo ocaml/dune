@@ -25,6 +25,24 @@ let raise_duplicate_library ~show_location ~previous_loc ~main_loc text =
     ]
 ;;
 
+let resolve_executable_deps
+      t
+      ~db
+      ({ Executables.buildable; forbidden_libraries; _ } as exes)
+  =
+  let dune_version = Dune_project.dune_version t.project in
+  let+ pps = Lib.DB.pps_for_preprocessing t.db buildable.preprocess.config in
+  Lib.DB.resolve_user_written_deps
+    db
+    (Executables.exe_target exes)
+    buildable.libraries
+    ~allow_unused_libraries:buildable.allow_unused_libraries
+    ~pps
+    ~dune_version
+    ~allow_overlaps:buildable.allow_overlapping_dependencies
+    ~forbidden_libraries
+;;
+
 module DB = struct
   type scope = t
   type t = { by_dir : scope Path.Source.Map.t }

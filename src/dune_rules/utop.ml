@@ -76,22 +76,7 @@ let add_stanza db ~dir (acc, pps) stanza =
     let+ libs =
       let* compile_info =
         let* scope = Scope.DB.find_by_dir dir in
-        let dune_version =
-          let project = Scope.project scope in
-          Dune_project.dune_version project
-        in
-        let+ pps =
-          Lib.DB.pps_for_preprocessing (Scope.libs scope) exes.buildable.preprocess.config
-        in
-        Lib.DB.resolve_user_written_deps
-          db
-          (Executables.exe_target exes)
-          exes.buildable.libraries
-          ~allow_unused_libraries:exes.buildable.allow_unused_libraries
-          ~pps
-          ~dune_version
-          ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-          ~forbidden_libraries:exes.forbidden_libraries
+        Scope.resolve_executable_deps scope ~db exes
       in
       let+ available = Lib.Compile.direct_requires compile_info ~for_ in
       Resolve.peek available

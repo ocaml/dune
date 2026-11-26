@@ -15,6 +15,8 @@ val libs : t -> Lib.DB.t
 (** Return the Rocq library database associated to this scope *)
 val rocq_libs : t -> Rocq_lib.DB.t Memo.t
 
+val resolve_executable_deps : t -> db:Lib.DB.t -> Executables.t -> Lib.Compile.t Memo.t
+
 (** Scope databases *)
 module DB : sig
   val find_by_dir : Path.Build.t -> t Memo.t

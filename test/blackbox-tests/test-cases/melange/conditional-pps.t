@@ -57,7 +57,7 @@ The field is available starting in Dune 3.24.
   $ dune build --root app \
   >   "$pp_dir/foo.pp.ml" \
   >   "$pp_dir/melange_only.pp.ml"
-  $ find "./app/$pp_dir" -name '*.pp.ml' | censor | sort
+  $ find "./app/$pp_dir" -name '*.pp.ml' | sort
   ./app/_build/default/.melange_src/foo.pp.ml
   ./app/_build/default/.melange_src/melange_only.pp.ml
 

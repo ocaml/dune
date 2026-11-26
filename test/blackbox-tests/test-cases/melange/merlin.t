@@ -657,7 +657,7 @@ Both generated configurations remain available to debug tooling.
   >     }
   > ]
   > | unique
-  > | sort_by(.mode == "melange")' | censor
+  > | sort_by(.mode == "melange")'
   [
     {
       "mode": "ocaml",

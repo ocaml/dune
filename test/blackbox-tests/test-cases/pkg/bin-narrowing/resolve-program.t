@@ -91,10 +91,10 @@ picked up despite no explicit dependency declaration:
 The rules depend on the ocamllex and menhir binaries from the tool_provider
 lockdir package:
 
-  $ dune rules --format=json foo.ml | jq_dune '.[] | ruleDepFilePaths' | censor
+  $ dune rules --format=json foo.ml | jq_dune '.[] | ruleDepFilePaths'
   "_build/_private/default/.pkg/tool_provider/target/bin/ocamllex"
   "_build/default/foo.mll"
-  $ dune rules --format=json bar.ml | jq_dune '.[] | ruleDepFilePaths' | censor
+  $ dune rules --format=json bar.ml | jq_dune '.[] | ruleDepFilePaths'
   "_build/_private/default/.pkg/tool_provider/target/bin/menhir"
   "_build/default/bar.mly"
 
@@ -140,8 +140,7 @@ to $PATH (the package declares no dependencies).
   0
   [1]
 
-  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  
+  $ env_added "$(cat _build/default/path-output)" "$PATH"
   [1]
 
 With a package defined in the project, *with a dir field, and explicit depends on

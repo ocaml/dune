@@ -47,9 +47,7 @@ layout:
 
   $ DUNE_TRACE=cache dune build out1
   $ dune trace cat \
-  >   | jq_dune -s 'cacheMissesMatching("\\.packages/.*/dune-package")' \
-  >   | censor
-  
+  >   | jq_dune -s 'cacheMissesMatching("\\.packages/.*/dune-package")'
 
 Single package dep only includes that package:
 

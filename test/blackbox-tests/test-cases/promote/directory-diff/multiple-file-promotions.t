@@ -16,7 +16,7 @@ Directory diff promotes each changed file separately.
   >  (action (diff expected actual)))
   > EOF
 
-  $ dune runtest 2>&1 | censor
+  $ dune runtest
   File "expected/a", line 1, characters 0-0:
   --- expected/a
   +++ actual/a

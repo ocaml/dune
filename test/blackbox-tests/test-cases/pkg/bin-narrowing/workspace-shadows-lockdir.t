@@ -62,8 +62,7 @@ same:
 
 The lockdir [provider]'s bin directory is NOT on $PATH:
 
-  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  
+  $ env_added "$(cat _build/default/path-output)" "$PATH"
   [1]
 
 When the workspace binary is DISABLED via [(enabled_if false)], its
@@ -115,6 +114,5 @@ lookup fails to resolve:
 
 The lockdir [provider]'s bin directory is NOT on $PATH:
 
-  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  
+  $ env_added "$(cat _build/default/path-output)" "$PATH"
   [1]

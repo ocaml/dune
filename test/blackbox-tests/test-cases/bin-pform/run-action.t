@@ -35,6 +35,4 @@ symlink:
 
   $ DUNE_TRACE=cache dune build path-output
   $ dune trace cat \
-  >   | jq_dune -s 'cacheMissesMatching("\\.binaries")' \
-  >   | censor
-  
+  >   | jq_dune -s 'cacheMissesMatching("\\.binaries")'

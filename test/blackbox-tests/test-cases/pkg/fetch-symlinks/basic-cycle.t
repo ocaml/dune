@@ -20,7 +20,7 @@ Test that we don't get pulled inside an infinite loop when 2 symlinks form a bas
   > EOF
 
 This fails correctly
-  $ build_pkg foo 2>&1 | censor | tail -3
+  $ build_pkg foo 2>&1 | tail -3
   Error: Unable to resolve symlink
   _build/_private/default/.pkg/foo/source/dir_a/link_to_b/link_to_a, it is part
   of a cycle.

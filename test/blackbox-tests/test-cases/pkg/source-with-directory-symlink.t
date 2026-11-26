@@ -26,7 +26,7 @@ Case 1: Local directory source containing a directory symlink.
 CR-someday alizter: This fails because directory symlinks are not supported.
 We could potentially resolve them during the copy.
 
-  $ build_pkg foo 2>&1 | censor
+  $ build_pkg foo
   Error: Is a directory
   -> required by _build/_private/default/.pkg/foo/source/link_to_dir
   -> required by _build/_private/default/.pkg/foo/target

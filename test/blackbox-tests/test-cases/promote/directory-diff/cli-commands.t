@@ -37,7 +37,7 @@ Deletion promotions are visible to `dune promotion list` and `diff`.
   >  (action (diff expected actual)))
   > EOF
 
-  $ dune runtest 2>&1 | censor
+  $ dune runtest
   File "expected/changed", line 1, characters 0-0:
   --- expected/changed
   +++ actual/changed

@@ -33,7 +33,7 @@ Both packages install a file named "topfind" to lib_root:
 The materialization step fails with a user error naming the two
 conflicting packages and the install entry:
 
-  $ dune build out 2>&1 | censor
+  $ dune build out
   Error: "pkg-a" and "pkg-b" both install "topfind" to section lib_root.
   The lib_root, share_root, and libexec_root sections install directly to the
   section root with no per-package subdirectory, so file names must be unique

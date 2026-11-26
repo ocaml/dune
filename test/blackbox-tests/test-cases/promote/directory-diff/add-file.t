@@ -14,7 +14,7 @@ Directory diff promotes files that are missing from the source directory.
   >  (action (diff expected actual)))
   > EOF
 
-  $ dune runtest 2>&1 | censor
+  $ dune runtest
   File "expected/new-file", line 1, characters 0-0:
   --- expected/new-file
   +++ actual/new-file

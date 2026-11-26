@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795694356334,
+  "lastUpdate": 1795694539595,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -499001,6 +499001,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.45338010407333335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c073ccbd01a41dd1c59f2483a76e9464888a502a",
+          "message": "refactor(diff): fold empty directory entries directly (#17262)\n\nDrop the guard around `List.fold_left`: an empty list already returns\nthe initial plan. Keep the separate emptiness check that controls\nwhether Dune announces directory creation. This is the standalone\nsimplification extracted from #17261.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T19:44:06+08:00",
+          "tree_id": "39bb32391d0e94e2dc01d92ed43550a9ef3ef6f5",
+          "url": "https://github.com/ocaml/dune/commit/c073ccbd01a41dd1c59f2483a76e9464888a502a"
+        },
+        "date": 1795694536740,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 44.27970180164667,
             "unit": "seconds"
           }
         ]

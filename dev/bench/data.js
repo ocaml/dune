@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795710885960,
+  "lastUpdate": 1795710893690,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -499494,6 +499494,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.5746300728,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "22a0b06b63efea2acc23be7a2c23240b88c28636",
+          "message": "refactor(lang): share OCaml and Melange preprocessing decoders (#17257)\n\nShare preprocessing dependency decoding and warnings between OCaml and\nMelange while preserving their defaults and the Melange version check.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T00:14:42+08:00",
+          "tree_id": "75a2e803fe0badb606baa0795e9e9f37227ef766",
+          "url": "https://github.com/ocaml/dune/commit/22a0b06b63efea2acc23be7a2c23240b88c28636"
+        },
+        "date": 1795710892861,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5105770007933333,
             "unit": "seconds"
           }
         ]

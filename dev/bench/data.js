@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795705391246,
+  "lastUpdate": 1795706404809,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -696608,6 +696608,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.773160344226667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e684e608c107198996eb809e75beb0ce816592c3",
+          "message": "fix(pkg): stop forcing copy sandboxing (#17270)\n\nThe package build rule still forces copy sandboxing after #17126, so\nDune copies dependencies even when link-based sandboxing is preferred.\nRequire a sandbox without forcing its mode. The existing source\npreparation action gives package build and install commands private,\nwritable copies; lockdir overlays replace sandbox entries rather than\nwriting through links.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T23:04:40+08:00",
+          "tree_id": "3095e876da416945eae689e09100467f57d1af7e",
+          "url": "https://github.com/ocaml/dune/commit/e684e608c107198996eb809e75beb0ce816592c3"
+        },
+        "date": 1795705982041,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.9654963744000007,
             "unit": "seconds"
           }
         ]

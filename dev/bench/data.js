@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795694309060,
+  "lastUpdate": 1795694348988,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -498943,6 +498943,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.44973786544666666,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "22410438cb2304eb78259eb637d361fcef5af02f",
+          "message": "test: share library lookup cram fixtures (#17244)\n\nShare the OCaml sources and external library project as plain fixture\nfiles. Keep the lookup rules inline and use context-qualified aliases so\nthe host and target exercise the same rule.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T19:40:26+08:00",
+          "tree_id": "8a1ee8a3dc442e3244bd5669629ffe609da242a7",
+          "url": "https://github.com/ocaml/dune/commit/22410438cb2304eb78259eb637d361fcef5af02f"
+        },
+        "date": 1795694346045,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 51.443096758366664,
             "unit": "seconds"
           }
         ]

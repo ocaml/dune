@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795671763013,
+  "lastUpdate": 1795671859092,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -498363,6 +498363,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.44823420576,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f5727228e6b532aab446b7582341299eebb31a11",
+          "message": "test(engine): reproduce file-available accepting generated directories (#17249)\n\nExtend the existing `file-available` test to distinguish source\ndirectories, directory targets, and their children. Record that a nested\ngenerated directory incorrectly counts as a file.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T13:28:36+08:00",
+          "tree_id": "73b1421d6ef9fd93cdaf2b4f07939332704cbca9",
+          "url": "https://github.com/ocaml/dune/commit/f5727228e6b532aab446b7582341299eebb31a11"
+        },
+        "date": 1795671856107,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 50.423209035033345,
             "unit": "seconds"
           }
         ]

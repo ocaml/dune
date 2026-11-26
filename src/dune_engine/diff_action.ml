@@ -215,12 +215,9 @@ let plan_tree_diff ({ mode; source_root; _ } as t) =
     | Missing, Directory ->
       let entries = list_target_directory rel in
       let plan = add_create_directory ~announce:(List.is_empty entries) plan rel in
-      if List.is_empty entries
-      then plan
-      else
-        List.fold_left entries ~init:plan ~f:(fun plan name ->
-          let rel = Path.Local.relative_fname rel name in
-          loop rel Missing (kind_of_target rel) plan)
+      List.fold_left entries ~init:plan ~f:(fun plan name ->
+        let rel = Path.Local.relative_fname rel name in
+        loop rel Missing (kind_of_target rel) plan)
     | File, Directory ->
       list_target_directory rel
       |> List.fold_left

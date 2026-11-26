@@ -229,3 +229,19 @@ We currently never swallow the output of builtin actions such as
 
   $ dune build --action-stdout-on-success=swallow
   Hello, world!
+
+The validation policy also fails to reject standard output from builtin
+commands. This matters independently of whether the output is printed.
+
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target result)
+  >  (action (progn (echo "unexpected output\n") (write-file result done))))
+  > EOF
+
+CR: The build succeeds and produces its target despite the unexpected output.
+
+  $ dune build --action-stdout-on-success=must-be-empty result
+  unexpected output
+  $ cat _build/default/result; echo
+  done

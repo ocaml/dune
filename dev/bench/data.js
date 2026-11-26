@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795691038740,
+  "lastUpdate": 1795691106212,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -695680,6 +695680,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.719716114286667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0bcdca0b92199c4ea8f306b6799605b5650607af",
+          "message": "test(engine): reproduce a redirection leak after a failed command (#17253)\n\nUse the existing Linux strace test to check the descriptor owned by Dune\nfor a redirected command sequence. Record that Dune opens the file but\ndoes not close its descriptor after the first command fails.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T18:55:18+08:00",
+          "tree_id": "423863343ab54f78c903d73615d624cefe802d45",
+          "url": "https://github.com/ocaml/dune/commit/0bcdca0b92199c4ea8f306b6799605b5650607af"
+        },
+        "date": 1795690844448,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.7777213959,
             "unit": "seconds"
           }
         ]

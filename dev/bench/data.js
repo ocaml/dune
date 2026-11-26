@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795671738320,
+  "lastUpdate": 1795671756596,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -695274,6 +695274,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.85550473472,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0ca6b3bd69a787bd86226182ae123923a965e4b6",
+          "message": "test(engine): reproduce action runner truncating shared stdout (#17252)\n\nCompare two commands writing to one redirected stdout, with and without\nthe action runner. Record that the runner truncates the first command’s\noutput.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T13:28:06+08:00",
+          "tree_id": "46d93d8497c175200d3f9ceae541466c6418f13a",
+          "url": "https://github.com/ocaml/dune/commit/0ca6b3bd69a787bd86226182ae123923a965e4b6"
+        },
+        "date": 1795671323586,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.19242654336,
             "unit": "seconds"
           }
         ]

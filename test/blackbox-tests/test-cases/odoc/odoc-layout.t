@@ -35,13 +35,13 @@ and HTML go under _doc.
   $ dune build @doc @doc-private
 
   $ find _build/default -name '*.odoc' | LC_ALL=C sort
-  _build/default/_doc/_odoc/pkg/my_pkg/page-index.odoc
-  _build/default/bar/.bar.objs/byte/bar.odoc
-  _build/default/foo/.foo.objs/byte/foo.odoc
-  _build/default/foo/.foo.objs/byte/foo__A.odoc
-  _build/default/foo/.foo.objs/byte/foo__B.odoc
-  _build/default/priv/.priv.objs/byte/priv.odoc
-  _build/default/solo/.solo.objs/byte/solo.odoc
+  _build/default/_doc/_odoc/my_pkg/my_pkg.__private__.priv/priv.odoc
+  _build/default/_doc/_odoc/my_pkg/my_pkg.bar/bar.odoc
+  _build/default/_doc/_odoc/my_pkg/my_pkg.foo/foo.odoc
+  _build/default/_doc/_odoc/my_pkg/my_pkg.foo/foo__A.odoc
+  _build/default/_doc/_odoc/my_pkg/my_pkg.foo/foo__B.odoc
+  _build/default/_doc/_odoc/solo@e3b9de2fb703/solo.odoc
+  _build/default/_doc/_odoc_pages/my_pkg/page-index.odoc
 
   $ find _build/default/_doc/_html -name '*.html' | LC_ALL=C sort
   _build/default/_doc/_html/index.html

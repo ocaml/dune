@@ -557,16 +557,7 @@ let cctx
     ~instances
 ;;
 
-let library_rules
-      (lib : Library.t)
-      ~local_lib
-      ~cctx
-      ~source_modules
-      ~dir_contents
-      ~compile_info
-      ~ctx_dir
-      ~for_merlin
-  =
+let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents ~compile_info =
   let modules = Compilation_context.modules cctx in
   let obj_dir = Compilation_context.obj_dir cctx in
   let implements = Compilation_context.implements cctx in
@@ -623,8 +614,6 @@ let library_rules
            ~requires:requires_compile
            ~dir_contents
            ~vlib_stubs_o_files)
-  and+ () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
-  and+ () = Memo.when_ for_merlin (fun () -> Odoc.setup_library_odoc_rules cctx local_lib)
   and+ () =
     let source_modules =
       Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc -> m :: acc)
@@ -711,10 +700,46 @@ let compile_context lib ~sctx ~dir_contents ~expander ~scope ~for_ =
   cctx
 ;;
 
+let compile_context_of_local_lib sctx (local_lib : Lib.Local.t) ~for_ =
+  let info = Lib.Local.info local_lib in
+  let dir = Lib_info.src_dir info in
+  let lib_id = Lib_id.to_local_exn (Lib_info.lib_id info) in
+  let src_dir = Path.Build.drop_build_context_exn dir in
+  let* lib =
+    Dune_load.stanzas_in_dir dir
+    >>= function
+    | None -> Memo.return None
+    | Some dune_file ->
+      let+ stanzas = Dune_file.stanzas dune_file in
+      List.find_map stanzas ~f:(fun stanza ->
+        match Stanza.repr stanza with
+        | Library.T lib when Lib_id.Local.equal (Library.to_lib_id ~src_dir lib) lib_id ->
+          Some lib
+        | _ -> None)
+  in
+  match lib with
+  | None ->
+    Code_error.raise
+      "Lib_rules.compile_context_of_local_lib: library stanza not found"
+      [ "lib", Lib.Local.to_dyn local_lib ]
+  | Some lib ->
+    let* dir_contents = Dir_contents.get sctx ~dir
+    and* expander = Super_context.expander sctx ~dir
+    and* scope = Scope.DB.find_by_dir dir in
+    (* [compile_context] produces the rules of the modules of the library as
+       implicit output. They belong to the directory of the library and are
+       produced again when it is loaded through [rules], so drop them. *)
+    let+ cctx, _rules =
+      Rules.collect (fun () ->
+        compile_context lib ~sctx ~dir_contents ~expander ~scope ~for_)
+    in
+    cctx
+;;
+
 let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
   let dir = Dir_contents.dir dir_contents in
   let buildable = lib.buildable in
-  let f ~for_ ~for_merlin =
+  let f ~for_ =
     let* local_lib, compile_info, source_modules, cctx =
       compile_context_data lib ~sctx ~dir_contents ~expander ~scope ~for_
     in
@@ -739,17 +764,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
       | Some _ ->
         Ctypes_rules.gen_rules ~loc:(fst lib.name) ~cctx ~buildable ~sctx ~scope ~dir
     in
-    let+ merlin =
-      library_rules
-        lib
-        ~local_lib:(Lib.Local.of_lib_exn local_lib)
-        ~cctx
-        ~source_modules
-        ~dir_contents
-        ~compile_info
-        ~ctx_dir:dir
-        ~for_merlin
-    in
+    let+ merlin = library_rules lib ~cctx ~source_modules ~dir_contents ~compile_info in
     cctx, merlin
   in
   let+ cctxs =
@@ -774,7 +789,6 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
       in
       Compilation_mode.Set.of_lib_mode_set effective_modes
     in
-    let for_merlin = Compilation_mode.Set.for_merlin modes in
     Memo.parallel_map (Compilation_mode.Set.to_list modes) ~f:(fun for_ ->
       let* _, _, compile_info = resolve_compile_info lib ~dir ~scope in
       let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir ~for_ in
@@ -783,9 +797,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
           (Super_context.context sctx)
           merlin_ident
           ~dir
-          ~f:(fun () ->
-            let for_merlin = Compilation_mode.equal for_ for_merlin in
-            f ~for_ ~for_merlin)
+          ~f:(fun () -> f ~for_)
       in
       for_, Some r)
   in

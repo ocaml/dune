@@ -324,6 +324,26 @@ module Io = struct
     | Terminal { output_limit; _ } -> output_limit
     | _ -> Action_output_limit.default
   ;;
+
+  let captured_stdout_policy t =
+    if !Clflags.capture_outputs then output_on_success t else Print
+  ;;
+
+  let check_stdout ~loc contents =
+    if not (String.is_empty contents)
+    then
+      User_error.raise
+        ~loc
+        [ Pp.text "Action produced unexpected output on stdout."; Pp.verbatim contents ]
+  ;;
+
+  let write_stdout t ~loc contents =
+    match captured_stdout_policy t with
+    | Print -> output_string (out_channel t) contents
+    | Swallow -> ()
+    | Must_be_empty ->
+      check_stdout ~loc (truncate_output (`String contents) ~n:(output_limit t))
+  ;;
 end
 
 module Build = struct

@@ -96,9 +96,10 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
       in
       exec t ~ectx ~eenv)
   | Echo strs ->
-    let () =
-      String.concat strs ~sep:" " |> output_string (Process.Io.out_channel eenv.stdout_to)
-    in
+    Process.Io.write_stdout
+      eenv.stdout_to
+      ~loc:ectx.rule_loc
+      (String.concat strs ~sep:" ");
     Fiber.return ()
   | Cat xs ->
     List.iter xs ~f:(fun fn ->

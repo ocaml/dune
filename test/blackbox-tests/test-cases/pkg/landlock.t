@@ -1,5 +1,5 @@
-Package build and install commands can currently overwrite an installed
-artifact of a dependency outside the sandbox.
+On systems with Landlock, package build and install commands cannot overwrite
+an installed dependency artifact outside the sandbox.
 
   $ make_lockdir
   $ make_dune_project 3.25
@@ -32,10 +32,19 @@ artifact of a dependency outside the sandbox.
   >   echo blocked
   > fi
   > EOF
-  $ build_pkg writer
-  wrote
-  wrote
-  $ cat "$payload"
-  overwritten
+
+Landlock can be unavailable even on Linux, depending on the kernel.
+
+  $ if dune internal with-landlock -- true >/dev/null 2>&1; then
+  >   status=blocked
+  >   contents=original
+  > else
+  >   status=wrote
+  >   contents=overwritten
+  > fi
+  $ build_pkg writer > writer.log 2>&1
+  $ printf '%s\n' "$status" "$status" > expected.log
+  $ cmp expected.log writer.log
+  $ test "$(cat "$payload")" = "$contents"
   $ cat "$(get_build_pkg_dir writer)/target/share/writer/installed"
   local

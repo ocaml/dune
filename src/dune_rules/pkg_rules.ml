@@ -2160,8 +2160,18 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
   (* TODO should we add env deps on these? *)
   >>> add_env (Pkg.exported_env pkg) build_action
   |> Action_builder.With_targets.map ~f:(fun action ->
-    Action.Full.add_sandbox Sandbox_config.needs_sandboxing action
-    |> Action.Full.disable_sandbox_policy)
+    let uses_dune =
+      pkg.depends_on_dune
+      ||
+      match pkg.build_command with
+      | Some Dune -> true
+      | Some (Action _) | None -> false
+    in
+    let action = Action.Full.add_sandbox Sandbox_config.needs_sandboxing action in
+    (* Non-relocatable toolchains install directly to a shared cache. *)
+    if uses_dune || not (Path.is_in_build_dir pkg.paths.prefix)
+    then Action.Full.disable_sandbox_policy action
+    else action)
 ;;
 
 let gen_rules ({ DB.pkg_table; _ } as db) ~package_universe package =

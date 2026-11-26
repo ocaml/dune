@@ -265,8 +265,13 @@ sandbox location, and after the build has finished, it moves the files to the
 actual destination.
 
 :::{note}
-Unlike opam, Dune at the moment does not wrap the build in sandboxing tools
-like [Bubblewrap](https://github.com/containers/bubblewrap).
+On Linux systems with Landlock support, Dune restricts filesystem writes by
+build and install commands it runs directly, rather than through the action
+runner. This applies to packages that neither use Dune's built-in package build
+command nor declare a dependency on Dune. These commands can write to their
+build sandbox but cannot overwrite installed artifacts outside it. This
+restriction does not apply to packages that install directly into the shared
+toolchain cache.
 :::
 
 To comply with these restrictions the usual solution is to use relative paths,

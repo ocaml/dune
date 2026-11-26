@@ -212,6 +212,16 @@ let implicit = function
   | Legacy t -> Legacy.implicit t
 ;;
 
+let package = function
+  | Dune t -> t.package
+  | Legacy _ -> None
+;;
+
+let libraries = function
+  | Dune t -> Dune.libraries t
+  | Legacy _ -> Resolve.return []
+;;
+
 module Error = struct
   let duplicate_theory_name (id1 : Id.t) (id2 : Id.t) =
     let name = id1.name in

@@ -94,6 +94,7 @@ open Dune_findlib
 let ocamlpath = Findlib.Config.ocamlpath_var
 let ocamlfind_ignore_dups_in = Findlib.Config.ocamlfind_ignore_dups_in
 let ocamltop_include_path = Env.Var.of_string "OCAMLTOP_INCLUDE_PATH"
+let rocqpath = Env.Var.of_string "ROCQPATH"
 let manpath = Env.Var.of_string "MANPATH"
 
 let to_env_without_path t ~relative =
@@ -101,6 +102,7 @@ let to_env_without_path t ~relative =
   ; ocamlpath, t.lib_root
   ; ocamltop_include_path, relative t.lib_root "toplevel"
   ; ocamlfind_ignore_dups_in, t.lib_root
+  ; rocqpath, relative t.lib_root "coq/user-contrib"
   ; manpath, t.man
   ]
 ;;
@@ -207,6 +209,7 @@ let%test_module "extend_env_concat_path_vars" =
         OCAMLPATH=/from/b:/from/a
         OCAMLTOP_INCLUDE_PATH=/from/b:/from/a
         PATH=/from/b:/from/a
+        ROCQPATH=/from/b:/from/a
         |}]
     ;;
 

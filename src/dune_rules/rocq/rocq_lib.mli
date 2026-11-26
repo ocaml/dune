@@ -57,6 +57,10 @@ val to_dyn : t -> Dyn.t
 val name : t -> Rocq_lib_name.t
 val obj_root : t -> Path.t
 val implicit : t -> bool
+val package : t -> Package.t option
+
+(** ML libraries used by this theory. *)
+val libraries : t -> (Loc.t * Lib.t) list Resolve.t
 
 (** Return the list of dependencies needed for compiling this library *)
 val theories_closure : t -> t list Resolve.t

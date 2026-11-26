@@ -42,5 +42,11 @@ module DB : sig
   end
 
   val lib_entries_of_package : Context_name.t -> Package.Name.t -> Lib_entry.Set.t Memo.t
+
+  val rocq_theories_of_package
+    :  Context_name.t
+    -> Package.Name.t
+    -> Rocq_lib.t list Memo.t
+
   val with_all : Context.t -> f:((Dune_project.t -> t) -> 'a) -> 'a Memo.t
 end

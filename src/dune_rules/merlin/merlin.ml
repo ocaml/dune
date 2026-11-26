@@ -448,19 +448,21 @@ module Processed = struct
   ;;
 
   let to_dot_merlin
-        stdlib_dir
-        source_root
-        pp_configs
-        pp_deps
-        flags
-        obj_dirs
-        cmt_dirs
-        src_dirs
-        hidden_obj_dirs
-        hidden_src_dirs
-        extensions
-        indexes
-        parameters
+        { stdlib_dir
+        ; source_root
+        ; pp_deps
+        ; flags = _
+        ; obj_dirs
+        ; cmt_dirs
+        ; src_dirs
+        ; hidden_obj_dirs
+        ; hidden_src_dirs
+        ; extensions
+        ; indexes
+        ; parameters
+        }
+        ~pp_configs
+        ~flags
     =
     let b = Buffer.create 256 in
     let printf = Printf.bprintf b in
@@ -748,89 +750,28 @@ module Processed = struct
     | Error msg -> Printf.eprintf "%s\n" msg
     | Ok [] -> Printf.eprintf "No merlin configuration found.\n"
     | Ok (init :: tl) ->
-      let ( pp_configs
-          , obj_dirs
-          , cmt_dirs
-          , src_dirs
-          , hidden_obj_dirs
-          , hidden_src_dirs
-          , flags
-          , extensions
-          , indexes
-          , pp_deps )
-        =
-        (* We merge what is easy to merge and ignore the rest *)
+      let config, pp_configs, flags =
+        (* We merge what is easy to merge and keep the first configuration's defaults. *)
         List.fold_left
           tl
-          ~init:
-            ( [ init.pp_config ]
-            , init.config.obj_dirs
-            , init.config.cmt_dirs
-            , init.config.src_dirs
-            , init.config.hidden_obj_dirs
-            , init.config.hidden_src_dirs
-            , [ init.config.flags ]
-            , init.config.extensions
-            , init.config.indexes
-            , init.config.pp_deps )
-          ~f:
-            (fun
-              ( acc_pp
-              , acc_obj
-              , acc_cmt
-              , acc_src
-              , acc_hidden_obj
-              , acc_hidden_src
-              , acc_flags
-              , acc_ext
-              , acc_indexes
-              , acc_pp_deps )
-              { per_file_config = _
-              ; pp_config
-              ; for_ = _
-              ; config =
-                  { stdlib_dir = _
-                  ; source_root = _
-                  ; obj_dirs
-                  ; cmt_dirs
-                  ; src_dirs
-                  ; hidden_obj_dirs
-                  ; hidden_src_dirs
-                  ; flags
-                  ; extensions
-                  ; indexes
-                  ; parameters = _
-                  ; pp_deps
-                  }
+          ~init:(init.config, [ init.pp_config ], [ init.config.flags ])
+          ~f:(fun (acc, pp_configs, flags) { pp_config; config; _ } ->
+            ( { acc with
+                obj_dirs = Path.Set.union acc.obj_dirs config.obj_dirs
+              ; cmt_dirs = Path.Set.union acc.cmt_dirs config.cmt_dirs
+              ; src_dirs = Path.Set.union acc.src_dirs config.src_dirs
+              ; hidden_obj_dirs =
+                  Path.Set.union acc.hidden_obj_dirs config.hidden_obj_dirs
+              ; hidden_src_dirs =
+                  Path.Set.union acc.hidden_src_dirs config.hidden_src_dirs
+              ; extensions = config.extensions @ acc.extensions
+              ; indexes = config.indexes @ acc.indexes
+              ; pp_deps = union_pp_deps config.pp_deps acc.pp_deps
               }
-            ->
-            ( pp_config :: acc_pp
-            , Path.Set.union acc_obj obj_dirs
-            , Path.Set.union acc_cmt cmt_dirs
-            , Path.Set.union acc_src src_dirs
-            , Path.Set.union acc_hidden_obj hidden_obj_dirs
-            , Path.Set.union acc_hidden_src hidden_src_dirs
-            , flags :: acc_flags
-            , extensions @ acc_ext
-            , indexes @ acc_indexes
-            , union_pp_deps pp_deps acc_pp_deps ))
+            , pp_config :: pp_configs
+            , config.flags :: flags ))
       in
-      Printf.printf
-        "%s\n"
-        (to_dot_merlin
-           init.config.stdlib_dir
-           init.config.source_root
-           pp_configs
-           pp_deps
-           flags
-           obj_dirs
-           cmt_dirs
-           src_dirs
-           hidden_obj_dirs
-           hidden_src_dirs
-           extensions
-           indexes
-           init.config.parameters)
+      Printf.printf "%s\n" (to_dot_merlin config ~pp_configs ~flags)
   ;;
 end
 

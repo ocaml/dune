@@ -44,8 +44,9 @@ Version comparisons also work in lockfile actions and string expressions.
   > EOF
 
   $ build_pkg test
-  File "_build/_private/default/.lock/dune.lock/test.pkg", line 4, characters 8-38:
-  4 |   (when (ver> %{pkg-self:version} 5.9)
-              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Unexpected list
-  [1]
+  numeric
+  leading-zero
+  prerelease
+  equal
+  true
+  true

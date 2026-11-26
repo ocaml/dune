@@ -145,7 +145,8 @@ let rec constraint_of_blang (blang : Blang.t) : Package_constraint.t =
   | Not b -> Package_constraint.Not (constraint_of_blang b)
   | And xs -> And (List.map ~f:constraint_of_blang xs)
   | Or xs -> Or (List.map ~f:constraint_of_blang xs)
-  | Compare (op, lhs, rhs) -> Bop (op, var_of_sw lhs, var_of_sw rhs)
+  | Compare (op, lhs, rhs) | Compare_versions (op, lhs, rhs) ->
+    Bop (op, var_of_sw lhs, var_of_sw rhs)
   | Expr b -> Bvar (var_of_sw b)
 ;;
 

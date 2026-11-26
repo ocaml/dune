@@ -80,6 +80,11 @@ module L = struct
   let to_strings t ~dir = List.map t ~f:(to_string ~dir)
   let compare_vals ~dir = List.compare ~compare:(compare_vals ~dir)
 
+  let compare_versions ~dir =
+    List.compare ~compare:(fun x y ->
+      OpamVersionCompare.compare (to_string ~dir x) (to_string ~dir y) |> Ordering.of_int)
+  ;;
+
   let deps_only =
     List.filter_map ~f:(function
       | Dir _ | String _ | Jobs _ -> None

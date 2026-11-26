@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795692693526,
+  "lastUpdate": 1795692994921,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -695854,6 +695854,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.7677396403866665,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d806bdc54b886d9f2408f6405c7fe85947bcf33c",
+          "message": "test(engine): show that job-slot probes can see the rule’s inputs (#17241)\n\nExtend the existing job-slot regression test to check input visibility\nas well as the working directory. Record that the probe sees a declared\nrule input even though it does not need that input to calculate the slot\ncount.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T19:23:47+08:00",
+          "tree_id": "c1c2af5d127394d88cac52dc4fded69669f5e87f",
+          "url": "https://github.com/ocaml/dune/commit/d806bdc54b886d9f2408f6405c7fe85947bcf33c"
+        },
+        "date": 1795692746822,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.9533932193666668,
             "unit": "seconds"
           }
         ]

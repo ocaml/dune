@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795691028327,
+  "lastUpdate": 1795691038740,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -695651,6 +695651,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.6608951376400003,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b076134107761bbe016e9f3f31d3c901b1de6500",
+          "message": "refactor(stdune): share path resolution from components (#17256)\n\nShare relative path resolution from components across local, source, and\nbuild paths. Preserve the workspace error and join the path components\nonly when reporting it.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T18:54:49+08:00",
+          "tree_id": "468bfe5a627ce95ccecac6f589cf7d0808921ec5",
+          "url": "https://github.com/ocaml/dune/commit/b076134107761bbe016e9f3f31d3c901b1de6500"
+        },
+        "date": 1795690791175,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.719716114286667,
             "unit": "seconds"
           }
         ]

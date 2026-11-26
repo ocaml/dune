@@ -421,6 +421,7 @@ module Full = struct
       ; can_go_in_shared_cache : bool
       ; can_use_sandbox_policy : bool
       ; sandbox : Sandbox_config.t
+      ; prefer_sandboxing : bool
       ; corrections : Corrections.t option
       ; job_slots : action option
       }
@@ -431,6 +432,7 @@ module Full = struct
       ; can_go_in_shared_cache = true
       ; can_use_sandbox_policy = true
       ; sandbox = Sandbox_config.default
+      ; prefer_sandboxing = false
       ; corrections = None
       ; job_slots = None
       }
@@ -462,6 +464,7 @@ module Full = struct
           ; can_go_in_shared_cache
           ; can_use_sandbox_policy
           ; sandbox
+          ; prefer_sandboxing
           ; corrections
           ; job_slots
           }
@@ -472,6 +475,7 @@ module Full = struct
       ; can_go_in_shared_cache = can_go_in_shared_cache && t.can_go_in_shared_cache
       ; can_use_sandbox_policy = can_use_sandbox_policy && t.can_use_sandbox_policy
       ; sandbox = Sandbox_config.inter sandbox t.sandbox
+      ; prefer_sandboxing = prefer_sandboxing || t.prefer_sandboxing
       ; corrections = combine_corrections corrections t.corrections
       ; job_slots = combine_job_slots job_slots t.job_slots
       }
@@ -483,6 +487,7 @@ module Full = struct
       ; can_go_in_shared_cache
       ; can_use_sandbox_policy = true
       ; sandbox
+      ; prefer_sandboxing = false
       ; corrections
       ; job_slots = None
       }
@@ -505,6 +510,8 @@ module Full = struct
     let add_sandbox t sandbox =
       { t with sandbox = Sandbox_config.inter t.sandbox sandbox }
     ;;
+
+    let prefer_sandboxing t = { t with prefer_sandboxing = true }
 
     let add_corrections t corrections =
       { t with corrections = combine_corrections (Some corrections) t.corrections }
@@ -584,6 +591,7 @@ module Full = struct
 
   let disable_sandbox_policy t = { t with props = Props.disable_sandbox_policy t.props }
   let add_sandbox sandbox t = { t with props = Props.add_sandbox t.props sandbox }
+  let prefer_sandboxing t = { t with props = Props.prefer_sandboxing t.props }
 
   let add_corrections corrections t =
     { t with props = Props.add_corrections t.props corrections }

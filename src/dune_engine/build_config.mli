@@ -101,6 +101,7 @@ type t = private
         Receives the directory and its path components after the build context.
         May only generate rules whose targets are descendants of [dir]. *)
   ; sandboxing_preference : Sandbox_mode.t list
+    (** Sandboxing modes explicitly requested by the user, without fallback modes. *)
   ; promote_source :
       chmod:(Permissions.Mode.t -> Permissions.Mode.t)
       -> delete_dst_if_it_is_a_directory:bool

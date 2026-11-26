@@ -184,10 +184,11 @@ let user_rule sctx ~dir ~expander (rule : Rule_conf.t) =
         in
         Targets_spec.Static { multiplicity; targets }
     in
+    let prefer_sandboxing =
+      Dune_project.dune_version (Expander.project expander) >= (3, 23)
+    in
     let sandbox =
-      if
-        rule_uses_patch_back_source_tree rule
-        || Dune_project.dune_version (Expander.project expander) >= (3, 23)
+      if rule_uses_patch_back_source_tree rule
       then Sandbox_config.needs_sandboxing
       else Sandbox_config.no_special_requirements
     in
@@ -205,7 +206,11 @@ let user_rule sctx ~dir ~expander (rule : Rule_conf.t) =
         ~targets
         ~targets_dir:dir
     in
-    let action = Action_builder.With_targets.map action ~f:(add_corrections ~rule) in
+    let action =
+      Action_builder.With_targets.map action ~f:(fun action ->
+        let action = add_corrections ~rule action in
+        if prefer_sandboxing then Action.Full.prefer_sandboxing action else action)
+    in
     (match rule_kind ~rule ~action with
      | No_alias ->
        let+ targets = add_user_rule sctx ~dir ~rule ~action ~expander in

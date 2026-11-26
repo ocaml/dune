@@ -175,7 +175,19 @@ let file_selector_stack_frame_description file_selector =
   Pp.concat [ Pp.text (File_selector.to_dyn file_selector |> Dyn.to_string) ]
 ;;
 
-let select_sandbox_mode (config : Sandbox_config.t) ~loc ~sandboxing_preference =
+let select_sandbox_mode
+      (config : Sandbox_config.t)
+      ~loc
+      ~sandboxing_preference
+      ~prefer_sandboxing
+  =
+  let sandboxing_preference =
+    sandboxing_preference
+    @ (if prefer_sandboxing
+       then List.filter Sandbox_mode.all_except_patch_back_source_tree ~f:Option.is_some
+       else [])
+    @ Sandbox_mode.all_except_patch_back_source_tree
+  in
   (* Rules with (mode patch-back-source-tree) are special and are not affected
      by sandboxing preferences. *)
   match Sandbox_mode.Set.is_patch_back_source_tree_only config with
@@ -273,6 +285,7 @@ let compute_rule_digest ~targets ~facts ~action ~sandbox_mode ~execution_paramet
       ; can_go_in_shared_cache
       ; can_use_sandbox_policy
       ; sandbox = _ (* already taken into account in [sandbox_mode] *)
+      ; prefer_sandboxing = _ (* already taken into account in [sandbox_mode] *)
       ; corrections
       ; job_slots = _ (* the number of job slots does not change the result *)
       }
@@ -456,6 +469,7 @@ and execute_action_for_rule
       ; can_go_in_shared_cache = _
       ; can_use_sandbox_policy
       ; sandbox = _
+      ; prefer_sandboxing = _
       ; corrections
       ; job_slots
       }
@@ -635,6 +649,7 @@ and execute_rule_action
         ~loc
         props.sandbox
         ~sandboxing_preference:config.sandboxing_preference
+        ~prefer_sandboxing:props.prefer_sandboxing
     in
     (* CR-someday amokhov: More [always_rerun] and [can_go_in_shared_cache]
        to [Rule_cache] too. *)
@@ -814,6 +829,7 @@ and execute_anonymous_action { Rule.Anonymous_action.action; dir; loc } ~capture
         ; can_go_in_shared_cache
         ; can_use_sandbox_policy
         ; sandbox
+        ; prefer_sandboxing = _
         ; corrections
         ; job_slots = _ (* the number of job slots does not change the result *)
         }

@@ -138,6 +138,8 @@ module Full : sig
       ; can_use_sandbox_policy : bool
         (** Whether spawned processes can be subject to an additional sandbox policy. *)
       ; sandbox : Sandbox_config.t
+      ; prefer_sandboxing : bool
+        (** Prefer sandboxing when no mode was explicitly requested. *)
       ; corrections : Corrections.t option
       ; job_slots : action option
         (** An action that prints the number of job slots that the action
@@ -173,6 +175,10 @@ module Full : sig
   val add_env : Env.t -> t -> t
   val add_locks : Path.t list -> t -> t
   val add_sandbox : Sandbox_config.t -> t -> t
+
+  (** Prefer sandboxing when no mode was explicitly requested. *)
+  val prefer_sandboxing : t -> t
+
   val add_can_go_in_shared_cache : bool -> t -> t
   val disable_sandbox_policy : t -> t
   val add_corrections : Corrections.t -> t -> t

@@ -129,8 +129,7 @@ let set
     t
     { contexts
     ; rule_generator
-    ; sandboxing_preference =
-        sandboxing_preference @ Sandbox_mode.all_except_patch_back_source_tree
+    ; sandboxing_preference
     ; promote_source
     ; implicit_default_alias
     ; execution_parameters

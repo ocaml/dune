@@ -24,3 +24,28 @@ Case with a mix of uncoditional and conditional actions in a progn action
   a
   c
   d
+
+Version comparisons also work in lockfile actions and string expressions.
+
+  $ make_lockpkg test <<'EOF'
+  > (version 5.10)
+  > (install
+  >  (progn
+  >   (when (ver> %{pkg-self:version} 5.9)
+  >    (run echo numeric))
+  >   (when (ver= 5.09 5.9)
+  >    (run echo leading-zero))
+  >   (when (ver< 5.9~beta1 5.9)
+  >    (run echo prerelease))
+  >   (when (and (ver>= 5.09 5.9) (not (ver<> 5.09 5.9)))
+  >    (run echo equal))
+  >   (run echo (ver<= 5.9 (concat 5 .10)))
+  >   (run echo (ver= (when false 1.0) (when false 2.0)))))
+  > EOF
+
+  $ build_pkg test
+  File "_build/_private/default/.lock/dune.lock/test.pkg", line 4, characters 8-38:
+  4 |   (when (ver> %{pkg-self:version} 5.9)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Unexpected list
+  [1]

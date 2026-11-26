@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795671756596,
+  "lastUpdate": 1795671763013,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -695303,6 +695303,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.19242654336,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f35cb3004772097e21234dcea67d35a8212eb580",
+          "message": "test(engine): reproduce builtin output bypassing must-be-empty (#17251)\n\nExtend the output-policy tests to show that a built-in `echo` can write\nto stdout under `must-be-empty` and still produce its target. This\nchecks validation separately from whether output is displayed.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T13:28:22+08:00",
+          "tree_id": "bddbe91545694c25abba659f8d50c488ee046879",
+          "url": "https://github.com/ocaml/dune/commit/f35cb3004772097e21234dcea67d35a8212eb580"
+        },
+        "date": 1795671333468,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.1574702369266667,
             "unit": "seconds"
           }
         ]

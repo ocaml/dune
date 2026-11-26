@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795656858551,
+  "lastUpdate": 1795657130564,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -498247,6 +498247,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.49896344741333337,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e9f04cd2581f242b16c0b7c931c57212aa548930",
+          "message": "refactor(rpc): share the legacy progress codec (#17243)\n\nShare the progress status constructors and upgrade defaults between RPC\nV1 and V2. Keep the existing field names, field order, and payload for\neach version unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T09:22:39+08:00",
+          "tree_id": "b25f8ab67d29cdfcd068735ffe16c3e5b265b41a",
+          "url": "https://github.com/ocaml/dune/commit/e9f04cd2581f242b16c0b7c931c57212aa548930"
+        },
+        "date": 1795657128766,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 51.86977864775333,
             "unit": "seconds"
           }
         ]

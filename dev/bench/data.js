@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795709189935,
+  "lastUpdate": 1795709486716,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -499349,6 +499349,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4400943662000001,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bbce9f06c28d6c22772a746c354494cea5bc3545",
+          "message": "refactor(diff): share directory child traversal (#17261)\n\nFactor out repeated child traversal in the directory diff planner. Keep\ntwo paths for target-only entries: report differences for missing source\nentries, but only collect child promotions beneath a file-to-directory\nreplacement. The sorted merge, diagnostics, and promotion behavior are\nunchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T23:52:31+08:00",
+          "tree_id": "40d783ce12d2d627a3d349bfdd28df4d67f7af77",
+          "url": "https://github.com/ocaml/dune/commit/bbce9f06c28d6c22772a746c354494cea5bc3545"
+        },
+        "date": 1795709485182,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 53.07954574001334,
             "unit": "seconds"
           }
         ]

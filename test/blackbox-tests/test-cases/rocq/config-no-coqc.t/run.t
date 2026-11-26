@@ -126,11 +126,22 @@ We now test that the ocaml package still builds even when Coq rules can't be set
 Coq package should fail:
 
   $ (unset INSIDE_DUNE; PATH=_path dune build -p example-coq)
+  File "coq/extracted/dune", line 6, characters 11-17:
+  6 |  (theories Stdlib Common))
+                 ^^^^^^
+  Theory "Stdlib" has not been found.
+  -> required by _build/default/coq/extracted/.Dune_Extraction_Extract.theory.d
+  -> required by _build/default/coq/extracted/CRelationClasses.ml
+  -> required by _build/default/coq/CRelationClasses.ml
+  -> required by _build/install/default/lib/example-coq/coq/CRelationClasses.ml
+  -> required by _build/default/example-coq.install
+  -> required by alias install
   Couldn't find Rocq Corelib, and the theory does not disable automatic Corelib
   inclusion with (no_corelib).
-  -> required by _build/default/coq/Common/.Common.theory.d
-  -> required by _build/default/coq/Common/Foo.glob
-  -> required by _build/install/default/lib/coq/user-contrib/Common/Foo.glob
+  -> required by _build/default/coq/extracted/.Dune_Extraction_Extract.theory.d
+  -> required by _build/default/coq/extracted/CRelationClasses.ml
+  -> required by _build/default/coq/CRelationClasses.ml
+  -> required by _build/install/default/lib/example-coq/coq/CRelationClasses.ml
   -> required by _build/default/example-coq.install
   -> required by alias install
   [1]

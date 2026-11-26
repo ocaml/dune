@@ -198,6 +198,16 @@ module Version = struct
     { version_num; version_string; ocaml_version_string }
   ;;
 
+  let is_at_least
+        { version_num = { Num.major; minor; _ }; _ }
+        ~major:required_major
+        ~minor:required_minor
+    =
+    major > required_major || (major = required_major && minor >= required_minor)
+  ;;
+
+  let to_string t = t.version_string
+
   let by_name { version_num; version_string; ocaml_version_string } name =
     match name with
     | "version.major" -> Num.by_name version_num "major"

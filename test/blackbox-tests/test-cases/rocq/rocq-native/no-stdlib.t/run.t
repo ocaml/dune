@@ -3,7 +3,8 @@ bound and the prelude is not imported; we expect the below two tests to fail.
 
   $ dune build --display=short foo.vo
           rocq .basic.theory.d
-  Warning: in file foo.v, library Prelude is required
+  File "foo.v", line 1, characters 28-35:
+  Warning: library Prelude is required
            from root Corelib and has not been found in the loadpath!
            [module-not-found,filesystem,default]
           rocq Nbasic_foo.{cmi,cmxs},foo.{glob,vo} (exit 1)

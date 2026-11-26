@@ -9,7 +9,8 @@ Currently Dune does not detect this issue, so passes invalid flags to coqdep
 which complains.
 
   $ dune build B
-  Warning: in file b.v, library a is required
+  File "b.v", line 2, characters 22-23:
+  Warning: library a is required
            from root A and has not been found in the loadpath!
            [module-not-found,filesystem,default]
   File "./B/b.v", line 2, characters 22-23:
@@ -18,10 +19,12 @@ which complains.
   [1]
 
   $ dune build C
-  Warning: in file c.v, library a is required
+  File "c.v", line 2, characters 22-23:
+  Warning: library a is required
            from root A and has not been found in the loadpath!
            [module-not-found,filesystem,default]
-  Warning: in file a.v, library A is required
+  File "a.v", line 1, characters 22-23:
+  Warning: library A is required
            from root C and has not been found in the loadpath!
            [module-not-found,filesystem,default]
   File "./C/c.v", line 2, characters 22-23:

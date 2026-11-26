@@ -112,9 +112,9 @@ order to declare a multi-directory library, you need to use the
    The default is ``no_preprocessing``. The syntax is described in
    :ref:`lint-field`.
 
-.. describe:: (preprocessor_deps (<deps-conf list>))
+.. describe:: (preprocessor_deps <deps-conf list>)
 
-   Specifies extra preprocessor dependencies preprocessor, i.e., if the
+   Specifies extra preprocessor dependencies, e.g., if the
    preprocessor reads a generated file.
 
    The specification of dependencies is described in
@@ -175,6 +175,86 @@ order to declare a multi-directory library, you need to use the
    The following modes are available: ``byte``, ``native`` and ``best``.
    ``best`` is ``native`` or ``byte`` when native compilation isn't available.
 
+   When the Melange extension is enabled, ``melange`` is also available. A
+   library with ``(modes melange)`` is compiled only by Melange. A library with
+   ``(modes :standard melange)`` is compiled both by OCaml and by Melange.
+   See :doc:`/melange` for the complete guide to Melange libraries.
+
+.. describe:: (melange.modules <modules>)
+
+   .. versionadded:: 3.24
+
+   Specifies the modules used when compiling the Melange variant of the
+   library. This field has the same syntax as ``modules``. If omitted, Melange
+   compilation uses ``modules``. In either case, ``:standard`` selects the
+   modules available for Melange, including Melange-only sources.
+
+.. describe:: (melange.libraries <library-dependencies>)
+
+   .. versionadded:: 3.24
+
+   Specifies the dependencies used when compiling the Melange variant of the
+   library. If omitted, Melange compilation uses ``libraries``. This field may
+   only be used by libraries that include ``melange`` in ``modes``. It replaces
+   ``libraries`` and has the same syntax, including ``select`` and
+   ``re_export`` forms. An empty field removes the ordinary library
+   dependencies; PPX runtime dependencies are still added separately.
+
+.. describe:: (melange.preprocess <preprocess-spec>)
+
+   .. versionadded:: 3.24
+
+   Specifies preprocessing for Melange compilation. If omitted, Melange
+   compilation uses both ``preprocess`` and ``preprocessor_deps``. This field
+   has the same syntax as ``preprocess``; ``no_preprocessing`` disables
+   inherited preprocessing.
+
+.. describe:: (melange.preprocessor_deps <deps-conf list>)
+
+   .. versionadded:: 3.24
+
+   Specifies extra dependencies for an explicit ``melange.preprocess`` field,
+   defaulting to an empty list. It does not inherit ``preprocessor_deps``.
+   Without ``melange.preprocess``, this field is ignored and the ordinary
+   preprocessing configuration is used instead. The dependency specification
+   is described in :doc:`/concepts/dependency-spec`.
+
+.. describe:: (melange.ppx_runtime_libraries <library-names>)
+
+   .. versionadded:: 3.24
+
+   Specifies runtime dependencies added to Melange code preprocessed by this
+   PPX rewriter. If omitted, its Melange consumers use
+   ``ppx_runtime_libraries``. The rewriter itself is built with OCaml and does
+   not need ``melange`` in its ``modes``.
+
+.. describe:: (melange.flags <flags>)
+
+   .. versionadded:: 3.26
+
+   Specifies flags passed to ``melc`` when compiling the Melange variant of the
+   library, independently of the shared ``flags``. The field uses the
+   :doc:`/reference/ordered-set-language`; ``:standard`` inherits Melange flags
+   from the environment. If omitted, the library inherits its environment's
+   Melange configuration, falling back to the shared ``flags`` when no
+   ``melange.flags`` is set.
+
+.. describe:: (melange.compile_flags <flags>)
+
+   .. deprecated:: 3.26
+
+      Use ``melange.flags`` instead.
+
+   Appends flags to the shared ``flags`` when compiling the Melange variant of
+   the library. The field uses the :doc:`/reference/ordered-set-language` and
+   cannot be used together with ``melange.flags`` in the same configuration.
+
+.. describe:: (melange.runtime_deps <deps>)
+
+   Specifies files needed at runtime by JavaScript emitted from this library,
+   such as CSS, images, fonts, or JavaScript files. The dependency
+   specification is described in :doc:`/concepts/dependency-spec`.
+
 .. describe:: (no_dynlink)
 
    Disables (native) dynamic linking of the library. This means that the
@@ -201,7 +281,7 @@ order to declare a multi-directory library, you need to use the
    libraries that share cookies with the same name should agree on their
    expanded value).
 
-.. describe:: (ppx_runtime_libraries (<library-names>))
+.. describe:: (ppx_runtime_libraries <library-names>)
 
    This field is for when the library is a ``ppx rewriter`` or a ``[@@deriving
    ...]`` plugin, and has runtime dependencies.

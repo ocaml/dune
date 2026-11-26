@@ -41,3 +41,36 @@ Test where a single include directory is added via a `(include ...)` statement
 
   $ dune build
 
+An absolute include directory must be tracked recursively too. Changing only
+an external nested header should rebuild the stub and relink the executable.
+
+  $ make_dune_project 3.26
+  $ cat > dune <<'EOF'
+  > (executable
+  >  (name foo)
+  >  (foreign_stubs (language c) (names bar) (include_dirs (include foo))))
+  > EOF
+  $ include_dir=$(mktemp -d)
+  $ mkdir "$include_dir/nested"
+  $ echo '#define A 42' > "$include_dir/nested/a.h"
+  $ printf '%s\n' "$include_dir" > foo
+  $ cat > bar.c <<'EOF'
+  > #include <caml/mlvalues.h>
+  > #include <nested/a.h>
+  > value bar(value unit) { return Val_int(A); }
+  > EOF
+  $ cat > foo.ml <<'EOF'
+  > external bar : unit -> int = "bar"
+  > let () = Printf.printf "%d\n" (bar ())
+  > EOF
+  $ dune exec --cache=disabled --sandbox=hardlink ./foo.exe
+  42
+  $ echo '#define A 71' > "$include_dir/nested/a.h"
+
+CR: The incremental build still runs the old code. A fresh build updates it.
+
+  $ dune exec --cache=disabled --sandbox=hardlink ./foo.exe
+  42
+  $ dune exec --cache=disabled --sandbox=hardlink --build-dir _fresh ./foo.exe
+  71
+

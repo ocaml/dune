@@ -131,10 +131,7 @@ let ctypes_stubs sources (ctypes : Ctypes_field.t) =
   String.Map.of_list_map_exn
     ctypes.function_description
     ~f:(fun (fd : Ctypes_field.Function_description.t) ->
-      let loc =
-        Loc.none
-        (* TODO *)
-      in
+      let loc = Loc.none (* TODO *) in
       let name =
         Ctypes_field.c_generated_functions_cout_c ctypes fd
         |> Stdlib.Filename.remove_extension

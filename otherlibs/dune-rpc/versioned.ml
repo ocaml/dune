@@ -331,112 +331,100 @@ struct
         ~pack:(fun n -> N (f, n))
     ;;
 
-    let lookup_method_generic t ~menu ~table ~key ~method_ k s =
+    let lookup_method_generic t ~menu ~table ~key ~method_ ~verb k s =
       let fail message =
         let name = Method.Name.to_string method_ in
         let payload = Sexp.record [ "method", Atom name ] in
         k (Version_error.create ~message ~payload ())
       in
       match get t table key, Menu.find menu method_ with
-      | Some subtable, Some version -> s (subtable, version)
+      | Some subtable, Some version ->
+        (match Method.Version.Map.find subtable version with
+         | Some gen -> s gen
+         | None ->
+           raise_version_bug
+             ~method_
+             ~selected:version
+             ~verb
+             ~known:(Method.Version.Map.keys subtable))
       | None, _ -> fail "invalid method"
       | _, None -> fail "remote and local have no common version for method"
     ;;
 
     let to_handler t ~session_version =
-      let handle_request menu state (id, (n : Call.t)) =
+      let handle_request menu state (id, { Call.method_; params }) =
+        (* CR-soon rgrinberg: Report unimplemented requests to the caller. *)
         lookup_method_generic
           t
           ~menu
           ~table:Impl_requests
-          ~key:n.method_
-          ~method_:n.method_
+          ~key:method_
+          ~method_
+          ~verb:"unimplemented"
           (fun e -> Fiber.return (Error (Version_error.to_response_error e)))
-          (fun (handlers, version) ->
-             match Method.Version.Map.find handlers version with
-             | None ->
-               (* CR-soon rgrinberg: we should still report something to the caller about this *)
-               raise_version_bug
-                 ~method_:n.method_
-                 ~selected:version
-                 ~verb:"unimplemented"
-                 ~known:(Method.Version.Map.keys handlers)
-             | Some (R (f, T gen)) ->
-               (match Conv.of_sexp gen.req ~version:(session_version state) n.params with
-                | Error e -> Fiber.return (Error (Response.Error.of_conv e))
-                | Ok req ->
-                  let open Fiber.O in
-                  (match gen.upgrade_req req with
+          (fun (R (f, T gen)) ->
+             let version = session_version state in
+             match Conv.of_sexp gen.req ~version params with
+             | Error e -> Fiber.return (Error (Response.Error.of_conv e))
+             | Ok req ->
+               let open Fiber.O in
+               (match gen.upgrade_req req with
+                | exception e ->
+                  let payload = Sexp.Atom (Printexc.to_string e) in
+                  Fiber.return
+                    (Error
+                       (Response.Error.create
+                          ~message:"Unable to decode request"
+                          ~kind:Code_error
+                          ~payload
+                          ()))
+                | req ->
+                  let+ resp = f state id req in
+                  (match gen.downgrade_resp resp with
+                   | resp -> Ok (Conv.to_sexp gen.resp resp)
                    | exception e ->
                      let payload = Sexp.Atom (Printexc.to_string e) in
-                     Fiber.return
-                       (Error
-                          (Response.Error.create
-                             ~message:"Unable to decode request"
-                             ~kind:Code_error
-                             ~payload
-                             ()))
-                   | req ->
-                     let+ resp = f state id req in
-                     (match gen.downgrade_resp resp with
-                      | resp -> Ok (Conv.to_sexp gen.resp resp)
-                      | exception e ->
-                        let payload = Sexp.Atom (Printexc.to_string e) in
-                        Error
-                          (Response.Error.create
-                             ~message:"Unable to encode response"
-                             ~kind:Code_error
-                             ~payload
-                             ())))))
+                     Error
+                       (Response.Error.create
+                          ~message:"Unable to encode response"
+                          ~kind:Code_error
+                          ~payload
+                          ()))))
       in
-      let handle_notification menu state (n : Call.t) =
+      let handle_notification menu state { Call.method_; params } =
         lookup_method_generic
           t
           ~menu
           ~table:Impl_notifs
-          ~key:n.method_
-          ~method_:n.method_
+          ~key:method_
+          ~method_
+          ~verb:"unimplemented"
           (fun e -> Fiber.return (Error (Version_error.to_response_error e)))
-          (fun (handlers, version) ->
-             match Method.Version.Map.find handlers version with
-             | None ->
-               raise_version_bug
-                 ~method_:n.method_
-                 ~selected:version
-                 ~verb:"unimplemented"
-                 ~known:(Method.Version.Map.keys handlers)
-             | Some (N (f, T gen)) ->
-               (match Conv.of_sexp gen.req ~version:(session_version state) n.params with
-                | Error e -> Fiber.return (Error (Response.Error.of_conv e))
-                | Ok req ->
-                  let open Fiber.O in
-                  let+ () = f state (gen.upgrade_req req) in
-                  Ok ()))
+          (fun (N (f, T gen)) ->
+             let version = session_version state in
+             match Conv.of_sexp gen.req ~version params with
+             | Error e -> Fiber.return (Error (Response.Error.of_conv e))
+             | Ok req ->
+               let open Fiber.O in
+               let+ () = f state (gen.upgrade_req req) in
+               Ok ())
       in
-      let prepare_generic t ~menu ~table ~key ~method_ f =
+      let prepare_generic ~menu ~table ~key ~method_ f =
         lookup_method_generic
           t
           ~menu
           ~table
           ~key
           ~method_
+          ~verb:"undeclared"
           (fun e -> Error e)
-          (fun (decls, version) ->
-             match Method.Version.Map.find decls version with
-             | None ->
-               raise_version_bug
-                 ~method_
-                 ~selected:version
-                 ~verb:"undeclared"
-                 ~known:(Method.Version.Map.keys decls)
-             | Some gen -> Ok (f gen))
+          (fun gen -> Ok (f gen))
       in
       let prepare_request (type a b) menu (decl : (a, b) Decl.Request.witness)
         : ((a, b) Staged.request, Version_error.t) result
         =
         let method_ = decl.method_ in
         prepare_generic
-          t
           ~menu
           ~table:Declared_requests
           ~key:(method_, decl.key)
@@ -457,7 +445,6 @@ struct
         =
         let method_ = decl.method_ in
         prepare_generic
-          t
           ~menu
           ~table:Declared_notifs
           ~key:(method_, decl.key)

@@ -134,8 +134,12 @@ Generated ocamldep processes only use the runner when they invoke a preprocessor
   true
 
 Both commands in a sequence should write to the same redirected stdout,
-regardless of whether the commands run in the action runner.
+regardless of whether the commands run in the action runner. This also works
+when built-ins and spawned commands share stdout. Two `dd` commands sharing
+stdin should each read the next byte, writing to separate stdout and stderr.
 
+  $ printf 'ab' > bytes
+  $ printf 'third\n' > third
   $ cat > dune <<'EOF'
   > (rule
   >  (with-stdout-to local.out
@@ -143,15 +147,43 @@ regardless of whether the commands run in the action runner.
   > (rule
   >  (with-stdout-to runner.out
   >   (progn (run echo first) (run echo second))))
+  > (rule
+  >  (deps third)
+  >  (action
+  >   (with-stdout-to mixed.out
+  >    (progn (echo "first\n") (run echo second) (cat third) (run echo fourth)))))
+  > (rule
+  >  (targets bytes.out bytes.err)
+  >  (deps bytes)
+  >  (action
+  >   (with-stdin-from bytes
+  >    (with-stderr-to bytes.err
+  >     (with-stdout-to bytes.out
+  >      (progn
+  >       (bash "dd bs=1 count=1 2>/dev/null")
+  >       (bash "dd bs=1 count=1 >&2 2>/dev/null")))))))
   > EOF
   $ dune build local.out
   $ cat _build/default/local.out
   first
   second
 
-CR: The runner reopens the redirection for the second command and truncates
-what the first command wrote.
+Build the rules together so their requests can overlap. The trace should show
+that all six spawned commands run in the worker.
 
-  $ dune build --action-runner runner.out
+CR: The worker opens each redirection again instead of sharing the original
+file. This loses earlier output and resets the input offset.
+
+  $ dune build -j 3 --action-runner runner.out mixed.out bytes.out
   $ cat _build/default/runner.out
   second
+  $ cat _build/default/mixed.out
+  fourth
+  $ printf 'stdout=%s\nstderr=%s\n' "$(cat _build/default/bytes.out)" "$(cat _build/default/bytes.err)"
+  stdout=
+  stderr=a
+  $ dune trace cat | jq -s '
+  >   include "dune";
+  >   actionRunnerTraceEvents("action-runner")
+  >   | map(select(.cat == "process" and .name == "start")) | length'
+  6

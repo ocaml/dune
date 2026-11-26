@@ -9,6 +9,7 @@ type 'a t =
   ; etc_root : 'a
   ; doc_root : 'a
   ; man : 'a
+  ; prefix : 'a
   }
 
 val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t

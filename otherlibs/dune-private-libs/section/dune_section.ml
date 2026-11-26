@@ -13,6 +13,8 @@ type t =
   | Stublibs
   | Man
   | Misc
+  | Root
+  | Rootexec
 
 let all =
   [ Lib, "lib"
@@ -29,6 +31,8 @@ let all =
   ; Stublibs, "stublibs"
   ; Man, "man"
   ; Misc, "misc"
+  ; Root, "root"
+  ; Rootexec, "rootexec"
   ]
 ;;
 

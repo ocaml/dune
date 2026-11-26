@@ -58,10 +58,10 @@ listed in [p]'s dependencies.
   $ cat _build/default/p/q-avail
   true
 
-[r-tool] (transitive dep p -> q -> r) is NOT available:
+[r-tool] (transitive dep p -> q -> r) is available too:
 
   $ cat _build/default/p/r-avail
-  false
+  true
 
 [s-tool] (sibling not listed in p's dependencies) is NOT available:
 

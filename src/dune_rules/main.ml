@@ -10,9 +10,9 @@ type build_system =
 let implicit_default_alias dir =
   match Path.Build.drop_build_context dir with
   | None -> Memo.return None
-  | Some src_dir ->
+  | Some _ ->
     let open Memo.O in
-    Source_tree.find_dir src_dir
+    Partitions.source_tree_dir ~dir
     >>| (function
      | None -> None
      | Some src_dir ->
@@ -31,7 +31,8 @@ let execution_parameters ~sandbox_actions =
     | Regular (With_context (context, source))
     | Anonymous_action (With_context (context, source)) ->
       (match Install.Context.analyze_path context source with
-       | Normal (_, source) -> Some source
+       | Normal (context, source) ->
+         Some (Path.Build.append_source (Context_name.build_dir context) source)
        | Install _ | Invalid -> None)
     | Regular Root | Anonymous_action Root | Invalid _ -> None
   in
@@ -49,8 +50,14 @@ let execution_parameters ~sandbox_actions =
       match source_backed_dir path with
       | None -> Memo.return ep
       | Some path ->
-        let+ dir = Source_tree.nearest_dir path in
-        Dune_project.update_execution_parameters (Source_tree.Dir.project dir) ep)
+        Partitions.source_tree_root ~dir:path
+        >>= (function
+         | None -> Memo.return ep
+         | Some _ ->
+           let+ loaded_project = Partitions.find_loaded_project ~dir:path in
+           Dune_project.update_execution_parameters
+             (Loaded_project.project loaded_project)
+             ep))
   in
   let memo =
     let module Input = struct
@@ -98,7 +105,10 @@ let init ~sandbox_actions ~sandboxing_preference () : unit =
             :: (Install.Context.install_context.name, Empty)
             :: (Fetch_rules.context.name, Empty)
             :: List.map contexts ~f:(fun { Build_context.name; build_dir = _ } ->
-              name, With_sources))))
+              ( name
+              , With_sources
+                  { build_only_sub_dirs = Filename.Set.singleton Filename.pkg_dir_basename
+                  } )))))
     ~rule_generator:Gen_rules.gen_rules
     ~implicit_default_alias
     ~execution_parameters:(execution_parameters ~sandbox_actions)

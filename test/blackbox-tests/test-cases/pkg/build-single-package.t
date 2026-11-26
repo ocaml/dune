@@ -86,7 +86,7 @@ Binary lock payloads reach the installed package byte-for-byte.
   $ build_pkg payload
   payload-ok
   $ payload_dir=$(get_build_pkg_dir payload)
-  $ cmp dune.lock/payload.files/sub/data "$payload_dir/target/share/payload/data"
+  $ cmp dune.lock/payload.files/sub/data "$payload_dir/_install/share/payload/data"
   $ build_pkg payload
 
 Changing bytes after the NUL must invalidate the package without changing
@@ -96,10 +96,11 @@ its metadata or the payload size.
   $ build_pkg payload
   payload-ok
   $ payload_dir=$(get_build_pkg_dir payload)
-  $ cmp dune.lock/payload.files/sub/data "$payload_dir/target/share/payload/data"
+  $ cmp dune.lock/payload.files/sub/data "$payload_dir/_install/share/payload/data"
 
-The build command is expanded before a missing source is reported, installing
-the dependency needed to expand its package variable.
+A missing source is reported before anything else of the package: its source
+decides how the package is built, so it is needed first. The dependency is not
+built.
 
   $ make_lockpkg source-error-dep <<EOF
   > (version dev)
@@ -114,16 +115,16 @@ the dependency needed to expand its package variable.
   $ build_pkg source-error > source-error.log 2>&1
   [1]
   $ grep -q 'does not exist' source-error.log
-  $ if test -d "$(get_build_pkg_dir source-error-dep)/target"; then
+  $ if test -d "$(get_build_pkg_dir source-error-dep)/_install"; then
   >   echo dependency-built-before-source-error
   > else
   >   echo source-rejected-first
   > fi
-  dependency-built-before-source-error
+  source-rejected-first
 
-Eager rule collection for directory-target discovery traverses unrelated
-package sources. The looping symlink in the external source masks the usual
-directory-target diagnostic. Neither package should be built.
+Rule collection for directory-target discovery does not traverse unrelated
+package sources: the looping symlink in the external source is never seen, and
+the usual diagnostic is reported. Neither package is built.
 
   $ mkdir query-project query-source
   $ ln -s loop query-source/loop
@@ -142,8 +143,8 @@ directory-target diagnostic. Neither package should be built.
   > (version dev)
   > (source (copy "$PWD/../query-source"))
   > EOF
-  $ target="$(get_build_pkg_dir requested)/target"
-  $ dune describe targets --context _private "$target" 2>&1 | censor
-  Error:
-  stat($PWD/../query-source/loop): Too many levels of symbolic links
+  $ target="$(get_build_pkg_dir requested)/_install"
+  $ dune describe targets --context default "$target" 2>&1 | censor
+  Error: Directory _build/default/.pkg/requested/_install is a directory
+  target. This command does not support the inspection of directory targets.
   $ test ! -d "$target"

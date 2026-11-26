@@ -157,11 +157,11 @@ module Process = struct
 end
 
 module Process_key = struct
-  type t = Path.Source.t * Context_name.t * Name.t
+  type t = Path.Local.t * Context_name.t * Name.t
 
-  let repr = Repr.triple Path.Source.repr (Repr.abstract Context_name.to_dyn) Name.repr
-  let equal = Tuple.T3.equal Path.Source.equal Context_name.equal Name.equal
-  let hash = Tuple.T3.hash Path.Source.hash Context_name.hash Name.hash
+  let repr = Repr.triple Path.Local.repr (Repr.abstract Context_name.to_dyn) Name.repr
+  let equal = Tuple.T3.equal Path.Local.equal Context_name.equal Name.equal
+  let hash = Tuple.T3.hash Path.Local.hash Context_name.hash Name.hash
   let to_dyn = Repr.to_dyn repr
 end
 
@@ -222,21 +222,21 @@ module Registry = struct
   open Memo.O
 
   type entry =
-    { dir : Path.Source.t
+    { dir : Path.Local.t
     ; project : Dune_project.t
     ; definition : Rule_plugin.Definition.t
     }
 
-  type t = entry Name.Map.t Path.Source.Map.t
+  type t = entry Name.Map.t Path.Local.Map.t
 
   let create entries =
     List.fold_left
       entries
-      ~init:Path.Source.Map.empty
+      ~init:Path.Local.Map.empty
       ~f:(fun projects ({ project; definition; _ } as entry) ->
         let root = Dune_project.root project in
         let plugins =
-          Option.value (Path.Source.Map.find projects root) ~default:Name.Map.empty
+          Option.value (Path.Local.Map.find projects root) ~default:Name.Map.empty
         in
         let plugins =
           match Name.Map.add plugins definition.name entry with
@@ -252,13 +252,13 @@ module Registry = struct
                   (Loc.to_file_colon_line previous.definition.loc)
               ]
         in
-        Path.Source.Map.set projects root plugins)
+        Path.Local.Map.set projects root plugins)
   ;;
 
   let find t ~project { Rule_plugin.Invocation.loc; name; arguments = _ } =
     let found =
       let root = Dune_project.root project in
-      match Path.Source.Map.find t root with
+      match Path.Local.Map.find t root with
       | None -> None
       | Some plugins -> Name.Map.find plugins name
     in
@@ -286,21 +286,26 @@ module Registry = struct
     in
     let* host = Context.DB.get context >>= Context.host in
     let executable =
-      let source_executable =
-        Path.Source.relative
-          ~error_loc:definition_loc
-          definition_dir
-          definition_executable
-      in
-      Path.Build.append_source
-        (Context_name.build_dir (Context.name host))
-        source_executable
+      Path.Local.relative ~error_loc:definition_loc definition_dir definition_executable
+      |> Path.Build.append_local (Context_name.build_dir (Context.name host))
     in
     let* () = Build_system.build_file (Path.build executable) in
     let* process =
       let key = Dune_project.root project, context, definition_name in
       let prog = Path.to_absolute_filename (Path.build executable) in
-      let cwd = Path.source definition_dir in
+      (* A plugin of a mounted package runs in the package's private copy of
+         its source, as its dune files in OCaml syntax do. *)
+      let* cwd =
+        match Pkg_rules.package_of_dir_in_context definition_dir with
+        | None -> Memo.return (Path.source (Path.Source.of_local definition_dir))
+        | Some package ->
+          let root = Pkg_rules.prepared_source (Context.name host) package in
+          let+ () = Build_system.build_dir (Path.build root) in
+          (match Path.Local.explode definition_dir with
+           | _ :: _ :: rest ->
+             Path.Build.L.relative root (Filename.L.to_string rest) |> Path.build
+           | _ -> Path.build root)
+      in
       let* env = Context.installed_env host in
       get_process ~key ~name:definition_name ~prog ~cwd ~env |> Memo.of_reproducible_fiber
     in

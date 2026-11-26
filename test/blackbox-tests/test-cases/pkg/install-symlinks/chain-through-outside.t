@@ -32,14 +32,14 @@ Build the package:
 
 The symlink should be resolved to a regular file:
 
-  $ dune_cmd stat kind $(get_build_pkg_dir foo)/target/lib/foo/link.txt
+  $ dune_cmd stat kind $(get_build_pkg_dir foo)/_install/lib/foo/link.txt
   regular file
 
 link.txt and real.txt should be hardlinks to the same file (hardlink count > 1):
 
-  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/target/lib/foo/link.txt
+  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/_install/lib/foo/link.txt
   3
-  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/target/lib/foo/real.txt
+  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/_install/lib/foo/real.txt
   3
 
 The outside intermediate has only 1 hardlink (it's still just a symlink):
@@ -47,12 +47,12 @@ The outside intermediate has only 1 hardlink (it's still just a symlink):
   $ dune_cmd stat hardlinks outside_dir/intermediate.txt
   1
 
-  $ cat $(get_build_pkg_dir foo)/target/lib/foo/link.txt
+  $ cat $(get_build_pkg_dir foo)/_install/lib/foo/link.txt
   real content
 
 Caching works - the symlink was resolved so it can be cached:
 
   $ rm -rf _build
   $ build_pkg foo
-  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/target/lib/foo/link.txt
+  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/_install/lib/foo/link.txt
   3

@@ -484,7 +484,7 @@ let decode ~file project sexps =
 ;;
 
 type t =
-  { path : Path.Source.t option
+  { path : Source_tree_file.File.t option
   ; kind : kind
   ; (* for [kind = Ocaml_script], this is the part inserted with subdir *)
     plain : Dir_map.t
@@ -493,7 +493,8 @@ type t =
 let to_dyn { path; kind; plain } =
   let open Dyn in
   record
-    [ "path", option Path.Source.to_dyn path
+    [ ( "file"
+      , option Path.Local.to_dyn (Option.map path ~f:Source_tree_file.File.source_path) )
     ; "kind", dyn_of_kind kind
     ; "plain", Dir_map.to_dyn plain
     ]
@@ -501,7 +502,8 @@ let to_dyn { path; kind; plain } =
 
 let get_static_sexp t = (Dir_map.root t.plain).sexps
 let kind t = t.kind
-let path t = t.path
+let path t = Option.bind t.path ~f:Source_tree_file.File.as_workspace
+let file t = t.path
 let sub_dir_status t = Source_dir_status.Spec.create (Dir_map.root t.plain).subdir_status
 
 let dirs_stanza_loc t =
@@ -533,7 +535,7 @@ let load file ~from_parent ~project =
       Plain, plain
     | Some file ->
       let* kind, ast =
-        Fs_memo.with_lexbuf_from_file (In_source_dir file) ~f:(fun lb ->
+        Source_tree_file.File.with_lexbuf_from_file file ~f:(fun lb ->
           let kind, ast =
             if Dune_lang.Dune_file_script.is_script lb
             then Ocaml_script, []
@@ -549,7 +551,7 @@ let load file ~from_parent ~project =
 
 let ensure_dune_project_file_exists =
   let impl ~is_error project =
-    let project_dir = Dune_project.root project in
+    let project_dir = Dune_project.root project |> Path.Source.of_local in
     let+ exists =
       let supposed_project_file =
         Path.Source.relative_fname project_dir Dune_project.filename
@@ -598,16 +600,17 @@ let load ~dir (status : Source_dir_status.t) project ~files ~parent =
   in
   let parent =
     Option.bind parent ~f:(fun parent ->
-      Dir_map.descend parent.plain (Path.Source.basename dir))
+      Dir_map.descend parent.plain (Source_tree_file.Dir.basename dir))
   in
   match parent, file with
   | None, None -> Memo.return None
   | _, _ ->
+    let file = Option.map file ~f:(Source_tree_file.Dir.file dir) in
     let* () =
-      match file with
+      (* Only a workspace project is the user's to fix. *)
+      match Option.bind file ~f:Source_tree_file.File.as_workspace with
       | None -> Memo.return ()
       | Some _ -> ensure_dune_project_file_exists project
     in
-    let file = Option.map file ~f:(fun file -> Path.Source.relative_fname dir file) in
     load file ~from_parent:parent ~project >>| Option.some
 ;;

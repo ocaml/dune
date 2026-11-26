@@ -24,8 +24,8 @@ We should be able to specify (package ..) deps on locally built packages.
   > EOF
 
   $ dune build @foo 2>&1 | censor
-  $PWD/_build/_private/default/.pkg/foo/target/bin/foo
-  ../_private/default/.pkg/foo/target/bin/foo
+  $PWD/_build/default/.pkg/foo/_install/bin/foo
+  .pkg/foo/_install/bin/foo
 
 Now we define the external package using a dune project:
 
@@ -48,5 +48,5 @@ Now we define the external package using a dune project:
   > (build (run dune build @install --promote-install-files))
   > EOF
   $ dune build @foo 2>&1 | censor
-  $PWD/_build/_private/default/.pkg/foo/target/bin/foo
-  ../_private/default/.pkg/foo/target/bin/foo
+  $PWD/_build/_private/default/.packages/$DIGEST/bin/foo
+  .pkg/foo/foo.exe

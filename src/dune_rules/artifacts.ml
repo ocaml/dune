@@ -34,11 +34,14 @@ type t =
        but the artifacts database is depended on by the logic which expands
        globs. The computation of this field is deferred to break the cycle. *)
     local_bins : local_bins Memo.Lazy.t
+  ; (* The binaries natively built locked packages install, by the packages a
+       lookup may see. *)
+    native_bins : packages:Package.Name.Selection.t -> Filename.t -> origin list Memo.t
   ; (* The packages whose binaries are visible from the dir: its owning package
-       and the packages it directly depends on (or depopts on). Dependencies of
-       those packages are not included unless they are listed too. Applies to
-       both [local_bins] and the lock directory. *)
+       and the dependency closure of that package. Applies to both
+       [local_bins] and the lock directory. *)
     visible_packages : Package.Name.Selection.t
+  ; package_deps : Package.Name.Set.t
   }
 
 let force { local_bins; _ } =
@@ -56,7 +59,7 @@ let local_binaries { local_bins; _ } =
 let origin_is_visible t (origin : origin) =
   match t.visible_packages, origin.package with
   | Package.Name.Selection.Only visible, Some package ->
-    Package.Name.Set.mem visible package
+    Package.Name.Set.mem visible package || Package.Name.Set.mem t.package_deps package
   (* An origin with no owning package is always visible, similar to the rule
      visibility with dune build -p. *)
   | (Only _ | All), _ -> true
@@ -76,14 +79,16 @@ let analyze_binary t ~dir name =
           "Artifacts.analyze_binary: unexpected absolute program name"
           [ "name", Dyn.string name ]
     in
+    let packages : Package.Name.Selection.t =
+      match t.visible_packages with
+      | All -> All
+      | Only visible -> Only (Package.Name.Set.union visible t.package_deps)
+    in
     let which () =
       match lookup_name with
       | None -> Memo.return `None
       | Some lookup_name ->
-        Context.which_narrowed_to_packages
-          t.context
-          ~packages:t.visible_packages
-          lookup_name
+        Context.which_narrowed_to_packages t.context ~packages lookup_name
         >>= (function
          | Some path -> Memo.return (`In_lock_dir path)
          | None ->
@@ -92,30 +97,46 @@ let analyze_binary t ~dir name =
             | Some path -> `In_path path
             | None -> `None))
     in
+    let enabled origins =
+      Memo.parallel_map origins ~f:(fun origin ->
+        origin.enabled_if
+        >>| function
+        | true -> Some origin
+        | false -> None)
+      >>| List.filter_opt
+    in
+    let duplicate x rest =
+      let loc x = File_binding.Unexpanded.loc x.binding in
+      User_error.raise
+        ~loc:(loc x)
+        [ Pp.textf
+            "binary %S is available from more than one definition. It is also available \
+             in:"
+            name
+        ; Pp.enumerate rest ~f:(fun x -> Pp.verbatim (Loc.to_file_colon_line (loc x)))
+        ]
+    in
+    let natives () =
+      match lookup_name with
+      | None -> Memo.return `None
+      | Some lookup_name ->
+        t.native_bins ~packages lookup_name
+        >>= enabled
+        >>= (function
+         | [] -> which ()
+         | [ x ] -> Memo.return (`Origin x)
+         | x :: rest -> duplicate x rest)
+    in
     (match Option.bind lookup_name ~f:(Filename.Map.find local_bins) with
      | Some (Resolved p) -> Memo.return (`Resolved (Path.build p.path))
-     | None -> which ()
+     | None -> natives ()
      | Some (Origin origins) ->
        List.filter origins ~f:(origin_is_visible t)
-       |> Memo.parallel_map ~f:(fun origin ->
-         origin.enabled_if
-         >>| function
-         | true -> Some origin
-         | false -> None)
-       >>| List.filter_opt
+       |> enabled
        >>= (function
-        | [] -> which ()
+        | [] -> natives ()
         | [ x ] -> Memo.return (`Origin x)
-        | x :: rest ->
-          let loc x = File_binding.Unexpanded.loc x.binding in
-          User_error.raise
-            ~loc:(loc x)
-            [ Pp.textf
-                "binary %S is available from more than one definition. It is also \
-                 available in:"
-                name
-            ; Pp.enumerate rest ~f:(fun x -> Pp.verbatim (Loc.to_file_colon_line (loc x)))
-            ]))
+        | x :: rest -> duplicate x rest))
 ;;
 
 let origin_original_path { dir; binding; _ } =
@@ -151,10 +172,19 @@ let binary t ?hint ?(where = Original_path) ~dir ~loc name =
             ~context
             ~loc
             ())
-  | `Origin ({ dst; dir = _; binding = _; enabled_if = _; package = _ } as origin) ->
+  | `Origin ({ dst; dir; binding = _; enabled_if = _; package = _ } as origin) ->
     (match where with
      | Install_dir ->
-       let install_dir = Install.Context.bin_dir ~context:(Context.name t.context) in
+       let context = Context.name t.context in
+       let install_dir =
+         match Pkg_rules.package_of_artifact_path dir with
+         | None -> Install.Context.bin_dir ~context
+         | Some locked ->
+           (* The workspace install directory holds workspace packages only. *)
+           Path.Build.relative
+             (Install_layout.root context (Package.Name.Set.singleton locked))
+             "bin"
+       in
        Memo.return @@ Ok (Path.build @@ Path.Build.append_local install_dir dst)
      | Original_path -> origin_original_path origin >>| Result.ok)
 ;;
@@ -189,9 +219,14 @@ let add_binaries t ~dir l =
 
 let set_visible_packages t ~visible_packages = { t with visible_packages }
 
+let add_package_deps t packages =
+  { t with package_deps = Package.Name.Set.union t.package_deps packages }
+;;
+
 let create =
   fun (context : Context.t)
-    ~(local_bins : origin Appendable_list.t Filename.Map.t Memo.Lazy.t) ->
+    ~(local_bins : origin Appendable_list.t Filename.Map.t Memo.Lazy.t)
+    ~native_bins ->
   let local_bins =
     Memo.lazy_ ~name:"artifact-local-binaries" (fun () ->
       let+ local_bins = Memo.Lazy.force local_bins in
@@ -200,5 +235,10 @@ let create =
         , Origin (Appendable_list.to_list sources) ))
       |> Filename.Map.of_list_exn)
   in
-  { context; local_bins; visible_packages = Package.Name.Selection.All }
+  { context
+  ; local_bins
+  ; native_bins
+  ; visible_packages = Package.Name.Selection.All
+  ; package_deps = Package.Name.Set.empty
+  }
 ;;

@@ -35,13 +35,11 @@ module Crawl = struct
     =
     let context_name = Context.name context in
     let sctx = Context_name.Map.find_exn scontexts context_name in
-    let* dune_files = Dune_load.dune_files context_name in
+    let* dune_files = Partitions.dune_files context_name in
     Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
       Dune_file.stanzas dune_file
       >>= fun stanzas ->
-      let dir =
-        Path.Build.append_source (Context.build_dir context) (Dune_file.dir dune_file)
-      in
+      let dir = Dune_file.output_dir dune_file in
       let* expander = Super_context.expander sctx ~dir in
       Memo.return
         (List.filter_map stanzas ~f:(fun stanza ->

@@ -177,7 +177,12 @@ let rec exec t ~ectx ~eenv : unit Fiber.t =
     Fiber.return ()
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
   | Diff diff ->
-    Diff_action.exec ~sandbox:ectx.sandbox ~patch_back:None ectx.rule_loc diff
+    Diff_action.exec
+      ~promotion:ectx.promotion
+      ~sandbox:ectx.sandbox
+      ~patch_back:None
+      ectx.rule_loc
+      diff
   | Extension (module A) ->
     let metadata =
       { ectx.metadata with can_run_in_action_runner = A.Spec.can_run_in_action_runner }
@@ -283,6 +288,7 @@ type input =
   ; rule_loc : Loc.t
   ; execution_parameters : Execution_parameters.t
   ; sandbox : Process.Sandbox.t option
+  ; promotion : bool
   ; action : Action.t
   ; job_slots : Action.t option
   }
@@ -326,6 +332,7 @@ let exec
       ; rule_loc
       ; execution_parameters
       ; sandbox
+      ; promotion
       ; action = t
       ; job_slots
       }
@@ -336,7 +343,7 @@ let exec
     let metadata =
       Process_metadata.create ~purpose:(Process_metadata.Build_job targets) ()
     in
-    { root; metadata; sandbox; rule_loc; build_deps }
+    { root; metadata; sandbox; rule_loc; promotion; build_deps }
   and eenv =
     let env =
       match
@@ -358,7 +365,7 @@ let exec
         (match Path.as_in_build_dir root with
          | None -> env
          | Some root ->
-           let project_root = Path.Build.append_source root project_root in
+           let project_root = Path.Build.append_local root project_root in
            Env.add env ~var ~value:(Path.to_absolute_filename (Path.build project_root)))
     in
     { working_dir = Path.root

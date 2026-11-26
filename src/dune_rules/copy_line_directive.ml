@@ -93,7 +93,7 @@ module Spec = struct
   type ('path, 'target) t = 'path * 'target * merlin
 
   let name = "copy-line-directive"
-  let version = 3
+  let version = 4
   let runs_process = false
   let can_run_in_action_runner = false
   let bimap (src, dst, merlin) f g = f src, g dst, merlin
@@ -107,7 +107,13 @@ module Spec = struct
     Io.with_file_in src ~f:(fun ic ->
       Path.build dst
       |> Io.with_file_out ~f:(fun oc ->
-        let fn = Path.drop_optional_build_context_maybe_sandboxed src in
+        let fn =
+          match Path.as_in_build_dir src with
+          | None -> src
+          | Some src ->
+            let _, src = Path.Build.split_sandbox_root src in
+            Pkg_rules.source_location src
+        in
         output_string oc (line_directive ~filename:(Path.to_string fn) ~line_number:1);
         Io.copy_channels ic oc));
     (match merlin with

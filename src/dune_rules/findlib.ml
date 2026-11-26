@@ -652,6 +652,19 @@ let create_with_paths ~paths context_name =
   DB.create ~paths ~stdlib_package ~lock_dir_active ~lib_config
 ;;
 
+let create_for_package context_name ~package ~lib_root =
+  let* context = Context.DB.get context_name in
+  let* lib_config =
+    let+ ocaml = Context.ocaml context in
+    ocaml.lib_config
+  in
+  DB.create
+    ~paths:[ lib_root, Some package ]
+    ~stdlib_package:None
+    ~lock_dir_active:true
+    ~lib_config
+;;
+
 let create =
   Per_context.create_by_name ~name:"findlib" (fun context_name ->
     Memo.lazy_ ~name:"findlib" (fun () ->

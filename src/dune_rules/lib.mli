@@ -72,7 +72,7 @@ module L : sig
     -> deps:('a -> 'a list Resolve.Memo.t)
     -> ('a list, 'a list) Result.t Resolve.Memo.t
 
-  val project_root : t list -> Path.Source.t option
+  val project_root : t list -> Path.Local.t option
 end
 
 (** {1 Compilation contexts} *)
@@ -140,12 +140,28 @@ module DB : sig
 
   val with_parent : t -> parent:t option -> t
 
+  (** Check transitive libraries from these producer roots in their owning
+      package's scope, without forcing unrelated providers in the consumer's
+      scope. Libraries outside those roots retain the ordinary overlap checks. *)
+  val with_package_scopes
+    :  t
+    -> package_scopes:(Path.t * t) Package.Name.Map.t Lazy.t
+    -> t
+
   (** Create a library database from a specified list of library paths. A
       library path is a path to a "lib" directory such as those found in the
       OCAMLPATH variable or the "path" field of findlib.conf. *)
   val of_paths : Context.t -> paths:Path.t list -> t Memo.t
 
   val installed : Context.t -> t Memo.t
+
+  (** The libraries of a findlib configuration, falling back to [parent]. *)
+  val create_from_findlib
+    :  Findlib.t
+    -> has_bigarray_library:bool
+    -> parent:t option
+    -> instrument_with:Lib_name.t list
+    -> t
 
   module Resolve_result : sig
     type db := t

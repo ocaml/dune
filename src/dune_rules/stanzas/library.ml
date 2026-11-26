@@ -571,7 +571,7 @@ let to_lib_info
   let main_module_name = main_module_name conf in
   let name = best_name conf in
   let lib_id =
-    let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
+    let src_dir = Dune_project.dir_in_context dir in
     Lib_id.Local (to_lib_id ~src_dir conf)
   in
   let enabled =

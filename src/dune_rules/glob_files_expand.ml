@@ -9,14 +9,15 @@ open Memo.O
    subdirectories, and each of of their subdirectories, and so on ad infinitum. *)
 let get_descendants_of_relative_dir_relative_to_base_dir_local
       ~base_dir
+      ~source_tree_root
       ~relative_dir
       ~prefix
   =
-  let base_dir = Path.Build.drop_build_context_exn base_dir in
+  let base_dir = Dune_project.dir_in_context base_dir in
   let rec get_descendants_rec relative_dir prefix =
-    let absolute_dir = Path.Source.relative base_dir relative_dir in
+    let absolute_dir = Path.Local.relative base_dir relative_dir in
     let* children =
-      Source_tree.find_dir absolute_dir
+      Source_tree.Dir.find_dir source_tree_root absolute_dir
       >>| function
       | None -> []
       | Some dir ->
@@ -89,7 +90,8 @@ module Without_vars = struct
      prefixes are the paths to each directory relative to [base_dir] exactly as written in
      the glob. The relative paths are required to construct relative paths to the files
      found by expanding the glob. *)
-  let file_selectors_with_prefixes { glob; dir; prefix; recursive } ~loc =
+  let file_selectors_with_prefixes { glob; dir; prefix; recursive } ~loc ~source_tree_root
+    =
     match (dir : Glob_dir.t) with
     | Relative { relative_dir; base_dir } ->
       let make_file_selector relative_dir =
@@ -100,6 +102,7 @@ module Without_vars = struct
       then
         get_descendants_of_relative_dir_relative_to_base_dir_local
           ~base_dir
+          ~source_tree_root
           ~relative_dir
           ~prefix
         |> Memo.map
@@ -153,12 +156,12 @@ struct
     { Without_vars.glob; dir; prefix; recursive }
   ;;
 
-  let expand (t : Dep_conf.Glob_files.t) ~f ~base_dir =
+  let expand (t : Dep_conf.Glob_files.t) ~f ~base_dir ~source_tree_root =
     let open M.O in
     let loc = String_with_vars.loc t.glob in
     let* without_vars = expand_vars t ~f ~base_dir in
     let+ matches =
-      Without_vars.file_selectors_with_prefixes without_vars ~loc
+      Without_vars.file_selectors_with_prefixes without_vars ~loc ~source_tree_root
       |> M.of_memo
       >>= M.List.concat_map ~f:(fun (file_selector, prefix) ->
         C.collect_files ~loc file_selector

@@ -6,66 +6,58 @@ needed must be declared explicitly.
 [p] (workspace) -> [q] (workspace) -> [r] (lockdir). [p] only lists [q], so
 [r-tool] does not resolve from [p]'s stanza.
 
-  $ make_lockdir
+The lockdir package [r] is a Dune project installing [r-tool], built natively
+or by an opaque recipe:
 
-A lockdir package [r] that installs [r-tool]:
-
-  $ make_lockpkg r <<'EOF'
-  > (version 0.0.1)
-  > (build
-  >  (progn
-  >   (system "echo '#!/bin/sh' > r-tool")
-  >   (system "echo 'echo from r' >> r-tool")
-  >   (system "chmod +x r-tool")
-  >   (system "echo 'bin: [ \"r-tool\" ]' > r.install")))
-  > EOF
+  $ mkdir -p _r native opaque
+  $ (cd _r && make_dune_project_with_package 3.25 r)
+  $ echo '(install (section bin) (files r-tool))' > _r/dune
+  $ printf '#!/bin/sh\necho from r\n' > _r/r-tool
+  $ chmod +x _r/r-tool
+  $ make_backend_lockdirs r "$PWD/_r"
 
   $ mkdir -p p q
   $ cat >p/dune <<'EOF'
   > (rule (with-stdout-to r-avail (echo %{bin-available:r-tool})))
   > EOF
-
-  $ make_dune_project 3.25
-  $ cat >> dune-project <<'EOF'
-  > (package (name p) (allow_empty) (dir p) (depends q))
+  $ cp -R p q native/ && cp -R p q opaque/
+  $ check() (
+  >   cd "$1"
+  >   make_dune_project 3.25
+  >   cat >> dune-project <<EOF
+  > (package (name p) (allow_empty) (dir p) (depends $2))
   > (package (name q) (allow_empty) (dir q) (depends r))
   > EOF
+  >   dune clean
+  >   dune build p/r-avail
+  >   echo "$(cat _build/default/p/r-avail)"
+  > )
 
-  $ dune build p/r-avail
+[r] is visible through the workspace package [q]:
 
-[r] is not visible through the workspace package [q], since [p] doesn't list it:
+  $ check native q
+  true
+  $ check opaque q
+  true
+  $ cat opaque/$pkg_root/r/_install/opaque-recipe
+  opaque
+  $ test ! -e native/$pkg_root/r/_install/opaque-recipe
 
-  $ cat _build/default/p/r-avail
-  false
+Declaring [r] directly on [p] makes it visible:
 
-Declaring [r] directly on [p] works too:
-
-  $ make_dune_project 3.25
-  $ cat >> dune-project <<'EOF'
-  > (package (name p) (allow_empty) (dir p) (depends q r))
-  > (package (name q) (allow_empty) (dir q) (depends r))
-  > EOF
-  $ dune clean
-  $ dune build p/r-avail
-  $ cat _build/default/p/r-avail
+  $ check native "q r"
+  true
+  $ check opaque "q r"
   true
 
-The first block prints [false] because [p] doesn't list [r], even though [q]
-does. The second prints [true] because [r] is listed on [p] directly. The
-workspace -> lockdir edge is narrowed like any other: only the packages [p]
-lists are searched.
+Both blocks print [true]: [p] sees the dependencies of the packages it lists,
+whether it reaches [r] through [q] or lists it directly.
 
-[p] (workspace) -> [q] (lockdir) -> [r] (workspace). Now the [q] -> [r] edge is
-a lockdir package depending on a workspace package. This is a lock-VALIDATION
-restriction, not a narrowing case: it is rejected before any binary resolution
-runs, so narrowing does not change it -- it flips only when the in-out work
-lifts the restriction (see [../lockdir-workspace-deps/basic.t] for the bare
-rejection). Even then, [p] would only resolve [r-tool] if it listed [r]
-directly.
+[p] (workspace) -> [q] (lockdir) -> [r] (workspace) is valid too. The opaque
+recipe for [q] receives [r], and [r-tool] is in the dependency closure of [p].
 
-  $ rm -rf p q r dune.lock
-  $ dune clean
-
+  $ mkdir lockdir-middle
+  $ cd lockdir-middle
   $ make_lockdir
   $ make_lockpkg q <<'EOF'
   > (version 0.0.1)
@@ -92,13 +84,6 @@ directly.
   > (package (name r) (allow_empty) (dir r))
   > EOF
 
-  $ dune build p/r-avail 2>&1
-  File "_build/_private/default/.lock/dune.lock/q.pkg", line 2, characters
-  9-10:
-  The package "q" depends on the package "r", but "r" does not appear in the
-  lockdir _build/_private/default/.lock/dune.lock.
-  Error: At least one package dependency is itself not present as a package in
-  the lockdir _build/_private/default/.lock/dune.lock.
-  Hint: This could indicate that the lockdir is corrupted. Delete it and then
-  regenerate it by running: 'dune pkg lock'
-  [1]
+  $ dune build p/r-avail
+  $ cat _build/default/p/r-avail
+  true

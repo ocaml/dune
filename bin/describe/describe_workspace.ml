@@ -769,7 +769,9 @@ module Crawl = struct
   (* Tests whether a dune file is located in a path that is a descendant of
      some directory *)
   let dune_file_is_in_dirs ~no_recursive dirs dune_file =
-    Dune_file.dir dune_file |> source_path_is_in_dirs ~no_recursive dirs
+    Dune_file.dir dune_file
+    |> Path.Source.of_local
+    |> source_path_is_in_dirs ~no_recursive dirs
   ;;
 
   (* Tests whether a library is located in a path that is a descendant of some
@@ -802,7 +804,7 @@ module Crawl = struct
     let sctx = Context_name.Map.find_exn scontexts context_name in
     let open Memo.O in
     let* dune_files =
-      Dune_load.dune_files context_name
+      Partitions.dune_files context_name
       >>| List.filter ~f:(dune_file_is_in_dirs ~no_recursive dirs)
     in
     let* exes, exe_libs =
@@ -813,11 +815,7 @@ module Crawl = struct
         >>= Memo.parallel_map ~f:(fun stanza ->
           match Stanza.repr stanza with
           | Executables.T exes ->
-            let dir =
-              Path.Build.append_source
-                (Context.build_dir context)
-                (Dune_file.dir dune_file)
-            in
+            let dir = Dune_file.output_dir dune_file in
             let project = Dune_file.project dune_file in
             executables sctx ~options ~project ~dir exes
           | _ -> Memo.return None)

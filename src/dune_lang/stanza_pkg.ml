@@ -1,6 +1,6 @@
 open Import
 
-let listing packages =
+let listing project packages =
   let longest_pkg =
     String.longest_map packages ~f:(fun p ->
       let name = Package.name p in
@@ -13,7 +13,7 @@ let listing packages =
       "%-*s (because of %s)"
       longest_pkg
       (Package.Name.to_string name)
-      (Path.Source.to_string (Package.opam_file pkg)))
+      (Dune_project.display_path project (Package.opam_file pkg) |> Path.to_string))
 ;;
 
 let default (project : Dune_project.t) stanza =
@@ -35,7 +35,7 @@ let default (project : Dune_project.t) stanza =
       (User_error.make
          [ Pp.text "I can't determine automatically which package this stanza is for."
          ; Pp.text "I have the choice between these ones:"
-         ; listing (Package.Name.Map.values packages)
+         ; listing project (Package.Name.Map.values packages)
          ; Pp.textf "You need to add a (package ...) field to this (%s) stanza." stanza
          ])
 ;;
@@ -70,7 +70,8 @@ let resolve (project : Dune_project.t) mask (loc, name) =
                (Package.Name.opam_fn name |> Filename.to_string)
            ; Pp.textf
                "Root of the project as discovered by dune: %s"
-               (Path.Source.to_string_maybe_quoted (Dune_project.root project))
+               (Dune_project.display_path project (Dune_project.root project)
+                |> Path.to_string_maybe_quoted)
            ])
     else
       Error
@@ -80,7 +81,7 @@ let resolve (project : Dune_project.t) mask (loc, name) =
            ; Pp.text
                "The only packages for which you can declare elements to be installed in \
                 this directory are:"
-           ; listing (Package.Name.Map.values packages)
+           ; listing project (Package.Name.Map.values packages)
            ]
            ~hints:
              (User_message.did_you_mean

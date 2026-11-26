@@ -21,8 +21,7 @@ This should take the `foo.ml.in`, do the substitutions and create `foo.ml`:
 
 Demonstrate that the original sources aren't modified:
 
-  $ src=_build/_private/default/.pkg/test/source/foo.ml; [ -e $src ] && cat $src
-  [1]
+  $ test ! -e test-source/foo.ml
 
 This should also work with any other filename combination:
 
@@ -91,16 +90,16 @@ Now with variables set
   We substitute '%{name}%' into 'test' and '%{_:name}%' into 'test'
   And '%{version}%' is set to '0.0.1'
   There is also some paths set:
-  %{lib}% is '../target/lib'
-  %{libexec}% is '../target/lib'
-  %{bin}% is '../target/bin'
-  %{sbin}% is '../target/sbin'
-  %{toplevel}% is '../target/lib/toplevel'
-  %{share}% is '../target/share'
-  %{etc}% is '../target/etc'
-  %{doc}% is '../target/doc'
-  %{stublibs}% is '../target/lib/stublibs'
-  %{man}% is '../target/man'
+  %{lib}% is '_install/lib'
+  %{libexec}% is '_install/lib'
+  %{bin}% is '_install/bin'
+  %{sbin}% is '_install/sbin'
+  %{toplevel}% is '_install/lib/toplevel'
+  %{share}% is '_install/share'
+  %{etc}% is '_install/etc'
+  %{doc}% is '_install/doc'
+  %{stublibs}% is '_install/lib/stublibs'
+  %{man}% is '_install/man'
   %{with-test}% is ''
   %{os}% is $REDACTED
 
@@ -124,9 +123,9 @@ It is also possible to use variables of your dependencies:
   > There is also some paths set:
   > '%%{dependency:lib}%%' is '%{dependency:lib}%'
   > EOF
-  $ build_pkg test
+  $ build_pkg test 2>&1 | censor
   There is also some paths set:
-  '%{dependency:lib}%' is '../../dependency/target/lib/dependency'
+  '%{dependency:lib}%' is '../../../_private/default/.packages/$DIGEST/lib/dependency'
 
 The substitute action should not observe the environment:
 

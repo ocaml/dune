@@ -3,10 +3,10 @@
   $ mkrepo
   $ add_mock_repo_if_needed
 
-Make a library that would fail when building it:
+Make a package whose source is not a dune project, so that it is built by its
+recipe:
   $ mkdir foo
-  $ cat > foo/dune-project <<EOF
-  > EOF
+  $ touch foo/data
   $ tar cf foo.tar foo
   $ rm -rf foo
 
@@ -22,13 +22,14 @@ Make a project that uses the foo library:
   >  (public_name bar)
   >  (libraries foo))
   > EOF
+  $ touch bar.ml
 
 Make dune.lock files with known program "dune".
   $ make_lockdir
   $ make_lockpkg foo <<EOF
   > (version 0.0.1)
   > (build
-  >  (run dune build))
+  >  (run sh -c "echo 'the build failed' >&2; exit 1"))
   > (depexts unzip gnupg)
   > (source
   >  (fetch
@@ -39,12 +40,11 @@ Make dune.lock files with known program "dune".
 Build the project, when it fails building 'foo' package, it shows the depexts
 error message.
   $ dune build
-  File "dune.lock/foo.pkg", line 3, characters 6-10:
-  3 |  (run dune build))
-            ^^^^
+  File "dune.lock/foo.pkg", line 3, characters 6-8:
+  3 |  (run sh -c "echo 'the build failed' >&2; exit 1"))
+            ^^
   Error: Logs for package foo
-  File "dune-project", line 1, characters 0-0:
-  Error: Invalid first line, expected: (lang <lang> <version>)
+  the build failed
   
   Hint: You may want to verify the following depexts are installed: gnupg unzip
   [1]
@@ -103,7 +103,7 @@ Update the foo lockfile to have a single depext name:
   $ make_lockpkg foo <<EOF
   > (version 0.0.1)
   > (build
-  >  (run dune build))
+  >  (run sh -c "echo 'the build failed' >&2; exit 1"))
   > (depexts foo)
   > (source
   >  (fetch
@@ -113,12 +113,11 @@ Update the foo lockfile to have a single depext name:
 Build the project, when it fails building 'foo' package, it shows the depexts
 error message.
   $ dune build
-  File "dune.lock/foo.pkg", line 3, characters 6-10:
-  3 |  (run dune build))
-            ^^^^
+  File "dune.lock/foo.pkg", line 3, characters 6-8:
+  3 |  (run sh -c "echo 'the build failed' >&2; exit 1"))
+            ^^
   Error: Logs for package foo
-  File "dune-project", line 1, characters 0-0:
-  Error: Invalid first line, expected: (lang <lang> <version>)
+  the build failed
   
   Hint: You may want to verify the following depexts are installed: foo
   [1]
@@ -127,7 +126,7 @@ Update the foo lockfile to have short depext names:
   $ make_lockpkg foo <<EOF
   > (version 0.0.1)
   > (build
-  >  (run dune build))
+  >  (run sh -c "echo 'the build failed' >&2; exit 1"))
   > (depexts a b)
   > (source
   >  (fetch
@@ -137,12 +136,11 @@ Update the foo lockfile to have short depext names:
 Build the project, when it fails building 'foo' package, it shows the depexts
 error message.
   $ dune build
-  File "dune.lock/foo.pkg", line 3, characters 6-10:
-  3 |  (run dune build))
-            ^^^^
+  File "dune.lock/foo.pkg", line 3, characters 6-8:
+  3 |  (run sh -c "echo 'the build failed' >&2; exit 1"))
+            ^^
   Error: Logs for package foo
-  File "dune-project", line 1, characters 0-0:
-  Error: Invalid first line, expected: (lang <lang> <version>)
+  the build failed
   
   Hint: You may want to verify the following depexts are installed: a b
   [1]

@@ -38,7 +38,7 @@ module Item = struct
 
   type t =
     { kind : Kind.t
-    ; dir : Path.Source.t
+    ; dir : Path.Local.t
     ; external_deps : lib_dep list
     ; internal_deps : lib_dep list
     ; names : string list (* private names *)
@@ -70,7 +70,7 @@ module Item = struct
         (name_fields
          @ [ "extensions", (list Filename.Extension.to_dyn) extensions
            ; "package", option Package.Name.to_dyn (Option.map ~f:Package.name package)
-           ; "source_dir", String (Path.Source.to_string dir)
+           ; "source_dir", String (Path.Local.to_string dir)
            ; "external_deps", list lib_dep_to_dyn external_deps
            ; "internal_deps", list lib_dep_to_dyn internal_deps
            ])
@@ -163,7 +163,7 @@ let exe_names (exes : Dune_rules.Executables.t) =
 
 let libs db (context : Context.t) =
   let open Memo.O in
-  let* dune_files = Context.name context |> Dune_rules.Dune_load.dune_files in
+  let* dune_files = Context.name context |> Dune_rules.Partitions.dune_files in
   Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_rules.Dune_file.t) ->
     Dune_file.stanzas dune_file
     >>= Memo.parallel_map ~f:(fun stanza ->

@@ -78,6 +78,16 @@ module For_solver : sig
   val to_opam_file : t -> OpamFile.OPAM.t
 
   val non_local_dependencies : t list -> Dependency_formula.t
+
+  (** Canonical solver inputs, excluding build and install commands. *)
+  val solver_metadata : t -> string
+
+  (** Include supplied workspace metadata referenced from locked dependencies.
+      Preserve the original non-local formula hash for closed lockdirs. *)
+  val dependency_hash
+    :  t list
+    -> referenced_packages:Package_name.Set.t
+    -> Dependency_hash.t option
 end
 
 val for_solver : t -> For_solver.t

@@ -7,7 +7,7 @@ module Context : sig
       settings inside the project and if the directory we're in is vendored *)
   type t
 
-  val project : Dune_project.t -> t
+  val project : Dune_project.t -> vendored:bool -> t
   val source_dir_or_enable : Path.Source.t option -> t
 end
 
@@ -19,7 +19,7 @@ module Bag : sig
   (** A set of warnings collected while parsing the dune language *)
   type t
 
-  val create : unit -> t
+  val create : Context.t -> t
   val decode : Warning.t -> (unit -> User_message.t Memo.t) -> unit Dune_sexp.Decoder.t
 
   (**  [set t decoder] make [decoder] record warnings by adding them to [t] *)

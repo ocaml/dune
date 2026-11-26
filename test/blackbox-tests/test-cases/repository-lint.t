@@ -66,12 +66,12 @@ display itself is under test.
   test/blackbox-tests/test-cases/jsoo/without_implem.t/run.t:  $ dune build --display=short main.bc.js
   test/blackbox-tests/test-cases/jsoo/without_implem.t/run.t:  $ dune build --display=short main.bc.js
   test/blackbox-tests/test-cases/lib-available.t/run.t:  $ dune build @runtest --display short --debug-dependency-path 2>&1 | sed "s/ cmd /  sh /"
-  test/blackbox-tests/test-cases/pkg/autolock-detects-changes.t:  $ dune exec --display short bar 2>&1 | grep "Building"
-  test/blackbox-tests/test-cases/pkg/autolock-detects-changes.t:  $ dune exec --display short bar 2>&1 | grep "Building"
-  test/blackbox-tests/test-cases/pkg/autolock-detects-changes.t:  $ dune exec --display short bar 2>&1 | grep "Building" || echo "no rebuilds"
+  test/blackbox-tests/test-cases/pkg/autolock-detects-changes.t:  $ dune exec --display short bar 2>&1 | grep "ocamlopt .pkg/foo/foo\." || echo "no rebuilds"
+  test/blackbox-tests/test-cases/pkg/autolock-detects-changes.t:  $ dune exec --display short bar 2>&1 | grep "ocamlopt .pkg/foo/foo\." || echo "no rebuilds"
+  test/blackbox-tests/test-cases/pkg/autolock-detects-changes.t:  $ dune exec --display short bar 2>&1 | grep "ocamlopt .pkg/foo/foo\." || echo "no rebuilds"
   test/blackbox-tests/test-cases/pkg/build-progress.t:  $ dune build @pkg-install --display short
-  test/blackbox-tests/test-cases/pkg/pkg-lock-then-autolock.t:  $ dune exec --display short bar 2>&1 | grep "Building"
-  test/blackbox-tests/test-cases/pkg/pkg-lock-then-autolock.t:  $ dune exec --display short bar 2>&1 | grep "Building" || echo "no rebuilds"
+  test/blackbox-tests/test-cases/pkg/pkg-lock-then-autolock.t:  $ dune exec --display short bar 2>&1 | grep "ocamlopt .pkg/foo/foo\." || echo "no rebuilds"
+  test/blackbox-tests/test-cases/pkg/pkg-lock-then-autolock.t:  $ dune exec --display short bar 2>&1 | grep "ocamlopt .pkg/foo/foo\." || echo "no rebuilds"
   test/blackbox-tests/test-cases/rocq/base-unsound.t/run.t:  $ dune build --display short --profile unsound --debug-dependency-path @all
   test/blackbox-tests/test-cases/rocq/base.t/run.t:  $ dune build --display short --debug-dependency-path @all --always-show-command-line
   test/blackbox-tests/test-cases/rocq/compose-installed-corelib.t/run.t:  $ dune build test.vo --display=short --always-show-command-line

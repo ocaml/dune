@@ -70,14 +70,16 @@ end
 
 type t =
   { name : Dune_project_name.t
-  ; root : Path.Source.t
+  ; root : Path.Local.t
   ; version : Package_version.t option
   ; dune_version : Syntax.Version.t
   ; info : Package_info.t
   ; packages : Package.t Package.Name.Map.t
-  ; exclusive_dir_packages : Package_id.t Path.Source.Map.t
+  ; exclusive_dir_packages : Package_id.t Path.Local.Map.t
+  ; exclusive_dirs_by_package : Path.t Package_id.Map.t
+  ; display_root : Path.t
   ; stanza_parser : Stanza.t list Decoder.t
-  ; project_file : Path.Source.t option
+  ; project_file : Path.Local.t option
   ; extension_args : Univ_map.t
   ; parsing_context : Univ_map.t
   ; implicit_transitive_deps : Implicit_transitive_deps.Stanza.t
@@ -118,14 +120,26 @@ let name t = t.name
 let version t = t.version
 let root t = t.root
 
+let dir_in_context dir =
+  match Path.Build.split_first_component dir with
+  | Some (_, dir) -> dir
+  | None ->
+    Code_error.raise "directory outside a build context" [ "dir", Path.Build.to_dyn dir ]
+;;
+
+let package_env t ~dir =
+  let { exclusive_dir_packages = packages; exclusive_dirs_by_package = by_id; _ } = t in
+  Package_mask.package_env ~dir ~packages ~by_id
+;;
+
 let stanza_parser t ~dir =
-  let mask = Package_mask.package_env ~dir ~packages:t.exclusive_dir_packages in
+  let mask = package_env t ~dir in
   let parser = Decoder.set key t t.stanza_parser in
   Decoder.set Package_mask.key mask parser
 ;;
 
 let exclusive_package t ~dir =
-  match Package_mask.package_env ~dir ~packages:t.exclusive_dir_packages with
+  match package_env t ~dir with
   | Inside_package p -> Some p
   | Forbidden_packages _ -> None
 ;;
@@ -178,16 +192,18 @@ let to_dyn
       ; opam_file_location
       ; including_hidden_packages = _
       ; exclusive_dir_packages = _
+      ; exclusive_dirs_by_package = _
+      ; display_root = _
       }
   =
   let open Dyn in
   record
     [ "name", Dune_project_name.to_dyn name
-    ; "root", Path.Source.to_dyn root
+    ; "root", Path.Local.to_dyn root
     ; "version", (option Package_version.to_dyn) version
     ; "dune_version", Syntax.Version.to_dyn dune_version
     ; "info", Package_info.to_dyn info
-    ; "project_file", Dyn.option Path.Source.to_dyn project_file
+    ; "project_file", Dyn.option Path.Local.to_dyn project_file
     ; ( "packages"
       , (list (pair Package.Name.to_dyn Package.to_dyn))
           (Package.Name.Map.to_list packages) )
@@ -541,26 +557,49 @@ let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
     Dune_project_name.named loc (Package.Name.to_string name)
 ;;
 
-let make_exclusive_dir_packages packages =
+(* Where a directory of the project is, for error messages. The source tree
+   that loaded the project says where its root is. *)
+let display ~root ~display_root dir =
+  match Path.Local.descendant dir ~of_:root with
+  | Some dir -> Path.append_local display_root dir
+  | None ->
+    Code_error.raise
+      "directory outside of its project"
+      [ "dir", Path.Local.to_dyn dir; "root", Path.Local.to_dyn root ]
+;;
+
+let display_path t dir = display ~root:t.root ~display_root:t.display_root dir
+
+let name_hum t =
+  match Dune_project_name.name t.name with
+  | Some name -> name
+  | None -> sprintf "<anonymous %s>" (Path.to_string_maybe_quoted t.display_root)
+;;
+
+let make_exclusive_dir_packages ~root ~display_root packages =
   match
     Package.Name.Map.values packages
     |> List.filter_map ~f:(fun package ->
       Package.exclusive_dir package
       |> Option.map ~f:(fun (loc, dir) -> loc, dir, Package.id package))
-    |> Path.Source.Map.of_list_map ~f:(fun (_loc, dir, id) -> dir, id)
+    |> Path.Local.Map.of_list_map ~f:(fun (_loc, dir, id) -> dir, id)
   with
-  | Ok s -> s
+  | Ok by_dir ->
+    ( by_dir
+    , Path.Local.Map.to_list by_dir
+      |> Package_id.Map.of_list_map_exn ~f:(fun (dir, id) ->
+        id, display ~root ~display_root dir) )
   | Error (dir, (loc, _, _), (_, _, id)) ->
     User_error.raise
       ~loc
       [ Pp.textf
           "package %s is already defined in %S"
-          (Path.Source.to_string_maybe_quoted dir)
+          (display ~root ~display_root dir |> Path.to_string_maybe_quoted)
           (Package.Name.to_string id.name)
       ]
 ;;
 
-let infer ~dir info packages =
+let infer ~dir ~display_dir info packages =
   let lang = get_dune_lang () in
   let name = default_name ~dir ~packages in
   let parsing_context, stanza_parser, extension_args =
@@ -576,6 +615,9 @@ let infer ~dir info packages =
   let expand_aliases_in_sandbox = expand_aliases_in_sandbox_default ~lang in
   let root = dir in
   let opam_file_location = opam_file_location_default ~lang in
+  let exclusive_dir_packages, exclusive_dirs_by_package =
+    make_exclusive_dir_packages ~root ~display_root:display_dir packages
+  in
   { name
   ; allow_approximate_merlin = None
   ; pins = Pin_stanza.Project.empty
@@ -605,11 +647,13 @@ let infer ~dir info packages =
   ; expand_aliases_in_sandbox
   ; opam_file_location
   ; including_hidden_packages = packages
-  ; exclusive_dir_packages = make_exclusive_dir_packages packages
+  ; exclusive_dir_packages
+  ; exclusive_dirs_by_package
+  ; display_root = display_dir
   }
 ;;
 
-let anonymous ~dir info packages = infer ~dir info packages
+let anonymous ~dir ~display_dir info packages = infer ~dir ~display_dir info packages
 
 let encode : t -> Dune_sexp.t list =
   fun { name
@@ -649,6 +693,8 @@ let encode : t -> Dune_sexp.t list =
       ; opam_file_location = _
       ; including_hidden_packages = _
       ; exclusive_dir_packages = _
+      ; exclusive_dirs_by_package = _
+      ; display_root = _
       } ->
   let open Encoder in
   let lang = Lang.get_exn Syntax.Name.dune in
@@ -798,6 +844,18 @@ let filter_packages t ~f =
   { t with packages }
 ;;
 
+let set_package_version t ~package:name ~version =
+  let set p =
+    if Package.Name.equal (Package.name p) name
+    then Package.set_version_and_info p ~version:(Some version) ~info:(Package.info p)
+    else p
+  in
+  { t with
+    packages = Package.Name.Map.map t.packages ~f:set
+  ; including_hidden_packages = Package.Name.Map.map t.including_hidden_packages ~f:set
+  }
+;;
+
 let including_hidden_packages t = t.including_hidden_packages
 
 let make_packages
@@ -869,7 +927,7 @@ let make_packages
     (match opam_file_location with
      | `Inside_opam_directory ->
        Package.Name.Map.map packages ~f:(fun p ->
-         let dir = Path.Source.relative dir "opam" in
+         let dir = Path.Local.relative dir "opam" in
          let p = Package.set_inside_opam_dir p ~dir in
          generated_opam_file p)
      | `Relative_to_project ->
@@ -931,7 +989,7 @@ let parse_packages
     Package.set_version_and_info p ~version ~info)
 ;;
 
-let parse ~dir ~(lang : Lang.Instance.t) ~file =
+let parse ~dir ~display_dir ~(lang : Lang.Instance.t) ~file =
   let open Decoder in
   fields
   @@
@@ -1072,6 +1130,9 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
         ~default:(expand_aliases_in_sandbox_default ~lang)
     in
     let root = dir in
+    let exclusive_dir_packages, exclusive_dirs_by_package =
+      make_exclusive_dir_packages ~root ~display_root:display_dir packages
+    in
     let dialects =
       let dialects =
         match Syntax.Name.Map.find explicit_extensions_map Melange_syntax.name with
@@ -1111,21 +1172,31 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
     ; expand_aliases_in_sandbox
     ; opam_file_location
     ; including_hidden_packages = packages
-    ; exclusive_dir_packages = make_exclusive_dir_packages packages
+    ; exclusive_dir_packages
+    ; exclusive_dirs_by_package
+    ; display_root = display_dir
     }
 ;;
 
-let load_dune_project ~read ~dir opam_packages : t Memo.t =
-  let file = Path.Source.relative_fname dir filename in
+let load_dune_project ~read ~dir ~display_dir opam_packages : t Memo.t =
+  let file = Path.Local.relative_fname dir filename in
   let open Memo.O in
   let* lexbuf =
     let+ contents = read file in
-    Lexbuf.from_string contents ~fname:(Path.Source.to_string file)
+    Lexbuf.from_string
+      contents
+      ~fname:(Path.relative display_dir (Filename.to_string filename) |> Path.to_string)
   in
-  parse_contents lexbuf ~f:(fun lang -> parse ~dir ~lang ~file) opam_packages
+  parse_contents lexbuf ~f:(fun lang -> parse ~dir ~display_dir ~lang ~file) opam_packages
 ;;
 
-let gen_load ~read ~dir ~files ~infer_from_opam_files ~load_opam_file_with_contents
+let gen_load
+      ~read
+      ~dir
+      ~display_dir
+      ~files
+      ~infer_from_opam_files
+      ~load_opam_file_with_contents
   : t option Memo.t
   =
   let open Memo.O in
@@ -1134,32 +1205,34 @@ let gen_load ~read ~dir ~files ~infer_from_opam_files ~load_opam_file_with_conte
       match Package.Name.of_opam_file_basename fn with
       | None -> acc
       | Some name ->
-        let opam_file = Path.Source.relative_fname dir fn in
-        let loc = Loc.in_file (Path.source opam_file) in
+        let opam_file = Path.Local.relative_fname dir fn in
+        let display_file = Path.relative display_dir (Filename.to_string fn) in
+        let loc = Loc.in_file display_file in
         let pkg =
           let+ contents = read opam_file in
-          load_opam_file_with_contents ~contents opam_file name
+          load_opam_file_with_contents ~contents ~dir display_file name
         in
         (name, (loc, pkg)) :: acc)
     |> Package.Name.Map.of_list_exn
   in
   if Filename.Array.Set.mem files filename
-  then load_dune_project ~read ~dir opam_packages >>| Option.some
+  then load_dune_project ~read ~dir ~display_dir opam_packages >>| Option.some
   else if infer_from_opam_files && not (Package.Name.Map.is_empty opam_packages)
   then
     let+ opam_packages =
       let module Memo_package_name = Memo.Map (Package.Name.Map) in
       Memo_package_name.parallel_map opam_packages ~f:(fun _ (_loc, pkg) -> pkg)
     in
-    Some (infer Package_info.empty ~dir opam_packages)
+    Some (infer Package_info.empty ~dir ~display_dir opam_packages)
   else Memo.return None
 ;;
 
-let load =
-  let read source =
-    Dune_engine.Fs_memo.file_contents (Path.Outside_build_dir.In_source_dir source)
+let load ~dir =
+  let read file =
+    Dune_engine.Fs_memo.file_contents
+      (Path.Outside_build_dir.In_source_dir (Path.Source.of_local file))
   in
-  gen_load ~read
+  gen_load ~read ~dir:(Path.Source.to_local dir) ~display_dir:(Path.source dir)
 ;;
 
 let () =

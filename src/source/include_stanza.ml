@@ -8,16 +8,17 @@ module type Path = sig
   val to_string_maybe_quoted : t -> string
   val relative : t -> Loc.t -> string -> t
   val equal : t -> t -> bool
+  val is_descendant : t -> of_:t -> bool
   val file_exists : t -> bool Memo.t
   val with_lexbuf_from_file : t -> f:(Lexing.lexbuf -> 'a) -> 'a Memo.t
 end
 
 module Source = struct
-  include Path.Source
+  include Source_tree_file.File
 
-  let relative t loc f = relative ~error_loc:loc t f
-  let file_exists t = Fs_memo.file_exists (In_source_dir t)
-  let with_lexbuf_from_file t ~f = Fs_memo.with_lexbuf_from_file (In_source_dir t) ~f
+  let to_string_maybe_quoted t = diagnostic_name t |> String.maybe_quoted
+  let file_exists = exists
+  let is_descendant t ~of_ = Path.is_descendant (path t) ~of_:(path of_)
 end
 
 module Build = struct
@@ -35,13 +36,14 @@ end
 
 type 'a context =
   { current_file : 'a
+  ; root : 'a option
   ; include_stack : (Loc.t * 'a) list
   ; path : (module Path with type t = 'a)
   }
 
-let in_file file path = { current_file = file; include_stack = []; path }
-let in_src_file file = in_file file (module Source)
-let in_build_file file = in_file file (module Build)
+let in_file file ~root path = { current_file = file; root; include_stack = []; path }
+let in_src_file file = in_file file ~root:None (module Source)
+let in_build_file file ~root = in_file file ~root (module Build)
 
 let file_path (type a) { path; current_file; _ } loc fn =
   let module Path = (val path : Path with type t = a) in
@@ -49,7 +51,7 @@ let file_path (type a) { path; current_file; _ } loc fn =
   Path.relative dir loc fn
 ;;
 
-let error (type a) { current_file = (file : a); include_stack; path } =
+let error (type a) { current_file = (file : a); root = _; include_stack; path } =
   let module Path = (val path : Path with type t = a) in
   let last, rest =
     match include_stack with
@@ -73,12 +75,20 @@ let error (type a) { current_file = (file : a); include_stack; path } =
 
 let load_sexps
       (type a)
-      ~context:({ current_file; include_stack; path } as context)
+      ~context:({ current_file; root; include_stack; path } as context)
       (loc, fn)
   =
   let module Path = (val path : Path with type t = a) in
   let include_stack = (loc, current_file) :: include_stack in
   let current_file = file_path context loc fn in
+  (match root with
+   | None -> ()
+   | Some root ->
+     if not (Path.is_descendant current_file ~of_:root)
+     then
+       User_error.raise
+         ~loc
+         [ Pp.textf "Included path %S is outside the mounted source tree." fn ]);
   let* exists = Path.file_exists current_file in
   if not exists
   then

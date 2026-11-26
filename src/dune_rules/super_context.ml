@@ -49,7 +49,7 @@ let expander_for_artifacts t ~dir =
   let external_env = t.get_node dir >>= Env_node.external_env in
   let scope = Scope.DB.find_by_dir dir in
   let scope_host = scope_host ~scope t.context in
-  let+ project = Dune_load.find_project ~dir in
+  let+ project = Partitions.find_project ~dir in
   Expander.extend_env t.root_expander ~env:external_env
   |> Expander.set_scope ~dir ~project ~scope ~scope_host
 ;;
@@ -57,7 +57,7 @@ let expander_for_artifacts t ~dir =
 let expander t ~dir = t.get_expander dir
 
 let get_env_stanza ~dir =
-  Dune_load.stanzas_in_dir dir
+  Partitions.stanzas_in_dir dir
   >>= (function
    | None -> Memo.return None
    | Some dune_file ->
@@ -72,8 +72,8 @@ let get_env_stanza ~dir =
 let get_impl t dir =
   let inherit_from =
     Memo.lazy_ ~name:"inherited-environment-node" (fun () ->
-      let* scope_root = Dune_load.find_project ~dir >>| Dune_project.root in
-      if Path.Source.equal (Path.Build.drop_build_context_exn dir) scope_root
+      let* project = Partitions.find_loaded_project ~dir in
+      if Path.Build.equal dir (Loaded_project.output_root project)
       then Memo.Lazy.force t.default_env
       else (
         match Path.Build.parent dir with
@@ -178,6 +178,7 @@ let extend_action_env t ~dir action =
      added last: a binary staged by [(deps (package ...))] must not shadow one
      the user bound explicitly. *)
   let env = Env_path.cons_multi env ~dirs:local_bin_dirs in
+  let action = Pkg_rules.disable_promotion_in_package ~dir action in
   Action.Full.add_env env action
 ;;
 
@@ -196,6 +197,12 @@ let extend_action t ~dir action =
 
 let make_rule t ?mode ?loc ~dir { Action_builder.With_targets.build; targets } =
   let build = extend_action t build ~dir in
+  let mode =
+    (* Nothing in a locked package is promoted. *)
+    match mode, Pkg_rules.package_of_artifact_path dir with
+    | Some (Rule.Mode.Promote _), Some _ -> Some Rule.Mode.Ignore_source_files
+    | mode, _ -> mode
+  in
   Rule.make ?mode ~info:(Rule.Info.of_loc_opt loc) ~targets build
 ;;
 
@@ -220,6 +227,16 @@ let add_alias_action t aliases ~dir ~loc action =
 let resolve_program_memo t ~dir ?where ?hint ~loc bin =
   let* artifacts = artifacts_host t ~dir in
   Artifacts.binary ?hint ?where ~dir ~loc artifacts bin
+;;
+
+(* A rule only builds the opaque packages its directory declares. The command
+   line has no such list, so a program that the workspace does not define is
+   looked for in every opaque package. *)
+let resolve_command_line_program t ~dir bin =
+  let context = Context.name t.context in
+  let* artifacts = artifacts_host t ~dir
+  and* locked = Pkg_rules.dependencies context >>| Package.Name.Set.of_keys in
+  Artifacts.binary (Artifacts.add_package_deps artifacts locked) ~dir ~loc:None bin
 ;;
 
 let resolve_program t ~dir ?where ?hint ~loc bin =
@@ -290,27 +307,15 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
   in
   let artifacts = Artifacts_db.get context in
   let+ root_expander =
-    let public_libs = Scope.DB.public_libs context_name in
-    let artifacts_host, public_libs_host, host_build_dir =
+    let artifacts_host, host_build_dir =
       match Context.for_host context with
-      | None -> artifacts, public_libs, Memo.return (Context.build_dir context)
-      | Some host ->
-        let artifacts = host >>= Artifacts_db.get in
-        let public_libs = host >>| Context.name >>= Scope.DB.public_libs in
-        artifacts, public_libs, host >>| Context.build_dir
+      | None -> artifacts, Memo.return (Context.build_dir context)
+      | Some host -> host >>= Artifacts_db.get, host >>| Context.build_dir
     in
     let scope = Scope.DB.find_by_dir (Context.build_dir context) in
     let scope_host = host_build_dir >>= Scope.DB.find_by_dir in
-    let+ project = Dune_load.find_project ~dir:(Context.build_dir context) in
-    Expander.make_root
-      ~project
-      ~scope
-      ~scope_host
-      ~context
-      ~env
-      ~public_libs
-      ~artifacts_host
-      ~public_libs_host
+    let+ project = Partitions.find_project ~dir:(Context.build_dir context) in
+    Expander.make_root ~project ~scope ~scope_host ~context ~env ~artifacts_host
   in
   (* Env node that represents the environment configured for the workspace. It
      is used as default at the root of every project in the workspace. *)
@@ -355,7 +360,7 @@ let all =
           Some sctx
       in
       let* host, stanzas =
-        Memo.fork_and_join host (fun () -> Dune_load.dune_files (Context.name context))
+        Memo.fork_and_join host (fun () -> Partitions.dune_files (Context.name context))
       in
       create ~host ~context ~packages ~stanzas
     in

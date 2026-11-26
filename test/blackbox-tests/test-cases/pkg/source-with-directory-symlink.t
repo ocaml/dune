@@ -28,14 +28,9 @@ We could potentially resolve them during the copy.
 
   $ build_pkg foo
   Error: Is a directory
-  -> required by _build/_private/default/.pkg/foo/source/link_to_dir
-  -> required by _build/_private/default/.pkg/foo/target
+  -> required by _build/default/.pkg/foo/link_to_dir
+  -> required by _build/default/.pkg/foo/_install
   [1]
-
-Only the real directory was partially copied:
-
-  $ ls _build/_private/default/.pkg/foo/source
-  real_dir
 
 --------------------------------------------------------------------------------
 
@@ -52,18 +47,23 @@ Case 2: Tarball source containing a directory symlink.
   > (source
   >  (fetch
   >   (url file://$PWD/_src.tar.gz)))
-  > (build (run cat real_dir/file.txt))
+  > (build (run cat link_to_dir/file.txt))
   > EOF
 
 This is now fixed
   $ build_pkg bar
   content
 
+The built source tree contains both entries and the real directory's contents:
 
-The tarball was fully extracted (including the symlink):
-  $ ls _build/_private/default/.pkg/bar/source
-  link_to_dir
-  real_dir
+  $ ls -d \
+  >   _build/default/.pkg/bar/link_to_dir \
+  >   _build/default/.pkg/bar/real_dir
+  _build/default/.pkg/bar/link_to_dir
+  _build/default/.pkg/bar/real_dir
+  $ cat _build/default/.pkg/bar/real_dir/file.txt
+  content
+
 
 --------------------------------------------------------------------------------
 

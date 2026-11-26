@@ -43,5 +43,5 @@ dune.lock):
 Building fails as the patch cannot be found anymore
 
   $ build_pkg test
-  Error: Don't know how to build _build/_private/default/.pkg/test/target
+  Error: Don't know how to build _build/default/.pkg/test/_install
   [1]

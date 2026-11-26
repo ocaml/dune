@@ -3,7 +3,7 @@ open Import
 module Context_type = struct
   type t =
     | Empty
-    | With_sources
+    | With_sources of { build_only_sub_dirs : Filename.Set.t }
 end
 
 module Gen_rules = struct
@@ -17,12 +17,14 @@ module Gen_rules = struct
   module Rules = struct
     type nonrec t =
       { build_dir_only_sub_dirs : Build_only_sub_dirs.t
+      ; sources : (Rule.t Filename.Map.t * Filename.Array.Set.t) option
       ; directory_targets : Loc.t Path.Build.Map.t
       ; rules : Rules.t Memo.t
       }
 
     let empty =
       { build_dir_only_sub_dirs = Path.Build.Map.empty
+      ; sources = None
       ; directory_targets = Path.Build.Map.empty
       ; rules = Memo.return Rules.empty
       }
@@ -31,12 +33,16 @@ module Gen_rules = struct
     let create
           ?(build_dir_only_sub_dirs = empty.build_dir_only_sub_dirs)
           ?(directory_targets = empty.directory_targets)
+          ~sources
           rules
       =
-      { build_dir_only_sub_dirs; directory_targets; rules }
+      { build_dir_only_sub_dirs; sources; directory_targets; rules }
     ;;
 
-    let combine_exn r ({ build_dir_only_sub_dirs; directory_targets; rules } as other) =
+    let combine_exn
+          r
+          ({ build_dir_only_sub_dirs; sources; directory_targets; rules } as other)
+      =
       match phys_equal r empty with
       | true -> other
       | false ->
@@ -45,6 +51,11 @@ module Gen_rules = struct
          | false ->
            { build_dir_only_sub_dirs =
                Build_only_sub_dirs.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
+           ; sources =
+               (match r.sources, sources with
+                | None, sources | sources, None -> sources
+                | Some _, Some _ ->
+                  Code_error.raise "two source inventories for one directory" [])
            ; directory_targets =
                Path.Build.Map.union_exn r.directory_targets directory_targets
            ; rules =
@@ -64,7 +75,7 @@ module Gen_rules = struct
   let no_rules = Rules Rules.empty
 
   let make ?build_dir_only_sub_dirs ?directory_targets rules =
-    Rules (Rules.create ?build_dir_only_sub_dirs ?directory_targets rules)
+    Rules (Rules.create ?build_dir_only_sub_dirs ?directory_targets ~sources:None rules)
   ;;
 
   let make_empty ~dir subdirs =

@@ -270,9 +270,13 @@ let prepare ~skip_trailing_cr promotion path1 path2 =
 let print ~sandbox ~skip_trailing_cr ~patch_back promotion path1 path2 =
   let p =
     match patch_back with
-    | None -> prepare ~skip_trailing_cr (Some promotion) path1 path2
+    | None -> prepare ~skip_trailing_cr promotion path1 path2
     | Some dir ->
-      let path1 = Path.source (Path.drop_optional_build_context_src_exn path1) in
+      let path1 =
+        match promotion with
+        | None -> path1
+        | Some { User_message.Diff_annot.in_source; _ } -> Path.source in_source
+      in
       let loc = Loc.in_file path1 in
       let label1 = Path.to_string path1 in
       let label2 = Path.to_string (Path.drop_optional_sandbox_root path2) in
@@ -280,7 +284,7 @@ let print ~sandbox ~skip_trailing_cr ~patch_back promotion path1 path2 =
         ~skip_trailing_cr
         ~dir
         loc
-        (Some promotion)
+        promotion
         (label1, path1)
         (label2, path2)
   in

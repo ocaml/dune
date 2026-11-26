@@ -89,7 +89,7 @@ recipe executions: a cache hit is not a shared target.
   >     [.[] | ruleDepFilePaths | select(test("/" + $pkg + "([.][^/]*)?/target$"))]
   >     | unique | if length == 1 then .[0] else error("expected one package target") end'
   > }
-  $ project_only=$(get_build_pkg_dir project-only)/target
+  $ project_only=$(get_build_pkg_dir project-only)/_install
   $ for tool in ocamlmerlin ocamllsp; do
   >   exe=$(dune tools which "$tool") || exit 1
   >   dune rules --format=json "$(dirname "$(dirname "$exe")")" |
@@ -99,7 +99,7 @@ recipe executions: a cache hit is not a shared target.
   false
   $ merlin_compiler=$(dependency_target ocamlmerlin relocatable-compiler)
   $ lsp_compiler=$(dependency_target ocamllsp relocatable-compiler)
-  $ project_compiler=$(get_build_pkg_dir relocatable-compiler)/target
+  $ project_compiler=$(get_build_pkg_dir relocatable-compiler)/_install
   $ test -d "$project_compiler"
   $ test "$merlin_compiler" != "$project_compiler"
   $ test "$lsp_compiler" != "$project_compiler"
@@ -151,7 +151,8 @@ compiler, but Merlin must use the dependency from its new lock.
   >   "$ocamllsp_lock_dir"/relocatable-compiler*.pkg
   $ dependency_target ocamlmerlin new-compiler-dependency >/dev/null
 
-The project package set does not include the stale tool's dependency.
+The stale dev-tool closure is not part of @pkg-install, so its old compiler
+dependency is not built again.
 
   $ dune build @pkg-install >output 2>&1
   $ grep "building old compiler dependency" output

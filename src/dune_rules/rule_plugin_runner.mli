@@ -2,7 +2,7 @@ open Import
 
 module Registry : sig
   type entry =
-    { dir : Path.Source.t
+    { dir : Path.Local.t
     ; project : Dune_project.t
     ; definition : Rule_plugin.Definition.t
     }

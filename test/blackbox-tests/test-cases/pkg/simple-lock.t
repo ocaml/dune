@@ -13,7 +13,7 @@ Test that we run the build command
 
   $ show_pkg test
   
-  /target
-  /target/bin
-  /target/bin/foo
-  /target/cookie
+  /_install
+  /_install/bin
+  /_install/bin/foo
+  /_install/cookie

@@ -194,7 +194,7 @@ let stanzas_in_dir =
     "cram-stanzas-in-dir"
     ~input:(module Path.Build)
     (fun dir ->
-       Dune_load.stanzas_in_dir dir
+       Partitions.stanzas_in_dir dir
        >>= function
        | None -> Memo.return []
        | Some (d : Dune_file.t) ->
@@ -401,7 +401,7 @@ let rules ~sctx ~dir tests project =
   and* with_package_mask =
     let+ mask = Dune_load.mask () >>| Only_packages.enumerate in
     match
-      Dune_project.exclusive_package project ~dir:(Path.Build.drop_build_context_exn dir)
+      Dune_project.exclusive_package project ~dir:(Dune_project.dir_in_context dir)
       |> Option.map ~f:Package.Id.name
     with
     | None ->

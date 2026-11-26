@@ -36,10 +36,7 @@ let format_config ~dir =
     Env_stanza_db.value_opt ~dir ~f:(fun (config : Dune_env.config) ->
       Memo.return config.format_config)
   and+ default =
-    Path.Build.drop_build_context_exn dir
-    |> Source_tree.nearest_dir
-    >>| Source_tree.Dir.project
-    >>| Dune_project.format_config
+    Scope.DB.find_by_dir dir >>| Scope.project >>| Dune_project.format_config
   in
   Option.value value ~default
 ;;
@@ -72,7 +69,7 @@ let source_path path =
 ;;
 
 let for_source ~dir source =
-  let* project = Dune_load.find_project ~dir in
+  let* project = Partitions.find_project ~dir in
   match source_path source with
   | None -> Memo.return None
   | Some source_path ->

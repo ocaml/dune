@@ -11,7 +11,7 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
 
 (** Alias for all the files in [_build/install] that belong to a package. *)
 let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
-  let dir = Path.Build.append_source context.build_dir (Package.dir pkg) in
+  let dir = Path.Build.append_local context.build_dir (Package.dir pkg) in
   let name = Package.name pkg in
   sprintf ".%s-files" (Package.Name.to_string name)
   |> Alias.Name.of_string
@@ -32,14 +32,14 @@ module Package_paths = struct
   let opam_file (context : Context.t) (pkg : Package.t) =
     let ctx = Context.build_context context in
     let opam_file = Package.opam_file pkg in
-    let build_opam_file = Path.Build.append_source ctx.build_dir opam_file in
+    let build_opam_file = Path.Build.append_local ctx.build_dir opam_file in
     match Package.has_opam_file pkg with
     | Exists false -> Memo.return None
     | Exists true -> Memo.return (Some build_opam_file)
     | Generated | Generated_with_diff ->
       let+ use_source_opam =
         if Profile.is_release (Context.profile context)
-        then Build_system.file_exists (Path.source opam_file)
+        then Opam_create.source_file_exists ~build_dir:ctx.build_dir pkg
         else Memo.return false
       in
       Some (if use_source_opam then build_opam_file else generated_opam_file ctx pkg)
@@ -50,7 +50,7 @@ module Package_paths = struct
   let deprecated_meta_file (ctx : Build_context.t) pkg name =
     let meta_fn = meta_fn name in
     let pkg_dir = Package.dir pkg in
-    Path.Build.append_source ctx.build_dir (Path.Source.relative pkg_dir meta_fn)
+    Path.Build.append_local ctx.build_dir (Path.Local.relative pkg_dir meta_fn)
   ;;
 
   let meta_file ctx pkg =
@@ -60,7 +60,7 @@ module Package_paths = struct
 
   let build_dir (ctx : Build_context.t) (pkg : Package.t) =
     let dir = Package.dir pkg in
-    Path.Build.append_source ctx.build_dir dir
+    Path.Build.append_local ctx.build_dir dir
   ;;
 
   let dune_package_file ctx pkg =
@@ -99,14 +99,17 @@ let check_runtime_deps_relative_path local_path ~loc ~lib_info =
       ~hints:
         [ Pp.textf
             "Move the offending dependency somewhere inside `%s'."
-            (Path.build lib_src_dir
-             |> Path.drop_optional_build_context_src_exn
-             |> Path.Source.to_string)
+            (Pkg_rules.source_location lib_src_dir |> Path.to_string)
         ]
   | Some _ -> ()
 ;;
 
 module Stanzas_to_entries : sig
+  val package_entries
+    :  Super_context.t
+    -> Package.Name.t
+    -> Install.Entry.Sourced.Unexpanded.t list Memo.t
+
   val stanzas_to_entries
     :  Super_context.t
     -> Install.Entry.Sourced.Unexpanded.t list Package.Name.Map.t Memo.t
@@ -494,11 +497,7 @@ end = struct
         then
           if lib.optional
           then (
-            let src_dir =
-              Expander.dir expander
-              |> Path.build
-              |> Path.drop_optional_build_context_src_exn
-            in
+            let src_dir = Dune_project.dir_in_context (Expander.dir expander) in
             Lib.DB.available_by_lib_id
               (Scope.libs scope)
               (Local (Library.to_lib_id ~src_dir lib)))
@@ -518,6 +517,7 @@ end = struct
              (* If preprocessors fail to resolve, this fails rather than
                 skipping the optional executable. *)
              let* compile_info =
+               let* scope = Scope.DB.for_package scope exes.package in
                Scope.resolve_executable_deps scope ~db:(Scope.libs scope) exes
              in
              let+ requires = Lib.Compile.direct_requires compile_info ~for_:Ocaml in
@@ -552,7 +552,12 @@ end = struct
           src
     in
     let+ files =
-      Install_entry.File.to_file_bindings_expanded install_conf.files ~expand ~dir
+      let* source_tree_root = Expander.source_tree_root expander in
+      Install_entry.File.to_file_bindings_expanded
+        install_conf.files
+        ~expand
+        ~dir
+        ~source_tree_root
       >>= Memo.List.map ~f:(fun fb ->
         let+ entry = make_entry ~kind:File fb in
         let loc = File_binding.Expanded.src_loc fb in
@@ -581,7 +586,7 @@ end = struct
         let loc = File_binding.Expanded.src_loc fb in
         let* entry = make_entry ~kind:Source_tree fb in
         let+ () =
-          Source_tree.find_dir (Path.Build.drop_build_context_exn entry.src)
+          Partitions.source_tree_dir ~dir:entry.src
           >>| function
           | Some _ -> ()
           | None ->
@@ -623,13 +628,14 @@ end = struct
 
   module Package_map_traversals = Memo.Map (Package.Name.Map)
 
-  let stanzas_to_entries sctx =
+  let package_entries (sctx, package_name) =
     let context = Super_context.context sctx in
     let ctx = Context.build_context context in
-    let* stanzas = Dune_load.dune_files ctx.name in
-    let* packages = Dune_load.packages () in
-    let+ init =
-      Package_map_traversals.parallel_map packages ~f:(fun _name (pkg : Package.t) ->
+    let* package = Partitions.find_package ctx.name package_name in
+    match package with
+    | None -> Memo.return []
+    | Some pkg ->
+      let+ init =
         let* opam_file = Package_paths.opam_file context pkg in
         let init =
           let file section local_file dst =
@@ -670,12 +676,11 @@ end = struct
           | None -> deprecated_meta_and_dune_files
           | Some opam_file -> file Lib opam_file "opam" :: deprecated_meta_and_dune_files
         in
-        let pkg_dir = Package.dir pkg in
-        Source_tree.find_dir pkg_dir
+        let pkg_dir = Package_paths.build_dir ctx pkg in
+        Partitions.source_tree_dir ~dir:pkg_dir
         >>| function
         | None -> init
         | Some dir ->
-          let pkg_dir = Path.Build.append_source ctx.build_dir pkg_dir in
           Source_tree.Dir.filenames dir
           |> Filename.Array.Set.fold ~init ~f:(fun fn acc ->
             if is_odig_doc_file (Filename.to_string fn)
@@ -688,24 +693,21 @@ end = struct
                   odig_file
               in
               Install.Entry.Sourced.Unexpanded.create entry :: acc)
-            else acc))
-    and+ entries =
-      let* package_db = Package_db.create ctx.name in
-      Dune_file.fold_static_stanzas stanzas ~init:[] ~f:(fun dune_file stanza acc ->
-        let dir = Path.Build.append_source ctx.build_dir (Dune_file.dir dune_file) in
-        let named_entries =
+            else acc)
+      and+ entries =
+        let* stanzas = Partitions.stanzas_of_package ctx.name package_name
+        and* package_db = Package_db.create ctx.name in
+        List.rev stanzas
+        |> Memo.parallel_map ~f:(fun (dune_file, stanza) ->
+          let dir = Dune_file.output_dir dune_file in
           let* expander = Super_context.expander sctx ~dir
           and* scope = Scope.DB.find_by_dir dir in
           stanza_to_entries ~package_db ~sctx ~dir ~scope ~expander stanza
-        in
-        named_entries :: acc)
-      |> Memo.all_concurrently
-    in
-    List.fold_left entries ~init ~f:(fun acc named_entries ->
-      match named_entries with
-      | None -> acc
-      | Some (name, entries) -> Package.Name.Map.Multi.add_all acc name entries)
-    |> Package.Name.Map.map ~f:(fun entries ->
+          >>| function
+          | None -> []
+          | Some (_, entries) -> entries)
+      in
+      let entries = List.concat (init :: entries) in
       (* Sort entries so that the ordering in [dune-package] is independent
          of Dune's current implementation. *)
       (* jeremiedimino: later on, we group this list by section and sort
@@ -717,17 +719,23 @@ end = struct
           (fun
             (a : Install.Entry.Sourced.Unexpanded.t)
             (b : Install.Entry.Sourced.Unexpanded.t)
-          -> Install.Entry.Unexpanded.compare a.entry b.entry))
+          -> Install.Entry.Unexpanded.compare a.entry b.entry)
   ;;
 
-  let stanzas_to_entries =
+  let package_entries =
     let memo =
       Memo.create
-        ~input:(module Super_context.As_memo_key)
-        "stanzas-to-entries"
-        stanzas_to_entries
+        ~input:(module Super_context.As_memo_key.And_package_name)
+        "package-install-entries"
+        package_entries
     in
-    Memo.exec memo
+    fun sctx name -> Memo.exec memo (sctx, name)
+  ;;
+
+  let stanzas_to_entries sctx =
+    let* packages = Dune_load.packages () in
+    Package_map_traversals.parallel_map packages ~f:(fun name _ ->
+      package_entries sctx name)
   ;;
 end
 
@@ -857,9 +865,8 @@ end = struct
         Lib_name.Map.add_exn acc name x)
     in
     let+ files =
-      let+ map = Stanzas_to_entries.stanzas_to_entries sctx in
-      Package.Name.Map.Multi.find map pkg_name
-      |> List.map ~f:(fun (e : Install.Entry.Sourced.Unexpanded.t) ->
+      let+ entries = Stanzas_to_entries.package_entries sctx pkg_name in
+      List.map entries ~f:(fun (e : Install.Entry.Sourced.Unexpanded.t) ->
         let kind =
           match e.entry.kind with
           | File -> Install.Entry.Expanded.File
@@ -883,6 +890,7 @@ end = struct
 
   let gen_dune_package sctx (pkg : Package.t) lib_entries =
     let ctx = Super_context.context sctx |> Context.build_context in
+    let dir = Package_paths.build_dir ctx pkg in
     let dune_version = Dune_lang.Syntax.greatest_supported_version_exn Stanza.syntax in
     let action =
       let dune_package_file = Package_paths.dune_package_file ctx pkg in
@@ -961,9 +969,9 @@ end = struct
         Action_builder.write_file_dyn
           (Package_paths.deprecated_dune_package_file ctx pkg name)
           dune_pkg
-        |> Super_context.add_rule sctx ~dir:ctx.build_dir ~loc)
+        |> Super_context.add_rule sctx ~dir ~loc)
     in
-    Super_context.add_rule sctx ~dir:ctx.build_dir action
+    Super_context.add_rule sctx ~dir action
   ;;
 
   let gen_odoc_config sctx (pkg : Package.t) =
@@ -983,11 +991,12 @@ end = struct
         |> sprintf "(packages %s)"
       in
       let action = Action_builder.write_file_dyn odoc_config_file action in
-      Super_context.add_rule sctx ~dir:ctx.build_dir action
+      Super_context.add_rule sctx ~dir:(Path.Build.parent_exn odoc_config_file) action
   ;;
 
   let gen_meta_file sctx (pkg : Package.t) entries =
     let ctx = Super_context.context sctx |> Context.build_context in
+    let dir = Package_paths.build_dir ctx pkg in
     let* () =
       let template =
         let meta_template = Path.build (Package_paths.meta_template ctx pkg) in
@@ -1036,7 +1045,7 @@ end = struct
       in
       Super_context.add_rule
         sctx
-        ~dir:ctx.build_dir
+        ~dir
         (let open Action_builder.O in
          (let+ template = template
           and+ (meta : Meta.t) =
@@ -1078,7 +1087,7 @@ end = struct
       let meta = Package_paths.deprecated_meta_file ctx pkg name in
       Super_context.add_rule
         sctx
-        ~dir:ctx.build_dir
+        ~dir
         ~loc
         (Action_builder.write_file_dyn
            meta
@@ -1184,16 +1193,30 @@ let promote_install_file (ctx : Context.t) =
   | Opam _ -> false
 ;;
 
-let install_entries sctx package =
-  let+ packages = Stanzas_to_entries.stanzas_to_entries sctx in
-  Package.Name.Map.Multi.find packages package
-;;
+let install_entries = Stanzas_to_entries.package_entries
 
 let () =
   Install_layout.set_entry_resolver (fun context_name package ->
-    let open Memo.O in
-    let* sctx = Super_context.find_exn context_name in
-    install_entries sctx package)
+    let* packages = Dune_load.packages () in
+    let* opaque =
+      if Package.Name.Map.mem packages package
+      then Memo.return None
+      else Pkg_rules.find_opaque context_name package
+    in
+    match opaque with
+    | None ->
+      let* sctx = Super_context.find_exn context_name in
+      let+ entries = install_entries sctx package in
+      List.filter_map entries ~f:(fun { Install.Entry.Sourced.entry; _ } ->
+        match entry.kind with
+        | Source_tree -> None
+        | File | Directory ->
+          Install.Entry.Unexpanded.expand entry
+          |> fun expanded ->
+          Install.Entry.Expanded.set_src expanded (Path.build entry.src) |> Option.some)
+    | Some (_, opaque) ->
+      let+ dependency, _ = Action_builder.evaluate_and_collect_facts opaque in
+      Pkg_rules.Dependency.install_entries dependency)
 ;;
 
 let packages =
@@ -1230,8 +1253,24 @@ let packages_file_is_part_of path =
   | None -> Memo.return Package.Id.Set.empty
   | Some sctx ->
     let open Memo.O in
-    let+ map = packages sctx in
-    Option.value (Path.Build.Map.find map path) ~default:Package.Id.Set.empty
+    (match Pkg_rules.package_of_artifact_path path with
+     | None ->
+       let+ map = packages sctx in
+       Option.value (Path.Build.Map.find map path) ~default:Package.Id.Set.empty
+     | Some name ->
+       (* A file of a mount belongs to its package when the package installs
+          it. *)
+       let context = Super_context.context sctx |> Context.name in
+       let* package = Partitions.find_package context name in
+       (match package with
+        | None -> Memo.return Package.Id.Set.empty
+        | Some package ->
+          let+ entries = install_entries sctx name in
+          if
+            List.exists entries ~f:(fun (e : Install.Entry.Sourced.Unexpanded.t) ->
+              Path.Build.equal e.entry.src path)
+          then Package.Id.Set.singleton (Package.id package)
+          else Package.Id.Set.empty))
 ;;
 
 let symlinked_entries sctx package =
@@ -1378,7 +1417,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
       ~f:(List.rev_map ~f:(fun (e : Install.Entry.Sourced.Expanded.t) -> e.entry.src))
     |> Action_builder.memoize "entries"
   in
-  let* dune_project = Dune_load.find_project ~dir:pkg_build_dir in
+  let* dune_project = Partitions.find_project ~dir:pkg_build_dir in
   let strict_package_deps = Dune_project.strict_package_deps dune_project in
   let packages =
     let open Action_builder.O in
@@ -1418,21 +1457,23 @@ let gen_package_install_file_rules sctx (package : Package.t) =
     files >>| Path.Set.of_list_map ~f:Path.build >>= Action_builder.path_set
   in
   let* () =
-    let* all_packages = Dune_load.packages () in
     let target_alias = package_install ~context:build_context ~pkg:package in
     let open Action_builder.O in
     Rules.Produce.Alias.add_deps
       target_alias
       (Action_builder.dyn_deps
-         (let+ packages = packages
-          and+ () = install_file_deps in
+         (let* packages = packages
+          and* () = install_file_deps in
+          let+ packages =
+            Action_builder.of_memo
+              (let open Memo.O in
+               Package.Id.Set.to_list packages
+               |> Memo.List.map ~f:(fun (pkg : Package.Id.t) ->
+                 Partitions.find_package build_context.name (Package.Id.name pkg)
+                 >>| Option.value_exn))
+          in
           ( ()
-          , Package.Id.Set.to_list packages
-            |> Dep.Set.of_list_map ~f:(fun (pkg : Package.Id.t) ->
-              let pkg =
-                let name = Package.Id.name pkg in
-                Package.Name.Map.find_exn all_packages name
-              in
+          , Dep.Set.of_list_map packages ~f:(fun pkg ->
               package_install ~context:build_context ~pkg |> Dep.alias) )))
   in
   let action =
@@ -1569,13 +1610,13 @@ let gen_install_alias sctx (package : Package.t) =
 let stanzas_to_entries = Stanzas_to_entries.stanzas_to_entries
 
 let resolve_package_install_file ~loc sctx ~pkg ~section ~file =
-  let+ entries = Stanzas_to_entries.stanzas_to_entries sctx in
-  match Package.Name.Map.find entries pkg with
-  | None ->
+  let+ entries = Stanzas_to_entries.package_entries sctx pkg in
+  match entries with
+  | [] ->
     User_error.raise
       ~loc
       [ Pp.textf "Package %s has no install entries." (Package.Name.to_string pkg) ]
-  | Some entries ->
+  | entries ->
     let in_section =
       List.filter_map entries ~f:(fun (e : Install.Entry.Sourced.Unexpanded.t) ->
         if Section.equal e.entry.section section
@@ -1608,6 +1649,15 @@ let gen_project_rules sctx project =
   Dune_project.packages project
   |> Dune_lang.Package_name.Map.to_seq
   |> Memo.parallel_iter_seq ~f:(fun (_name, package) ->
-    let* () = gen_package_install_file_rules sctx package in
-    gen_install_alias sctx package)
+    let build_context = Super_context.context sctx |> Context.build_context in
+    match
+      Package_paths.build_dir build_context package |> Pkg_rules.package_of_artifact_path
+    with
+    | Some _ ->
+      (* A locked package is not installed in the workspace install
+         directory, so it has no install file. *)
+      Memo.return ()
+    | None ->
+      let* () = gen_package_install_file_rules sctx package in
+      gen_install_alias sctx package)
 ;;

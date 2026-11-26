@@ -71,7 +71,7 @@ declaring any package dependencies:
 The rule depends on the binary from the provider lockdir package:
 
   $ dune rules --format=json @test | jq_dune '.[] | ruleDepFilePaths'
-  "_build/_private/default/.pkg/provider/target/bin/mybin"
+  "_build/default/.pkg/provider/_install/bin/mybin"
 
 [(deps (package provider))] puts [provider]'s bin directory on $PATH:
 

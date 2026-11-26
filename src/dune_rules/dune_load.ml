@@ -1,27 +1,10 @@
 open Import
 open Memo.O
 
-module Dune_file_db = struct
-  type t = Dune_file.t Path.Source.Map.t
-
-  let make all =
-    Path.Source.Map.of_list_map_exn all ~f:(fun dune_file ->
-      Dune_file.dir dune_file, dune_file)
-  ;;
-
-  let per_context dune_files =
-    Per_context.create_by_name ~name:"dune-file-db" (fun ctx ->
-      Memo.lazy_ ~name:"dune-file-db" (fun () -> dune_files ctx >>| make)
-      |> Memo.Lazy.force)
-  ;;
-end
-
 type t =
-  { dune_files : Dune_file.t list Per_context.t
+  { dune_files : (Source_tree.Dir.t * Source.Dune_file.t) Appendable_list.t
   ; packages : Package.t Package.Name.Map.t
-  ; projects : Dune_project.t list
-  ; projects_by_root : Dune_project.t Path.Source.Map.t
-  ; dune_file_by_dir : Dune_file_db.t Per_context.t
+  ; projects : (Dune_project.t * Source_tree.Dir.t) list
   ; mask : Only_packages.t
   }
 
@@ -30,13 +13,29 @@ type status =
   | `Regular
   ]
 
+let package_enabled package =
+  match Package.enabled_if package with
+  | None -> Memo.return true
+  | Some expr ->
+    Blang_expand.eval expr ~dir:Path.root ~f:(fun ~source:_ pform ->
+      match pform with
+      | Var (Os v) -> Lock_dir.Sys_vars.(os_values poll v)
+      | Var Architecture ->
+        let+ arch = Memo.Lazy.force Lock_dir.Sys_vars.poll.arch in
+        [ Value.String (Option.value ~default:"" arch) ]
+      | pform ->
+        Code_error.raise
+          "Dune_load.package_enabled: variable not allowed"
+          [ "variable", Pform.to_dyn pform ])
+;;
+
 module Projects_and_dune_files =
   Monoid.Product
     (Monoid.Appendable_list (struct
-      type t = status * Dune_project.t
+      type t = status * Dune_project.t * Source_tree.Dir.t
     end))
     (Monoid.Appendable_list (struct
-         type t = Path.Source.t * Dune_project.t * Source.Dune_file.t
+         type t = Source_tree.Dir.t * Source.Dune_file.t
        end))
 
 module Source_tree_map_reduce =
@@ -51,16 +50,26 @@ let load () =
   let* projects, dune_files =
     let f dir : Projects_and_dune_files.t Memo.t =
       let path = Source_tree.Dir.path dir in
+      (match Path.Source.split_first_component path with
+       | Some (name, _) when Filename.equal name Filename.pkg_dir_basename ->
+         User_error.raise
+           ~loc:(Loc.in_dir (Path.source path))
+           [ Pp.textf
+               "The directory %s is reserved for locked packages and cannot be part of \
+                the workspace."
+               (Filename.to_string Filename.pkg_dir_basename)
+           ]
+       | Some _ | None -> ());
       let project = Source_tree.Dir.project dir in
       let projects =
-        if Path.Source.equal path (Dune_project.root project)
-        then Appendable_list.singleton (status dir, project)
+        if Path.Local.equal (Path.Source.to_local path) (Dune_project.root project)
+        then Appendable_list.singleton (status dir, project, dir)
         else Appendable_list.empty
       in
       let dune_files =
         match Source_tree.Dir.dune_file dir with
         | None -> Appendable_list.empty
-        | Some d -> Appendable_list.singleton (path, project, d)
+        | Some d -> Appendable_list.singleton (dir, d)
       in
       Memo.return (projects, dune_files)
     in
@@ -74,28 +83,12 @@ let load () =
     Memo.List.fold_left
       projects
       ~init:(Package.Name.Map.empty, Package.Name.Set.empty)
-      ~f:(fun (acc_packages, vendored) (status, (project : Dune_project.t)) ->
+      ~f:(fun (acc_packages, vendored) (status, (project : Dune_project.t), _) ->
         let+ packages =
           let packages = Dune_project.including_hidden_packages project in
           let+ disabled =
             Package.Name.Map.values packages
-            |> List.filter_map ~f:(fun package ->
-              Package.enabled_if package |> Option.map ~f:(fun expr -> package, expr))
-            |> Memo.List.map ~f:(fun (package, expr) ->
-              Blang_expand.eval
-                expr
-                ~dir:Path.root (* This value is irrelevant *)
-                ~f:(fun ~source:_ pform ->
-                  match pform with
-                  | Var (Os v) -> Lock_dir.Sys_vars.(os_values poll v)
-                  | Var Architecture ->
-                    let+ arch = Memo.Lazy.force Lock_dir.Sys_vars.poll.arch in
-                    [ Value.String (Option.value ~default:"" arch) ]
-                  | _ -> assert false)
-              >>| function
-              | true -> None
-              | false -> Some package)
-            >>| List.filter_opt
+            |> Memo.List.filter ~f:(fun package -> package_enabled package >>| not)
             >>| Package.Name.Map.of_list_map_exn ~f:(fun pkg -> Package.name pkg, ())
           in
           Package.Name.Map.merge packages disabled ~f:(fun _key package disabled ->
@@ -126,74 +119,34 @@ let load () =
   let packages =
     Package.Name.Map.map ~f:fst all_packages |> Only_packages.filter_packages mask
   in
-  let projects = List.rev_map projects ~f:snd in
-  let dune_files =
-    let without_ctx =
-      Memo.lazy_ ~name:"dune-files-eval" (fun () ->
-        let (_ : Package.Name.t Path.Source.Map.t) =
-          match
-            Package.Name.Map.values all_packages
-            |> List.filter_map ~f:(fun (pkg, _) ->
-              match Package.exclusive_dir pkg with
-              | None -> None
-              | Some d -> Some (d, pkg))
-            |> Path.Source.Map.of_list_map ~f:(fun ((_loc, d), pkg) ->
-              d, Package.name pkg)
-          with
-          | Ok s -> s
-          | Error (dir, ((loc, _), p1), (_, p2)) ->
-            let name p = Package.Name.to_string (Package.name p) in
-            User_error.raise
-              ~loc
-              [ Pp.textf
-                  "Directory %s cannot belong to package %s"
-                  (Path.Source.to_string_maybe_quoted dir)
-                  (name p1)
-              ; Pp.textf "It already belongs to package %s" (name p2)
-              ]
-        in
-        Dune_file.eval dune_files mask)
-    in
-    Per_context.create_by_name ~name:"dune-files" (fun ctx ->
-      Memo.Lazy.create ~name:"dune-files-for-context" (fun () ->
-        let* f = Memo.Lazy.force without_ctx in
-        f ctx)
-      |> Memo.Lazy.force)
-    |> Staged.unstage
+  let projects = List.rev_map projects ~f:(fun (_, project, dir) -> project, dir) in
+  let (_ : Package.Name.t Path.Local.Map.t) =
+    match
+      Package.Name.Map.values all_packages
+      |> List.filter_map ~f:(fun (pkg, _) ->
+        match Package.exclusive_dir pkg with
+        | None -> None
+        | Some d -> Some (d, pkg))
+      |> Path.Local.Map.of_list_map ~f:(fun ((_loc, d), pkg) -> d, Package.name pkg)
+    with
+    | Ok s -> s
+    | Error (dir, ((loc, _), p1), (_, p2)) ->
+      let name p = Package.Name.to_string (Package.name p) in
+      User_error.raise
+        ~loc
+        [ Pp.textf
+            "Directory %s cannot belong to package %s"
+            (Path.Local.to_string_maybe_quoted dir)
+            (name p1)
+        ; Pp.textf "It already belongs to package %s" (name p2)
+        ]
   in
-  let dune_file_by_dir = Dune_file_db.per_context dune_files |> Staged.unstage in
-  { dune_files
-  ; mask
-  ; dune_file_by_dir
-  ; packages
-  ; projects
-  ; projects_by_root =
-      Path.Source.Map.of_list_map_exn projects ~f:(fun project ->
-        Dune_project.root project, project)
-  }
+  { dune_files; mask; packages; projects }
 ;;
 
 let load =
   let memo = Memo.lazy_ ~name:"dune_load" load in
   fun () -> Memo.Lazy.force memo
-;;
-
-let find_project ~dir =
-  let+ { projects_by_root; _ } = load () in
-  Find_closest_source_dir.find_by_dir_exn projects_by_root ~dir
-;;
-
-let stanzas_in_dir dir =
-  if Path.Build.is_root dir
-  then Memo.return None
-  else (
-    match Install.Context.of_path dir with
-    | None -> Memo.return None
-    | Some ctx ->
-      let dir = Path.Build.drop_build_context_exn dir in
-      let* { dune_file_by_dir; _ } = load () in
-      let+ map = dune_file_by_dir ctx in
-      Path.Source.Map.find map dir)
 ;;
 
 let mask () =
@@ -206,17 +159,7 @@ let packages () =
   packages
 ;;
 
-let dune_files context =
-  let* t = load () in
-  t.dune_files context
-;;
-
-let projects_by_root () =
-  let+ t = load () in
-  t.projects_by_root
-;;
-
 let projects () =
   let+ t = load () in
-  t.projects
+  List.map t.projects ~f:fst
 ;;

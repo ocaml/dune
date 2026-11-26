@@ -51,8 +51,6 @@ type t =
   { dir : Path.Build.t
   ; env : Env.t Memo.t
   ; local_env : string Action_builder.t Env.Var.Map.t
-  ; public_libs : Lib.DB.t Memo.t
-  ; public_libs_host : Lib.DB.t Memo.t
   ; artifacts_host : Artifacts.t Memo.t
   ; bindings : value Pform.Map.t
   ; scope : Scope.t Memo.t
@@ -64,6 +62,12 @@ type t =
 
 let artifacts t = t.artifacts_host
 let dir t = t.dir
+
+let source_tree_root t =
+  let open Memo.O in
+  Partitions.source_tree_root ~dir:t.dir >>| Option.value_exn
+;;
+
 let project t = t.project
 let context t = Context.name t.context
 
@@ -80,7 +84,29 @@ let set_scope t ~dir ~project ~scope ~scope_host =
   { t with dir; project; scope; scope_host }
 ;;
 
+let for_package t = function
+  | None -> t
+  | Some _ as package ->
+    let select scope =
+      let open Memo.O in
+      let* scope = scope in
+      Scope.DB.for_package scope package
+    in
+    { t with scope = select t.scope; scope_host = select t.scope_host }
+;;
+
 let set_artifacts t ~artifacts_host = { t with artifacts_host }
+
+let add_package_deps t packages =
+  let artifacts_host =
+    let open Memo.O in
+    let* packages, _ = Action_builder.evaluate_and_collect_facts packages in
+    let+ artifacts = t.artifacts_host in
+    Artifacts.add_package_deps artifacts packages
+  in
+  { t with artifacts_host }
+;;
+
 let set_expanding_what t x = { t with expanding_what = x }
 
 let map_exe ~force_host t prog args =
@@ -393,7 +419,17 @@ let file_of_lib db context ~loc ~lib ~file =
         let package = Lib_name.package_name name in
         (* Why do we return the install path? *)
         let+ context = Resolve.Memo.lift_memo @@ context >>| Context.name in
-        Install.Context.lib_dir ~context ~package
+        match
+          Lib_info.src_dir info
+          |> Path.as_in_build_dir
+          |> Option.bind ~f:Pkg_rules.package_of_artifact_path
+        with
+        | None -> Install.Context.lib_dir ~context ~package
+        | Some locked ->
+          (* The workspace install directory holds workspace packages only. *)
+          Path.Build.L.relative
+            (Install_layout.root context (Package.Name.Set.singleton locked))
+            [ "lib"; Package.Name.to_string package ]
       in
       Path.build (Path.Build.append_local pkg_root subdir)
   in
@@ -426,22 +462,15 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
                   same project. The current project's name is %S, but the reference is \
                   to %s."
                  (if lib_exec then "exec" else "")
-                 (Dune_project_name.to_string_hum (Dune_project.name current_project))
+                 (Dune_project.name_hum current_project)
                  (match referenced_project with
                   | None -> "an external library"
-                  | Some project ->
-                    Dune_project.name project
-                    |> Dune_project_name.to_string_hum
-                    |> String.quoted)
+                  | Some project -> Dune_project.name_hum project |> String.quoted)
              ])
     else (
-      let artifacts, context =
-        if lib_exec
-        then t.public_libs_host, Context.host t.context
-        else t.public_libs, Memo.return t.context
-      in
-      let* artifacts = Resolve.Memo.lift_memo artifacts in
-      file_of_lib artifacts context ~loc ~lib ~file)
+      let context = if lib_exec then Context.host t.context else Memo.return t.context in
+      let* scope = Resolve.Memo.lift_memo scope in
+      file_of_lib (Scope.public_libs scope) context ~loc ~lib ~file)
   in
   (let open Memo.O in
    let* project = project in
@@ -633,7 +662,7 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
       (fun t ->
         Without
           ([ Value.Dir
-               (Path.Build.append_source
+               (Path.Build.append_local
                   (Context.build_dir t.context)
                   (Dune_project.root t.project)
                 |> Path.build)
@@ -828,43 +857,31 @@ let expand_pkg_macro ~loc { context; _ } macro_invocation =
   [ Value.Path path ]
 ;;
 
-(* This lives here, not in [Pkg_rules], because [Dune_load] depends on
-   [Context], which depends on [Pkg_rules]. *)
-let package_universe =
-  Memo.create
-    "package-universe"
-    ~input:(module Context_name)
-    (fun context ->
-       let open Memo.O in
-       let+ platform = Lock_dir.Sys_vars.solver_env
-       and+ lock_dir = Lock_dir.get_exn context
-       and+ local_packages =
-         Dune_load.packages ()
-         >>| Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
-       in
-       Dune_pkg.Package_universe.create_unvalidated ~platform local_packages lock_dir)
-;;
-
 let visible_packages t =
   let open Memo.O in
   let context = Context.name t.context in
   let* lock_dir_active = Pkg_rules.lock_dir_active context in
   if not lock_dir_active
   then Memo.return Package.Name.Selection.All
-  else (
-    let src_dir = Path.Build.drop_build_context_exn t.dir in
-    match Dune_project.exclusive_package t.project ~dir:src_dir with
+  else
+    let* project = Partitions.find_loaded_project ~dir:t.dir in
+    let dir = Dune_project.dir_in_context t.dir in
+    match
+      Option.first_some
+        (Loaded_project.owner project)
+        (Dune_project.exclusive_package t.project ~dir |> Option.map ~f:Package.Id.name)
+    with
     | None -> Memo.return Package.Name.Selection.All
-    | Some pkg_id ->
-      let name = Package.Id.name pkg_id in
-      let+ selected =
-        let+ universe = Memo.exec package_universe context in
-        Dune_pkg.Package_universe.selected_dependencies_of_local_package
-          universe
-          name
-          ~with_test:true
-      in
-      Package.Name.Selection.Only (Package.Name.Set.of_list (name :: selected)))
+    | Some name ->
+      let+ closure = Partitions.package_closure_for_context context name
+      and+ reverse = Pkg_rules.workspace_dependencies context in
+      (* A locked package that needs this package cannot be built while
+         generating this package's rules. *)
+      Package.Name.Selection.Only
+        (Package.Name.Set.filter closure ~f:(fun dep ->
+           match Package.Name.Map.find reverse dep with
+           | None -> true
+           | Some reached -> not (Package.Name.Set.mem reached name)))
 ;;
 
 let expand_pform_macro
@@ -1058,24 +1075,13 @@ let expand_str_partial t template =
     ~f:(fun ~source pform -> expand_pform t ~source pform >>| Option.some)
 ;;
 
-let make_root
-      ~project
-      ~scope
-      ~scope_host
-      ~(context : Context.t)
-      ~env
-      ~public_libs
-      ~public_libs_host
-      ~artifacts_host
-  =
+let make_root ~project ~scope ~scope_host ~(context : Context.t) ~env ~artifacts_host =
   { dir = Context.build_dir context
   ; env
   ; local_env = Env.Var.Map.empty
   ; bindings = Pform.Map.empty
   ; scope
   ; scope_host
-  ; public_libs
-  ; public_libs_host
   ; artifacts_host
   ; context
   ; expanding_what = Nothing_special

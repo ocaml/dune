@@ -664,7 +664,7 @@ module Processed = struct
           List.find_map sources ~f:(fun { path; kind = source_kind; _ } ->
             match kind, source_kind with
             | Ml_kind.Impl, Ml_kind.Intf | Intf, Impl ->
-              Some (Path.build path |> Path.drop_optional_build_context)
+              Some (Pkg_rules.source_location path)
             | Impl, Impl | Intf, Intf -> None)
       in
       { mode = for_
@@ -910,9 +910,13 @@ module Unprocessed = struct
     { ident : Merlin_ident.t
     ; config : config
     ; modules : Modules.With_vlib.t
+    ; scope : Scope.t
+    ; expander : Expander.t
     }
 
   let make
+        ~scope
+        ~expander
         ~requires_compile
         ~requires_hidden
         ~stdlib_dir
@@ -954,7 +958,7 @@ module Unprocessed = struct
       ; parameters
       }
     in
-    { ident; config; modules }
+    { ident; config; modules; scope; expander }
   ;;
 
   let encode_command =
@@ -1014,7 +1018,10 @@ module Unprocessed = struct
     | _ -> Action_builder.return None
   ;;
 
-  let pp_flags ctx ~for_ ~expander lib_name preprocess
+  let pp_flags
+        { config = { for_; libname = lib_name; _ }; expander; scope; _ }
+        ctx
+        preprocess
     : Processed.pp_flag option Action_builder.t
     =
     match preprocess with
@@ -1029,9 +1036,6 @@ module Unprocessed = struct
        | Pps { loc; pps; flags; staged = _ } ->
          let open Action_builder.O in
          let+ exe, flags =
-           let* scope =
-             Expander.dir expander |> Scope.DB.find_by_dir |> Action_builder.of_memo
-           in
            Ppx_driver.get_ppx_driver ctx ~for_ ~loc ~expander ~lib_name ~flags ~scope pps
          in
          let args = encode_command ~bin:(Path.build exe) ~args:("--as-ppx" :: flags) in
@@ -1068,7 +1072,10 @@ module Unprocessed = struct
         (fun (sctx, lib, for_) ->
            Dir_contents.modules_of_local_lib sctx lib ~for_
            >>| Modules.source_dirs
-           >>| Path.Set.map ~f:Path.drop_optional_build_context)
+           >>| Path.Set.map ~f:(fun dir ->
+             match Path.as_in_build_dir dir with
+             | Some dir -> Pkg_rules.source_location dir
+             | None -> dir))
     in
     fun sctx lib ~for_ -> Memo.exec local (sctx, lib, for_)
   ;;
@@ -1095,21 +1102,17 @@ module Unprocessed = struct
        Dep.Map.map facts ~f:ignore, (x, pp_deps))
   ;;
 
-  let pp_config t ctx ~expander =
-    Per_item_action_builder.map
-      t.config.preprocess
-      ~f:(pp_flags ctx ~for_:t.config.for_ ~expander t.config.libname)
+  let pp_config t ctx =
+    Per_item_action_builder.map t.config.preprocess ~f:(pp_flags t ctx)
   ;;
 
   (* Like [pp_config], but also returns the dependencies of the PPX rewriters
      (see [ppx_deps_of_builder]). *)
-  let pp_config_and_deps t ctx ~expander =
+  let pp_config_and_deps t ctx =
     let open Action_builder.O in
     let+ pp_config_and_deps =
       Per_item_action_builder.map t.config.preprocess ~f:(fun preprocess ->
-        let pp_flag =
-          pp_flags ctx ~for_:t.config.for_ ~expander t.config.libname preprocess
-        in
+        let pp_flag = pp_flags t ctx preprocess in
         match preprocess with
         | Pps _ -> ppx_deps_of_builder pp_flag
         | No_preprocessing | Action _ | Future_syntax _ ->
@@ -1168,6 +1171,8 @@ module Unprocessed = struct
 
   let process
         ({ modules
+         ; scope
+         ; expander
          ; ident = _
          ; config =
              { stdlib_dir
@@ -1187,11 +1192,10 @@ module Unprocessed = struct
         sctx
         ~dir
         ~more_src_dirs
-        ~expander
     =
     let open Action_builder.O in
     let context = Super_context.context sctx in
-    let* pp_config, pp_config_deps = pp_config_and_deps t context ~expander in
+    let* pp_config, pp_config_deps = pp_config_and_deps t context in
     let* (), preprocessor_deps =
       let env, _sandbox =
         Dep_conf_eval.unnamed
@@ -1232,7 +1236,6 @@ module Unprocessed = struct
         | Melange ->
           Action_builder.of_memo
             (let open Memo.O in
-             let* scope = Scope.DB.find_by_dir (Expander.dir expander) in
              let libs = Scope.libs scope in
              Lib.DB.find libs (Lib_name.of_string "melange")
              >>= function
@@ -1255,7 +1258,9 @@ module Unprocessed = struct
                List.concat [ requires_compile; libs ])
       in
       let+ flags = flags
-      and+ indexes, indexes_digest = Ocaml_index.context_indexes context ~for_
+      and+ indexes, indexes_digest =
+        let owner = Loaded_project.owner (Scope.loaded_project scope) in
+        Ocaml_index.context_indexes context ~for_ ~owner
       and+ use_hidden_includes =
         let+ ocaml = Action_builder.of_memo (Context.ocaml context) in
         Ocaml.Version.supports_hidden_includes ocaml.version
@@ -1267,7 +1272,8 @@ module Unprocessed = struct
       in
       let parameters = Resolve.peek parameters |> Result.value ~default:[] in
       let src_dirs =
-        Path.Set.of_list_map ~f:Path.source more_src_dirs |> Path.Set.union deps_src_dirs
+        Path.Set.of_list_map more_src_dirs ~f:Pkg_rules.source_location
+        |> Path.Set.union deps_src_dirs
       in
       let obj_dirs = Path.Set.union deps_obj_dirs objs_dirs in
       let cmt_dirs = Path.Set.union deps_cmt_dirs hidden_cmt_dirs in
@@ -1294,12 +1300,12 @@ module Unprocessed = struct
     and+ source_dirs =
       Action_builder.of_memo
         (let open Memo.O in
-         let+ dirs = Memo.List.filter_map more_src_dirs ~f:Source_tree.find_dir in
-         List.fold_left dirs ~init:Path.Source.Map.empty ~f:(fun dirs dir ->
-           Path.Source.Map.set
-             dirs
-             (Source_tree.Dir.path dir)
-             (Source_tree.Dir.filenames dir)))
+         Memo.List.fold_left more_src_dirs ~init:Path.Build.Map.empty ~f:(fun dirs dir ->
+           Partitions.source_tree_dir ~dir
+           >>| function
+           | None -> dirs
+           | Some source_dir ->
+             Path.Build.Map.set dirs dir (Source_tree.Dir.filenames source_dir)))
     in
     let module_configs =
       modules
@@ -1321,15 +1327,14 @@ module Unprocessed = struct
                 | None -> false
                 | Some source ->
                   let source =
-                    Module.File.original_path source
-                    |> Path.drop_optional_build_context_src_exn
+                    Module.File.original_path source |> Path.as_in_build_dir_exn
                   in
                   (match
-                     Path.Source.Map.find source_dirs (Path.Source.parent_exn source)
+                     Path.Build.Map.find source_dirs (Path.Build.parent_exn source)
                    with
                    | None -> false
                    | Some files ->
-                     Filename.Array.Set.mem files (Path.Source.basename source))
+                     Filename.Array.Set.mem files (Path.Build.basename source))
               in
               Some { Processed.path; kind; has_counterpart }
           in
@@ -1366,7 +1371,7 @@ type group = Unprocessed.t Nonempty_list.t
 
 let group ~default ~alternatives = (default :: alternatives : group)
 
-let dot_merlin sctx ~dir ~more_src_dirs ~expander (default :: alternatives : group) =
+let dot_merlin sctx ~dir ~more_src_dirs (default :: alternatives : group) =
   let { Unprocessed.ident; _ } = default in
   let merlin_file = Merlin_ident.merlin_file_path dir ident in
   let* () =
@@ -1377,7 +1382,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (default :: alternatives : gro
   let configurations =
     let open Action_builder.O in
     let process configuration =
-      Unprocessed.process configuration sctx ~dir ~more_src_dirs ~expander
+      Unprocessed.process configuration sctx ~dir ~more_src_dirs
     in
     let+ default = process default
     and+ alternatives = List.map alternatives ~f:process |> Action_builder.all in
@@ -1392,17 +1397,14 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (default :: alternatives : gro
   Super_context.add_rule sctx ~dir action
 ;;
 
-let add_rules sctx ~dir ~more_src_dirs ~expander group =
+let add_rules sctx ~dir ~more_src_dirs group =
   Memo.when_
     (Context.merlin (Super_context.context sctx))
-    (fun () -> dot_merlin sctx ~more_src_dirs ~expander ~dir group)
+    (fun () -> dot_merlin sctx ~more_src_dirs ~dir group)
 ;;
 
 let more_src_dirs dir_contents ~source_dirs =
-  let lib_src_dirs =
-    Dir_contents.dirs dir_contents
-    |> List.map ~f:(fun dc -> Path.Build.drop_build_context_exn (Dir_contents.dir dc))
-  in
+  let lib_src_dirs = Dir_contents.dirs dir_contents |> List.map ~f:Dir_contents.dir in
   List.rev_append source_dirs lib_src_dirs
 ;;
 

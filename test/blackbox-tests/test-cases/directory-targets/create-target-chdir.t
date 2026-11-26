@@ -20,3 +20,22 @@ Attempt to create a directory with chdir + with-stdout-to:
   this is not allowed by dune at the moment:
   - output/x
   [1]
+
+A sequence may create its directory before changing into it. Preparing all
+working directories before running the first command changes that ordering.
+
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target (dir ordered))
+  >  (deps (sandbox always))
+  >  (action
+  >   (progn
+  >    (system "\| if test -d ordered; then echo precreated; exit 1; fi
+  >            "\| mkdir ordered
+  >    )
+  >    (chdir ordered (run touch result)))))
+  > EOF
+  $ dune build ordered > build.log 2>&1
+  [1]
+  $ grep '^precreated$' build.log
+  precreated

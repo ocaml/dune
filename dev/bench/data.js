@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795695749855,
+  "lastUpdate": 1795695757179,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -499088,6 +499088,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 38.941532251299996,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e615b18ad23d704f93542bf71f3ad6f42a1538ce",
+          "message": "refactor(rules): share executable dependency resolution (#17176)\n\nUse one resolver for executable compilation, workspace descriptions,\noptional executable checks, and utop. PPX instrumentation still resolves\nin the stanza scope, even when utop uses a different library database.\nInstall rules continue to read only direct dependencies, leaving\nforbidden-library checks to linking.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T20:07:55+08:00",
+          "tree_id": "6e9f6305b1e669f1bae95d0b688da2e537e1ecd6",
+          "url": "https://github.com/ocaml/dune/commit/e615b18ad23d704f93542bf71f3ad6f42a1538ce"
+        },
+        "date": 1795695756279,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.3840470652866667,
             "unit": "seconds"
           }
         ]

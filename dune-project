@@ -18,6 +18,8 @@
 ;; won't affect the behaviour of Dune if OxCaml is not available.
 (using oxcaml 0.1)
 
+(using plugin 0.1)
+
 (license MIT)
 (maintainers "Jane Street Group, LLC <opensource@janestreet.com>")
 (authors "Jane Street Group, LLC <opensource@janestreet.com>")

@@ -313,7 +313,7 @@ let module_files ~root_dir ~dialects ~dir ~files ~for_ ~group_interface_rename =
   in
   let parse_one_set =
     let exception Duplicate of (Module_name.Unchecked.t * Module.File.t * Module.File.t)
-      in
+    in
     fun (files : (Module_name.Unchecked.t * (Module.File.t * bool)) list) ->
       let ret =
         try

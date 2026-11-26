@@ -9,8 +9,7 @@ lib: invalid name
   Hint: foo_bar would be a correct library name
   [1]
 
-Invalid final characters currently reach module-name validation instead of
-being rejected as library names.
+The final character is validated as part of the library name.
 
   $ rm dune
   $ cat > dune <<'EOF'
@@ -23,9 +22,9 @@ being rejected as library names.
   File "dune", line 3, characters 7-11:
   3 |  (name foo-)
              ^^^^
-  Error: "foo-" is an invalid module name.
-  Module names must be non-empty, start with a letter, and composed only of the
-  following characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
-  Hint: foo_ would be a correct module name
+  Error: "foo-" is an invalid library name.
+  Library names must be non-empty and composed only of the following
+  characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
+  Hint: foo_ would be a correct library name
   [1]
 

@@ -14,7 +14,8 @@ library stanzas is as follows:
 the archive files generated for the library as well as the module name under
 which the library will be available, unless ``(wrapped false)`` is used (see
 below). It must be a valid OCaml module name, but it doesn't need to start with
-an uppercase letter.
+an uppercase letter. Use only ASCII letters, digits, and underscores in the
+local name.
 
 For instance, the modules of a library named ``foo`` will be available as
 ``Foo.XXX``, outside of ``foo`` itself; however, it is allowed to write an

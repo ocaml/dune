@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795671731153,
+  "lastUpdate": 1795671738320,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -498334,6 +498334,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 52.766100871573336,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3ceeeae988dcbf145f5162d83a61a0a23958b6ec",
+          "message": "test(engine): reproduce buffered builds reusing unvalidated output (#17255)\n\nRecord that a buffered build can reuse the workspace-local output of a\n`--no-buffer` build without checking `must-be-empty`, even though a\nfresh buffered build rejects the same action.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T13:26:00+08:00",
+          "tree_id": "872c6adf89f9022668e96ce64fdf726592e0e330",
+          "url": "https://github.com/ocaml/dune/commit/3ceeeae988dcbf145f5162d83a61a0a23958b6ec"
+        },
+        "date": 1795671737247,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.44823420576,
             "unit": "seconds"
           }
         ]

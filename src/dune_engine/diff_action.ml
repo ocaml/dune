@@ -192,11 +192,11 @@ let plan_tree_diff ({ mode; source_root; _ } as t) =
     | File -> add_promote_file plan rel
     | Directory ->
       list_target_directory rel
-      |> List.fold_left
-           ~init:(add_create_directory ~announce:false plan rel)
-           ~f:(fun plan name ->
-             let rel = Path.Local.relative_fname rel name in
-             collect_target_only rel (kind_of_target rel) plan)
+      |> collect_children rel (add_create_directory ~announce:false plan rel)
+  and collect_children rel plan entries =
+    List.fold_left entries ~init:plan ~f:(fun plan name ->
+      let rel = Path.Local.relative_fname rel name in
+      collect_target_only rel (kind_of_target rel) plan)
   and loop rel source_kind target_kind plan =
     match source_kind, target_kind with
     | Missing, Missing -> plan
@@ -219,16 +219,10 @@ let plan_tree_diff ({ mode; source_root; _ } as t) =
         let rel = Path.Local.relative_fname rel name in
         loop rel Missing (kind_of_target rel) plan)
     | File, Directory ->
-      list_target_directory rel
-      |> List.fold_left
-           ~init:
-             (let plan = add_create_directory ~announce:false plan rel in
-              add_message
-                plan
-                (Pp.textf "File %s should be replaced with a directory" (path_name rel)))
-           ~f:(fun plan name ->
-             let rel = Path.Local.relative_fname rel name in
-             collect_target_only rel (kind_of_target rel) plan)
+      let plan = add_create_directory ~announce:false plan rel in
+      let name = path_name rel in
+      let msg = Pp.textf "File %s should be replaced with a directory" name in
+      collect_children rel (add_message plan msg) (list_target_directory rel)
     | Directory, Directory ->
       let rec merge source_entries target_entries plan =
         match source_entries, target_entries with

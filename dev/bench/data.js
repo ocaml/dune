@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795693019765,
+  "lastUpdate": 1795693028931,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -498798,6 +498798,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 62.851469807866664,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "21881ef183a789376347e9a620a396876e4b2469",
+          "message": "test: document symlink behavior in directory digests (#17250)\n\nExtend the directory digest tests to record two distinct cases:\nretargeting a symlink inside a generated directory to an identical file,\nand replacing a regular file inside an external directory with a symlink\nwhose target text matches the file contents. Both currently leave the\nconsumer output stale.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T19:17:00+08:00",
+          "tree_id": "f039691d79735ce9dfb1cf0a0fe1525cfa26b14a",
+          "url": "https://github.com/ocaml/dune/commit/21881ef183a789376347e9a620a396876e4b2469"
+        },
+        "date": 1795693027717,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.5214705044466668,
             "unit": "seconds"
           }
         ]

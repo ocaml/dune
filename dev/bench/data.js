@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795671594844,
+  "lastUpdate": 1795671717822,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -695187,6 +695187,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.0895709674200003,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "711f6f33aecfb5dd6cbf19471e8b638403674e12",
+          "message": "test(engine): reproduce chdir creating its directory too early (#17254)\n\nRecord that Dune prepares a later `chdir` destination before a preceding\ncommand can create it inside a directory target.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T13:27:39+08:00",
+          "tree_id": "778738a484403c5c81f6bb5dee9bac623e7bc222",
+          "url": "https://github.com/ocaml/dune/commit/711f6f33aecfb5dd6cbf19471e8b638403674e12"
+        },
+        "date": 1795671290886,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.85550473472,
             "unit": "seconds"
           }
         ]

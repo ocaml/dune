@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795710893690,
+  "lastUpdate": 1795710937461,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -499523,6 +499523,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5105770007933333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "41751dc9c7ec52c94336607cf91ff42f78b3fd5b",
+          "message": "test(engine): cover shared stdin and mixed builtin and runner output (#17273)\n\nExtend the action-runner regression from #17252 to cover a sequence that\nmixes Dune’s built-in `echo` and `cat` with spawned commands, and a\nsequence whose commands share stdin.\n\nThe test records the current behavior: earlier output is lost and the\ninput offset resets. It also checks that all six spawned commands ran in\nthe worker, so a local fallback cannot satisfy the eventual fix.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T00:15:24+08:00",
+          "tree_id": "bfe4d5be677f55ef5f9b78f81bcd546abec21680",
+          "url": "https://github.com/ocaml/dune/commit/41751dc9c7ec52c94336607cf91ff42f78b3fd5b"
+        },
+        "date": 1795710935376,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.48082031311333,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795705105047,
+  "lastUpdate": 1795705382413,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -499233,6 +499233,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5105361683666668,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7909d995c12e5eb9ce2f6354b038ef3f50304b6f",
+          "message": "chore: ignore OCamlFormat 0.30.0 in git blame (#17268)\n\nSkip the reformatting commit from #17266 in Git blame so the affected\nlines point to earlier code changes.",
+          "timestamp": "2026-11-26T15:43:28+01:00",
+          "tree_id": "2c59ac8564f851748774e6ce7a52fb9aeb92d5c2",
+          "url": "https://github.com/ocaml/dune/commit/7909d995c12e5eb9ce2f6354b038ef3f50304b6f"
+        },
+        "date": 1795705379984,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 61.616866365279996,
             "unit": "seconds"
           }
         ]

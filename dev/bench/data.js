@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795709770767,
+  "lastUpdate": 1795710041804,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -499407,6 +499407,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.47437096364666664,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "90766078a1ec7d95aad13425c24b75cbc0f98d08",
+          "message": "refactor(engine): unify action-runner stdio redirections (#17271)\n\nUse one representation for stdin, stdout, and stderr redirections in\naction-runner requests. Share output setup while preserving the case\nwhere stderr shares stdout.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T00:04:34+08:00",
+          "tree_id": "46cabf68781ca9942f3bae043fc1d7e5480cd26c",
+          "url": "https://github.com/ocaml/dune/commit/90766078a1ec7d95aad13425c24b75cbc0f98d08"
+        },
+        "date": 1795710040105,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 52.56434514878,
             "unit": "seconds"
           }
         ]

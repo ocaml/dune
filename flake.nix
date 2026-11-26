@@ -161,6 +161,8 @@
           INSIDE_NIX = "true";
           ocamlformat =
             let
+              inherit (pkgs.stdenv.hostPlatform) system;
+              inherit (nixpkgs.legacyPackages.${system}) ocamlPackages;
               lists = pkgs.lib.lists;
               strings = pkgs.lib.strings;
               ocamlformat_config = strings.splitString "\n" (builtins.readFile ./.ocamlformat);
@@ -170,9 +172,7 @@
               version_string = strings.removePrefix prefix version_line;
               ocamlformat_attr = builtins.replaceStrings [ "." ] [ "_" ] version_string;
             in
-            builtins.getAttr (
-              "ocamlformat_" + ocamlformat_attr
-            ) nixpkgs.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+            ocamlPackages."ocamlformat_${ocamlformat_attr}";
           testBuildInputs =
             with pkgs;
             [

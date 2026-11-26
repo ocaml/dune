@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795705062492,
+  "lastUpdate": 1795705097391,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -499175,6 +499175,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5484635139800002,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d52c1695b5faa09615132c11d1d6fe5fc1b742aa",
+          "message": "refactor(diff): share traversal for child promotions (#17263)\n\nShare the child walk used to collect promotions beneath generated\ndirectories when a source file is replaced by a directory. The\nreplacement still emits one diagnostic at the parent; the walk only\ncollects child promotions. This is a preliminary refactor extracted from\n#17261.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T22:38:07+08:00",
+          "tree_id": "240af37a59e23d00f3c802688c20274f407dbf9d",
+          "url": "https://github.com/ocaml/dune/commit/d52c1695b5faa09615132c11d1d6fe5fc1b742aa"
+        },
+        "date": 1795705095248,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.16878820474667,
             "unit": "seconds"
           }
         ]

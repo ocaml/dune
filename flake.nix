@@ -37,6 +37,29 @@
                       flambdaSupport = false;
                       framePointerSupport = true;
                     };
+                    # Correct the pinned overlay's Lwt 6.1.3 recipe using
+                    # the source and dependencies from opam-repository.
+                    lwt = osuper.lwt.overrideAttrs (
+                      old:
+                      nixpkgs.lib.optionalAttrs
+                        (old.src.outputHash == "sha256-5Vj9rExlySXWHWuWcIYpytPynmp2/vgUwDHCI7o5zQk=")
+                        {
+                          src = super.fetchurl {
+                            inherit (old.src) url;
+                            hash = "sha256-a8MR1+iqahYkPsbHf5xgofF5ULx1Ty6j1g4Y/zHBVeI=";
+                          };
+                          buildInputs = old.buildInputs ++ [ oself.ppx_devtools-optcomp ];
+                        }
+                    );
+                    ppx_devtools-optcomp = oself.buildDunePackage {
+                      pname = "ppx_devtools-optcomp";
+                      version = "0.1";
+                      src = super.fetchurl {
+                        url = "https://github.com/ocsigen/ppx_devtools/releases/download/0.1/ppx_devtools-0.1.tbz";
+                        hash = "sha256-Rq1OYqIT48CFLALNHMGC2I7ImvooSkWkMWz7P/wLy5w=";
+                      };
+                      propagatedBuildInputs = [ oself.ppxlib_gt_0_37 ];
+                    };
                     odoc-parser = osuper.odoc-parser.overrideAttrs (old: {
                       doCheck = false;
                     });

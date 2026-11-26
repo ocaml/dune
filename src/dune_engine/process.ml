@@ -1254,19 +1254,11 @@ let spawn
   }
 ;;
 
-let runner_input_of_io (io : Io.input Io.t) =
+let runner_stdio (io : _ Io.t) : Process_runner.stdio option =
   match io.kind with
-  | Null -> Some Process_runner.Input.Null
-  | Terminal _ -> Some Process_runner.Input.Terminal
-  | File { path; _ } -> Some (Process_runner.Input.File path)
-  | External -> None
-;;
-
-let runner_output_of_io (io : Io.output Io.t) =
-  match io.kind with
-  | Null -> Some Process_runner.Output.Null
-  | Terminal _ -> Some Process_runner.Output.Terminal
-  | File { path; perm } -> Some (Process_runner.Output.File { path; perm })
+  | Null -> Some Null
+  | Terminal _ -> Some Terminal
+  | File { path; perm } -> Some (File { path; perm })
   | External -> None
 ;;
 
@@ -1287,13 +1279,13 @@ let runner_request
   then None
   else (
     let same_output = Stdlib.( == ) stdout_to stderr_to in
-    match runner_input_of_io stdin_from, runner_output_of_io stdout_to with
+    match runner_stdio stdin_from, runner_stdio stdout_to with
     | Some stdin_from, Some stdout_to ->
       let stderr_to =
         if same_output
         then Some Process_runner.Stderr.Same_as_stdout
         else (
-          match runner_output_of_io stderr_to with
+          match runner_stdio stderr_to with
           | None -> None
           | Some stderr_to -> Some (Process_runner.Stderr.Output stderr_to))
       in
@@ -1336,24 +1328,19 @@ let exec_locally
     match stdin_from with
     | Null -> Io.null Io.In
     | Terminal -> Io.stdin
-    | File path -> Io.file path Io.In
+    | File { path; _ } -> Io.file path Io.In
   in
-  let stdout =
-    match stdout_to with
+  let output (stdio : Process_runner.stdio) terminal =
+    match stdio with
     | Null -> Io.null Io.Out
-    | Terminal -> Io.stdout
+    | Terminal -> terminal
     | File { path; perm } -> Io.file path Io.Out ~perm
   in
+  let stdout = output stdout_to Io.stdout in
   let stderr =
-    let stderr_to : Process_runner.Stderr.t = stderr_to in
-    let open Process_runner.Stderr in
     match stderr_to with
     | Same_as_stdout -> stdout
-    | Output (out : Process_runner.Output.t) ->
-      (match out with
-       | Null -> Io.null Io.Out
-       | Terminal -> Io.stderr
-       | File { path; perm } -> Io.file path Io.Out ~perm)
+    | Output stdio -> output stdio Io.stderr
   in
   let prepared_outputs =
     { stdout_on_success = Io.output_on_success stdout

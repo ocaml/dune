@@ -1,26 +1,17 @@
 open Import
 
-module Input : sig
-  type t =
-    | Null
-    | Terminal
-    | File of Path.t
-end
-
-module Output : sig
-  type t =
-    | Null
-    | Terminal
-    | File of
-        { path : Path.t
-        ; perm : Permissions.Mode.t
-        }
-end
+type stdio =
+  | Null
+  | Terminal
+  | File of
+      { path : Path.t
+      ; perm : Permissions.Mode.t
+      }
 
 module Stderr : sig
   type t =
     | Same_as_stdout
-    | Output of Output.t
+    | Output of stdio
 end
 
 (** The current runner contract is path-based: stdin/stdout/stderr file
@@ -32,8 +23,8 @@ type request =
   ; metadata : Process_metadata.t
   ; prog : Path.t
   ; args : string Array.Immutable.t
-  ; stdin_from : Input.t
-  ; stdout_to : Output.t
+  ; stdin_from : stdio
+  ; stdout_to : stdio
   ; stderr_to : Stderr.t
   ; create_process_group : bool
   ; timeout : Time.Span.t option

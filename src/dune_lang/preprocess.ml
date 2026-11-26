@@ -371,18 +371,25 @@ module Per_module = struct
   ;;
 end
 
-let preprocess_fields_for ~melange =
+let preprocess_fields ~(for_ : Compilation_mode.t) =
   let open Decoder in
-  let prefix = if melange then "melange." else "" in
-  let melange_since = Syntax.since Stanza.syntax (3, 24) in
+  let prefix =
+    match for_ with
+    | Ocaml -> ""
+    | Melange -> "melange."
+  in
   let optional_field name decode =
-    let decode = if melange then melange_since >>> decode else decode in
+    let decode =
+      match for_ with
+      | Ocaml -> decode
+      | Melange -> Syntax.since Stanza.syntax (3, 24) >>> decode
+    in
     field_o (prefix ^ name) decode
   in
   let+ preprocess =
-    if melange
-    then optional_field "preprocess" Per_module.decode
-    else
+    match for_ with
+    | Melange -> optional_field "preprocess" Per_module.decode
+    | Ocaml ->
       let+ v = field "preprocess" Per_module.decode ~default:(Per_module.default ()) in
       Some v
   and+ preprocessor_deps =
@@ -417,14 +424,6 @@ let preprocess_fields_for ~melange =
   in
   preprocess, preprocessor_deps
 ;;
-
-let preprocess_fields =
-  let open Decoder in
-  let+ preprocess, deps = preprocess_fields_for ~melange:false in
-  Option.value_exn preprocess, deps
-;;
-
-let melange_preprocess_fields = preprocess_fields_for ~melange:true
 
 type preprocess =
   { config : With_instrumentation.t Per_module.t

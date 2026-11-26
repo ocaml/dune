@@ -14,9 +14,9 @@ variable, and can rebuild as needed.
 
 
   $ dune build @doc
-  $ odoc_detect_syntax _build/default/_doc/_html/l/L/index.html
+  $ odoc_detect_syntax _build/default/_doc/_html/l/l/L/index.html
   it is ocaml
 
   $ ODOC_SYNTAX=re dune build @doc
-  $ odoc_detect_syntax _build/default/_doc/_html/l/L/index.html
+  $ odoc_detect_syntax _build/default/_doc/_html/l/l/L/index.html
   it is reason

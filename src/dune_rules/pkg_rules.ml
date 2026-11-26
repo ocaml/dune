@@ -2053,7 +2053,10 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
                     Path.Build.append_local pkg.write_paths.source_dir local_path
                   in
                   Action.progn
-                    [ Action.mkdir (Path.Build.parent_exn dst); Action.copy src dst ])
+                    [ Action.mkdir (Path.Build.parent_exn dst)
+                    ; Action.remove_tree dst
+                    ; Action.copy src dst
+                    ])
                 |> Action.concurrent
                 |> Action.Full.make
                 |> Action_builder.return)
@@ -2155,7 +2158,7 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
   (* TODO should we add env deps on these? *)
   >>> add_env (Pkg.exported_env pkg) build_action
   |> Action_builder.With_targets.map ~f:(fun action ->
-    Action.Full.add_sandbox (Sandbox_mode.Set.singleton Sandbox_mode.copy) action
+    Action.Full.add_sandbox Sandbox_config.needs_sandboxing action
     |> Action.Full.disable_sandbox_policy)
 ;;
 

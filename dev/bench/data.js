@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795720892372,
+  "lastUpdate": 1795720932999,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -697130,6 +697130,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.120135045073333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f20b2b7d2597b98dcfb2927ccf25909888d21146",
+          "message": "chore(test): remove unused censor (#17274)\n\nThese `censor`s are no longer used.",
+          "timestamp": "2026-11-26T20:08:04+01:00",
+          "tree_id": "0a62c1bb426996493e9ab6f7f99ebb5e3d05443a",
+          "url": "https://github.com/ocaml/dune/commit/f20b2b7d2597b98dcfb2927ccf25909888d21146"
+        },
+        "date": 1795720498739,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.846865664813334,
             "unit": "seconds"
           }
         ]

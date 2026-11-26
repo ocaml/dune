@@ -12,7 +12,7 @@ Test missing entries in the .install file
 This should give us a proper error that myfile wasn't generated
 
   $ lockfile "myfile"
-  $ build_pkg test 2>&1 | dune_cmd subst '_build.*_private' '$ROOT/_private' | censor
+  $ build_pkg test 2>&1 | dune_cmd subst '_build.*_private' '$ROOT/_private'
   Error: entry
   $ROOT/_private/default/.pkg/test/source/myfile
   in

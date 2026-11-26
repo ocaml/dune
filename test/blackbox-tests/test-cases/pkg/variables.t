@@ -30,7 +30,7 @@ Test that we can set variables
   >   (run mkdir -p %{prefix})))
   > EOF
 
-  $ build_pkg usetest 2>&1 | censor
+  $ build_pkg usetest
   abool: true
   astring: foobar
   somestrings: foo bar
@@ -58,7 +58,7 @@ Now we demonstrate we get a proper error from invalid .config files:
   >  ))
   > EOF
 
-  $ build_pkg test 2>&1 | dune_cmd subst 'File .*:' 'File $REDACTED:' | censor
+  $ build_pkg test 2>&1 | dune_cmd subst 'File .*:' 'File $REDACTED:'
   Error:
   File $REDACTED:
   1 | this is dummy text

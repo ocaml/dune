@@ -18,7 +18,7 @@ Case 1: relative direct parent
   > EOF
 
 This fails correctly
-  $ build_pkg bar 2>&1 | censor | tail -3
+  $ build_pkg bar 2>&1 | tail -3
   Error: Unable to resolve symlink
   _build/_private/default/.pkg/bar/source/mydir/link_to_parent, it is part of a
   cycle.
@@ -31,7 +31,7 @@ Case 2: relative parent outside the source directory
   $ tar czf _src.tar.gz _src
 
 This fails correctly
-  $ build_pkg bar 2>&1 | censor | tail -3
+  $ build_pkg bar 2>&1 | tail -3
   Error: Unable to resolve symlink
   _build/_private/default/.pkg/bar/source/mydir/link_to_parent, it is part of a
   cycle.

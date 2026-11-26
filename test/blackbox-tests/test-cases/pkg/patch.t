@@ -45,7 +45,7 @@ Ed-format patches are not supported and should give a clear error:
   > .
   > EOF
 
-  $ build_pkg ed-test 2>&1 | censor
+  $ build_pkg ed-test
   Error: Could not parse the patch file. Only unified diff format is supported.
   Context diffs and ed commands are not supported.
   -> required by _build/_private/default/.pkg/ed-test/target
@@ -81,7 +81,7 @@ CR-someday Alizter: This error should be more helpful, it currently tells us
 what has failed but not why and how to fix it (stop patching an opam file
 without sources).
 
-  $ build_pkg no-source 2>&1 | censor
+  $ build_pkg no-source
   Error: Cannot edit file "foo.ml": file does not exist
   -> required by _build/_private/default/.pkg/no-source/target
   [1]

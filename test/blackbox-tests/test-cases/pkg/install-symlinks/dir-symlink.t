@@ -19,7 +19,7 @@ Case 1: No .install file, directory symlink in %{lib}, engine rejects it.
 
 CR-someday Alizter: Maybe in this case it actually makes sense to resolve the directory symlink somehow.
 
-  $ build_pkg foo 2>&1 | censor
+  $ build_pkg foo
   Error: Error trying to read targets after a rule was run:
   - default/.pkg/foo/target/lib/foo/subdir_link: Unexpected file kind "S_DIR" (directory)
   -> required by _build/_private/default/.pkg/foo/target

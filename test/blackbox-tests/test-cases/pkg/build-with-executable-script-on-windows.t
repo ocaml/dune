@@ -76,7 +76,7 @@ File with just shebang characters, but no executable
   $ pkg foo ./whitespace.sh <<EOF
   > #!    
   > EOF
-  $ dune build @pkg-install 2>&1 | censor
+  $ dune build @pkg-install
   Error: Dune could not parse the shebang line in whitespace.sh:
     #!    
   Dune currently only supports the following forms of shebang lines:
@@ -95,7 +95,7 @@ Running env with arguments other than -S
   > #!/usr/bin/env -vS sh
   > echo "Not supported"
   > EOF
-  $ dune build @pkg-install 2>&1 | censor
+  $ dune build @pkg-install
   Error: Dune could not parse the shebang line in executable.sh:
     #!/usr/bin/env -vS sh
   Dune currently only supports the following forms of shebang lines:
@@ -114,7 +114,7 @@ Running env with extra arguments after -S
   > #!/usr/bin/env -S -u DUNE_FOO sh
   > echo "Not supported"
   > EOF
-  $ dune build @pkg-install 2>&1 | censor
+  $ dune build @pkg-install
   Error: Dune could not parse the shebang line in executable.sh:
     #!/usr/bin/env -S -u DUNE_FOO sh
   Dune currently only supports the following forms of shebang lines:

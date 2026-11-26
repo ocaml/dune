@@ -70,7 +70,7 @@ Section variables expanded via (system) produce relative paths:
   >   )))
   > EOF
 
-  $ build_pkg system-consumer 2>&1 | censor
+  $ build_pkg system-consumer
   ../../dep/target/lib/dep
   ../../dep/target/lib/dep
   ../../dep/target/bin

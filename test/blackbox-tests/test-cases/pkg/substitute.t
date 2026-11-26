@@ -124,7 +124,7 @@ It is also possible to use variables of your dependencies:
   > There is also some paths set:
   > '%%{dependency:lib}%%' is '%{dependency:lib}%'
   > EOF
-  $ build_pkg test 2>&1 | censor
+  $ build_pkg test
   There is also some paths set:
   '%{dependency:lib}%' is '../../dependency/target/lib/dependency'
 

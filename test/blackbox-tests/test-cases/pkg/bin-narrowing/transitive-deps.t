@@ -97,7 +97,9 @@ narrowing kicks in):
 
 The package [other] was *not* built:
 
-  $ dune trace cat | jq 'select(.cat == "process" and .name == "finish" and .args.target_dirs[]?) | .args.target_dirs[]' | sort -u | censor
+  $ dune trace cat | jq '
+  >   select(.cat == "process" and .name == "finish" and .args.target_dirs[]?)
+  >   | .args.target_dirs[]' | sort -u
   "_build/_private/default/.pkg/direct/target"
   "_build/_private/default/.pkg/transitive/target"
 

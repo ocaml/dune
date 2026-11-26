@@ -54,7 +54,7 @@ No errors here as 'yes' actually exists
   > EOF
 
 Clearer error here as we really depend on non-existing 'no'
-  $ dune build foo.exe 2>&1 | censor
+  $ dune build foo.exe
   File "dune", line 2, characters 12-20:
   2 |  (libraries mypkg.no)
                   ^^^^^^^^

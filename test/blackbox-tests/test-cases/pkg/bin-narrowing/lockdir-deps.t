@@ -70,7 +70,7 @@ declaring any package dependencies:
 
 The rule depends on the binary from the provider lockdir package:
 
-  $ dune rules --format=json @test | jq_dune '.[] | ruleDepFilePaths' | censor
+  $ dune rules --format=json @test | jq_dune '.[] | ruleDepFilePaths'
   "_build/_private/default/.pkg/provider/target/bin/mybin"
 
 [(deps (package provider))] puts [provider]'s bin directory on $PATH:
@@ -125,9 +125,8 @@ disabled.
   cat: _build/default/system-mybin-output: No such file or directory
   [1]
 
-  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  cat: _build/default/path-output: No such file or directory
-  
+  $ test ! -e _build/default/path-output
+
 With a package defined in the project, *with a dir field, and explicit depends
 on only [check-env]*, the program mybin is not found via the bin pform or on
 the PATH.
@@ -198,9 +197,7 @@ on only [provider]*, the rules for building [mybin] are disabled since the
 
 The path output is not generated since the check-env package is missing from (depends ...):
 
-  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  cat: _build/default/path-output: No such file or directory
-  
+  $ test ! -e _build/default/path-output
 
 With a package defined in the project, *with a dir field, and explicit depends
 on both [check-env] and [provider]*, mybin is found both on the PATH and via

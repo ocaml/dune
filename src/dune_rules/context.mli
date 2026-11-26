@@ -42,6 +42,12 @@ end
 type t
 
 val ocaml : t -> Ocaml_toolchain.t Memo.t
+
+(** What a rule running a tool of this context's compiler depends on besides
+    the tool: with a compiler from a lock directory, its package and that
+    package's dependencies. Nothing otherwise. *)
+val compiler_dep : t -> unit Action_builder.t
+
 val build_context : t -> Build_context.t
 val kind : t -> Kind.t
 val findlib_paths : t -> Path.t list Memo.t

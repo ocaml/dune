@@ -219,6 +219,7 @@ let link_exe
           ~forbid_action_runner:true
           (Ocaml_toolchain.compiler ocaml mode)
           [ Command.Args.dyn ocaml_flags
+          ; Command.Args.hidden_deps_dyn (Context.compiler_dep ctx)
           ; A "-o"
           ; Target exe
           ; As linkage.flags

@@ -2338,6 +2338,40 @@ let ocaml_toolchain context =
     Some (Action_builder.memoize "ocaml_toolchain" toolchain)
 ;;
 
+let compiler_packages =
+  Memo.create
+    "compiler-packages"
+    ~input:(module Context_name)
+    (fun context ->
+       Lock_dir.lock_dir_active context
+       >>= function
+       | false -> Memo.return []
+       | true ->
+         let* lock_dir = Lock_dir.get_exn context in
+         (match lock_dir.ocaml with
+          | None -> Memo.return []
+          | Some ocaml ->
+            let+ pkg = resolve_pkg_dep context ocaml in
+            pkg :: Pkg.deps_closure pkg))
+;;
+
+let compiler_dep context =
+  Action_builder.bind
+    (Action_builder.of_memo (Memo.exec compiler_packages context))
+    ~f:(fun packages -> Action_builder.deps (Dep.Set.of_list_map packages ~f:Pkg.dep))
+;;
+
+let compiler_tool_dep context prog =
+  Action_builder.bind
+    (Action_builder.of_memo (Memo.exec compiler_packages context))
+    ~f:(fun packages ->
+      if
+        List.exists packages ~f:(fun (pkg : Pkg.t) ->
+          Path.is_descendant prog ~of_:pkg.paths.target_dir)
+      then compiler_dep context
+      else Action_builder.return ())
+;;
+
 let all_deps universe =
   let* db = DB.get universe in
   Package.Name.Map.keys db.pkg_table

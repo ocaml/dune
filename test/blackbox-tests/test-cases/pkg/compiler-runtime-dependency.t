@@ -88,23 +88,10 @@ package and one of its dependencies installs the binaries:
 A user rule running the toplevel:
 
   $ dune build ./out
-  File "dune", lines 1-2, characters 0-60:
-  1 | (rule
-  2 |  (with-stdout-to out (run %{ocaml} %{dep:script.ml})))
-  ocamlrun-a104 not found alongside ocaml
-  [1]
   $ cat _build/default/out
-  cat: _build/default/out: No such file or directory
-  [1]
+  script ran
 
 The built-in rule for the dynamic archive of a foreign library, which is always
 sandboxed:
 
   $ dune build ./dllrepro.so
-  File "dune", lines 3-6, characters 0-67:
-  3 | (foreign_library
-  4 |  (archive_name repro)
-  5 |  (language c)
-  6 |  (names stub))
-  ocamlrun-a104 not found alongside ocamlmklib
-  [1]

@@ -22,6 +22,15 @@ val lock_dir_path : Context_name.t -> Path.t option Memo.t
 val lock_dir_active : Context_name.t -> bool Memo.t
 val ocaml_toolchain : Context_name.t -> Ocaml_toolchain.t Action_builder.t option Memo.t
 
+(** What a rule running a tool of the locked compiler depends on: the package
+    the lock directory names as the compiler, and its dependencies. A tool may
+    need other files of that installation, a launcher its runtime for instance.
+    Nothing when the context has no locked compiler. *)
+val compiler_dep : Context_name.t -> unit Action_builder.t
+
+(** [compiler_dep] when [prog] is installed by one of those packages. *)
+val compiler_tool_dep : Context_name.t -> Path.t -> unit Action_builder.t
+
 (** [which ~packages context program] looks [program] up among the binaries
     installed by [packages] in the lock directory. Only those packages are
     considered, not their dependencies. [All] means the whole lock

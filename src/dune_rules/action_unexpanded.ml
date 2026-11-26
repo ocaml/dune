@@ -292,6 +292,8 @@ end = struct
       ;;
 
       let project = Expander.project
+      let context = Expander.context
+      let host_context = Expander.host_context
       let artifacts = Expander.artifacts
       let map_exe = Expander.map_exe
 
@@ -416,7 +418,7 @@ end = struct
         let dir = Path.build env.dir in
         let loc = loc sw in
         let* prog, args = Expander.expand env sw ~mode:At_least_one in
-        let+ prog =
+        let* prog =
           match prog with
           | Value.Dir p ->
             User_error.raise
@@ -454,8 +456,18 @@ end = struct
         match prog with
         | Ok prog ->
           let dep, prog, args = Expander.map_exe ~force_host env.expander prog args in
+          let+ () =
+            let* context =
+              if force_host
+              then
+                Action_builder.of_memo (Expander.host_context env.expander)
+                >>| Context.name
+              else Action_builder.return (Expander.context env.expander)
+            in
+            Pkg_rules.compiler_tool_dep context dep
+          in
           Ok prog, args, [ dep ]
-        | Error _ as v -> v, args, []
+        | Error _ as v -> Action_builder.return (v, args, [])
       in
       register_deps b env acc ~f:(function _, _, deps -> deps)
     ;;

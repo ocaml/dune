@@ -54,6 +54,7 @@ let build_instance
   Ocaml_toolchain.compiler ocaml mode
   |> Memo.Result.iter ~f:(fun compiler ->
     [ Command.Args.Dyn include_flags
+    ; Command.Args.hidden_deps_dyn (Context.compiler_dep ctx)
     ; S
         (List.concat_map
            ~f:(fun dir -> [ Command.Args.A "-H"; Path (Path.build dir) ])
@@ -128,7 +129,8 @@ let build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules =
   let* ocaml = Context.ocaml (Super_context.context sctx) in
   Ocaml_toolchain.compiler ocaml mode
   |> Memo.Result.iter ~f:(fun compiler ->
-    [ Command.Args.S
+    [ Command.Args.hidden_deps_dyn (Context.compiler_dep (Super_context.context sctx))
+    ; S
         (List.concat_map
            ~f:(fun dir -> [ Command.Args.A "-H"; Path (Path.build dir) ])
            (Obj_dir.all_obj_dirs ~mode:(Lib_mode.Ocaml mode) obj_dir))

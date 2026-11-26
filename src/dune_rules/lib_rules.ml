@@ -59,6 +59,7 @@ let build_lib
   Ocaml_toolchain.compiler ocaml mode
   |> Memo.Result.iter ~f:(fun compiler ->
     [ Command.Args.dyn (Ocaml_flags.get flags (Ocaml mode))
+    ; Command.Args.hidden_deps_dyn (Context.compiler_dep ctx)
     ; Hidden_deps (Cm_files.unsorted_objects_and_cms cm_files ~mode |> Dep.Set.of_files)
     ; A "-a"
     ; A "-o"
@@ -179,7 +180,8 @@ let ocamlmklib
     in
     fun ~custom ~sandbox targets ->
       let ctx = Super_context.context sctx in
-      [ Command.Args.A "-g"
+      [ Command.Args.hidden_deps_dyn (Context.compiler_dep ctx)
+      ; A "-g"
       ; (if custom then A "-custom" else Command.Args.empty)
       ; A "-o"
       ; Path (Path.build (Foreign.Archive.Name.path ~dir archive_name ~mode:stubs_mode))
@@ -371,6 +373,7 @@ let build_shared (lib : Library.t) ~native_archives ~sctx ~dir ~flags =
   let* ocaml = Context.ocaml ctx in
   Memo.Result.iter ocaml.ocamlopt ~f:(fun ocamlopt ->
     [ Command.Args.dyn (Ocaml_flags.get flags (Ocaml Native))
+    ; Command.Args.hidden_deps_dyn (Context.compiler_dep ctx)
     ; Hidden_deps
         (let ext_lib = ocaml.lib_config.ext_lib in
          List.rev_concat

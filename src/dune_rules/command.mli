@@ -62,6 +62,9 @@ module Args : sig
   (** Create an empty command line. *)
   val empty : _ t
 
+  (** Dependencies that contribute no argument. *)
+  val hidden_deps_dyn : unit Action_builder.t -> _ t
+
   (** Memoize the computation of command line arguments specified by a given
       expression. Use this function when the same subexpression appears in
       multiple [Command.Args.t] expressions to share both the time and memory

@@ -1,0 +1,3 @@
+(library
+ (name extlib)
+ (public_name external_library))

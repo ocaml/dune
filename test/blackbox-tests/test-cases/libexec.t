@@ -14,8 +14,8 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
 * Find a host-context public library using the %{libexec:...} variable
 
   $ make_dune_project 2.8
-  $ mkdir -p src
-  $ cat >src/dune <<EOF
+  $ cp -RL lib-pform-fixtures/src .
+  $ cat >src/dune <<'EOF'
   > (library
   >  (name private_lib)
   >  (enabled_if (= %{context_name} host))
@@ -23,65 +23,40 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
   >  (modules a))
   > EOF
 
-  $ cat >dune <<EOF
+  $ cat >dune <<'EOF'
   > (rule
-  >  (alias find-a-from-host)
-  >  (enabled_if (= %{context_name} host))
+  >  (alias find-a)
   >  (action (echo "%{libexec:public_lib:a.ml}")))
-  > (rule
-  >  (alias find-a-from-target)
-  >  (enabled_if (= %{context_name} target))
-  >  (action (echo "%{libexec:public_lib:a.ml}")))
-  > EOF
-
-  $ cat >src/a.ml <<EOF
-  > let a = "A"
-  > EOF
-  $ cat >src/a.mli <<EOF
-  > val a : string
   > EOF
 
   $ touch public_lib.opam
-  $ ./sdune build @find-a-from-host
+  $ ./sdune build @_build/host/find-a
   ../install/host/lib/public_lib/a.ml
 
-  $ ./sdune build @find-a-from-target
+  $ ./sdune build @_build/target/find-a
   ../install/host/lib/public_lib/a.ml
 
 ----------------------------------------------------------------------------------
 * Error when finding a host-context public library by its private name using the %{libexec:...} variable
 
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (enabled_if (= %{context_name} host))
-  >  (public_name public_lib)
-  >  (modules a))
-  > EOF
-
-  $ cat >dune <<EOF
+  $ cat >dune <<'EOF'
   > (rule
-  >  (alias find-a-from-host)
-  >  (enabled_if (= %{context_name} host))
-  >  (action (echo "%{libexec:private_lib:a.ml}")))
-  > (rule
-  >  (alias find-a-from-target)
-  >  (enabled_if (= %{context_name} target))
+  >  (alias find-a)
   >  (action (echo "%{libexec:private_lib:a.ml}")))
   > EOF
 
-  $ ./sdune build @find-a-from-host
-  File "dune", line 4, characters 16-43:
-  4 |  (action (echo "%{libexec:private_lib:a.ml}")))
+  $ ./sdune build @_build/host/find-a
+  File "dune", line 3, characters 16-43:
+  3 |  (action (echo "%{libexec:private_lib:a.ml}")))
                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The library "private_lib" is not public. The variable "libexec"
   expands to the file's installation path which is not defined for private
   libraries.
   [1]
 
-  $ ./sdune build @find-a-from-target
-  File "dune", line 8, characters 16-43:
-  8 |  (action (echo "%{libexec:private_lib:a.ml}")))
+  $ ./sdune build @_build/target/find-a
+  File "dune", line 3, characters 16-43:
+  3 |  (action (echo "%{libexec:private_lib:a.ml}")))
                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The library "private_lib" is not public. The variable "libexec"
   expands to the file's installation path which is not defined for private
@@ -91,34 +66,29 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
 ----------------------------------------------------------------------------------
 * Find a host-context private library using the %{libexec-private:...} variable
 
-  $ cat >src/dune <<EOF
+  $ cat >src/dune <<'EOF'
   > (library
   >  (name private_lib)
   >  (enabled_if (= %{context_name} host))
   >  (modules a))
   > EOF
 
-  $ cat >dune <<EOF
+  $ cat >dune <<'EOF'
   > (rule
-  >  (alias find-a-from-host)
-  >  (enabled_if (= %{context_name} host))
-  >  (action (echo "%{libexec-private:private_lib:a.ml}")))
-  > (rule
-  >  (alias find-a-from-target)
-  >  (enabled_if (= %{context_name} target))
+  >  (alias find-a)
   >  (action (echo "%{libexec-private:private_lib:a.ml}")))
   > EOF
 
   $ ./sdune clean
-  $ ./sdune build @find-a-from-host
+  $ ./sdune build @_build/host/find-a
   src/a.ml
-  $ ./sdune build @find-a-from-target
+  $ ./sdune build @_build/target/find-a
   ../host/src/a.ml
 
 ----------------------------------------------------------------------------------
 * The %{libexec-private:...} variable works with public library names too
 
-  $ cat >src/dune <<EOF
+  $ cat >src/dune <<'EOF'
   > (library
   >  (name private_lib)
   >  (enabled_if (= %{context_name} host))
@@ -126,75 +96,39 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
   >  (modules a))
   > EOF
 
-  $ cat >dune <<EOF
+  $ cat >dune <<'EOF'
   > (rule
-  >  (alias find-a-from-host)
-  >  (enabled_if (= %{context_name} host))
-  >  (action (echo "%{libexec-private:public_lib:a.ml}")))
-  > (rule
-  >  (alias find-a-from-target)
-  >  (enabled_if (= %{context_name} target))
+  >  (alias find-a)
   >  (action (echo "%{libexec-private:public_lib:a.ml}")))
   > EOF
 
   $ ./sdune clean
-  $ ./sdune build @find-a-from-host
+  $ ./sdune build @_build/host/find-a
   src/a.ml
-  $ ./sdune build @find-a-from-target
+  $ ./sdune build @_build/target/find-a
   ../host/src/a.ml
 
 ----------------------------------------------------------------------------------
 * The %{libexec-private:...} variable does not work with external libraries
 
-  $ mkdir -p external
-  $ cat >external/dune-project <<EOF
+  $ (cd lib-pform-fixtures/external && ../../sdune build @install \
+  >   && ../../sdune install --prefix install --display quiet)
+
+  $ cat >src/dune-project <<'EOF'
   > (lang dune 2.8)
-  > (name external_library)
+  > (name test-lib)
   > EOF
-  $ cat >external/dune <<EOF
-  > (library
-  >  (name extlib)
-  >  (public_name external_library))
-  > EOF
-
-  $ touch external/external_library.opam
-  $ ( cd external && ../sdune build @install \
-  > && ../sdune install --prefix install --display short | dune_cmd sanitize)
-  Installing install/lib/external_library/META
-  Installing install/lib/external_library/dune-package
-  Installing install/lib/external_library/extlib.a
-  Installing install/lib/external_library/extlib.cma
-  Installing install/lib/external_library/extlib.cmi
-  Installing install/lib/external_library/extlib.cmt
-  Installing install/lib/external_library/extlib.cmx
-  Installing install/lib/external_library/extlib.cmxa
-  Installing install/lib/external_library/extlib.ml
-  Installing install/lib/external_library/opam
-  Installing install/lib/external_library/extlib.cmxs
-
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (public_name public_lib)
-  >  (modules a))
+  $ cat >src/dune <<'EOF'
   > (rule
-  >  (alias find-a-from-host)
-  >  (enabled_if (= %{context_name} host))
-  >  (action (echo "%{libexec-private:external_library:opam}")))
-  > (rule
-  >  (alias find-a-from-target)
-  >  (enabled_if (= %{context_name} target))
+  >  (alias find-a)
   >  (action (echo "%{libexec-private:external_library:opam}")))
   > EOF
 
-  $ touch src/public_lib.opam
-  $ echo "(lang dune 2.8)" > src/dune-project
-  $ echo "(name test-lib)" >> src/dune-project
-
-  $ export OCAMLPATH=$PWD/external/install/lib; ./sdune build @find-a-from-host --root=src --workspace=./dune-workspace
+  $ OCAMLPATH="$PWD/lib-pform-fixtures/external/install/lib" \
+  >   ./sdune build @_build/host/find-a --root=src --workspace=./dune-workspace
   Entering directory 'src'
-  File "dune", line 8, characters 16-56:
-  8 |  (action (echo "%{libexec-private:external_library:opam}")))
+  File "dune", line 3, characters 16-56:
+  3 |  (action (echo "%{libexec-private:external_library:opam}")))
                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The variable "libexec-private" can only refer to libraries within the
   same project. The current project's name is "test-lib", but the reference is
@@ -202,11 +136,12 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
   Leaving directory 'src'
   [1]
 
-  $ export OCAMLPATH=$PWD/external/install/lib; ./sdune build @find-a-from-target --root=src --workspace=./dune-workspace
+  $ OCAMLPATH="$PWD/lib-pform-fixtures/external/install/lib" \
+  >   ./sdune build @_build/target/find-a --root=src --workspace=./dune-workspace
   Entering directory 'src'
-  File "dune", line 12, characters 16-56:
-  12 |  (action (echo "%{libexec-private:external_library:opam}")))
-                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "dune", line 3, characters 16-56:
+  3 |  (action (echo "%{libexec-private:external_library:opam}")))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The variable "libexec-private" can only refer to libraries within the
   same project. The current project's name is "test-lib", but the reference is
   to an external library.
@@ -224,41 +159,32 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
   >  (public_name another_library))
   > EOF
 
-  $ cat >src/dune <<EOF
-  > (library
-  >  (name private_lib)
-  >  (enabled_if (= %{context_name} host))
-  >  (public_name public_lib)
-  >  (modules a))
+  $ cat >another/dune-project <<'EOF'
+  > (lang dune 2.8)
+  > (name another-lib)
+  > EOF
+  $ touch another/another_library.opam
+
+  $ cat >src/dune <<'EOF'
   > (rule
-  >  (alias find-a-from-host)
-  >  (enabled_if (= %{context_name} host))
-  >  (action (echo "%{libexec-private:another_library:file}")))
-  > (rule
-  >  (alias find-a-from-target)
-  >  (enabled_if (= %{context_name} target))
+  >  (alias find-a)
   >  (action (echo "%{libexec-private:another_library:file}")))
   > EOF
+  $ rm dune public_lib.opam
 
-  $ touch another/another_library.opam
-  $ rm public_lib.opam
-  $ rm dune
-  $ echo "(lang dune 2.8)" > another/dune-project
-  $ echo "(name another-lib)" >> another/dune-project
-
-  $ ./sdune build @find-a-from-host
-  File "src/dune", line 9, characters 16-55:
-  9 |  (action (echo "%{libexec-private:another_library:file}")))
+  $ ./sdune build @_build/host/find-a
+  File "src/dune", line 3, characters 16-55:
+  3 |  (action (echo "%{libexec-private:another_library:file}")))
                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The variable "libexec-private" can only refer to libraries within the
   same project. The current project's name is "test-lib", but the reference is
   to "another-lib".
   [1]
 
-  $ ./sdune build @find-a-from-target
-  File "src/dune", line 13, characters 16-55:
-  13 |  (action (echo "%{libexec-private:another_library:file}")))
-                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  $ ./sdune build @_build/target/find-a
+  File "src/dune", line 3, characters 16-55:
+  3 |  (action (echo "%{libexec-private:another_library:file}")))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The variable "libexec-private" can only refer to libraries within the
   same project. The current project's name is "test-lib", but the reference is
   to "another-lib".

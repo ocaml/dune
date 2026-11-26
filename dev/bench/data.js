@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795651490007,
+  "lastUpdate": 1795651498059,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -498218,6 +498218,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 61.6817763434,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "alizter@gmail.com",
+            "name": "Ali Caglayan",
+            "username": "Alizter"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "19fa69c5c5a3a7feadb4458885b2ea290507eaff",
+          "message": "test(site): cover scoped package environment composition (#17248)\n\nRecord current site lookup with an empty `DUNE_DIR_LOCATIONS`, a\nrepeated package dependency, or a file at a site directory’s path. Also\ncover plugin lookup when an inline test includes an unrelated package,\nahead of #17101.",
+          "timestamp": "2026-11-26T00:45:19+01:00",
+          "tree_id": "6028f14e6328fa22e18edc2fbe845aaa50449b6b",
+          "url": "https://github.com/ocaml/dune/commit/19fa69c5c5a3a7feadb4458885b2ea290507eaff"
+        },
+        "date": 1795651496857,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.49896344741333337,
             "unit": "seconds"
           }
         ]

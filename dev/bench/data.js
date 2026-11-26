@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795693268074,
+  "lastUpdate": 1795693586926,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -695999,6 +695999,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.9533932193666668,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d9423f64f9e2ab27791534d16d64864ec09dcac5",
+          "message": "refactor(lang): share the Slang expression traversal (#17196)\n\nUse one traversal to relocate or remove locations and map string\nliterals in Slang expressions. Preserve the existing location policies\nfor literal templates and reuse the Blang mapper for conditions.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-26T19:34:59+08:00",
+          "tree_id": "11a4fb47c26811d1ad927b3d24b073456b6254f4",
+          "url": "https://github.com/ocaml/dune/commit/d9423f64f9e2ab27791534d16d64864ec09dcac5"
+        },
+        "date": 1795693249283,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.1254622038533335,
             "unit": "seconds"
           }
         ]

@@ -245,3 +245,38 @@ CR: The build succeeds and produces its target despite the unexpected output.
   unexpected output
   $ cat _build/default/result; echo
   done
+
+With builtin cat
+----------------
+
+  $ printf 'from cat\n' > input
+  $ echo '(rule (alias default) (action (cat input)))' > dune
+
+CR: `cat` still prints its output under both policies.
+
+  $ dune build --action-stdout-on-success=swallow
+  from cat
+  $ dune build --action-stdout-on-success=must-be-empty > log 2>&1
+  $ cat log
+  from cat
+
+Explicit redirection still writes the output to its target.
+
+  $ echo '(rule (with-stdout-to result (cat input)))' > dune
+  $ dune build --action-stdout-on-success=must-be-empty result
+  $ cmp input _build/default/result
+
+If a later input cannot be read, keep the output from the earlier input.
+
+  $ echo '(lang dune 3.4)' > dune-project
+  $ touch removed
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (alias default)
+  >  (action (progn (system "rm removed") (cat input removed))))
+  > EOF
+  $ dune build --sandbox=copy --action-stdout-on-success=swallow > log 2>&1
+  [1]
+  $ grep -x 'from cat' log
+  from cat
+  $ grep -q 'removed:' log

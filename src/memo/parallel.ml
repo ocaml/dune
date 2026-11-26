@@ -88,6 +88,13 @@ let map_reduce_seq seq ~f ~empty ~combine =
       Fiber.map_reduce_seq seq ~f:(fun x -> run ~f x) ~empty ~combine)
 ;;
 
+let map_reduce_appendable_list l ~f ~empty ~combine =
+  Deps_collector.run_parallel ~num_threads:(Appendable_list.length l) (function
+    | None -> Fiber.map_reduce_appendable_list l ~f ~empty ~combine
+    | Some { Deps_collector.run } ->
+      Fiber.map_reduce_appendable_list l ~f:(fun x -> run ~f x) ~empty ~combine)
+;;
+
 let map_reduce_array arr ~f ~empty ~combine =
   Deps_collector.run_parallel ~num_threads:(Array.length arr) (function
     | None -> Fiber.map_reduce_array arr ~f ~empty ~combine

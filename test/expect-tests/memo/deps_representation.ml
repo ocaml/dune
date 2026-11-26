@@ -92,6 +92,59 @@ let%expect_test "map_reduce_seq preserves branch order and sequential sections" 
     |}]
 ;;
 
+let%expect_test "map_reduce_appendable_list preserves branches and sequential sections" =
+  let node name = Memo.lazy_node ~name (fun () -> Memo.return ()) in
+  let before, after = node "before", node "after" in
+  let a, b, c, d = node "a", node "b", node "c", node "d" in
+  let open Appendable_list in
+  print_deps
+    "empty"
+    (Memo.map_reduce_appendable_list
+       (concat [ empty; empty ])
+       ~f:read
+       ~empty:()
+       ~combine:(fun () () -> ()));
+  print_deps
+    "singleton"
+    (Memo.map_reduce_appendable_list
+       (singleton a)
+       ~f:read
+       ~empty:()
+       ~combine:(fun () () -> ()));
+  let branches = concat [ empty; singleton (a, b) ] @ of_list [ c, d ] in
+  print_deps
+    "sections"
+    (let* () = read before in
+     let* () =
+       Memo.map_reduce_appendable_list
+         branches
+         ~empty:()
+         ~combine:(fun () () -> ())
+         ~f:(fun (first, second) ->
+           let* () = read first in
+           let* () =
+             if first == a
+             then Memo.of_reproducible_fiber (Scheduler.yield ())
+             else Memo.return ()
+           in
+           read second)
+     in
+     read after);
+  [%expect
+    {|
+    empty: Empty
+    singleton: Singleton (Some "a", ())
+    sections: Seq
+      [ Singleton (Some "before", ())
+      ; Par
+          [ Seq [ Singleton (Some "a", ()); Singleton (Some "b", ()) ]
+          ; Seq [ Singleton (Some "c", ()); Singleton (Some "d", ()) ]
+          ]
+      ; Singleton (Some "after", ())
+      ]
+    |}]
+;;
+
 let%expect_test "dependency structure of Memo combinators" =
   let a = Memo.lazy_node ~name:"a" (fun () -> Memo.return ())
   and b = Memo.lazy_node ~name:"b" (fun () -> Memo.return ())

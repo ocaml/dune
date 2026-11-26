@@ -1,7 +1,13 @@
 (** Appendable lists: concatenation takes O(1) time, conversion to a list takes
     O(n). *)
 
-type 'a t
+type 'a t = private
+  | Empty
+  | Singleton of 'a
+  | Cons of 'a * 'a t
+  | List of 'a list
+  | Append of 'a t * 'a t
+  | Concat of 'a t list
 
 val empty : 'a t
 val singleton : 'a -> 'a t

@@ -6,11 +6,33 @@ library.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ make_dune_project 3.0
+  $ cat > dune-project <<EOF
+  > (lang dune 3.0)
+  > EOF
 
-  $ make_value_library lib mylib 42
+  $ mkdir lib
+  $ cat > lib/dune <<EOF
+  > (library
+  >  (name mylib))
+  > EOF
+  $ cat > lib/mylib.ml <<EOF
+  > let value = 42
+  > EOF
+  $ cat > lib/mylib.mli <<EOF
+  > val value : int
+  > EOF
 
-  $ make_value_library lib2 otherlib 100 other_value
+  $ mkdir lib2
+  $ cat > lib2/dune <<EOF
+  > (library
+  >  (name otherlib))
+  > EOF
+  $ cat > lib2/otherlib.ml <<EOF
+  > let other_value = 100
+  > EOF
+  $ cat > lib2/otherlib.mli <<EOF
+  > val other_value : int
+  > EOF
 
   $ cat > uses_lib.ml <<EOF
   > let get_value () = Mylib.value
@@ -47,13 +69,20 @@ See: https://github.com/ocaml/dune/issues/4572
 
 Change only mylib's interface:
 
-  $ write_mylib_with_new_function
+  $ cat > lib/mylib.mli <<EOF
+  > val value : int
+  > val new_function : unit -> string
+  > EOF
+  $ cat > lib/mylib.ml <<EOF
+  > let value = 42
+  > let new_function () = "hello"
+  > EOF
 
-Uses_other is recompiled even though it only uses Otherlib, not Mylib:
+Uses_other is not recompiled because it only uses Otherlib, not Mylib:
 
   $ dune build ./main.exe
-  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("Uses_other"))] | length'
-  2
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_other"))] | length'
+  0
 
 Change only otherlib's interface:
 
@@ -66,8 +95,8 @@ Change only otherlib's interface:
   > let new_other_fn s = s ^ "!"
   > EOF
 
-Uses_lib is recompiled even though it only uses Mylib, not Otherlib:
+Uses_lib is not recompiled because it only uses Mylib, not Otherlib:
 
   $ dune build ./main.exe
-  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("Uses_lib"))] | length'
-  2
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_lib"))] | length'
+  0

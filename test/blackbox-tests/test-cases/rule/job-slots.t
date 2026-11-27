@@ -67,18 +67,24 @@ commands that compute job slots:
   run: [1,3]
   too-many: [1,4]
 
-A change of the total number of job slots does not cause a rebuild:
+A change of the total number of job slots does not re-run the rule or the
+job_slots command:
 
   $ dune build -j 8 ./half
+  $ dune trace cat | jq -s '
+  >   [.[] | select(.cat == "process" and .name == "start"
+  >                 and .args.target_files != null)] | length'
+  0
   $ cat _build/default/half
   2
 
-A change of the job_slots command does not cause a rebuild:
+A change of the job_slots command does not re-run the rule or the job_slots
+command:
 
   $ cat >dune <<'EOF'
   > (rule
   >  (target half)
-  >  (job_slots (bash "echo 1"))
+  >  (job_slots (bash "exit 1"))
   >  (action (with-stdout-to %{target} (bash "echo $DUNE_JOB_SLOTS"))))
   > EOF
 
@@ -86,44 +92,141 @@ A change of the job_slots command does not cause a rebuild:
   $ cat _build/default/half
   2
 
-The command must print a positive integer. Non-integers, zero, and negative
-values are rejected before the rule's action runs:
+Changing the job_slots command to one that resolves a program should not add
+dependencies to the rule or trigger a rebuild:
 
   $ cat >dune <<'EOF'
   > (rule
-  >  (target bad)
-  >  (job_slots (cat slots))
+  >  (target half)
+  >  (job_slots (run sh -c "echo 'job_slots ran' >&2; echo 1"))
   >  (action (with-stdout-to %{target} (bash "echo $DUNE_JOB_SLOTS"))))
   > EOF
 
-  $ echo foo > slots
+CR: Expanding job_slots in the rule's action builder adds its inferred
+dependencies to the rule digest, causing both the probe and the rule to re-run.
+
+  $ dune build -j 4 ./half
+  job_slots ran
+  $ cat _build/default/half
+  1
+
+When the rule needs to run again, the probe uses the new job limit and any
+updated job_slots command:
+
+  $ cat >dune <<'EOF'
+  > (rule
+  >  (target refresh)
+  >  (deps input)
+  >  (job_slots (bash "echo $DUNE_JOBS"))
+  >  (action (with-stdout-to %{target} (bash "echo $DUNE_JOB_SLOTS"))))
+  > EOF
+  $ echo first > input
+  $ dune build -j 2 refresh
+  $ cat _build/default/refresh
+  2
+  $ echo second > input
+  $ dune build -j 3 refresh
+  $ cat _build/default/refresh
+  3
+
+  $ cat >dune <<'EOF'
+  > (rule
+  >  (target refresh)
+  >  (deps input)
+  >  (job_slots (bash "echo 'refresh probe ran' >&2; echo 1"))
+  >  (action (with-stdout-to %{target} (bash "echo $DUNE_JOB_SLOTS"))))
+  > EOF
+  $ dune build -j 3 refresh
+  $ cat _build/default/refresh
+  3
+  $ echo third > input
+  $ dune build -j 3 refresh
+  refresh probe ran
+  $ cat _build/default/refresh
+  1
+
+Alias rules also ignore changes to job_slots until the rule needs to run again:
+
+  $ echo first > alias-input
+  $ cat >dune <<'EOF'
+  > (rule
+  >  (alias slot-alias)
+  >  (deps alias-input)
+  >  (job_slots (bash "echo 'alias probe ran' >&2; echo $DUNE_JOBS"))
+  >  (action (bash "echo \"alias action: $DUNE_JOB_SLOTS\"")))
+  > EOF
+  $ dune build -j 2 @slot-alias
+  alias probe ran
+  alias action: 2
+
+  $ cat >dune <<'EOF'
+  > (rule
+  >  (alias slot-alias)
+  >  (deps alias-input)
+  >  (job_slots (bash "exit 1"))
+  >  (action (bash "echo \"alias action: $DUNE_JOB_SLOTS\"")))
+  > EOF
+  $ dune build -j 2 @slot-alias
+
+  $ cat >dune <<'EOF'
+  > (rule
+  >  (alias slot-alias)
+  >  (deps alias-input)
+  >  (job_slots (run sh -c "echo 'alias probe ran' >&2; echo 1"))
+  >  (action (bash "echo \"alias action: $DUNE_JOB_SLOTS\"")))
+  > EOF
+
+CR: Inferred dependencies from job_slots also invalidate cached alias rules.
+
+  $ dune build -j 2 @slot-alias
+  alias probe ran
+  alias action: 1
+
+  $ echo second > alias-input
+  $ dune build -j 2 @slot-alias
+  alias probe ran
+  alias action: 1
+
+The command must print a positive integer. Non-integers, zero, and negative
+values are rejected before the rule's action runs:
+
+  $ write_slot_rule() {
+  >   cat >dune <<EOF
+  > (rule
+  >  (target bad)
+  >  (job_slots (echo $1))
+  >  (action (with-stdout-to %{target} (bash "echo \$DUNE_JOB_SLOTS"))))
+  > EOF
+  > }
+
+  $ write_slot_rule foo
   $ dune build -j 4 ./bad
-  File "dune", lines 1-4, characters 0-112:
+  File "dune", lines 1-4, characters 0-111:
   1 | (rule
   2 |  (target bad)
-  3 |  (job_slots (cat slots))
+  3 |  (job_slots (echo foo))
   4 |  (action (with-stdout-to %{target} (bash "echo $DUNE_JOB_SLOTS"))))
   Error: The job_slots command must print a positive integer, but it printed
   "foo".
   [1]
 
-  $ echo 0 > slots
+  $ write_slot_rule 0
   $ dune build -j 4 ./bad
-  File "dune", lines 1-4, characters 0-112:
+  File "dune", lines 1-4, characters 0-109:
   1 | (rule
   2 |  (target bad)
-  3 |  (job_slots (cat slots))
+  3 |  (job_slots (echo 0))
   4 |  (action (with-stdout-to %{target} (bash "echo $DUNE_JOB_SLOTS"))))
   Error: The job_slots command must print a positive integer, but it printed
   "0".
   [1]
 
-  $ echo -3 > slots
+  $ write_slot_rule -3
   $ dune build -j 4 ./bad
-  File "dune", lines 1-4, characters 0-112:
+  File "dune", lines 1-4, characters 0-110:
   1 | (rule
   2 |  (target bad)
-  3 |  (job_slots (cat slots))
+  3 |  (job_slots (echo -3))
   4 |  (action (with-stdout-to %{target} (bash "echo $DUNE_JOB_SLOTS"))))
   Error: The job_slots command must print a positive integer, but it printed
   "-3".
@@ -132,7 +235,7 @@ values are rejected before the rule's action runs:
 
 One slot is accepted:
 
-  $ echo 1 > slots
+  $ write_slot_rule 1
   $ dune build -j 4 ./bad
   $ cat _build/default/bad
   1

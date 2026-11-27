@@ -63,50 +63,63 @@ module Sandbox = struct
   ;;
 end
 
+let truncate_output source ~n =
+  let length =
+    match source with
+    | `String contents -> Int64.of_int (String.length contents)
+    | `Channel ic -> Stdlib.LargeFile.in_channel_length ic
+  in
+  let read pos length =
+    match source with
+    | `String contents ->
+      String.sub contents ~pos:(Int64.to_int pos) ~len:(Int64.to_int length)
+    | `Channel ic ->
+      Stdlib.LargeFile.seek_in ic pos;
+      really_input_string ic (Int64.to_int length)
+  in
+  if Int64.compare length (Int64.of_int n) <= 0
+  then (
+    match source with
+    | `String contents -> contents
+    | `Channel _ -> read 0L length)
+  else (
+    let rec index_from pos char =
+      if Int64.compare pos length >= 0
+      then None
+      else (
+        let count = Int64.min 4096L (Int64.sub length pos) in
+        match String.index (read pos count) char with
+        | None -> index_from (Int64.add pos count) char
+        | Some index -> Some (Int64.add pos (Int64.of_int index)))
+    in
+    let rec rindex_from pos char =
+      if Int64.compare pos 0L < 0
+      then None
+      else (
+        let stop = Int64.succ pos in
+        let start = Int64.max 0L (Int64.sub stop 4096L) in
+        match String.rindex (read start (Int64.sub stop start)) char with
+        | None -> rindex_from (Int64.pred start) char
+        | Some index -> Some (Int64.add start (Int64.of_int index)))
+    in
+    let message = "...TRUNCATED BY DUNE..." in
+    match
+      let half = Int64.of_int (n / 2) in
+      index_from half '\n', rindex_from (Int64.sub (Int64.pred length) half) '\n'
+    with
+    | Some first, Some last when Int64.compare first last < 0 ->
+      String.concat
+        ~sep:""
+        [ read 0L (Int64.succ first); message; read last (Int64.sub length last) ]
+    | _ ->
+      let message = "\n" ^ message ^ "\n" in
+      read 0L (Int64.of_int (max 0 (n - String.length message))) ^ message)
+;;
+
 let read_output path ~n =
   match Stdune.Io.read_file_if_small path ~max_size:n |> Result.ok_exn with
   | Some contents -> contents
-  | None ->
-    Stdune.Io.with_file_in path ~f:(fun ic ->
-      let length = Stdlib.LargeFile.in_channel_length ic in
-      let read pos length =
-        Stdlib.LargeFile.seek_in ic pos;
-        really_input_string ic (Int64.to_int length)
-      in
-      if Int64.compare length (Int64.of_int n) <= 0
-      then read 0L length
-      else (
-        let rec index_from pos char =
-          if Int64.compare pos length >= 0
-          then None
-          else (
-            let count = Int64.min 4096L (Int64.sub length pos) in
-            match String.index (read pos count) char with
-            | None -> index_from (Int64.add pos count) char
-            | Some index -> Some (Int64.add pos (Int64.of_int index)))
-        in
-        let rec rindex_from pos char =
-          if Int64.compare pos 0L < 0
-          then None
-          else (
-            let stop = Int64.succ pos in
-            let start = Int64.max 0L (Int64.sub stop 4096L) in
-            match String.rindex (read start (Int64.sub stop start)) char with
-            | None -> rindex_from (Int64.pred start) char
-            | Some index -> Some (Int64.add start (Int64.of_int index)))
-        in
-        let message = "...TRUNCATED BY DUNE..." in
-        match
-          let half = Int64.of_int (n / 2) in
-          index_from half '\n', rindex_from (Int64.sub (Int64.pred length) half) '\n'
-        with
-        | Some first, Some last when Int64.compare first last < 0 ->
-          String.concat
-            ~sep:""
-            [ read 0L (Int64.succ first); message; read last (Int64.sub length last) ]
-        | _ ->
-          let message = "\n" ^ message ^ "\n" in
-          read 0L (Int64.of_int (max 0 (n - String.length message))) ^ message))
+  | None -> Stdune.Io.with_file_in path ~f:(fun ic -> truncate_output (`Channel ic) ~n)
 ;;
 
 module Failure_mode = struct

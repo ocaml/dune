@@ -45,7 +45,7 @@ type t =
       ; can_run_in_action_runner : bool
       }
   | With_accepted_exit_codes of int Predicate_lang.t * t
-  | Chdir of Path.t * t
+  | Chdir of Path.Build.t * t
   | Setenv of string * string * t
   | Redirect_out of Outputs.t * Path.Build.t * File_perm.t * t
   | Redirect_out_atomic of Path.Build.t * t
@@ -74,7 +74,7 @@ type t =
       (module Ext.Instance with type target = Path.Build.t and type path = Path.t)
 
 val run : Prog.t -> string list -> t
-val chdir : Path.t -> t -> t
+val chdir : Path.Build.t -> t -> t
 val with_stdout_to_atomic : Path.Build.t -> t -> t
 val with_stdout_to : ?perm:File_perm.t -> Path.Build.t -> t -> t
 val with_outputs_to : ?perm:File_perm.t -> Path.Build.t -> t -> t

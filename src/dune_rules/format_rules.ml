@@ -16,7 +16,7 @@ let formatter_diff_action =
       let+ formatter = formatter_stdout sctx ~loc alias formatter
       and+ () = Action_builder.path (Path.build input) in
       Action.chdir
-        (Path.build (Path.Build.parent_exn input))
+        (Path.Build.parent_exn input)
         (let output = Path.Build.extend_basename input ~suffix:Filename.corrected in
          Action.progn
            [ Action.write_file output formatter; Action.diff (Path.build input) output ])
@@ -39,7 +39,7 @@ module Ocamlformat = struct
          trigger ocamlformat to run again on the updated file. *)
       and+ () = Action_builder.path (Path.build input) in
       Action.chdir
-        (Path.build dir)
+        dir
         (Action.run
            (Ok path)
            [ Format_generated.ocamlformat_flag kind

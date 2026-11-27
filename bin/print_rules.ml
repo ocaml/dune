@@ -60,7 +60,7 @@ let rec encode_action ~dir (t : Action.t) : Dune_lang.t =
       ; Predicate_lang.encode Dune_sexp.Encoder.int pred
       ; encode t
       ]
-  | Chdir (a, r) -> List [ atom "chdir"; path a; encode_action ~dir:a r ]
+  | Chdir (a, r) -> List [ atom "chdir"; target a; encode_action ~dir:(Path.build a) r ]
   | Setenv (k, v, r) -> List [ atom "setenv"; string k; string v; encode r ]
   | Redirect_out (outputs, fn, perm, r) ->
     List

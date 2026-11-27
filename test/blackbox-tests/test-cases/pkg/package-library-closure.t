@@ -13,13 +13,13 @@ Keep the package sources outside the workspace so they are built through the
 lock directory, not treated as workspace libraries. Use bytecode so changing
 b's implementation does not change a's compiled archive through inlining.
 
-  $ make_dune_project 3.24
+  $ make_dune_project 3.26
   $ make_lockdir
   $ sources="$TMPDIR/package_sources"
   $ mkdir -p "$sources/a" "$sources/b/unrelated" "$sources/c" "$sources/d"
 
   $ cat >"$sources/a/dune-project" <<'EOF'
-  > (lang dune 3.24)
+  > (lang dune 3.26)
   > (package
   >  (name a)
   >  (depends b c))
@@ -33,7 +33,7 @@ b's implementation does not change a's compiled archive through inlining.
   $ echo 'let value = B.value + 1' >"$sources/a/a.ml"
 
   $ cat >"$sources/b/dune-project" <<'EOF'
-  > (lang dune 3.24)
+  > (lang dune 3.26)
   > (package (name b))
   > EOF
   $ echo '(library (public_name b) (modes byte))' >"$sources/b/dune"
@@ -48,14 +48,14 @@ b's implementation does not change a's compiled archive through inlining.
   $ echo 'let value = D.value' >"$sources/b/unrelated/unrelated.ml"
   $ echo 'package data' >"$sources/b/payload"
   $ cat >"$sources/d/dune-project" <<'EOF'
-  > (lang dune 3.24)
+  > (lang dune 3.26)
   > (package (name d))
   > EOF
   $ echo '(library (public_name d) (modes byte))' >"$sources/d/dune"
   $ echo 'let value = 7' >"$sources/d/d.ml"
 
   $ cat >"$sources/c/dune-project" <<'EOF'
-  > (lang dune 3.24)
+  > (lang dune 3.26)
   > (package (name c))
   > EOF
   $ echo '(library (public_name c) (modes byte))' >"$sources/c/dune"

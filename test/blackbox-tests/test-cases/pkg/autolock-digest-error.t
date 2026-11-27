@@ -17,7 +17,11 @@ an unrelated rule.
   > (repository (name mock) (url "file://$PWD/../mock-opam-repository"))
   > EOF
   $ mkdir dune.lock
-  $ echo '(lang package 0.1)' > dune.lock/lock.dune
+  $ cat > dune.lock/lock.dune <<EOF
+  > (lang package 0.1)
+  > (expanded_solver_variable_bindings
+  >  (qualifiers with-test with-dev-setup))
+  > EOF
   $ echo '(rule (target completed) (action (write-file %{target} done)))' > dune
   $ dune build _build/_private/default/.lock/bad.lock completed > failed-output 2>&1
   [1]

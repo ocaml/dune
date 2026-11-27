@@ -1,3 +1,9 @@
+(** The environment that was significant to compute a solution.
+
+    Stored in lockdirs to check whether re-locking is required. Used to
+    rehydrate the relevant subset of the {!Solver_env.t} that was used to
+    lock. *)
+
 open Import
 
 type t = { expanded_variables : Package_variable_name.Set.t }
@@ -16,10 +22,10 @@ module Expanded_variable_bindings : sig
   type t =
     { variable_values : (Package_variable_name.t * Variable_value.t) list
     ; unset_variables : Package_variable_name.t list
+    ; with_ : Solver_env.With.Value.t Solver_env.With.t
     }
 
   val empty : t
-  val is_empty : t -> bool
   val of_variable_set : Package_variable_name.Set.t -> Solver_env.t -> t
   val decode : t Decoder.t
   val encode : t -> Dune_lang.t list
@@ -28,8 +34,10 @@ module Expanded_variable_bindings : sig
   val to_solver_env : t -> Solver_env.t
 
   (** [validate_against_solver_env t solver_env] checks that each variable in
-      common between [t] and [solver_env] is assigned the same value, and that
-      all the unset variables in [t] are not assigned a value in [solver_env]. *)
+      common between [t] and [solver_env] is assigned the same value, that all
+      the unset variables in [t] are not assigned a value in [solver_env], and
+      that [t] was solved with the same "with-test", "with-doc" and
+      "with-dev-setup" as [solver_env]. *)
   val validate_against_solver_env : t -> Solver_env.t -> unit
 
   (** Remove all mention of platform-specific variables. *)

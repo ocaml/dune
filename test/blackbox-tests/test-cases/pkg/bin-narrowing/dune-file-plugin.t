@@ -20,7 +20,7 @@ directory without an owning package does.
   >  ))
   > EOF
 
-  $ make_dune_project 3.16
+  $ make_dune_project 3.26
 
 The plugin reports whether its own [PATH] mentions any lock directory package,
 and emits a rule whose action reports the [PATH] the action itself is given:

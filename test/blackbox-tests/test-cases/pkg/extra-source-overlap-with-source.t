@@ -18,7 +18,7 @@ file in the package's source.
   $ echo "from extra source" > foo.txt
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.16)
+  > (lang dune 3.26)
   > (package
   >  (allow_empty)
   >  (name a)

@@ -13,7 +13,7 @@ Test that we can read package metadata from opam files.
 
   $ mkpkg d
 
-  $ make_dune_project 3.12
+  $ make_dune_project 3.26
 
   $ cat > foo.opam <<EOF
   > opam-version: "2.0"

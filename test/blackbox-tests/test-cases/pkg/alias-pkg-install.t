@@ -3,7 +3,7 @@ without building the project itself.
 
 Create a project using the fake library as a dependency:
   $ cat > dune-project << EOF
-  > (lang dune 3.16)
+  > (lang dune 3.26)
   > (package
   >  (name bar)
   >  (allow_empty)

@@ -7,7 +7,7 @@ Setup dune-project, dune-workspace, etc.
 
   $ mkdir scripts/
 
-  $ make_dune_project 3.22
+  $ make_dune_project 3.26
 
   $ pkg() {
   > make_executable_script_pkg "$@"

@@ -19,7 +19,7 @@ Create a package with nested symlinks: link2 -> link1 -> real.txt
   >    && touch %{lib}/%{pkg-self:name}/META"))
   > EOF
 
-  $ make_package_project 3.22 foo
+  $ make_package_project 3.26 foo
 
 Build the package:
 

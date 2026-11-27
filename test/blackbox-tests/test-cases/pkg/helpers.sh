@@ -106,7 +106,7 @@ make_foo_tarball() {
 
   mkdir foo
   cat > foo/dune-project <<-'EOF'
-	(lang dune 3.13)
+	(lang dune 3.26)
 	(package (name foo))
 	EOF
   printf '%s\n' "$implementation" > foo/foo.ml
@@ -147,7 +147,7 @@ make_foo_tarball_package() {
 
 make_bar_executable_depends_foo_project() {
   cat > dune-project <<-'EOF'
-	(lang dune 3.13)
+	(lang dune 3.26)
 	(package
 	 (name bar)
 	 (depends foo))
@@ -164,7 +164,7 @@ make_bar_executable_depends_foo_project() {
 
 make_project_pinned_to_foo() {
   cat >dune-project <<- EOF
-	(lang dune 3.13)
+	(lang dune 3.26)
 	(pin
 	 (url "file://$PWD/_foo")
 	 (package (name foo)))
@@ -189,7 +189,7 @@ make_platform_dependent_bar_package() {
 
 make_x_depends_bar_project() {
   cat > dune-project <<-'EOF'
-	(lang dune 3.18)
+	(lang dune 3.26)
 	(package
 	 (name x)
 	 (depends bar))
@@ -233,7 +233,7 @@ make_lockdir_validation_project() {
 
 make_bar_depends_foo_project() {
   cat > dune-project <<-'EOF'
-	(lang dune 3.10)
+	(lang dune 3.26)
 	
 	(package
 	 (name bar)
@@ -248,7 +248,7 @@ make_external_mypkg_lib_source() {
 
   mkdir external_sources
   cat >external_sources/dune-project <<-'EOF'
-	(lang dune 3.11)
+	(lang dune 3.26)
 	(package (name mypkg))
 	EOF
   cat >external_sources/dune <<-'EOF'
@@ -288,7 +288,7 @@ make_fetch_cache_project() {
 	  (checksum md5=${src_checksum})))
 	EOF
   cat > dune-project <<-'EOF'
-	(lang dune 3.17)
+	(lang dune 3.26)
 	(package (name my) (depends test) (allow_empty))
 	EOF
 }
@@ -413,7 +413,7 @@ add_mock_repo_if_needed() {
   if [ ! -e dune-workspace ]
   then
       cat >dune-workspace <<- EOF
-	(lang dune 3.20)
+	(lang dune 3.26)
 	(lock_dir
 	 (repositories mock))
 	(repository
@@ -447,7 +447,7 @@ create_mock_repo() {
   # Always create a fresh workspace with mock repository configuration
   local repo="${1:-file://$(pwd)/mock-opam-repository}"
   cat >dune-workspace <<- EOF
-	(lang dune 3.20)
+	(lang dune 3.26)
 	(lock_dir
 	 (repositories mock))
 	(repository
@@ -471,7 +471,7 @@ write_portable_lockdir_workspace() {
 
 create_mock_repo_with_doc_workspace() {
   cat >dune-workspace <<- EOF
-	(lang dune 3.20)
+	(lang dune 3.26)
 	(pkg enabled)
 	(lock_dir
 	 (repositories mock)
@@ -486,7 +486,7 @@ create_mock_repo_with_doc_workspace() {
 setup_dev_tool_workspace() {
   : "${dev_tool_lock_dir:?}"
   cat > dune-workspace <<- EOF
-	(lang dune 3.20)
+	(lang dune 3.26)
 	(lock_dir
 	 (path "${dev_tool_lock_dir}")
 	 (repositories mock))
@@ -570,7 +570,7 @@ build_single_package() {
   local pkg="${1}"
 
   solve_project <<EOF
-(lang dune 3.11)
+(lang dune 3.26)
 (package
  (name x)
  (depends
@@ -584,6 +584,8 @@ make_lockdir() {
   cat > "${source_lock_dir}"/lock.dune <<- EOF
 	(lang package 0.1)
 	(repositories (complete true))
+	(expanded_solver_variable_bindings
+	 (qualifiers with-test with-dev-setup))
 	EOF
 }
 
@@ -608,7 +610,7 @@ make_package_project() {
 
 make_project() {
   cat <<- EOF
-	(lang dune 3.20)
+	(lang dune 3.26)
 	 (package
 	  (name x)
 	  (allow_empty)

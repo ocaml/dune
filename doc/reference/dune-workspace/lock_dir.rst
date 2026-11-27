@@ -37,7 +37,22 @@ changed if desired.
 
       It consists of a sequence of ``(<name> <value>)`` pairs.
 
-   .. describe:: (unset_variables <name list>)
+   .. describe:: (qualifiers <qualifier list>)
+
+      .. versionadded:: 3.26
+
+      The qualifiers among ``with-test``, ``with-doc`` and ``with-dev-setup``
+      whose dependencies are locked for the workspace packages. Qualifiers
+      that are not listed are disabled.
+
+      If this field is absent, ``with-test`` is enabled, ``with-doc`` is
+      disabled and ``with-dev-setup`` is enabled if the project's
+      ``(lang dune)`` is 3.26 or later, disabled otherwise.
+
+      This field cannot be combined with any of these variables in
+      ``solver_env`` or ``unset_solver_vars``.
+
+   .. describe:: (unset_solver_vars <name list>)
 
       A list of variables that are used in solving that are deliberately unset
       even if the solver could provide bindings for them.

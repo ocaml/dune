@@ -69,7 +69,7 @@ test dependencies in the solution.
   Dependencies common to all supported platforms:
   - foo.0.0.1
 
-Setting the value of with-test to true would fail:
+Setting the value of with-test to true applies it to all packages:
 
   $ cat >dune-workspace <<EOF
   > (lang dune 3.21)
@@ -84,13 +84,12 @@ Setting the value of with-test to true would fail:
   > EOF
 
   $ dune pkg lock
-  File "dune-workspace", line 6, characters 2-18:
-  6 |   (with-test true)))
-        ^^^^^^^^^^^^^^^^
-  Error: Setting the "with-test" solver variable to 'true' is not currently
-  supported. Dune already uses "with-test" for local packages, but it cannot be
-  applied to transitive dependencies.
-  [1]
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - bar.0.0.1
+  - foo.0.0.1
+
 Now change workspace to with-test to default value again:
 
   $ cat >dune-workspace <<EOF
@@ -106,7 +105,7 @@ Now change workspace to with-test to default value again:
 The env variable is not longer set to false:
 
   $ dune pkg print-solver-env 2>&1 | grep with-test
-  [1]
+  - with-test = local
 
 However, validate-lockdir and @pkg-install don't catch the change:
 

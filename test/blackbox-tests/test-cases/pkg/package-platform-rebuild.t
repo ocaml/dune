@@ -7,6 +7,8 @@ or the lock directory's representation.
   $ cat > dune.lock/lock.dune <<EOF
   > (lang package 0.1)
   > (solved_for_platforms ((os linux)) ((os macos)))
+  > (expanded_solver_variable_bindings
+  >  (qualifiers with-test with-dev-setup))
   > EOF
   $ make_lockpkg foo <<EOF
   > (version 1)
@@ -40,6 +42,8 @@ Adding another supported platform also preserves the unchanged Linux build.
   $ cat > dune.lock/lock.dune <<EOF
   > (lang package 0.1)
   > (solved_for_platforms ((os linux)) ((os macos)) ((os win32)))
+  > (expanded_solver_variable_bindings
+  >  (qualifiers with-test with-dev-setup))
   > EOF
 
   $ build_pkg foo

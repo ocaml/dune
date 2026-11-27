@@ -1,22 +1,12 @@
 open Import
 
-(** Create a [Dune_pkg.Solver_env.t] by combining variables taken from the
-    current system and variables taken from the current context, with priority
-    being given to the latter. Some variables are initialized to default values
-    (which can be overridden by the arguments to this function):
-    - "with-doc" is set to "false"
-    - "opam-version" is set to the version of opam vendored in dune *)
-val solver_env
-  :  solver_env_from_current_system:Dune_pkg.Solver_env.t option
-  -> solver_env_from_context:Dune_pkg.Solver_env.t option
-  -> unset_solver_vars_from_context:Dune_lang.Package_variable_name.Set.t option
-  -> Dune_pkg.Solver_env.t
+val poll_solver_env_from_current_system : unit -> Dune_pkg.Solver_env.Variables.t Fiber.t
 
-val poll_solver_env_from_current_system : unit -> Dune_pkg.Solver_env.t Fiber.t
-
+(** The variables of the solver environment for [lock_dir_path] on the current
+    system, used as the current platform. *)
 val solver_env_from_system_and_context
   :  lock_dir_path:Path.t
-  -> Dune_pkg.Solver_env.t Fiber.t
+  -> Dune_pkg.Solver_env.Variables.t Fiber.t
 
 module Version_preference : sig
   type t := Dune_pkg.Version_preference.t
@@ -24,11 +14,6 @@ module Version_preference : sig
   val term : Dune_pkg.Version_preference.t option Term.t
   val choose : from_arg:t option -> from_context:t option -> t
 end
-
-val unset_solver_vars_of_workspace
-  :  Workspace.t
-  -> lock_dir_path:Path.t
-  -> Dune_lang.Package_variable_name.Set.t option
 
 val repositories_of_workspace
   :  Workspace.t

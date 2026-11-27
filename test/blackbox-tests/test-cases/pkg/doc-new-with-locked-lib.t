@@ -26,7 +26,7 @@ the expected warnings come from odoc indexing the empty fake library.
   > ]
   > EOF
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
 
   $ cat > dune-workspace <<EOF
   > (lang dune 3.25)
@@ -40,7 +40,7 @@ the expected warnings come from odoc indexing the empty fake library.
   > EOF
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.25)
+  > (lang dune 3.26)
   > (package (name foo) (depends fakefmt))
   > EOF
 

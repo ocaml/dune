@@ -12,7 +12,7 @@ Test for packages with no source field but with extra_sources.
   $ touch foo.txt
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.16)
+  > (lang dune 3.26)
   > (package
   >  (allow_empty)
   >  (name a)

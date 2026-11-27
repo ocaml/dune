@@ -73,9 +73,9 @@ about the value of a variable.
   Error: The dependency solution relies on the assignment of the solver
   variable "os" to "macos" but the solver environment in the workspace would
   assign it the value "linux".
-  Hint: This can happen if the "solver_env" for the lockdir in the
-  dune-workspace file has changed since generating the lockdir. Regenerate the
-  lockdir by running:
+  Hint: This can happen if the "solver_env" or the "with-*" fields for the
+  lockdir in the dune-workspace file have changed. Regenerate the lockdir by
+  running:
   Hint: 'dune pkg lock'
   [1]
 
@@ -91,9 +91,9 @@ used during solving is later given a value in the workspace file:
   Error: The dependency solution relies on the variable "custom" not being
   assigned a value but the solver environment in the workspace would assign it
   the value "foo".
-  Hint: This can happen if the "solver_env" for the lockdir in the
-  dune-workspace file has changed since generating the lockdir. Regenerate the
-  lockdir by running:
+  Hint: This can happen if the "solver_env" or the "with-*" fields for the
+  lockdir in the dune-workspace file have changed. Regenerate the lockdir by
+  running:
   Hint: 'dune pkg lock'
   [1]
 

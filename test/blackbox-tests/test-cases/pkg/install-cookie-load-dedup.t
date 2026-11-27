@@ -10,7 +10,7 @@ Each install cookie should be deserialised at most once per build.
 
 Two rules, both depending on package base:
 
-  $ make_dune_project 3.24
+  $ make_dune_project 3.26
 
   $ cat >dune <<EOF
   > (alias (name all) (deps (alias use1) (alias use2)))

@@ -14,7 +14,7 @@ Dune file in OCaml syntax and a files directory should work
   > (version 1)
   > EOF
 
-  $ make_dune_project 3.16
+  $ make_dune_project 3.26
 
   $ cat >dune <<EOF
   > (* -*- tuareg -*- *)

@@ -1,7 +1,7 @@
 A staged PPX rewrites chosen_value to A.x or B.x according to a package
 export. Inspect the consumer's dependencies without compiling it.
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ make_lockdir
   $ mkdir driver lib
   $ cat >driver/dune <<'EOF'

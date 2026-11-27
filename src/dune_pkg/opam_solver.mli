@@ -14,13 +14,13 @@ end
     requested platforms; non-portable lock directories use one empty overlay. *)
 val base_solver_env_and_platforms
   :  Solver_env.t
-  -> solve_for_platforms:Solver_env.t list
+  -> solve_for_platforms:Solver_env.Variables.t list
   -> portable_lock_dir:bool
-  -> Solver_env.t * Solver_env.t list
+  -> Solver_env.t * Solver_env.Variables.t list
 
 val solve_lock_dir
   :  Solver_env.t
-  -> platform_overlays:Solver_env.t list
+  -> platform_overlays:Solver_env.Variables.t list
        (** [platform_overlays] must be non-empty and contain pairwise-distinct
            entries. *)
   -> Version_preference.t

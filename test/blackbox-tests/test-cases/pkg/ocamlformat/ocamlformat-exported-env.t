@@ -1,7 +1,7 @@
 Changing an export from a locked formatter's dependency should invalidate
 formatting even when the source, configuration and executable are unchanged.
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ make_lockdir
   $ source_lock_dir="$dev_tool_lock_dir"
   $ make_lockdir

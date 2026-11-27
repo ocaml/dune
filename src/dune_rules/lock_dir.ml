@@ -94,8 +94,8 @@ module Sys_vars = struct
       |> Memo.List.filter_map ~f:(fun (var, value) ->
         Memo.Lazy.force value
         >>| Option.map ~f:(fun value -> var, Variable_value.string value))
-      >>| List.fold_left ~init:Solver_env.empty ~f:(fun acc (var, value) ->
-        Solver_env.set acc var value))
+      >>| List.fold_left ~init:Solver_env.Variables.empty ~f:(fun acc (var, value) ->
+        Solver_env.Variables.set acc var value))
     |> Memo.Lazy.force
   ;;
 end
@@ -235,13 +235,16 @@ let get_with_path =
       >>= function
       | Error e -> Memo.return (Error e)
       | Ok lock_dir ->
-        let+ workspace_lock_dir = get_workspace_lock_dir ctx in
-        (match workspace_lock_dir with
-         | None -> ()
-         | Some workspace_lock_dir ->
-           Solver_stats.Expanded_variable_bindings.validate_against_solver_env
-             lock_dir.expanded_solver_variable_bindings
-             (workspace_lock_dir.solver_env |> Option.value ~default:Solver_env.empty));
+        let+ workspace_lock_dir = get_workspace_lock_dir ctx
+        and+ dune_version =
+          Source_tree.root () >>| Source_tree.Dir.project >>| Dune_project.dune_version
+        in
+        Solver_stats.Expanded_variable_bindings.validate_against_solver_env
+          lock_dir.expanded_solver_variable_bindings
+          (Workspace.Lock_dir.combined_solver_env
+             workspace_lock_dir
+             ~dune_version
+             ~current_system:None);
         Ok (path, lock_dir))
     |> Memo.Lazy.force)
   |> Staged.unstage

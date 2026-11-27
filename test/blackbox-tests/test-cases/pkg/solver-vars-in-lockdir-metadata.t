@@ -89,6 +89,9 @@ Solve the packages again, this time with the variables set.
   (repositories
    (complete false)
    (used))
+  
+  (expanded_solver_variable_bindings
+   (qualifiers with-test with-dev-setup))
   Solution for dune.lock:
   - dynamic-deps.1.0
   - no-deps-a.1.0
@@ -104,7 +107,8 @@ Solve the packages again, this time with the variables set.
   (expanded_solver_variable_bindings
    (variable_values
     (os linux)
-    (arch arm)))
+    (arch arm))
+   (qualifiers with-test with-dev-setup))
   Solution for dune.lock:
   - dynamic-deps-lazy.1.0
   - no-deps-a.1.0
@@ -122,7 +126,8 @@ Solve the packages again, this time with the variables set.
     (os-version 15)
     (os-family dunefamily)
     (os linux)
-    (arch arm)))
+    (arch arm))
+   (qualifiers with-test with-dev-setup))
 
 Test that variables referred to in filters on build and install commands are
 stored in the lockdir metadata:
@@ -169,7 +174,8 @@ stored in the lockdir metadata:
    (variable_values
     (os linux)
     (arch arm))
-   (unset_variables x))
+   (unset_variables x)
+   (qualifiers with-test))
 
 Automatic lock keys include polled solver values, not just workspace overrides.
 Changing only the system environment must update the solution.
@@ -188,7 +194,7 @@ Changing only the system environment must update the solution.
   > }
 
   $ cat >dune-project <<'EOF'
-  > (lang dune 3.20)
+  > (lang dune 3.26)
   > EOF
 
   $ rm -r dune.lock
@@ -215,7 +221,7 @@ Changing only the system environment must update the solution.
 Explicitly assigning an inherited default does not change the effective inputs
 and should reuse the cached solve.
 
-  $ write_solver_workspace '(with-doc false)'
+  $ write_solver_workspace '(post true)'
   $ DUNE_CONFIG__SYS_OCAML_VERSION=second dune build @pkg-install
   $ dune trace cat | jq -s 'include "dune"; any(.[] | actionNames; . == "lock")'
   false

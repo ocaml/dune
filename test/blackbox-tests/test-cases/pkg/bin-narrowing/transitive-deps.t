@@ -57,7 +57,7 @@ by [direct]:
 The project's package depends only on [direct] (with a [dir] field so
 narrowing kicks in):
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (package
   >   (allow_empty)

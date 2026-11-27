@@ -1,6 +1,6 @@
 We should be able to specify (package ..) deps on locally built packages.
 
-  $ make_dune_project 3.11
+  $ make_dune_project 3.26
 
   $ make_lockdir
   $ make_lockpkg foo <<EOF
@@ -31,7 +31,7 @@ Now we define the external package using a dune project:
 
   $ mkdir external_sources
   $ cat >external_sources/dune-project <<EOF
-  > (lang dune 3.11)
+  > (lang dune 3.26)
   > (package (name foo))
   > EOF
   $ cat >external_sources/dune <<EOF

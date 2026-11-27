@@ -11,7 +11,7 @@ dependency on. They are then rerun when those binaries change.
   >   (run chmod +x %{pkg-self:bin}/helper)))
   > EOF
   $ printf '#!/bin/sh\necho v1\n' | make_lockpkg_file provider helper
-  $ make_dune_project 3.22
+  $ make_dune_project 3.26
   $ cat >> dune-project <<EOF
   > (package (name mypkg) (allow_empty) (depends provider))
   > EOF

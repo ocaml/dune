@@ -26,7 +26,7 @@ Test that shows what happens when dune.lock is ignored.
   > let () = ()
   > EOF
   > cat > dune-project <<EOF
-  > (lang dune 3.16)
+  > (lang dune 3.26)
   > EOF
 
 Forcing a sandbox mode also applies it to the rule that stages dune.lock.

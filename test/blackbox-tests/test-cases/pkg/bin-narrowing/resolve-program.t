@@ -77,7 +77,7 @@ output so we can verify which binary actually ran:
 With the current full-lockdir lookup, the fake ocamllex and fake menhir are
 picked up despite no explicit dependency declaration:
 
-  $ make_dune_project 3.24
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (using menhir 2.1)
   > EOF
@@ -101,7 +101,7 @@ lockdir package:
 With a package defined in the project, *without a dir field*, the behavior is the
 same.
 
-  $ make_dune_project 3.24
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (using menhir 2.1)
   > (package
@@ -121,7 +121,7 @@ With a package defined in the project, *with a dir field, but no dependencies*,
 the tools are not resolved, and [tool_provider]'s bin directory is no longer added
 to $PATH (the package declares no dependencies).
 
-  $ make_dune_project 3.24
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (using menhir 2.1)
   > (package
@@ -146,7 +146,7 @@ to $PATH (the package declares no dependencies).
 With a package defined in the project, *with a dir field, and explicit depends on
 [tool_provider]*, the tools are now resolved.
 
-  $ make_dune_project 3.24
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (using menhir 2.1)
   > (package

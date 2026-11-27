@@ -9,7 +9,7 @@ building packages:
 
   $ makeProject() {
   > cat >dune-project <<EOF
-  > (lang dune 3.20)
+  > (lang dune 3.26)
   > (expand_aliases_in_sandbox $1)
   > (package
   >  (name foo)

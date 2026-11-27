@@ -11,7 +11,7 @@ Test that broken symlinks are detected during symlink resolution.
   >    && touch %{lib}/%{pkg-self:name}/META"))
   > EOF
 
-  $ make_package_project 3.22 foo
+  $ make_package_project 3.26 foo
 
 The broken symlink is detected:
 

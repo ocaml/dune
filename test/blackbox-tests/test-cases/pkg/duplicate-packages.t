@@ -1,7 +1,7 @@
 A workspace with a package that exists in the lock file and in the workspace
 shouldn't be allowed (for now)
 
-  $ make_dune_project 3.11
+  $ make_dune_project 3.26
 
   $ cat > mypkg.opam <<EOF
   > opam-version: "2.0"

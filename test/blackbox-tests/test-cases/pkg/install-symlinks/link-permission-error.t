@@ -16,7 +16,7 @@ symlink before hardlinking will fail with EACCES.
   >    && chmod -w %{lib}/%{pkg-self:name}"))
   > EOF
 
-  $ make_package_project 3.22 foo
+  $ make_package_project 3.26 foo
 
 Build fails with a symlink resolution error:
 

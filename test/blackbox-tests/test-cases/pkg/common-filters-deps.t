@@ -16,12 +16,13 @@ included.
   $ mkpkg dev-setup <<EOF
   > EOF
 
-Note that dune solves packages with with-doc and with-dev-setup always set to false, so
-documentation-only deps are omitted from the solution.
+Like with-test, with-dev-setup is enabled for local packages, so its
+dependencies are included in the solution. with-doc is disabled.
 
 Dune will also not include dependencies marked `post` in the lock directory.
 
   $ solve "(test :with-test) (doc :with-doc) (dev-setup :with-dev-setup) (dev :with-dev) (build :build) (post :post)"
   Solution for dune.lock:
   - build.0.0.1
+  - dev-setup.0.0.1
   - test.0.0.1

@@ -50,7 +50,7 @@ Lockfile for the fake compiler package:
   > EOF
 
   $ cat > dune-project << EOF
-  > (lang dune 3.16)
+  > (lang dune 3.26)
   > 
   > (package
   >  (name foo)

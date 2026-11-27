@@ -1,9 +1,7 @@
 open Import
 module Relop = Dune_lang.Relop
 
-let apply_filter env ~with_test ~(formula : OpamTypes.filtered_formula)
-  : OpamTypes.formula
-  =
+let apply_filter env ~(formula : OpamTypes.filtered_formula) : OpamTypes.formula =
   OpamFilter.gen_filter_formula
     (OpamFormula.partial_eval (fun (form : _ OpamTypes.filter_or_constraint) ->
        match form with
@@ -13,13 +11,7 @@ let apply_filter env ~with_test ~(formula : OpamTypes.filtered_formula)
          let filter = OpamFilter.partial_eval env filter in
          `Formula (Atom (Constraint (relop, filter)))))
     formula
-  |> OpamFilter.filter_deps
-       ~build:true
-       ~post:false
-       ~dev:false
-       ~default:false
-       ~test:with_test
-       ~doc:false
+  |> OpamFilter.filter_deps ~build:true ~post:false ~dev:false ~default:false
 ;;
 
 module Version_constraint = struct
@@ -218,13 +210,13 @@ type deps =
   ; regular : Package_name.t list
   }
 
-let filtered_formula_to_package_names ~env ~with_test ~packages formula =
+let filtered_formula_to_package_names ~env ~packages formula =
   let open Result.O in
-  let+ all = apply_filter ~with_test env ~formula |> formula_to_package_names packages in
+  let+ all = apply_filter env ~formula |> formula_to_package_names packages in
   let regular, post =
     let regular_set =
       override_post (Some false) env
-      |> apply_filter ~with_test ~formula
+      |> apply_filter ~formula
       |> formula_to_package_names_allow_missing packages
       |> Package_name.Set.of_list
     in

@@ -15,12 +15,6 @@
 open Import
 open Fiber.O
 
-let with_test solver_env =
-  match Solver_env.get solver_env Package_variable_name.with_test with
-  | Some v -> Variable_value.equal v Variable_value.true_
-  | None -> true
-;;
-
 module Priority = struct
   (* A priority defines a package's position in the list of candidates
      fed to the solver. Any change to package selection should be reflected in
@@ -88,7 +82,7 @@ module Context = struct
     ; depends : OpamTypes.filtered_formula
     ; conflicts : OpamTypes.filtered_formula
     ; filtered_formulas_by_platform :
-        (Solver_env.t, OpamTypes.formula * OpamTypes.formula) Table.t
+        (Solver_env.Variables.t, OpamTypes.formula * OpamTypes.formula) Table.t
     }
 
   type t =
@@ -101,10 +95,11 @@ module Context = struct
       (* Base solver env. Full platform-specific envs are computed by extending
          this with the platform's own env. *)
     ; dune_version : OpamPackage.Version.t
-    ; platforms : Solver_env.t list
+    ; platforms : Solver_env.Variables.t list
     ; stats_updater : Solver_stats.Updater.t
     ; candidates_cache : (Package_name.t, candidates) Fiber.Cache.t
-    ; platform_available_cache : (OpamPackage.t, (Solver_env.t, bool) Table.t) Table.t
+    ; platform_available_cache :
+        (OpamPackage.t, (Solver_env.Variables.t, bool) Table.t) Table.t
     ; constraints : OpamTypes.filtered_formula Package_name.Map.t
     ; (* Number of versions of each package whose opam files were read from
          disk while solving. Used to report performance statistics. *)
@@ -191,7 +186,7 @@ module Context = struct
     let package = OpamFile.OPAM.package opam in
     OpamFile.OPAM.available opam
     |> OpamFilter.partial_eval
-         (Solver_env.to_env solver_env
+         (Solver_env.Variables.to_env (Solver_env.variables solver_env)
           |> Solver_stats.Updater.wrap_env t.stats_updater
           |> Lock_pkg.add_self_to_filter_env package)
     |> eval_to_bool
@@ -201,7 +196,7 @@ module Context = struct
     let package = OpamFile.OPAM.package opam in
     let available_by_platform =
       Table.find_or_add t.platform_available_cache package ~f:(fun _ ->
-        Table.create (module Solver_env) 1)
+        Table.create (module Solver_env.Variables) 1)
     in
     Table.find_or_add available_by_platform platform ~f:(fun platform ->
       let solver_env = Solver_env.extend t.solver_env platform in
@@ -244,11 +239,10 @@ module Context = struct
       |> Package_name.Map.mem (Lazy.force t.local_packages)
     in
     let solver_env = Solver_env.extend t.solver_env platform in
-    let with_test = package_is_local && with_test solver_env in
-    Solver_env.to_env solver_env
+    Solver_env.to_env solver_env ~local:package_is_local
     |> Solver_stats.Updater.wrap_env t.stats_updater
     |> Lock_pkg.add_self_to_filter_env package
-    |> Resolve_opam_formula.apply_filter ~with_test ~formula:filtered_formula
+    |> Resolve_opam_formula.apply_filter ~formula:filtered_formula
   ;;
 
   let filtered_local_formulas t ~platform local_package =
@@ -497,7 +491,7 @@ module Solver = struct
     end
 
     type role =
-      | Real of OpamPackage.Name.t * Solver_env.t
+      | Real of OpamPackage.Name.t * Solver_env.Variables.t
       | Virtual of Virtual_id.t * impl list
 
     and real_impl =
@@ -560,7 +554,7 @@ module Solver = struct
           match a, b with
           | Real (a_name, a_platform), Real (b_name, b_platform) ->
             (match Ordering.of_int (OpamPackage.Name.compare a_name b_name) with
-             | Eq -> Solver_env.compare a_platform b_platform
+             | Eq -> Solver_env.Variables.compare a_platform b_platform
              | x -> x)
           | Virtual (a, _), Virtual (b, _) -> Virtual_id.compare a b
           | Real _, Virtual _ -> Lt
@@ -579,7 +573,7 @@ module Solver = struct
           let hash = Hash.create () in
           let hash = Hash.feed hash 0 in
           let hash = Hash.feed hash (OpamPackage.Name.to_string name |> String.hash) in
-          Hash.feed hash (Solver_env.hash platform) |> Hash.hash
+          Hash.feed hash (Solver_env.Variables.hash platform) |> Hash.hash
         | Virtual (id, _) ->
           let hash = Hash.create () in
           let hash = Hash.feed hash 1 in
@@ -638,8 +632,11 @@ module Solver = struct
         ]
       in
       let platform bindings =
-        List.fold_left bindings ~init:Solver_env.empty ~f:(fun env (name, value) ->
-          Solver_env.set env name (Variable_value.string value))
+        List.fold_left
+          bindings
+          ~init:Solver_env.Variables.empty
+          ~f:(fun env (name, value) ->
+            Solver_env.Variables.set env name (Variable_value.string value))
       in
       let name = OpamPackage.Name.of_string "foo" in
       let real_a = Real (name, platform bindings) in
@@ -945,17 +942,19 @@ module Solver = struct
          on multiple platforms, but within each platform, at most one package
          with the conflict class can be selected. *)
       module Key = struct
-        type t = OpamPackage.Name.t * Solver_env.t
+        type t = OpamPackage.Name.t * Solver_env.Variables.t
 
         let compare (name1, plat1) (name2, plat2) =
           match Ordering.of_int (OpamPackage.Name.compare name1 name2) with
-          | Eq -> Solver_env.compare plat1 plat2
+          | Eq -> Solver_env.Variables.compare plat1 plat2
           | x -> x
         ;;
 
         let to_dyn (name, plat) =
           Dyn.Tuple
-            [ Dyn.string (OpamPackage.Name.to_string name); Solver_env.to_dyn plat ]
+            [ Dyn.string (OpamPackage.Name.to_string name)
+            ; Solver_env.Variables.to_dyn plat
+            ]
         ;;
       end
 
@@ -1538,7 +1537,7 @@ module Solver = struct
             (Pp.text "Version differs from "
              ++ Input.pp_impl_long other_impl
              ++ Pp.text " selected on "
-             ++ Solver_env.pp_oneline platform)
+             ++ Solver_env.Variables.pp_oneline platform)
         | `DiagnosticsFailure msg ->
           Pp.hovbox (Pp.text "Reason for rejection unknown: " ++ msg)
       ;;
@@ -1603,7 +1602,7 @@ module Solver = struct
         let platform_suffix =
           match platform with
           | None -> Pp.nop
-          | Some platform -> Pp.text " on " ++ Solver_env.pp_oneline platform
+          | Some platform -> Pp.text " on " ++ Solver_env.Variables.pp_oneline platform
         in
         Pp.vbox
           ~indent:2
@@ -1703,11 +1702,11 @@ module Solver = struct
               |> List.fold_left ~init:acc ~f:(fun acc conflict_class ->
                 let platforms =
                   OpamPackage.Name.Map.find_opt conflict_class acc
-                  |> Option.value ~default:Solver_env.Map.empty
+                  |> Option.value ~default:Solver_env.Variables.Map.empty
                 in
                 OpamPackage.Name.Map.add
                   conflict_class
-                  (Solver_env.Map.set platforms platform role)
+                  (Solver_env.Variables.Map.set platforms platform role)
                   acc))
       in
       Input.Role.Map.iteri report ~f:(fun role component ->
@@ -1719,7 +1718,7 @@ module Solver = struct
             |> List.find_map ~f:(fun conflict_class ->
               OpamPackage.Name.Map.find_opt conflict_class classes
               |> Option.bind ~f:(fun platforms ->
-                match Solver_env.Map.find platforms platform with
+                match Solver_env.Variables.Map.find platforms platform with
                 | Some other_role when not (same_package_name role other_role) ->
                   Some (`ClassConflict (other_role, conflict_class))
                 | _ -> None))))
@@ -1972,8 +1971,11 @@ module Solver = struct
      the solver result that establishes it. *)
   let packages_by_platform ~platforms sels =
     let packages_by_platform =
-      List.fold_left platforms ~init:Solver_env.Map.empty ~f:(fun acc platform ->
-        Solver_env.Map.set acc platform Package_name.Map.empty)
+      List.fold_left
+        platforms
+        ~init:Solver_env.Variables.Map.empty
+        ~f:(fun acc platform ->
+          Solver_env.Variables.Map.set acc platform Package_name.Map.empty)
     in
     Input.Role.Map.foldi
       sels
@@ -2008,10 +2010,11 @@ module Solver = struct
                  packages
              in
              let platform_packages =
-               Solver_env.Map.find packages_by_platform platform |> Option.value_exn
+               Solver_env.Variables.Map.find packages_by_platform platform
+               |> Option.value_exn
              in
              ( packages
-             , Solver_env.Map.set
+             , Solver_env.Variables.Map.set
                  packages_by_platform
                  platform
                  (Package_name.Map.set platform_packages name version) )))
@@ -2114,15 +2117,17 @@ let reject_unreachable_packages =
         pkgs_by_name
         local_packages
         ~lock_dir:(fun (pkg : Lock_dir.Pkg.t) ->
-          Lock_dir.Conditional_choice.choose_for_platform pkg.depends ~platform:solver_env
+          Lock_dir.Conditional_choice.choose_for_platform
+            pkg.depends
+            ~platform:(Solver_env.variables solver_env)
           |> Option.value ~default:[]
           |> List.map ~f:(fun (depend : Lock_dir.Dependency.t) -> depend.name))
         ~local:(fun (pkg : Local_package.For_solver.t) ->
           match
             Lock_pkg.local_package_dependencies_with_depopts
               pkg
-              ~env:(Solver_env.to_env solver_env)
-              ~with_test:(with_test solver_env)
+              ~solver_env
+              ~with_test:true
               ~packages:pkgs_by_version
               ~dune_version
           with
@@ -2257,7 +2262,9 @@ let resolve_opam_packages opam_packages_to_lock candidates_cache =
 let deduplicate_platform_overlays platform_overlays =
   List.rev
     (List.fold_left platform_overlays ~init:[] ~f:(fun acc overlay ->
-       if List.exists acc ~f:(Solver_env.equal overlay) then acc else overlay :: acc))
+       if List.exists acc ~f:(Solver_env.Variables.equal overlay)
+       then acc
+       else overlay :: acc))
 ;;
 
 (* Split [solver_env] into a portable base env (with platform-specific
@@ -2267,7 +2274,7 @@ let base_solver_env_and_platforms solver_env ~solve_for_platforms ~portable_lock
   then
     ( Solver_env.unset_multi solver_env Dune_lang.Package_variable_name.platform_specific
     , deduplicate_platform_overlays solve_for_platforms )
-  else solver_env, [ Solver_env.empty ]
+  else solver_env, [ Solver_env.Variables.empty ]
 ;;
 
 let solve_lock_dir
@@ -2325,7 +2332,8 @@ let solve_lock_dir
                 ; depends
                 ; conflicts
                 ; name = local.name
-                ; filtered_formulas_by_platform = Table.create (module Solver_env) 1
+                ; filtered_formulas_by_platform =
+                    Table.create (module Solver_env.Variables) 1
                 }))
          in
          Context.create
@@ -2349,7 +2357,8 @@ let solve_lock_dir
           let solver_envs_for_package name =
             List.filter_map platform_envs ~f:(fun (platform, full_solver_env) ->
               let packages =
-                Solver_env.Map.find packages_by_platform platform |> Option.value_exn
+                Solver_env.Variables.Map.find packages_by_platform platform
+                |> Option.value_exn
               in
               Option.some_if
                 (Package_name.Map.mem packages name)
@@ -2495,7 +2504,7 @@ let solve_lock_dir
                        match
                          Lock_dir.Conditional_choice.choose_for_platform
                            depends
-                           ~platform:platform_env
+                           ~platform:(Solver_env.variables platform_env)
                        with
                        | None -> Ok ()
                        | Some depends ->
@@ -2536,7 +2545,7 @@ let solve_lock_dir
               ~ocaml
               ~repos:(Some repos)
               ~expanded_solver_variable_bindings
-              ~solved_for_platforms:full_solver_envs
+              ~solved_for_platforms:(List.map full_solver_envs ~f:Solver_env.variables)
               ~portable_lock_dir
           in
           let+ files =

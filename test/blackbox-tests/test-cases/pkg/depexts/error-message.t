@@ -12,7 +12,7 @@ Make a library that would fail when building it:
 
 Make a project that uses the foo library:
   $ cat > dune-project <<EOF
-  > (lang dune 3.13)
+  > (lang dune 3.26)
   > (package
   >  (name bar)
   >  (depends foo))

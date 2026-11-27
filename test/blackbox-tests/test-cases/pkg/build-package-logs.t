@@ -5,7 +5,7 @@ Test the error message when installing package that fails.
 
 Make a project with two packages, one successful and one that fails:
 
-  $ make_dune_project 3.12
+  $ make_dune_project 3.26
 
 Create a package with a failing command that throws an error:
 

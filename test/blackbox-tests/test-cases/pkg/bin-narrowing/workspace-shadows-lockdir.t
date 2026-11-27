@@ -38,7 +38,7 @@ workspace":
 With [(depends provider)] the workspace binary still wins over the declared
 lockdir binary of the same name:
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (package (name mypkg) (allow_empty) (dir .) (depends provider))
   > EOF
@@ -50,7 +50,7 @@ lockdir binary of the same name:
 Without depending on [provider] at all, the workspace binary wins just the
 same:
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (package (name mypkg) (allow_empty) (dir .))
   > EOF
@@ -87,7 +87,7 @@ lookup.
 Declaring [provider] makes the (now disabled) workspace binary fall through
 to the lockdir binary:
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (package (name mypkg) (allow_empty) (dir .) (depends provider))
   > EOF
@@ -102,7 +102,7 @@ to the lockdir binary:
 Without declaring [provider], the lockdir package is narrowed out and the
 lookup fails to resolve:
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (package (name mypkg) (allow_empty) (dir .))
   > EOF

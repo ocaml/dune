@@ -40,7 +40,7 @@ different lockdir tool:
   > (rule (action (with-stdout-to b-path (bash "echo $PATH"))))
   > EOF
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (package (name pkg-a) (allow_empty) (dir a) (depends tool-a))
   > (package (name pkg-b) (allow_empty) (dir b) (depends tool-b))

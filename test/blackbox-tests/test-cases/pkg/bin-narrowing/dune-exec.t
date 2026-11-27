@@ -27,7 +27,7 @@ so that it can invoke companion executables from its installed environment.
   >  ))
   > EOF
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >>dune-project <<'EOF'
   > (package (name mypkg) (allow_empty) (dir .) (depends provider))
   > EOF

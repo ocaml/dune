@@ -25,7 +25,7 @@ A lockdir package [r] that installs [r-tool]:
   > (rule (with-stdout-to r-avail (echo %{bin-available:r-tool})))
   > EOF
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >> dune-project <<'EOF'
   > (package (name p) (allow_empty) (dir p) (depends q))
   > (package (name q) (allow_empty) (dir q) (depends r))
@@ -40,7 +40,7 @@ A lockdir package [r] that installs [r-tool]:
 
 Declaring [r] directly on [p] works too:
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >> dune-project <<'EOF'
   > (package (name p) (allow_empty) (dir p) (depends q r))
   > (package (name q) (allow_empty) (dir q) (depends r))
@@ -86,7 +86,7 @@ directly.
   > (rule (with-stdout-to r-avail (echo %{bin-available:r-tool})))
   > EOF
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >> dune-project <<'EOF'
   > (package (name p) (allow_empty) (dir p) (depends q))
   > (package (name r) (allow_empty) (dir r))

@@ -38,6 +38,9 @@ The SAT engine runs once across all requested platforms.
    (complete false)
    (used))
   
+  (expanded_solver_variable_bindings
+   (qualifiers with-test))
+  
   (solved_for_platforms
    ((arch x86_64)
     (os linux))

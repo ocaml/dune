@@ -19,7 +19,7 @@ A workspace executable exposed under a different name via [(env (binaries ...))]
   >  (action (with-stdout-to mybin-out (run %{bin:mybin}))))
   > EOF
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >> dune-project << 'EOF'
   > (package (name mypkg) (allow_empty) (dir .))
   > EOF
@@ -54,7 +54,7 @@ that installs another [mybin]:
   >  ))
   > EOF
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >>dune-project <<'EOF'
   > (package (name mypkg) (allow_empty) (dir .) (depends provider))
   > EOF

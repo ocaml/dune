@@ -7,6 +7,8 @@ Use no-op build actions and inspect cache misses for its target rule.
   $ cat > dune.lock/lock.dune <<EOF
   > (lang package 0.1)
   > (solved_for_platforms ((os linux)) ((os macos)))
+  > (expanded_solver_variable_bindings
+  >  (qualifiers with-test with-dev-setup))
   > EOF
   $ make_lockpkg foo <<EOF
   > (version 1)
@@ -26,6 +28,8 @@ cause a new target-rule miss.
   $ cat > dune.lock/lock.dune <<EOF
   > (lang package 0.1)
   > (solved_for_platforms ((os macos)) ((os linux)))
+  > (expanded_solver_variable_bindings
+  >  (qualifiers with-test with-dev-setup))
   > EOF
 
   $ build_pkg foo

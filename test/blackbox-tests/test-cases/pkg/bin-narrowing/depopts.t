@@ -33,7 +33,7 @@ package providing the binary is listed in either of the fields.
 Declared as a hard dependency, the binary is available and the guarded rule
 runs:
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >>dune-project <<'EOF'
   > (package (name mypkg) (allow_empty) (dir .) (depends optional-tool))
   > EOF
@@ -47,7 +47,7 @@ runs:
 Moving the same package to [(depopts ...)], with the lock directory unchanged,
 makes no difference:
 
-  $ make_dune_project 3.25
+  $ make_dune_project 3.26
   $ cat >>dune-project <<'EOF'
   > (package (name mypkg) (allow_empty) (dir .) (depopts optional-tool))
   > EOF

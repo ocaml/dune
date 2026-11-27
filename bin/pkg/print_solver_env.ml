@@ -1,17 +1,18 @@
 open Import
 open Pkg_common
 
-let print_solver_env_for_lock_dir workspace ~solver_env_from_current_system lock_dir_path =
-  let solver_env_from_context =
-    Option.bind (Workspace.find_lock_dir workspace lock_dir_path) ~f:(fun lock_dir ->
-      lock_dir.solver_env)
-  in
-  let solver_env =
-    solver_env
+let print_solver_env_for_lock_dir
+      workspace
+      ~dune_version
       ~solver_env_from_current_system
-      ~solver_env_from_context
-      ~unset_solver_vars_from_context:
-        (Pkg_common.unset_solver_vars_of_workspace workspace ~lock_dir_path)
+      lock_dir_path
+  =
+  let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
+  let solver_env =
+    Workspace.Lock_dir.combined_solver_env
+      lock_dir
+      ~dune_version
+      ~current_system:solver_env_from_current_system
   in
   Console.print
     [ Pp.textf
@@ -24,6 +25,10 @@ let print_solver_env_for_lock_dir workspace ~solver_env_from_current_system lock
 let print_solver_env ~lock_dirs_arg =
   let open Fiber.O in
   let+ workspace = Memo.run (Workspace.workspace ())
+  and+ dune_version =
+    Memo.run (Source_tree.root ())
+    >>| Source_tree.Dir.project
+    >>| Dune_project.dune_version
   and+ solver_env_from_current_system =
     Dune_pkg.Sys_poll.make ~path:(Env_path.path Stdune.Env.initial)
     |> Dune_pkg.Sys_poll.solver_env_from_current_system
@@ -32,7 +37,11 @@ let print_solver_env ~lock_dirs_arg =
   let lock_dirs = Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace in
   List.iter lock_dirs ~f:(fun lock_dir ->
     let lock_dir = Path.source lock_dir in
-    print_solver_env_for_lock_dir workspace ~solver_env_from_current_system lock_dir)
+    print_solver_env_for_lock_dir
+      workspace
+      ~dune_version
+      ~solver_env_from_current_system
+      lock_dir)
 ;;
 
 let term =

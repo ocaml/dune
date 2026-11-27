@@ -84,11 +84,11 @@ let summary_message
       OpamPackage.Map.find opam_package pkgs_by_opam_package
     in
     let opam_package_sets_by_platform =
-      Solver_env.Map.map pkgs_by_platform ~f:(fun pkgs ->
+      Solver_env.Variables.Map.map pkgs_by_platform ~f:(fun pkgs ->
         List.map pkgs ~f:opam_package_of_pkg |> OpamPackage.Set.of_list)
     in
     let common_packages =
-      Solver_env.Map.values opam_package_sets_by_platform
+      Solver_env.Variables.Map.values opam_package_sets_by_platform
       |> List.reduce ~f:OpamPackage.Set.inter
       |> Option.value ~default:OpamPackage.Set.empty
     in
@@ -102,21 +102,21 @@ let summary_message
         Pkg_common.pp_packages pkgs)
     in
     let uncommon_packages_by_platform =
-      Solver_env.Map.map opam_package_sets_by_platform ~f:(fun package_set ->
+      Solver_env.Variables.Map.map opam_package_sets_by_platform ~f:(fun package_set ->
         OpamPackage.Set.diff package_set common_packages)
-      |> Solver_env.Map.filteri ~f:(fun _ package_set ->
+      |> Solver_env.Variables.Map.filteri ~f:(fun _ package_set ->
         not (OpamPackage.Set.is_empty package_set))
     in
     let maybe_uncommon_packages =
-      if Solver_env.Map.is_empty uncommon_packages_by_platform
+      if Solver_env.Variables.Map.is_empty uncommon_packages_by_platform
       then []
       else
         Pp.nop
         :: Pp.text "Additionally, some packages will only be built on specific platforms."
-        :: (Solver_env.Map.to_list uncommon_packages_by_platform
+        :: (Solver_env.Variables.Map.to_list uncommon_packages_by_platform
             |> List.concat_map ~f:(fun (platform, packages) ->
               [ Pp.nop
-              ; Pp.concat [ Solver_env.pp_oneline platform; Pp.text ":" ]
+              ; Pp.concat [ Solver_env.Variables.pp_oneline platform; Pp.text ":" ]
               ; pp_package_set packages
               ]))
     in
@@ -151,7 +151,7 @@ let pp_solve_error (message, platforms) =
     ; Pp.box
       @@ Pp.text
            "The dependency solver failed to find a solution for the requested platforms:"
-    ; Pp.enumerate platforms ~f:Solver_env.pp_oneline
+    ; Pp.enumerate platforms ~f:Solver_env.Variables.pp_oneline
     ; Pp.box @@ Pp.text "...with this error:"
     ; message
     ]
@@ -173,7 +173,7 @@ let solve_lock_dir
   let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
   let project_pins, solve_for_platforms =
     match lock_dir with
-    | None -> project_pins, Solver_env.popular_platform_envs
+    | None -> project_pins, Solver_env.Variables.popular_platform_envs
     | Some lock_dir ->
       let workspace =
         Pin.DB.Workspace.of_stanza workspace.pins
@@ -181,23 +181,27 @@ let solve_lock_dir
       in
       Pin.DB.combine_exn workspace project_pins, lock_dir.solve_for_platforms
   in
-  let solver_env_from_context =
-    Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env)
+  let* dune_version =
+    Memo.run (Source_tree.root ())
+    >>| Source_tree.Dir.project
+    >>| Dune_project.dune_version
   in
   let solver_env =
-    solver_env
-      ~solver_env_from_context
-      ~solver_env_from_current_system
-      ~unset_solver_vars_from_context:
-        (unset_solver_vars_of_workspace workspace ~lock_dir_path)
+    Workspace.Lock_dir.combined_solver_env
+      lock_dir
+      ~dune_version
+      ~current_system:solver_env_from_current_system
   in
   let solve_for_platforms =
+    let solver_env_from_context =
+      Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env)
+    in
     match portable_lock_dir with
     | true ->
       (match solver_env_from_context with
        | Some solver_env_from_context ->
          List.map solve_for_platforms ~f:(fun platform_env ->
-           Solver_env.extend solver_env_from_context platform_env)
+           Solver_env.Variables.extend solver_env_from_context platform_env)
        | None -> solve_for_platforms)
     | false -> []
   in
@@ -242,7 +246,9 @@ let solve_lock_dir
   match result with
   | Error message ->
     let platforms =
-      List.map platform_overlays ~f:Solver_env.remove_all_except_platform_specific
+      List.map
+        platform_overlays
+        ~f:Solver_env.Variables.remove_all_except_platform_specific
     in
     Fiber.return (Error (lock_dir_path, (message, platforms)))
   | Ok solver_result ->

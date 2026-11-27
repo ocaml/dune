@@ -1093,6 +1093,19 @@ let files_of ~dir =
     Filename_set.create ~dir filenames
 ;;
 
+let directory_target_contents dir =
+  let path = Path.build dir in
+  Load_rules.is_under_directory_target path
+  >>= function
+  | false -> Memo.return None
+  | true ->
+    let+ targets = build_directory_targets path in
+    (match Targets.Produced.find_any targets dir with
+     | Some (Right contents) -> Some contents
+     | Some (Left _) | None ->
+       Code_error.raise "Expected a directory target" [ "path", Path.to_dyn path ])
+;;
+
 let caused_by_cancellation (exn : Exn_with_backtrace.t) =
   match exn.exn with
   | Scheduler.Run.Build_cancelled -> true

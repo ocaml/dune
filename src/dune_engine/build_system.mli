@@ -31,6 +31,12 @@ val eval_pred : File_selector.t -> Filename_set.t Memo.t
 (** Same as [eval_pred] with [Predicate.true_] as predicate. *)
 val files_of : dir:Path.t -> Filename_set.t Memo.t
 
+(** Build and return the contents of a directory target or one of its descendants.
+    Returns [None] for paths outside directory targets. *)
+val directory_target_contents
+  :  Path.Build.t
+  -> Digest.t Targets.Produced.dir_contents option Memo.t
+
 (** Execute an action and capture its stdout. The execution is cached. *)
 val execute_action_stdout : Rule.Anonymous_action.t -> string Memo.t
 

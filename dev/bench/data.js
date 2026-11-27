@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795793421762,
+  "lastUpdate": 1795793692124,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -500567,6 +500567,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4166916709933333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "eb5415e7fc97e3b34e9e84c2d409dfb908a3a293",
+          "message": "refactor(engine): extract captured output truncation (#17293)\n\nExtract the existing output-truncation logic so it can work with either\na file channel or an in-memory string. Keep the small-file fast path and\ntruncation format unchanged.\n\nThis lets #17260 reuse the same truncation logic for built-in `echo`\nwithout writing its output to a temporary file.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T23:18:44+08:00",
+          "tree_id": "19a18014e0c54c3be4aa1cf0dcba8a0a26e35be7",
+          "url": "https://github.com/ocaml/dune/commit/eb5415e7fc97e3b34e9e84c2d409dfb908a3a293"
+        },
+        "date": 1795793690393,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 50.97813018468667,
             "unit": "seconds"
           }
         ]

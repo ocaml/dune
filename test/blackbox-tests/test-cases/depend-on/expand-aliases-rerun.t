@@ -28,3 +28,26 @@ Now we set (expand_aliases_in_sandbox), and re-run the action.
 
 The above output should include the files that we depend on via the alias
 expansion.
+
+Without the option, alias dependencies should be built but not staged. An
+empty directory can still affect actions that inspect the sandbox layout.
+
+  $ make_dune_project 3.26
+  $ mkdir -p fixtures/empty
+  $ echo data > fixtures/input
+  $ cat > dune <<'EOF'
+  > (alias
+  >  (name prepare)
+  >  (deps (source_tree fixtures)))
+  > (rule
+  >  (alias check)
+  >  (deps (alias prepare))
+  >  (action (bash "find . | sort")))
+  > EOF
+
+CR: Dune omits the files but stages their directories, including the empty one.
+
+  $ dune build --sandbox=hardlink @check
+  .
+  ./fixtures
+  ./fixtures/empty

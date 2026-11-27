@@ -101,6 +101,11 @@ val default_executable_name : t -> string
 val systhread_supported : t -> bool
 val host : t -> string
 val target : t -> string
+
+(** [None] when the compiler has no Runtime IDs (OCaml < 5.5). *)
+val bytecode_runtime_id : t -> string option
+
+val native_runtime_id : t -> string option
 val profiling : t -> bool
 val flambda : t -> bool
 val spacetime : t -> bool

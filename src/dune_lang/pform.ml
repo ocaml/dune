@@ -139,6 +139,7 @@ module Var = struct
     | Oxcaml_supported
     | Dune_warnings
     | Git_sha
+    | Stub_dll_suffix
 
   let compare : t -> t -> Ordering.t = Poly.compare
 
@@ -195,7 +196,8 @@ module Var = struct
        | Pkg pkg -> Pkg.to_dyn pkg
        | Oxcaml_supported -> variant "Oxcaml_supported" []
        | Dune_warnings -> variant "Dune_warnings" []
-       | Git_sha -> variant "Git_sha" [])
+       | Git_sha -> variant "Git_sha" []
+       | Stub_dll_suffix -> variant "Stub_dll_suffix" [])
   ;;
 
   let of_opam_global_variable_name name =
@@ -550,6 +552,7 @@ let encode_to_latest_dune_lang_version t =
        | Oxcaml_supported -> Some "oxcaml_supported"
        | Dune_warnings -> Some "dune-warnings"
        | Git_sha -> Some "git-sha"
+       | Stub_dll_suffix -> Some "stub_dll_suffix"
      with
      | None -> Pform_was_deleted
      | Some name -> Success { name; payload = None })
@@ -773,6 +776,7 @@ module Env = struct
           , since ~what:Oxcaml.syntax ~version:(0, 1) Var.Oxcaml_supported )
         ; "dune-warnings", since ~version:(3, 21) Var.Dune_warnings
         ; "git-sha", since ~version:(3, 24) Var.Git_sha
+        ; "stub_dll_suffix", since ~version:(3, 26) Var.Stub_dll_suffix
         ]
       in
       String.Map.of_list_exn

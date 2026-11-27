@@ -14,6 +14,7 @@ type t =
   ; ccomp_type : Ocaml_config.Ccomp_type.t
   ; ocaml_version_string : string
   ; ocaml_version : Ocaml.Version.t
+  ; stub_dll_suffix : string option
   }
 
 let allowed_in_enabled_if =
@@ -72,5 +73,13 @@ let create ocaml_config ~ocamlopt ~stdlib_dir =
   ; ccomp_type = Ocaml_config.ccomp_type ocaml_config
   ; ocaml_version_string = Ocaml_config.version_string ocaml_config
   ; ocaml_version = Ocaml.Version.of_ocaml_config ocaml_config
+  ; stub_dll_suffix =
+      Ocaml_config.bytecode_runtime_id ocaml_config
+      |> Option.map ~f:(fun runtime_id ->
+        sprintf "-%s-%s" (Ocaml_config.target ocaml_config) runtime_id)
   }
+;;
+
+let stub_dll_suffix t ~project =
+  if Dune_project.suffixed_stub_libraries project then t.stub_dll_suffix else None
 ;;

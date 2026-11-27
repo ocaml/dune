@@ -119,6 +119,8 @@ type t =
   ; systhread_supported : bool
   ; host : string
   ; target : string
+  ; bytecode_runtime_id : string option
+  ; native_runtime_id : string option
   ; profiling : bool
   ; flambda : bool
   ; spacetime : bool
@@ -175,6 +177,8 @@ let default_executable_name t = t.default_executable_name
 let systhread_supported t = t.systhread_supported
 let host t = t.host
 let target t = t.target
+let bytecode_runtime_id t = t.bytecode_runtime_id
+let native_runtime_id t = t.native_runtime_id
 let profiling t = t.profiling
 let flambda t = t.flambda
 let spacetime t = t.spacetime
@@ -230,6 +234,9 @@ let fields =
   ; ("systhread_supported", fun t -> Bool t.systhread_supported)
   ; ("host", fun t -> String t.host)
   ; ("target", fun t -> String t.target)
+  ; ( "bytecode_runtime_id"
+    , fun t -> String (Option.value t.bytecode_runtime_id ~default:"") )
+  ; ("native_runtime_id", fun t -> String (Option.value t.native_runtime_id ~default:""))
   ; ("profiling", fun t -> Bool t.profiling)
   ; ("flambda", fun t -> Bool t.flambda)
   ; ("spacetime", fun t -> Bool t.spacetime)
@@ -453,6 +460,13 @@ let make vars =
     let systhread_supported = get_bool vars "systhread_supported" in
     let host = get vars "host" in
     let target = get vars "target" in
+    let get_non_empty var =
+      match get_opt vars var with
+      | None | Some "" -> None
+      | Some _ as v -> v
+    in
+    let bytecode_runtime_id = get_non_empty "bytecode_runtime_id" in
+    let native_runtime_id = get_non_empty "native_runtime_id" in
     let profiling = get_bool vars "profiling" in
     let flambda = get_bool vars "flambda" in
     let spacetime = get_bool vars "spacetime" in
@@ -521,6 +535,8 @@ let make vars =
     ; systhread_supported
     ; host
     ; target
+    ; bytecode_runtime_id
+    ; native_runtime_id
     ; profiling
     ; flambda
     ; spacetime

@@ -48,6 +48,7 @@ let findlib =
     ; ccomp_type = Cc
     ; ocaml_version_string = "4.02.3"
     ; ocaml_version = Ocaml.Version.make (4, 14, 1)
+    ; stub_dll_suffix = None
     }
   in
   Memo.lazy_ ~name:"findlib-for-tests" (fun () ->

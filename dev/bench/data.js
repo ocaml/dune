@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795798141484,
+  "lastUpdate": 1795798416724,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -500683,6 +500683,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.48578249656666667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d35bf2d34d533804f9ecff3fdd4432cba24f7ab2",
+          "message": "test(engine): cover job-slot caching and probe re-execution (#17295)\n\nMove the test updates from #17259 into a preliminary test-only commit\nand expand coverage for `job_slots` cache behavior on both target and\nalias rules:\n\n- Verify that changing `-j` or changing a `job_slots` command without\ninferred dependencies re-runs neither the rule nor the probe.\n- Record that changing `job_slots` to a command with inferred\ndependencies currently invalidates cached target and alias rules and\nre-runs both the probe and the rule.\n- Cover cache-miss rebuilds picking up updated `-j` values and updated\n`job_slots` commands.\n- Switch the invalid-value checks from `(cat slots)` to `(echo ...)`.\n\nThis PR adds tests only. The fix is in #17259.",
+          "timestamp": "2026-11-28T00:34:29+08:00",
+          "tree_id": "f2a829fa7ad3eae13acd33ad35b41ca9664e7147",
+          "url": "https://github.com/ocaml/dune/commit/d35bf2d34d533804f9ecff3fdd4432cba24f7ab2"
+        },
+        "date": 1795798414883,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 51.919991270666664,
             "unit": "seconds"
           }
         ]

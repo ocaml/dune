@@ -204,6 +204,9 @@ children adopted by the worker at the end of a build.
   $ cat action-runner-build.out
   Success
 
+The build RPC can return before the action runner finishes cleaning up.
+
+  $ wait_for_child_process_cleanup_finished "$action_runner_child_pid"
   $ if kill -0 "$action_runner_child_pid" 2>/dev/null; then
   >   kill "$action_runner_child_pid" 2>/dev/null || true
   >   wait_for_pid_to_exit_with_timeout "$action_runner_child_pid" 200 || true

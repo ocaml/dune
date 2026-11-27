@@ -551,7 +551,9 @@ module Component = struct
       let package =
         Package.set_version_and_info package ~version:(Package.version package) ~info
       in
-      Dune_rules.Opam_create.generate project package ~template:None
+      (* Without the unreleased extension, which [dune init] does not enable,
+         the documentation of a package is always built. *)
+      Dune_rules.Opam_create.generate project package ~doc:true ~template:None
     ;;
   end
 

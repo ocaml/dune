@@ -62,12 +62,13 @@ let default_build_command =
   [ "dune" "install" "-p" name "--create-install-files" name ]
 ]
 |}))
-  and from_3 ~with_subst ~with_sites ~include_install_alias ~runtest =
+  and from_3 ~with_subst ~with_sites ~include_install_alias ~runtest ~doc =
     let subst = if with_subst then {|  [ "dune" "subst" ] {dev} |} else "" in
     let promote_install_files =
       if with_sites then {|  "--promote-install-files=false" |} else ""
     in
     let install_alias = if include_install_alias then {|      "@install"|} else "" in
+    let doc = if doc then {|      "@doc" {with-doc}|} else "" in
     let install =
       if with_sites
       then {| [ "dune" "install" "-p" name "--create-install-files" name ] |}
@@ -84,7 +85,7 @@ let default_build_command =
   [ "dune" "build" "-p" name "-j" jobs %s
 %s
       "%s" {with-test}
-      "@doc" {with-doc}
+%s
   ]
   %s
 ]
@@ -93,9 +94,10 @@ let default_build_command =
                promote_install_files
                install_alias
                runtest
+               doc
                install)))
   in
-  fun project package ->
+  fun project package ~doc ->
     let version = Dune_project.dune_version project in
     let with_subst = Toggle.enabled (snd (Dune_project.subst_config project)) in
     let with_sites = Dune_project.(is_extension_set project dune_site_extension) in
@@ -109,17 +111,29 @@ let default_build_command =
        else if version < (3, 0)
        then from_2_9
        else if version < (3, 23)
-       then from_3 ~with_subst ~with_sites ~include_install_alias:true ~runtest:"@runtest"
+       then
+         from_3
+           ~with_subst
+           ~with_sites
+           ~include_install_alias:true
+           ~runtest:"@runtest"
+           ~doc
        else (
          match Package.exclusive_dir package with
          | None ->
-           from_3 ~with_subst ~with_sites ~include_install_alias:true ~runtest:"@runtest"
+           from_3
+             ~with_subst
+             ~with_sites
+             ~include_install_alias:true
+             ~runtest:"@runtest"
+             ~doc
          | Some (_loc, dir) ->
            from_3
              ~with_subst
              ~with_sites
              ~include_install_alias:false
-             ~runtest:("@runtest/" ^ Path.Source.to_string dir)))
+             ~runtest:("@runtest/" ^ Path.Source.to_string dir)
+             ~doc))
 ;;
 
 let var_of_sw sw : Package_constraint.Value.t =
@@ -303,7 +317,7 @@ let maintenance_intent dune_version info =
     | x -> x)
 ;;
 
-let opam_fields project (package : Package.t) =
+let opam_fields project (package : Package.t) ~doc =
   let dune_version = Dune_project.dune_version project in
   let package_name = Package.name package in
   let package =
@@ -313,7 +327,7 @@ let opam_fields project (package : Package.t) =
       Package.map_depends package ~f:(fun depends -> insert_dune_dep depends dune_version)
   in
   let package =
-    if dune_version < (2, 7) || Package.Name.equal package_name odoc_name
+    if dune_version < (2, 7) || Package.Name.equal package_name odoc_name || not doc
     then package
     else Package.map_depends package ~f:insert_odoc_dep
   in
@@ -353,7 +367,7 @@ let opam_fields project (package : Package.t) =
       | Some (_ :: _ as v) -> Some (k, string_list v))
   in
   let fields =
-    [ "opam-version", string "2.0"; "build", default_build_command project package ]
+    [ "opam-version", string "2.0"; "build", default_build_command project package ~doc ]
   in
   let fields = List.concat [ fields; list_fields; optional_fields; package_fields ] in
   if dune_version < (1, 11) then fields else Opam_file.Create.normalise_field_order fields
@@ -379,7 +393,7 @@ let opam_template ~opam_path =
     ~else_:(Action_builder.return None)
 ;;
 
-let generate project pkg ~template =
+let generate project pkg ~doc ~template =
   let opam_fname = Package.opam_file pkg in
   let filter_fields =
     match template with
@@ -393,7 +407,7 @@ let generate project pkg ~template =
       List.filter ~f:(fun (v, _) -> not (String.Set.mem vars_in_template v))
   in
   let generated_fields =
-    opam_fields project pkg
+    opam_fields project pkg ~doc
     |> filter_fields
     |> Opam_file.Create.of_bindings ~file:(Path.source opam_fname)
   in
@@ -453,10 +467,11 @@ let add_opam_file_rule sctx ~project ~pkg =
   let build_dir = Super_context.context sctx |> Context.build_dir in
   let opam_path = Path.Build.append_source build_dir (Package.opam_file pkg) in
   let generated_opam_path = build_path ~build_dir pkg in
+  let* doc = Packages.odoc_enabled pkg in
   let opam_rule =
     let open Action_builder.O in
     (let+ template = opam_template ~opam_path:(Path.build opam_path) in
-     generate project pkg ~template)
+     generate project pkg ~doc ~template)
     |> Action_builder.write_file_dyn generated_opam_path
   in
   let dir = Path.Build.append_source build_dir (Dune_project.root project) in

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795766168213,
+  "lastUpdate": 1795790932180,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -698435,6 +698435,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.7390132292,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "174a99210a2dce6891170f21c1bcceb117c2632b",
+          "message": "refactor(rules): share the virtual dependency lookup loop (#17292)\n\nUse a single loop for resolving implementation dependencies. Prepare the\nvirtual-library lookup only when a dependency first falls back to it,\nand reuse it for subsequent fallbacks.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T22:39:26+08:00",
+          "tree_id": "cb79cd0f9b2d5d8340ce8a14e2420b360a57cde8",
+          "url": "https://github.com/ocaml/dune/commit/174a99210a2dce6891170f21c1bcceb117c2632b"
+        },
+        "date": 1795790680142,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.7367892282999997,
             "unit": "seconds"
           }
         ]

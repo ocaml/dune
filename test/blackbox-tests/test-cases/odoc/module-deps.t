@@ -1,6 +1,6 @@
 Building a single .odoc file should also build the .odoc dependencies added
-by preprocessing. This test also records the current failure to document a
-library that depends on a virtual library implementation.
+by preprocessing. This test also checks that a library that depends on a
+virtual library implementation can be documented.
 
   $ make_dune_project_with_package 3.0 my_pkg
 
@@ -31,11 +31,12 @@ A preprocessed library, where A refers to B only after preprocessing:
 
 Building the odoc file of A alone also builds the one of B:
 
-  $ dune build _build/default/pp/.pp.objs/byte/pp__A.odoc
-  $ find _build/default/pp -name '*.odoc' | LC_ALL=C sort
-  _build/default/pp/.pp.objs/byte/pp.odoc
-  _build/default/pp/.pp.objs/byte/pp__A.odoc
-  _build/default/pp/.pp.objs/byte/pp__B.odoc
+  $ dune build _build/default/_doc/_odoc/my_pkg/my_pkg.pp/pp__A.odoc
+  $ find _build/default/_doc/_odoc/my_pkg/my_pkg.pp -name '*.odoc' \
+  >   | LC_ALL=C sort
+  _build/default/_doc/_odoc/my_pkg/my_pkg.pp/pp.odoc
+  _build/default/_doc/_odoc/my_pkg/my_pkg.pp/pp__A.odoc
+  _build/default/_doc/_odoc/my_pkg/my_pkg.pp/pp__B.odoc
 
 A virtual library and an implementation whose own (private) module refers to a
 module of the virtual library:
@@ -79,9 +80,8 @@ The virtual library itself can be documented:
 
   $ dune build @doc
 
-When another library depends on the implementation, Dune looks for the
-inherited module U's odoc file in the implementation's object directory.
-This currently fails:
+When another library depends on the implementation, the inherited module U
+is documented with the virtual library:
 
   $ mkdir user
   $ cat > user/dune <<EOF
@@ -98,6 +98,3 @@ This currently fails:
   > EOF
 
   $ dune build @doc
-  File "impl/.impl.objs/byte/_unknown_", line 1, characters 0-0:
-  Error: No rule found for impl/.impl.objs/byte/vlib__U.odoc
-  [1]

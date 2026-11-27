@@ -1994,6 +1994,7 @@ module Prepare_source = struct
       let encode dir path _ = path dir
 
       let action source_dir ~ectx:_ ~eenv:_ =
+        Path.mkdir_p source_dir;
         Fiber.Temp.with_temp_dir
           ~parent_dir:(Path.parent_exn source_dir)
           ~prefix:".dune"

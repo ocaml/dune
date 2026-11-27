@@ -80,9 +80,19 @@ module L = struct
   let to_strings t ~dir = List.map t ~f:(to_string ~dir)
   let compare_vals ~dir = List.compare ~compare:(compare_vals ~dir)
 
-  let compare_versions ~dir =
-    List.compare ~compare:(fun x y ->
-      OpamVersionCompare.compare (to_string ~dir x) (to_string ~dir y) |> Ordering.of_int)
+  let compare_versions ~dir (x_loc, x) (y_loc, y) =
+    let versions ~loc =
+      List.map ~f:(fun v ->
+        let s = to_string ~dir v in
+        match OpamPackage.Version.of_string s with
+        | (_ : OpamPackage.Version.t) -> s
+        | exception Failure _ ->
+          User_error.raise ~loc [ Pp.textf "%S is not a valid version." s ])
+    in
+    let x = versions ~loc:x_loc x in
+    let y = versions ~loc:y_loc y in
+    List.compare x y ~compare:(fun x y ->
+      OpamVersionCompare.compare x y |> Ordering.of_int)
   ;;
 
   let deps_only =

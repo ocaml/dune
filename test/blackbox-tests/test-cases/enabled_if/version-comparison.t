@@ -48,6 +48,28 @@ Variables are expanded before comparing versions.
   $ check 'ver=' '%{env:DUNE_TEST_VERSION=0}' 5.9
   enabled
 
+Both sides must be valid opam versions after expansion.
+
+  $ check 'ver<' '"1.2 beta"' 1.3
+  File "dune", line 4, characters 19-29:
+  4 |  (enabled_if (ver< "1.2 beta" 1.3))
+                         ^^^^^^^^^^
+  Error: "1.2 beta" is not a valid version.
+  [1]
+  $ check 'ver<' 1.0 '""'
+  File "dune", line 4, characters 23-25:
+  4 |  (enabled_if (ver< 1.0 ""))
+                             ^^
+  Error: "" is not a valid version.
+  [1]
+  $ export DUNE_TEST_BAD_VERSION='1.2!'
+  $ check 'ver=' '%{env:DUNE_TEST_BAD_VERSION=0}' 1.2
+  File "dune", line 4, characters 19-49:
+  4 |  (enabled_if (ver= %{env:DUNE_TEST_BAD_VERSION=0} 1.2))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: "1.2!" is not a valid version.
+  [1]
+
 Ordinary comparisons retain their existing ordering.
 
   $ check '>' 5.10 5.9

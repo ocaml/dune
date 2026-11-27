@@ -50,3 +50,19 @@ Version comparisons also work in lockfile actions and string expressions.
   equal
   true
   true
+
+Invalid versions are an error in lockfile actions too.
+
+  $ make_lockpkg test <<'EOF'
+  > (version 5.10)
+  > (install
+  >  (when (ver> %{pkg-self:version} "5.9 beta")
+  >   (run echo invalid)))
+  > EOF
+
+  $ build_pkg test
+  File "dune.lock/test.pkg", line 3, characters 33-43:
+  3 |  (when (ver> %{pkg-self:version} "5.9 beta")
+                                       ^^^^^^^^^^
+  Error: "5.9 beta" is not a valid version.
+  [1]

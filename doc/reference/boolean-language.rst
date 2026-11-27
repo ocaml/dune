@@ -43,6 +43,9 @@ This condition also holds for OCaml 5.10.0. Numeric components are compared
 numerically, leading zeros do not affect their value, and ``~`` introduces a
 prerelease that sorts before the corresponding release. For example,
 ``(ver= 5.09 5.9)`` and ``(ver< 5.9~beta1 5.9)`` both evaluate to ``true``.
+Both sides must expand to valid opam versions, which are non-empty and contain
+only letters, digits, ``-``, ``_``, ``+``, ``.`` and ``~``. Anything else is an
+error.
 
 The ordinary comparison operators retain their existing behavior. If templates
 expand to multiple values, version comparisons compare the lists element by

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795750576601,
+  "lastUpdate": 1795757621001,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -698000,6 +698000,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.159421354273333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dc9191de16cda0969b0e620c1e758e0659ee1141",
+          "message": "nix: update flake inputs (#17276)\n\nRun a full `nix flake update` to pick up the upstream Lwt fix in\nnix-ocaml/nix-overlays#2839 and refresh the remaining inputs. Replaces\n#17272.\n\n01a21911-d538-75d0-a141-b6d3a6ba2d49\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-26T21:18:23-08:00",
+          "tree_id": "03fcb2d127a85fef1d79c3efb914a08895ca0d15",
+          "url": "https://github.com/ocaml/dune/commit/dc9191de16cda0969b0e620c1e758e0659ee1141"
+        },
+        "date": 1795757105577,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.36192495876,
             "unit": "seconds"
           }
         ]

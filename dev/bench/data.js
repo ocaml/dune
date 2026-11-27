@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795765466818,
+  "lastUpdate": 1795765679171,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -698261,6 +698261,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.37267580708,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a86c76aba903edf3f281171c1bbca9bbad4871f8",
+          "message": "refactor(pkg): share local dependency resolution setup (#17288)\n\nRequired and optional local dependency resolution now share the resolver\nsetup and error handling. The choice of resolver and the resulting\ndependency sets are unchanged.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T15:33:50+08:00",
+          "tree_id": "4b153503ec5fbc7fcf3463c8741d4f2b8fa308ab",
+          "url": "https://github.com/ocaml/dune/commit/a86c76aba903edf3f281171c1bbca9bbad4871f8"
+        },
+        "date": 1795765248284,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7290523286333332,
             "unit": "seconds"
           }
         ]

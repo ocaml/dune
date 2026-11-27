@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795757915520,
+  "lastUpdate": 1795759020254,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -698087,6 +698087,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.36192495876,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "043e9b5956e9dab67a1f08087e7d7bae3b1e1db2",
+          "message": "refactor(lang): decode preprocessing fields by compilation mode (#17275)\n\nReplace the preprocessing decoder's `melange:bool` with\n`Compilation_mode.t` and expose `preprocess_fields ~for_`. Follow-up to\n#17257.\n\n01a2190f-4a6b-7c80-bfb2-b3ae9f8e8207\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-26T21:42:54-08:00",
+          "tree_id": "4042993f9846f3ef1d443295497fc07249ff7ea7",
+          "url": "https://github.com/ocaml/dune/commit/043e9b5956e9dab67a1f08087e7d7bae3b1e1db2"
+        },
+        "date": 1795758588319,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7448990065400003,
             "unit": "seconds"
           }
         ]

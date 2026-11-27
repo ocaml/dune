@@ -201,7 +201,9 @@ let gen_rules_for_source (source : Source.t) =
         (let open Action_builder.O in
          let+ url = url in
          action ~url:(loc_url, url) ~checksum ~target ~kind
-         |> Action.Full.make ~can_go_in_shared_cache:true)
+         |> Action.Full.make
+              ~can_go_in_shared_cache:true
+              ~sandbox:Sandbox_config.no_special_requirements)
   in
   let dir_rule =
     let target = make_target ~kind:Dir in
@@ -295,7 +297,10 @@ let fetch ~target kind (source : Source.t) =
            .fetch context. This would just add pointless additional overhead. *)
         action ~url:source.url ~checksum:source.checksum ~target ~kind
     in
-    Action.Full.make ~can_go_in_shared_cache:true action
+    Action.Full.make
+      ~can_go_in_shared_cache:true
+      ~sandbox:Sandbox_config.no_special_requirements
+      action
     |> Action_builder.With_targets.return
     |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
 ;;

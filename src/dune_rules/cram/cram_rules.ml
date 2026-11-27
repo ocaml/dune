@@ -118,7 +118,7 @@ let test_rule
       (let open Action_builder.O in
        let+ () = Action_builder.path (Path.build script) in
        Cram_exec.make_script ~src:(Path.build script) ~script:script_sh ~conflict_markers
-       |> Action.Full.make)
+       |> Action.Full.make ~sandbox:Sandbox_config.no_special_requirements)
       |> Action_builder.with_file_targets ~file_targets:[ script_sh ]
       |> Super_context.add_rule sctx ~dir ~loc
     in
@@ -172,7 +172,7 @@ let test_rule
           (Path.build script)
           (Path.Build.extend_basename script ~suffix:Filename.corrected)
       ]
-    |> Action.Full.make
+    |> Action.Full.make ~sandbox:Sandbox_config.no_special_requirements
 ;;
 
 type prepared_stanza =

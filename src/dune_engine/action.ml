@@ -385,7 +385,7 @@ module Full = struct
       ; locks = Path.Set.empty
       ; can_go_in_shared_cache = true
       ; can_use_sandbox_policy = true
-      ; sandbox = Sandbox_config.default
+      ; sandbox = Sandbox_config.no_special_requirements
       ; corrections = None
       ; job_slots = None
       }
@@ -490,7 +490,7 @@ module Full = struct
         ?(env = Env.empty)
         ?(locks = [])
         ?(can_go_in_shared_cache = !Clflags.can_go_in_shared_cache_default)
-        ?(sandbox = Sandbox_config.default)
+        ?(sandbox = Sandbox_config.needs_sandboxing)
         ?corrections
         action
     =
@@ -505,12 +505,9 @@ module Full = struct
       List.fold_left
         children
         ~init:
-          (Props.make
-             ~env:Env.empty
-             ~locks:[]
-             ~can_go_in_shared_cache:!Clflags.can_go_in_shared_cache_default
-             ~sandbox:Sandbox_config.default
-             ~corrections:None)
+          { Props.empty with
+            can_go_in_shared_cache = !Clflags.can_go_in_shared_cache_default
+          }
         ~f:(fun props child -> Props.combine props child.props)
     in
     { action; props }

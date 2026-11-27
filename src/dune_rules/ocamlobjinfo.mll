@@ -66,7 +66,7 @@ let rules (ocaml : Ocaml_toolchain.t) ~dir ~sandbox ~units =
       []
   in
   let anon =
-    Command.run' ?sandbox
+    Command.run' ~sandbox
       ~dir:(Path.build dir) ocaml.ocamlobjinfo
       (List.concat
          [ no_approx
@@ -82,7 +82,7 @@ let rules (ocaml : Ocaml_toolchain.t) ~dir ~sandbox ~units =
 
 let archive_rules (ocaml : Ocaml_toolchain.t) ~dir ~sandbox ~archive =
   let anon =
-    Command.run' ?sandbox
+    Command.run' ~sandbox
       ~dir:(Path.build dir) ocaml.ocamlobjinfo
       [ Dep archive ]
     |> Rule.Anonymous_action.make ~dir

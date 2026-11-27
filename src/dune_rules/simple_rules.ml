@@ -26,7 +26,10 @@ module Alias_rules = struct
   ;;
 
   let add_empty sctx ~loc ~aliases =
-    let action = Action_builder.return (Action.Full.make Action.empty) in
+    let action =
+      Action_builder.return
+        (Action.Full.make ~sandbox:Sandbox_config.no_special_requirements Action.empty)
+    in
     add sctx ~loc ~aliases action
   ;;
 end

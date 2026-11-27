@@ -484,6 +484,10 @@ let rec expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
   let open Action_expander.O in
   let module O (* [O] for "outcome" *) = Action in
   let expand = expand_action ~format_generated_diffs in
+  (* The enclosing rule supplies the sandbox constraints for user actions. *)
+  let make_action action =
+    Action.Full.make ~sandbox:Sandbox_config.no_special_requirements action
+  in
   let expand_run ~force_host prog args =
     let+ args = A.all (List.map args ~f:E.strings)
     and+ prog, more_args = E.prog_and_args ~force_host prog in
@@ -504,7 +508,7 @@ let rec expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
     | prog :: args ->
       let+ prog, args = expand_run ~force_host prog args in
       O.Run { prog; args = Appendable_list.of_list args; can_run_in_action_runner = true }
-      |> Action.Full.make
+      |> make_action
     | [] ->
       User_error.raise
         [ Pp.textf "\"%s\" action must have at least one argument" action_name ]
@@ -517,7 +521,7 @@ let rec expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
     Action.Full.map t ~f:(fun t -> O.With_accepted_exit_codes (pred, t))
   | Dynamic_run (prog, args) ->
     let+ prog, args = expand_run ~force_host:false prog args in
-    Action_plugin.action ~prog ~args |> Action.Full.make
+    Action_plugin.action ~prog ~args |> make_action
   | Chdir (fn, t) ->
     E.At_rule_eval_stage.path fn ~f:(fun dir ->
       let dir =
@@ -554,7 +558,7 @@ let rec expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
   | Echo xs ->
     let+ l = A.all (List.map xs ~f:E.strings) in
     let l = List.concat l in
-    O.Echo l |> Action.Full.make
+    O.Echo l |> make_action
   | Cat xs ->
     A.with_expander (fun expander ->
       let version = Expander.project expander |> Dune_project.dune_version in
@@ -563,18 +567,18 @@ let rec expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
         (if version >= (3, 10)
          then
            let+ xs = A.all (List.map xs ~f:E.deps) in
-           O.Cat (List.concat xs) |> Action.Full.make
+           O.Cat (List.concat xs) |> make_action
          else
            let+ xs = A.all (List.map xs ~f:E.dep) in
-           O.Cat xs |> Action.Full.make))
+           O.Cat xs |> make_action))
   | Copy (x, y) ->
     let+ x = E.dep x
     and+ y = E.target y in
-    O.Copy (x, y) |> Action.Full.make
+    O.Copy (x, y) |> make_action
   | Symlink (x, y) ->
     let+ x = E.dep x
     and+ y = E.target y in
-    O.Symlink (x, y) |> Action.Full.make
+    O.Symlink (x, y) |> make_action
   | Copy_and_add_line_directive (x, y) ->
     A.with_expander (fun expander ->
       Expander.context expander
@@ -582,24 +586,24 @@ let rec expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
       |> Memo.map ~f:(fun context ->
         let+ x = E.dep x
         and+ y = E.target y in
-        Copy_line_directive.action context ~src:x ~dst:y |> Action.Full.make))
+        Copy_line_directive.action context ~src:x ~dst:y |> make_action))
   | System x ->
     let+ x = E.string x in
-    O.System x |> Action.Full.make
+    O.System x |> make_action
   | Bash x ->
     let+ script = E.string x in
-    O.Bash { script; can_run_in_action_runner = true } |> Action.Full.make
+    O.Bash { script; can_run_in_action_runner = true } |> make_action
   | Write_file (fn, perm, s) ->
     let+ fn = E.target fn
     and+ s = E.string s in
-    O.Write_file (fn, perm, s) |> Action.Full.make
+    O.Write_file (fn, perm, s) |> make_action
   | Mkdir x ->
     (* This code path should in theory be unreachable too, but we don't delete
        it to remember about the check in in case we expose [mkdir] in the syntax
        one day. *)
     let+ path = E.path x in
     (match Path.as_in_build_dir path with
-     | Some path -> O.Mkdir path |> Action.Full.make
+     | Some path -> O.Mkdir path |> make_action
      | None ->
        User_error.raise
          ~loc:(String_with_vars.loc x)
@@ -640,8 +644,7 @@ let rec expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
             ~source:file1
             ~target:file2
             ~diff
-        | (Do_not_format | Format _), _, _ ->
-          Action_builder.return (Action.Full.make diff))
+        | (Do_not_format | Format _), _, _ -> Action_builder.return (make_action diff))
       |> Memo.return)
   | No_infer t -> A.no_infer (expand t)
   | Pipe (outputs, l) ->
@@ -649,7 +652,7 @@ let rec expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
     Action.Full.pipe outputs l
   | Cram script ->
     let+ script = E.dep script in
-    Cram_exec.action script |> Action.Full.make
+    Cram_exec.action script |> make_action
   | Format_dune_file (src, dst) ->
     A.with_expander (fun expander ->
       let version = Expander.project expander |> Dune_project.dune_version in
@@ -657,7 +660,7 @@ let rec expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
       Memo.return
         (let+ src = E.dep src
          and+ dst = E.target dst in
-         Format_dune_file.action ~version src dst |> Action.Full.make))
+         Format_dune_file.action ~version src dst |> make_action))
   | Withenv _ | Substitute _ | Patch _ | When _ ->
     (* these can only be provided by the package language which isn't expanded here *)
     assert false

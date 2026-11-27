@@ -175,7 +175,7 @@ let link_exe
       ~promote
       ~link_args
       ~o_files
-      ?(sandbox = Sandbox_config.default)
+      ?sandbox
       ~env
       cctx
   =
@@ -214,7 +214,7 @@ let link_exe
     Action_builder.with_no_targets prefix
     >>> Command.run
           ~dir:(Path.build (Context.build_dir ctx))
-          ~sandbox
+          ?sandbox
           ~env:Action_builder.O.(env >>= Ocaml_runtime_env.toolchain sctx ~dir)
           ~forbid_action_runner:true
           (Ocaml_toolchain.compiler ocaml mode)

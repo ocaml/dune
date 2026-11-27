@@ -514,6 +514,7 @@ let build_js
           melange_cli.module_type :: js_modules_str :: pkg_name_args
         in
         Command.run
+          ~sandbox:Sandbox_config.no_special_requirements
           ~dir:command_dir
           ~forbid_action_runner:true
           compiler

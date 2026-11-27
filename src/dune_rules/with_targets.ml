@@ -75,7 +75,9 @@ let write_file_dyn ?(perm = File_perm.Normal) fn s =
   add
     ~file_targets:[ fn ]
     (let+ s = s in
-     Action.Full.make (Action.Write_file (fn, perm, s)))
+     Action.Full.make
+       ~sandbox:Sandbox_config.no_special_requirements
+       (Action.Write_file (fn, perm, s)))
 ;;
 
 let memoize name t = { build = memoize name t.build; targets = t.targets }

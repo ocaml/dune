@@ -372,6 +372,7 @@ include Sub_system.Register_end_point (struct
           Command.Args.As link_args_info
         in
         Exe.build_and_link
+          ~sandbox:Sandbox_config.no_special_requirements
           cctx
           ~program:{ name = runner_name; main_module_name = Module.name main_module; loc }
           ~linkages
@@ -462,7 +463,7 @@ include Sub_system.Register_end_point (struct
                    Path.as_in_build_dir_exn source
                    |> Path.Build.extend_basename ~suffix:Filename.corrected
                  in
-                 Action.diff ~optional:true source target |> Action.Full.make)
+                 Action.diff ~optional:true source target |> Action.Full.make ~sandbox)
              in
              let run_tests =
                Action.concurrent actions

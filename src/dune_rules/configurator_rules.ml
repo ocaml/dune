@@ -27,7 +27,7 @@ let gen_rules (ctx : Build_context.t) (ocaml : Ocaml_toolchain.t Action_builder.
      |> List.map ~f:(fun x -> Dune_lang.to_string x ^ "\n")
      |> String.concat ~sep:""
      |> Action.write_file fn
-     |> Action.Full.make)
+     |> Action.Full.make ~sandbox:Sandbox_config.no_special_requirements)
     |> Rule.make ~targets:(Targets.File.create fn)
     |> Rules.Produce.rule
   in
@@ -44,7 +44,7 @@ let gen_rules (ctx : Build_context.t) (ocaml : Ocaml_toolchain.t Action_builder.
       ])
    |> Csexp.to_string
    |> Action.write_file fn
-   |> Action.Full.make)
+   |> Action.Full.make ~sandbox:Sandbox_config.no_special_requirements)
   |> Rule.make ~targets:(Targets.File.create fn)
   |> Rules.Produce.rule
 ;;

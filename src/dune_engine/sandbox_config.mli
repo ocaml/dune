@@ -17,19 +17,13 @@ val equal : t -> t -> bool
 (** Computes the intersection of allowed sandbox modes *)
 val inter : t -> t -> t
 
+(** Allow all modes, including unsandboxed execution. *)
 val no_special_requirements : t
+
 val no_sandboxing : t
 
-(** Allow any sandboxing mode, except [Patch_back_source_tree] *)
+(** Require a sandbox: disallow [None]. *)
 val needs_sandboxing : t
-
-(** The default sandboxing config for actions that don't bother specifying it.
-
-    Often this means that they don't have special requirements, but it also
-    often means that we're not quite sure.
-
-    Currently we have [default = no_special_requirements]. *)
-val default : t
 
 val mem : t -> Sandbox_mode.t -> bool
 

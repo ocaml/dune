@@ -320,7 +320,7 @@ let copy_lock_dir ~target ~lock_dir ~deps ~files =
          in
          Action.progn [ Action.mkdir (Path.Build.parent_exn dst); Action.copy src dst ])
        |> Action.concurrent
-       |> Action.Full.make
+       |> Action.Full.make ~sandbox:Sandbox_config.no_special_requirements
        |> Action_builder.return)
   |> Action_builder.with_targets
        ~targets:

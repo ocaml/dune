@@ -594,7 +594,12 @@ let setup_rocqdep_for_theory_rule
     ~dir
     (let open Action_builder.With_targets.O in
      Action_builder.(with_no_targets (goal source_rule))
-     >>> Command.run ~dir:(Path.build dir) ~stdout_to rocq rocqdep_flags)
+     >>> Command.run
+           ~sandbox:Sandbox_config.no_special_requirements
+           ~dir:(Path.build dir)
+           ~stdout_to
+           rocq
+           rocqdep_flags)
 ;;
 
 module Dep_map = Stdune.Map.Make (Path)
@@ -779,7 +784,7 @@ let setup_output_diff_rule ~loc ~dir ~sctx ~rocq_lang_version ~rocq_sources rocq
       ~aliases:[ alias ]
       (let open Action_builder.O in
        let+ () = Action_builder.paths [ diff.file1; Path.build diff.file2 ] in
-       Action.Full.make (Action.Diff diff))
+       Action.Full.make ~sandbox:Sandbox_config.no_special_requirements (Action.Diff diff))
     >>> Rules.Produce.Alias.add_deps
           runtest_alias
           ~loc
@@ -1259,7 +1264,11 @@ let setup_rocqpp_rules ~sctx ~dir ({ loc; modules } : Rocq_stanza.Rocqpp.t) =
     let target = Path.Build.set_extension m ~ext:Filename.Extension.ml in
     let args = [ Command.Args.A "pp-mlg"; Dep source; Hidden_targets [ target ] ] in
     let build_dir = Super_context.context sctx |> Context.build_dir in
-    Command.run ~dir:(Path.build build_dir) rocq args
+    Command.run
+      ~sandbox:Sandbox_config.no_special_requirements
+      ~dir:(Path.build build_dir)
+      rocq
+      args
   in
   List.rev_map ~f:mlg_rule mlg_files |> Super_context.add_rules ~loc ~dir sctx
 ;;

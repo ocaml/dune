@@ -163,7 +163,7 @@ let cc_vendor_action (ctx : Build_context.t) =
       and+ env = Action_builder.of_memo (Context.installed_env context) in
       Detect.action { c_compiler; ccomp_type = Ocaml_config.ccomp_type ocaml_config }
       |> Action.chdir ctx.build_dir
-      |> Action.Full.make
+      |> Action.Full.make ~sandbox:Sandbox_config.no_special_requirements
       |> Action.Full.add_env env
   in
   Rule.Anonymous_action.make ~dir:ctx.build_dir action

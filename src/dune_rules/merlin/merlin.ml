@@ -1386,7 +1386,8 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (default :: alternatives : gro
   let action =
     configurations
     |> Action_builder.map ~f:(fun configurations ->
-      Write.action configurations ~target:merlin_file |> Action.Full.make)
+      Write.action configurations ~target:merlin_file
+      |> Action.Full.make ~sandbox:Sandbox_config.no_special_requirements)
     |> Action_builder.with_file_targets ~file_targets:[ merlin_file ]
   in
   Super_context.add_rule sctx ~dir action

@@ -135,11 +135,11 @@ that compares it with the source file:
     let+ action
     and+ locks = Expander.expand_locks expander stanza.locks in
     let mkdir_corrected_dir =
-      Action.mkdir (Path.Build.parent_exn files.corrected) |> Action.Full.make
+      Action.mkdir (Path.Build.parent_exn files.corrected) |> Action.Full.make ~sandbox
     in
     let diff =
       Action.diff ~optional:false (Path.build files.src) files.corrected
-      |> Action.Full.make
+      |> Action.Full.make ~sandbox
     in
     Action.Full.reduce
       [ mkdir_corrected_dir; Action.Full.add_locks locks action; diff ]

@@ -21,7 +21,6 @@ let formatter_diff_action =
          Action.progn
            [ Action.write_file output formatter; Action.diff (Path.build input) output ])
       |> Action.Full.make
-      |> Action.Full.add_sandbox Sandbox_config.needs_sandboxing
     in
     dep_on_alias_action alias ~loc action
 ;;
@@ -48,9 +47,7 @@ module Ocamlformat = struct
       |> Action.Full.make
     in
     (* Re-run OCamlFormat when its configuration changes. *)
-    Format_generated.ocamlformat_config_deps ~dir
-    >>> action
-    >>| Action.Full.add_sandbox Sandbox_config.needs_sandboxing
+    Format_generated.ocamlformat_config_deps ~dir >>> action
   ;;
 
   let action_when_ocamlformat_isn't_locked ~input kind =
@@ -87,7 +84,7 @@ let format_action format ~ocamlformat_is_locked ~input ~expander kind =
         Loc.none, action
     in
     Pp_spec_rules.action_for_pp
-      ~sandbox:Sandbox_config.default
+      ~sandbox:Sandbox_config.no_special_requirements
       ~loc
       ~expander
       ~action
@@ -120,7 +117,9 @@ let setup_dune_files =
       let input = Path.build input_build in
       let open Action_builder.O in
       let+ () = Action_builder.path input in
-      Action.Full.make (Format_dune_file.action_stdout ~version input)
+      Action.Full.make
+        ~sandbox:Sandbox_config.no_special_requirements
+        (Format_dune_file.action_stdout ~version input)
     in
     formatter_diff_action
       sctx

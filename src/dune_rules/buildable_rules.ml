@@ -17,7 +17,9 @@ let gen_select_rules sctx ~dir compile_info ~for_ =
           let src = Path.build (Path.Build.append_local dir src_fn) in
           let+ () = Action_builder.path src in
           let context = Super_context.context sctx in
-          Action.Full.make (Copy_line_directive.action context ~src ~dst))))
+          Action.Full.make
+            ~sandbox:Sandbox_config.no_special_requirements
+            (Copy_line_directive.action context ~src ~dst))))
 ;;
 
 let with_lib_deps (t : Context.t) merlin_ident ~dir ~f =

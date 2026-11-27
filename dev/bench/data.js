@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795750401719,
+  "lastUpdate": 1795750408778,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -500074,6 +500074,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 51.041207152693325,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d98c7a9f65a239abfa9f975f7173c9777d40e27d",
+          "message": "test(engine): reproduce builtin cat bypassing stdout policy (#17281)\n\nRecord that built-in `cat` still prints stdout under `swallow` and\nsucceeds under `must-be-empty` despite producing output. Also cover\nexplicit redirection and preserve output from earlier inputs if a later\ninput cannot be read.\n\nThis PR adds tests only. The fix is in #17260.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T11:17:08+08:00",
+          "tree_id": "31162921fed585f78859d5e5bfa9106d24e944a5",
+          "url": "https://github.com/ocaml/dune/commit/d98c7a9f65a239abfa9f975f7173c9777d40e27d"
+        },
+        "date": 1795750407681,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.4423415804133333,
             "unit": "seconds"
           }
         ]

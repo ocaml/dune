@@ -85,11 +85,11 @@ library:
   $ dune build @doc
   $ find _build/default/_doc/_odocls -name '*.odocl' | sort
   _build/default/_doc/_odocls/project/page-index.odocl
-  _build/default/_doc/_odocls/project/param.odocl
-  _build/default/_doc/_odocls/project/param_impl.odocl
-  _build/default/_doc/_odocls/project/plib.odocl
-  _build/default/_doc/_odocls/project/user.odocl
-  _build/default/_doc/_odocls/project/virt.odocl
+  _build/default/_doc/_odocls/project/project.param/param.odocl
+  _build/default/_doc/_odocls/project/project.param_impl/param_impl.odocl
+  _build/default/_doc/_odocls/project/project.plib/plib.odocl
+  _build/default/_doc/_odocls/project/project.user/user.odocl
+  _build/default/_doc/_odocls/project/project.virt/virt.odocl
 
 The package index lists them all:
 

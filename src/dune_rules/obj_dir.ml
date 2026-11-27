@@ -153,7 +153,6 @@ module External = struct
   let melange_dir t = t.public_dir.melange
   let dir t = t.public_dir.ocaml
   let obj_dir t = t.public_dir.ocaml
-  let odoc_dir t = t.public_dir.ocaml
 
   let all_obj_dirs t ~(mode : Lib_mode.t) =
     (match mode with
@@ -261,7 +260,6 @@ module Local = struct
   let jsoo_dir t = t.jsoo_dir
   let native_dir t = t.native_dir
   let melange_dir t = t.melange_dir
-  let odoc_dir t = t.byte_dir
 
   let all_obj_dirs t ~(mode : Lib_mode.t) =
     match mode with
@@ -453,8 +451,6 @@ let cm_public_dir t cm_kind =
     ~e:(fun e -> External.cm_public_dir e cm_kind)
 ;;
 
-let odoc_dir t = get_path t ~l:Local.odoc_dir ~e:External.odoc_dir
-
 let need_dedicated_public_dir (t : Path.Build.t t) =
   match t with
   | Local t -> Local.need_dedicated_public_dir t
@@ -608,14 +604,6 @@ module Module = struct
        - [Ocaml Cmx] -> [Ocaml Cmi] -> [byte_dir] *)
     let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
     Option.map file ~f:(fun _ -> obj_file t m ~kind:cmi_kind ~ext)
-  ;;
-
-  let odoc t m =
-    let obj_name = Module.obj_name m in
-    let basename =
-      Module_name.Unique.artifact_filename obj_name ~ext:Filename.Extension.odoc
-    in
-    relative t (odoc_dir t) basename
   ;;
 
   module L = struct

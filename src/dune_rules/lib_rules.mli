@@ -17,6 +17,12 @@ val compile_context
   -> for_:Compilation_mode.t
   -> Compilation_context.t Memo.t
 
+val compile_context_of_local_lib
+  :  Super_context.t
+  -> Lib.Local.t
+  -> for_:Compilation_mode.t
+  -> Compilation_context.t Memo.t
+
 val rules
   :  Library.t
   -> sctx:Super_context.t

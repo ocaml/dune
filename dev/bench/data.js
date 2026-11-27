@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795750133180,
+  "lastUpdate": 1795750161741,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -499987,6 +499987,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.36998463140666676,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e563bf66c8cc05132729317e094bdca14c15f9e2",
+          "message": "test: wait for action-runner subreaper cleanup (#17286)\n\nA successful build RPC reports that the target is ready, not that the\naction runner has finished cleaning up escaped children. Wait for the\ncleanup-finished trace event for the specific child before checking its\nPID, as the direct-execution case already does.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T11:04:46+08:00",
+          "tree_id": "0ffa90c7b2b2b2ae35e84cdb90ea14647d160359",
+          "url": "https://github.com/ocaml/dune/commit/e563bf66c8cc05132729317e094bdca14c15f9e2"
+        },
+        "date": 1795750157387,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 66.60145545900667,
             "unit": "seconds"
           }
         ]

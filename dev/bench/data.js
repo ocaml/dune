@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795749751645,
+  "lastUpdate": 1795749775923,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -499755,6 +499755,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5012336428933334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7822da721c98ce7a5ddbfbb86b4c396b798560cb",
+          "message": "test(sandbox): show alias input directories without alias expansion (#17285)\n\nWith `expand_aliases_in_sandbox` disabled, alias dependencies should not\npopulate the sandbox. The repro shows that Dune omits the files but\nstill creates their directories, including empty ones.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T11:05:15+08:00",
+          "tree_id": "d5b6de5d5782bc4069e5294abfbd12081462a71c",
+          "url": "https://github.com/ocaml/dune/commit/7822da721c98ce7a5ddbfbb86b4c396b798560cb"
+        },
+        "date": 1795749773514,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 42.561873316526665,
             "unit": "seconds"
           }
         ]

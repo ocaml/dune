@@ -233,7 +233,7 @@ let make_melobjinfo_deps ~sctx ~dir ~sandbox ~vlib_obj_dir ~vlib_obj_map =
         | _ :: _ ->
           let action =
             Command.run'
-              ?sandbox
+              ~sandbox
               ~dir:(Path.build dir)
               program
               [ Deps (List.map files ~f:snd) ]
@@ -494,7 +494,9 @@ let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported
       Dune_project.dune_version impl.project
     in
     let object_info_sandbox =
-      if dune_version >= (3, 3) then Some Sandbox_config.needs_sandboxing else None
+      if dune_version >= (3, 3)
+      then Sandbox_config.needs_sandboxing
+      else Sandbox_config.no_special_requirements
     in
     let deps_from_ooi =
       ooi_deps

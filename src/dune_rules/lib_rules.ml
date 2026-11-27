@@ -114,6 +114,7 @@ let build_lib
            ~dir)
     ]
     |> Command.run
+         ~sandbox:Sandbox_config.no_special_requirements
          (Ok compiler)
          ~dir:(Path.build (Context.build_dir ctx))
          ~forbid_action_runner:true
@@ -399,6 +400,7 @@ let build_shared (lib : Library.t) ~native_archives ~sctx ~dir ~flags =
          Path.build (Library.archive lib ~dir ~ext))
     ]
     |> Command.run
+         ~sandbox:Sandbox_config.no_special_requirements
          ~dir:(Path.build (Context.build_dir ctx))
          ~forbid_action_runner:true
          (Ok ocamlopt)

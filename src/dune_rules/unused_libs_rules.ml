@@ -55,7 +55,7 @@ let gen_rules
         Ocamlobjinfo.rules
           toolchain
           ~dir:build_dir
-          ~sandbox:(Some Sandbox_config.needs_sandboxing)
+          ~sandbox:Sandbox_config.needs_sandboxing
           ~units
       and* external_modules =
         List.map external_lib_archives ~f:(fun (lib, (loc, archive)) ->
@@ -63,7 +63,7 @@ let gen_rules
             Ocamlobjinfo.archive_rules
               toolchain
               ~dir:build_dir
-              ~sandbox:(Some Sandbox_config.needs_sandboxing)
+              ~sandbox:Sandbox_config.needs_sandboxing
               ~archive
           in
           lib, (loc, modules))
@@ -114,7 +114,9 @@ let gen_rules
     Rules.Produce.Alias.add_action
       [ unused_libs_alias ]
       ~loc
-      (action |> Action_builder.map ~f:Action.Full.make)
+      (action
+       |> Action_builder.map
+            ~f:(Action.Full.make ~sandbox:Sandbox_config.no_special_requirements))
 ;;
 
 let gen_rules_for_context cctx compile_info ~loc =

@@ -180,7 +180,9 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
               let action =
                 let open Action_builder.O in
                 let+ () = Action_builder.paths [ diff.file1; Path.build diff.file2 ] in
-                Action.Full.make (Action.Diff diff)
+                Action.Full.make
+                  ~sandbox:Sandbox_config.no_special_requirements
+                  (Action.Diff diff)
               in
               Memo.return action
           in

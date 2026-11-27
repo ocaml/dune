@@ -10,8 +10,6 @@ let needs_sandboxing =
     | Some _ -> true)
 ;;
 
-let default = no_special_requirements
-
 type conflict = Conflict
 
 module Partial = struct

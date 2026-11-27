@@ -155,7 +155,7 @@ let gen_rules sctx t ~dir ~scope =
     let sandbox =
       if t.cinaps_version >= (1, 1)
       then Sandbox_config.needs_sandboxing
-      else Sandbox_config.default
+      else Sandbox_config.no_special_requirements
     in
     Super_context.add_rule
       sctx
@@ -236,6 +236,7 @@ let gen_rules sctx t ~dir ~scope =
       Command.Args.As link_args
     in
     Exe.build_and_link
+      ~sandbox:Sandbox_config.no_special_requirements
       cctx
       ~link_args
       ~program:{ name; main_module_name; loc }
@@ -267,7 +268,7 @@ let gen_rules sctx t ~dir ~scope =
           let source = Path.build source in
           let diff = Action.diff ~optional:true source target in
           if t.cinaps_version < (1, 4)
-          then Action_builder.return (Action.Full.make diff)
+          then Action_builder.return (Action.Full.make ~sandbox diff)
           else Format_generated.format_diff sctx ~dir ~source ~target ~diff)
         |> Action_builder.all
       in
@@ -278,11 +279,10 @@ let gen_rules sctx t ~dir ~scope =
       and+ env
       and+ checks in
       Action.Full.progn
-        [ Action.Full.make (Action.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ])
+        [ Action.Full.make ~sandbox (Action.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ])
         ; Action.Full.concurrent checks
         ]
       |> Action.Full.map ~f:(Action.chdir dir)
-      |> Action.Full.add_sandbox sandbox
       |> Action.Full.add_env env
     in
     Super_context.add_alias_action sctx ~dir ~loc [ cinaps_alias ] action

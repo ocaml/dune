@@ -55,7 +55,10 @@ let with_file_targets build ~file_targets : _ With_targets.t =
 let write_file ?(perm = File_perm.Normal) fn s =
   with_file_targets
     ~file_targets:[ fn ]
-    (return (Action.Full.make (Action.Write_file (fn, perm, s))))
+    (return
+       (Action.Full.make
+          ~sandbox:Sandbox_config.no_special_requirements
+          (Action.Write_file (fn, perm, s))))
 ;;
 
 let write_file_dyn ?perm fn s = With_targets.write_file_dyn ?perm fn (with_no_targets s)
@@ -70,27 +73,43 @@ let with_stdout_to ?(perm = File_perm.Normal) fn t =
 let copy ~src ~dst =
   with_file_targets
     ~file_targets:[ dst ]
-    (path src >>> return (Action.Full.make (Action.Copy (src, dst))))
+    (path src
+     >>> return
+           (Action.Full.make
+              ~sandbox:Sandbox_config.no_special_requirements
+              (Action.Copy (src, dst))))
 ;;
 
 let copy_dir ~src ~dst =
   with_targets
     ~targets:
       (Targets.create ~files:Path.Build.Set.empty ~dirs:(Path.Build.Set.singleton dst))
-    (path src >>> return (Action.Full.make (Action.Copy (src, dst))))
+    (path src
+     >>> return
+           (Action.Full.make
+              ~sandbox:Sandbox_config.no_special_requirements
+              (Action.Copy (src, dst))))
 ;;
 
 let symlink ~src ~dst =
   with_file_targets
     ~file_targets:[ dst ]
-    (path src >>> return (Action.Full.make (Action.Symlink (src, dst))))
+    (path src
+     >>> return
+           (Action.Full.make
+              ~sandbox:Sandbox_config.no_special_requirements
+              (Action.Symlink (src, dst))))
 ;;
 
 let symlink_dir ~src ~dst =
   with_targets
     ~targets:
       (Targets.create ~files:Path.Build.Set.empty ~dirs:(Path.Build.Set.singleton dst))
-    (path src >>> return (Action.Full.make (Action.Symlink (src, dst))))
+    (path src
+     >>> return
+           (Action.Full.make
+              ~sandbox:Sandbox_config.no_special_requirements
+              (Action.Symlink (src, dst))))
 ;;
 
 let progn ts =

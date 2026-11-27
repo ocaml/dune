@@ -394,7 +394,11 @@ let build_asm ~sctx ~dir ~expander (loc, src, dst) =
         [ Pp.textf "MSVC assembly requires x86-64, not %s." architecture ]
   in
   let assembler = Super_context.resolve_program ~loc:(Some loc) ~dir sctx assembler in
-  Command.run_dyn_prog ~dir:(Path.build dir) assembler args
+  Command.run_dyn_prog
+    ~sandbox:Sandbox_config.no_special_requirements
+    ~dir:(Path.build dir)
+    assembler
+    args
 ;;
 
 (* TODO: [requires] is a confusing name, probably because it's too general: it

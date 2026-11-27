@@ -140,11 +140,13 @@ let format_diff sctx ~dir ~source ~target ~diff =
   in
   Action_builder.of_memo (for_source ~dir source)
   >>= function
-  | None -> Action_builder.return (Action.Full.make diff)
+  | None ->
+    Action_builder.return
+      (Action.Full.make ~sandbox:Sandbox_config.no_special_requirements diff)
   | Some (Dune version) ->
     Format_dune_file.action_stdout ~version (Path.build target)
     |> Action.with_stdout_to_atomic target
-    |> Action.Full.make
+    |> Action.Full.make ~sandbox:Sandbox_config.no_special_requirements
     |> with_diff
     |> Action_builder.return
   | Some (Ocamlformat kind) ->

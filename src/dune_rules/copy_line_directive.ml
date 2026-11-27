@@ -128,5 +128,8 @@ let builder context ~src ~dst =
   Action_builder.with_file_targets
     ~file_targets:[ dst ]
     (Action_builder.path src
-     >>> Action_builder.return (Action.Full.make (action context ~src ~dst)))
+     >>> Action_builder.return
+           (Action.Full.make
+              ~sandbox:Sandbox_config.no_special_requirements
+              (action context ~src ~dst)))
 ;;

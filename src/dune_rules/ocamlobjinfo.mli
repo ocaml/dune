@@ -9,7 +9,7 @@ val to_dyn : t -> Dyn.t
 val rules
   :  Ocaml_toolchain.t
   -> dir:Path.Build.t
-  -> sandbox:Sandbox_config.t option
+  -> sandbox:Sandbox_config.t
   -> units:Path.t list
   -> t list Action_builder.t
 
@@ -17,7 +17,7 @@ val rules
 val archive_rules
   :  Ocaml_toolchain.t
   -> dir:Path.Build.t
-  -> sandbox:Sandbox_config.t option
+  -> sandbox:Sandbox_config.t
   -> archive:Path.t
   -> Module_name.Unique.Set.t Action_builder.t
 

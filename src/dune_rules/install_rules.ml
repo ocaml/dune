@@ -1486,7 +1486,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
     in
     entries
     >>| gen_install_file ~dst:install_file
-    >>| Action.Full.make
+    >>| Action.Full.make ~sandbox:Sandbox_config.no_special_requirements
     |> Action_builder.with_file_targets ~file_targets:[ install_file ]
   in
   Super_context.add_rule

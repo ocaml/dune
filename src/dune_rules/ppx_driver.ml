@@ -244,6 +244,7 @@ let build_ppx_driver =
         }
       in
       Exe.build_and_link
+        ~sandbox:Sandbox_config.no_special_requirements
         ~program
         ~linkages
         cctx

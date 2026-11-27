@@ -88,7 +88,7 @@ module Run (P : PARAMS) = struct
     let scope = Compilation_context.scope cctx in
     let project = Scope.project scope in
     if Dune_project.dune_version project < (3, 5)
-    then Sandbox_config.default
+    then Sandbox_config.no_special_requirements
     else Sandbox_config.needs_sandboxing
   ;;
 
@@ -358,7 +358,7 @@ module Run (P : PARAMS) = struct
               ; Action.cat [ Path.build query ]
               ; Action.echo [ postlude ]
               ]
-            |> Action.Full.make
+            |> Action.Full.make ~sandbox:Sandbox_config.no_special_requirements
             |> Action_builder.return
           in
           Action_builder.progn

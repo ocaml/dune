@@ -423,6 +423,7 @@ let js_of_ocaml_rule
       | Some (_ : Config.t Action_builder.t) -> Config.remove_config_flags flags)
   in
   Command.run_dyn_prog
+    ~sandbox:Sandbox_config.no_special_requirements
     ~dir:(Path.build dir)
     jsoo
     [ (match sub_command with

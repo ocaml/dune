@@ -154,7 +154,7 @@ module Full : sig
     -> ?locks:Path.t list (** default [[]] *)
     -> ?can_go_in_shared_cache:bool
          (** default [!Clflags.can_fo_in_shared_cache_default] *)
-    -> ?sandbox:Sandbox_config.t (** default [Sandbox_config.default] *)
+    -> ?sandbox:Sandbox_config.t (** default [Sandbox_config.needs_sandboxing] *)
     -> ?corrections:Corrections.t (** default [Corrections.Ignore] *)
     -> action
     -> t

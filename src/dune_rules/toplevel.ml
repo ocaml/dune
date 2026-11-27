@@ -147,6 +147,7 @@ let setup_rules_and_return_exe_path t ~linkage =
   let program = Source.program t.source in
   let* (_ : Exe.dep_graphs) =
     Exe.build_and_link
+      ~sandbox:Sandbox_config.no_special_requirements
       t.cctx
       ~program
       ~linkages:[ linkage ]

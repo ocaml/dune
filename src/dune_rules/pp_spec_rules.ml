@@ -70,7 +70,9 @@ let gen_rules sctx components =
 ;;
 
 let correction_diff ~source ~target =
-  Action.diff ~optional:true source target |> Action.Full.make |> Action_builder.return
+  Action.diff ~optional:true source target
+  |> Action.Full.make ~sandbox:Sandbox_config.no_special_requirements
+  |> Action_builder.return
 ;;
 
 let promote_correction (m : Module.t) build ~suffix ~ml_kind =

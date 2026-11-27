@@ -395,11 +395,11 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
     let+ action
     and+ locks = Expander.expand_locks expander stanza.locks in
     let mkdir_corrected_dir =
-      Action.mkdir (Path.Build.parent_exn files.corrected) |> Action.Full.make
+      Action.mkdir (Path.Build.parent_exn files.corrected) |> Action.Full.make ~sandbox
     in
     let diff =
       Action.diff ~optional:false (Path.build files.src) files.corrected
-      |> Action.Full.make
+      |> Action.Full.make ~sandbox
     in
     Action.Full.reduce [ mkdir_corrected_dir; Action.Full.add_locks locks action; diff ]
   in
@@ -508,6 +508,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
   in
   let+ (_ : Exe.dep_graphs) =
     Exe.build_and_link
+      ~sandbox:Sandbox_config.no_special_requirements
       cctx
       ~program:{ name; main_module_name; loc }
       ~link_args

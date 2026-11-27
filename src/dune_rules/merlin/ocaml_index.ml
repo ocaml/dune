@@ -122,6 +122,7 @@ let cctx_rules cctx =
       Command.Args.Deps paths
     in
     Command.run_dyn_prog
+      ~sandbox:Sandbox_config.no_special_requirements
       ~dir:context_dir
       (ocaml_index sctx ~dir)
       [ A "aggregate"

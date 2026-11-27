@@ -136,10 +136,8 @@ module Full : sig
         (** Whether spawned processes can be subject to an additional sandbox policy. *)
       ; sandbox : Sandbox_config.t
       ; corrections : Corrections.t option
-      ; job_slots : action option
-        (** An action that prints the number of job slots that the action
-            takes. This lets an action that runs its own parallel work, such as
-            another build system, reserve the capacity that it uses. *)
+      ; job_slots : int Memo.t option
+        (** The number of slots to reserve, computed only on a cache miss. *)
       }
   end
 
@@ -173,7 +171,7 @@ module Full : sig
   val add_can_go_in_shared_cache : bool -> t -> t
   val disable_sandbox_policy : t -> t
   val add_corrections : Corrections.t -> t -> t
-  val add_job_slots : action -> t -> t
+  val add_job_slots : int Memo.t -> t -> t
 
   include Monoid with type t := t
 end

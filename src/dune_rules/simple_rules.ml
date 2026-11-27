@@ -78,22 +78,52 @@ let interpret_and_add_locks ~expander locks action =
   | locks -> Action_builder.map action ~f:(Action.Full.add_locks locks)
 ;;
 
-let interpret_and_add_job_slots ~expander job_slots action =
+let interpret_and_add_job_slots sctx ~expander job_slots action =
   match job_slots with
   | None -> action
   | Some (loc, job_slots) ->
-    let open Action_builder.O in
-    let+ { Action.Full.action = job_slots; _ } =
-      Action_unexpanded.expand_no_targets
-        job_slots
-        Sandbox_config.no_special_requirements
-        ~loc
-        ~chdir:(Expander.dir expander)
-        ~deps:Bindings.empty
-        ~expander
-        ~what:"job_slots commands"
-    and+ action in
-    Action.Full.add_job_slots job_slots action
+    let dir = Expander.dir expander in
+    let job_slots =
+      let open Memo.O in
+      let jobs = !Clflags.concurrency in
+      let var = Env.Var.of_string "DUNE_JOBS" in
+      let action =
+        let open Action_builder.O in
+        let expanded =
+          Action_unexpanded.expand_no_targets
+            job_slots
+            Sandbox_config.needs_sandboxing
+            ~loc
+            ~chdir:dir
+            ~deps:Bindings.empty
+            ~expander
+            ~what:"job_slots commands"
+        in
+        (* Expand the action without building or staging inferred input files. *)
+        let+ action, _ =
+          Action_builder.of_memo (Action_builder.evaluate_and_collect_deps expanded)
+        in
+        if Action.is_dynamic action.action
+        then User_error.raise ~loc [ Pp.text "job_slots cannot use dynamic-run." ];
+        Action.Full.add_env (Env.add Env.empty ~var ~value:(Int.to_string jobs)) action
+      in
+      let action = Super_context.extend_action_env sctx ~dir action in
+      let+ stdout =
+        Rule.Anonymous_action.make ~loc ~dir action
+        |> Build_system.execute_uncached_action_stdout
+      in
+      let stdout = String.trim stdout in
+      match Int.of_string stdout with
+      | Some n when n > 0 -> min n jobs
+      | Some _ | None ->
+        User_error.raise
+          ~loc
+          [ Pp.textf
+              "The job_slots command must print a positive integer, but it printed %S."
+              stdout
+          ]
+    in
+    Action_builder.map action ~f:(Action.Full.add_job_slots job_slots)
 ;;
 
 let add_user_rule
@@ -106,7 +136,7 @@ let add_user_rule
   let action =
     let build =
       interpret_and_add_locks ~expander rule.locks action.build
-      |> interpret_and_add_job_slots ~expander rule.job_slots
+      |> interpret_and_add_job_slots sctx ~expander rule.job_slots
     in
     { action with Action_builder.With_targets.build }
   in
@@ -232,7 +262,7 @@ let user_rule sctx ~dir ~expander (rule : Rule_conf.t) =
          | [] -> Code_error.raise "empty list of aliases" []
          | aliases ->
            interpret_and_add_locks ~expander rule.locks action.build
-           |> interpret_and_add_job_slots ~expander rule.job_slots
+           |> interpret_and_add_job_slots sctx ~expander rule.job_slots
            |> Alias_rules.add sctx ~aliases ~loc:rule.loc
        in
        None)

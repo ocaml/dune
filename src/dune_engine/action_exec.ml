@@ -287,40 +287,8 @@ type input =
   ; execution_parameters : Execution_parameters.t
   ; sandbox : Process.Sandbox.t option
   ; action : Action.t
-  ; job_slots : Action.t option
+  ; job_slots : int
   }
-
-(* The command runs with one job slot, before the action reserves its own job
-   slots. Its standard output goes to a temporary file, like the stages of a
-   pipe. *)
-let eval_job_slots job_slots ~ectx ~(eenv : env) =
-  match job_slots with
-  | None -> Fiber.return 1
-  | Some t ->
-    let jobs = !Clflags.concurrency in
-    let eenv =
-      { eenv with
-        env =
-          Env.add
-            eenv.env
-            ~var:(Env.Var.of_string "DUNE_JOBS")
-            ~value:(Int.to_string jobs)
-      }
-    in
-    let out = Dtemp.file ~prefix:"dune-job-slots-" ~suffix:".stdout" in
-    let+ () = redirect_out t ~ectx ~eenv ~perm:Normal Stdout out in
-    let stdout = String.trim (Io.read_file_exn out) in
-    Dtemp.destroy File out;
-    (match Int.of_string stdout with
-     | Some n when n > 0 -> min n jobs
-     | Some _ | None ->
-       User_error.raise
-         ~loc:ectx.rule_loc
-         [ Pp.textf
-             "The job_slots command must print a positive integer, but it printed %S."
-             stdout
-         ])
-;;
 
 let exec
       { targets
@@ -334,12 +302,15 @@ let exec
       }
       ~build_deps
   =
-  let env = Dtemp.add_to_env env ~purpose:(Process_metadata.Build_job targets) in
+  let env =
+    Dtemp.add_to_env env ~purpose:(Process_metadata.Build_job targets)
+    |> Env.add ~var:(Env.Var.of_string "DUNE_JOB_SLOTS") ~value:(Int.to_string job_slots)
+  in
   let ectx =
     let metadata =
       Process_metadata.create ~purpose:(Process_metadata.Build_job targets) ()
     in
-    { root; metadata; sandbox; rule_loc; build_deps }
+    { root; metadata = { metadata with job_slots }; sandbox; rule_loc; build_deps }
   and eenv =
     let env =
       match
@@ -380,18 +351,5 @@ let exec
     ; exit_codes = Predicate.create (Int.equal 0)
     }
   in
-  let open Fiber.O in
-  Fiber.collect_errors (fun () ->
-    let* job_slots = eval_job_slots job_slots ~ectx ~eenv in
-    let ectx = { ectx with metadata = { ectx.metadata with job_slots } } in
-    let eenv =
-      { eenv with
-        env =
-          Env.add
-            eenv.env
-            ~var:(Env.Var.of_string "DUNE_JOB_SLOTS")
-            ~value:(Int.to_string job_slots)
-      }
-    in
-    exec t ~ectx ~eenv)
+  Fiber.collect_errors (fun () -> exec t ~ectx ~eenv)
 ;;

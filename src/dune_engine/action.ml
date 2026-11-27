@@ -367,8 +367,6 @@ let is_useful_to_memoize t =
 ;;
 
 module Full = struct
-  type action = t
-
   module Props = struct
     type t =
       { env : Env.t
@@ -377,7 +375,7 @@ module Full = struct
       ; can_use_sandbox_policy : bool
       ; sandbox : Sandbox_config.t
       ; corrections : Corrections.t option
-      ; job_slots : action option
+      ; job_slots : int Memo.t option
       }
 
     let empty =

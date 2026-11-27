@@ -62,6 +62,12 @@ val add_alias_action
   -> Action.Full.t Action_builder.t
   -> unit Memo.t
 
+val extend_action_env
+  :  t
+  -> dir:Path.Build.t
+  -> Action.Full.t Action_builder.t
+  -> Action.Full.t Action_builder.t
+
 (** Execute an anonymous action after adding the directory's external
     environment, as [add_rule] and [add_alias_action] do for regular rules. *)
 val execute_action_stdout

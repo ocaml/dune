@@ -330,6 +330,7 @@ type rule_kind =
   | Anonymous_action of
       { stamp_file : Path.Build.t
       ; capture_stdout : bool
+      ; always_rerun : bool
       }
 
 module Anonymous_action = struct
@@ -339,6 +340,7 @@ module Anonymous_action = struct
     ; loc : Loc.t
     ; deps : Dep.Set.t
     ; capture_stdout : bool
+    ; always_rerun : bool
     ; digest : Digest.t
     }
 
@@ -446,6 +448,7 @@ and execute_action_for_rule
       ~loc
       ~execution_parameters
       ~sandbox_mode
+      ~job_slots
       ~(targets : Targets.Validated.t)
   : Exec_result.t Fiber.t
   =
@@ -457,7 +460,7 @@ and execute_action_for_rule
       ; can_use_sandbox_policy
       ; sandbox = _
       ; corrections
-      ; job_slots
+      ; job_slots = _
       }
     =
     props
@@ -635,7 +638,7 @@ and execute_rule_action
     (* CR-someday amokhov: More [always_rerun] and [can_go_in_shared_cache]
        to [Rule_cache] too. *)
     let always_rerun =
-      let is_test =
+      let force_rerun =
         (* jeremiedimino: what about:
 
            {v (rule (alias runtest) (targets x) (action ...)) v}
@@ -651,9 +654,8 @@ and execute_rule_action
            So it seems to me that such rules should be re-executed. TBC *)
         match rule_kind with
         | Normal_rule -> false
-        | Anonymous_action _ -> true
+        | Anonymous_action { always_rerun; _ } -> always_rerun || !Clflags.force
       in
-      let force_rerun = !Clflags.force && is_test in
       force_rerun || Dep.Map.mem facts Dep.universe
     in
     let rule_digest =
@@ -722,6 +724,11 @@ and execute_rule_action
             Fiber.return (produced_targets, dynamic_deps_stages)
           | None ->
             (* Step IV. Execute the build action. *)
+            let* job_slots =
+              match props.job_slots with
+              | None -> Fiber.return 1
+              | Some job_slots -> Memo.run job_slots
+            in
             let* exec_result =
               execute_action_for_rule
                 ~rule_kind
@@ -731,6 +738,7 @@ and execute_rule_action
                 ~loc
                 ~execution_parameters
                 ~sandbox_mode
+                ~job_slots
                 ~targets
             in
             (* Step V. Examine produced targets and store them to the shared
@@ -772,8 +780,9 @@ and execute_rule_action
 
 (* Returns the action's stdout or the empty string if [capture_stdout = false]. *)
 and execute_anonymous_action_impl
-      { Anonymous_action.action; dir; loc; deps; capture_stdout; digest }
+      { Anonymous_action.action; dir; loc; deps; capture_stdout; always_rerun; digest }
   =
+  let* () = if always_rerun then Memo.current_run () >>| ignore else Memo.return () in
   let target =
     let dir =
       Path.Build.append_local Dpath.Build.anonymous_actions_dir (Path.Build.local dir)
@@ -786,7 +795,7 @@ and execute_anonymous_action_impl
   let* facts = build_deps deps in
   let+ { facts = _; targets = _ } =
     execute_rule_action
-      ~rule_kind:(Anonymous_action { capture_stdout; stamp_file = target })
+      ~rule_kind:(Anonymous_action { capture_stdout; always_rerun; stamp_file = target })
       ~targets
       ~mode:Standard
       ~loc
@@ -796,7 +805,11 @@ and execute_anonymous_action_impl
   in
   if capture_stdout then Io.read_file_exn (Path.build target) else ""
 
-and execute_anonymous_action { Rule.Anonymous_action.action; dir; loc } ~capture_stdout =
+and execute_anonymous_action
+      { Rule.Anonymous_action.action; dir; loc }
+      ~capture_stdout
+      ~always_rerun
+  =
   let* action, deps =
     let+ action, facts = Action_builder.evaluate_and_collect_facts action in
     (* Forget the observed facts so that the memo input does not retain the
@@ -837,6 +850,7 @@ and execute_anonymous_action { Rule.Anonymous_action.action; dir; loc } ~capture
       Digest.Manual.bool d can_use_sandbox_policy;
       digest_sandbox_config d sandbox;
       Digest.Manual.repr d Repr.(option Corrections.repr) corrections;
+      if always_rerun then Digest.Manual.bool d true;
       Digest.Manual.get d
     in
     digest
@@ -849,7 +863,7 @@ and execute_anonymous_action { Rule.Anonymous_action.action; dir; loc } ~capture
      the execution and avoid such a race condition. *)
   Memo.exec
     (Lazy.force execute_anonymous_action_memo)
-    { Anonymous_action.action; dir; loc; deps; capture_stdout; digest }
+    { Anonymous_action.action; dir; loc; deps; capture_stdout; always_rerun; digest }
 
 (* A rule can have multiple targets but calls to [execute_rule] are memoized,
    so the rule will be executed only once. *)
@@ -907,7 +921,9 @@ and build_file_impl path =
 and dep_on_anonymous_action anon =
   Action_builder.record_success
     (Memo.of_thunk (fun () ->
-       let+ (_ : string) = execute_anonymous_action anon ~capture_stdout:false in
+       let+ (_ : string) =
+         execute_anonymous_action anon ~capture_stdout:false ~always_rerun:false
+       in
        ()))
 
 and dep_on_alias_definition (definition : Rules.Dir_rules.Alias_spec.item) =
@@ -1027,7 +1043,13 @@ and execute_rule_memo =
        execute_rule_impl)
 ;;
 
-let execute_action_stdout anon = execute_anonymous_action anon ~capture_stdout:true
+let execute_action_stdout anon =
+  execute_anonymous_action anon ~capture_stdout:true ~always_rerun:false
+;;
+
+let execute_uncached_action_stdout anon =
+  execute_anonymous_action anon ~capture_stdout:true ~always_rerun:true
+;;
 
 let () =
   Load_rules.set_current_rule_loc (fun () ->

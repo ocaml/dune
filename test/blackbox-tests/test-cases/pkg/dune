@@ -48,6 +48,11 @@
  (deps %{bin:strace}))
 
 (cram
+ (applies_to landlock.t)
+ (enabled_if
+  (= %{system} linux)))
+
+(cram
  (applies_to relocatable-compiler-sandbox.t)
  (deps %{bin:menhir}))
 

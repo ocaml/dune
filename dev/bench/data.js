@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795749893183,
+  "lastUpdate": 1795749928613,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -499813,6 +499813,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.3767462679866667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e5b88098059306477416dc80538d64ce0174b7a1",
+          "message": "test(pkg): reproduce lockdir staging crash under --sandbox (#17279)\n\nRecord the internal error from `dune build --sandbox=copy` when staging\na source-tree `dune.lock`. The lockdir copy rule depends directly on\nsource-tree files, which the sandbox rejects before any package builds.\nThis PR records the current behavior without changing it.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T11:04:31+08:00",
+          "tree_id": "8c00f1f2959a83cb62a0fef2bd21991d9f46dcb2",
+          "url": "https://github.com/ocaml/dune/commit/e5b88098059306477416dc80538d64ce0174b7a1"
+        },
+        "date": 1795749925360,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 65.14605619856,
             "unit": "seconds"
           }
         ]

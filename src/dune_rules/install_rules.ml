@@ -539,34 +539,41 @@ end = struct
   let entries_of_install_stanza ~dir ~expander ~package_db (install_conf : Install_conf.t)
     =
     let expand = Expander.No_deps.expand expander ~mode:Single in
-    let make_entry =
-      let section = Package_db.section_of_site package_db in
-      fun fb ~kind ->
-        let src = File_binding.Expanded.src fb in
-        let dst = File_binding.Expanded.dst fb in
+    let make_entry ~kind fb =
+      let src = File_binding.Expanded.src fb in
+      let dst = File_binding.Expanded.dst fb in
+      let loc = File_binding.Expanded.src_loc fb in
+      let* entry =
         Install_entry_with_site.make_with_site
-          ?dst
-          ~kind
           (snd install_conf.section)
-          section
+          ?dst
+          (Package_db.section_of_site package_db)
+          ~kind
           src
+      in
+      let+ () =
+        match kind with
+        | File | Directory -> Memo.return ()
+        | Source_tree ->
+          let src = Path.Build.drop_build_context_exn entry.src in
+          let+ dir = Source_tree.find_dir src in
+          if Option.is_none dir
+          then (
+            let msg = Pp.text "This source directory does not exist" in
+            User_error.raise ~loc [ msg ])
+      in
+      Install.Entry.Sourced.Unexpanded.create ~loc entry
     in
     let+ files =
       Install_entry.File.to_file_bindings_expanded install_conf.files ~expand ~dir
-      >>= Memo.List.map ~f:(fun fb ->
-        let+ entry = make_entry ~kind:File fb in
-        let loc = File_binding.Expanded.src_loc fb in
-        Install.Entry.Sourced.Unexpanded.create ~loc entry)
+      >>= Memo.List.map ~f:(make_entry ~kind:File)
     and+ files_from_dirs =
       Install_entry.Dir.to_file_bindings_expanded
         install_conf.dirs
         ~expand
         ~dir
         ~relative_dst_path_starts_with_parent_error_when:`Deprecation_warning_from_3_11
-      >>= Memo.List.map ~f:(fun fb ->
-        let loc = File_binding.Expanded.src_loc fb in
-        let+ entry = make_entry ~kind:Directory fb in
-        Install.Entry.Sourced.Unexpanded.create ~loc entry)
+      >>= Memo.List.map ~f:(make_entry ~kind:Directory)
     and+ source_trees =
       (* There's no deprecation warning when a relative destination path
          starts with a parent in this feature. It's safe to raise an error in
@@ -577,17 +584,7 @@ end = struct
         ~expand
         ~dir
         ~relative_dst_path_starts_with_parent_error_when:`Always_error
-      >>= Memo.List.map ~f:(fun fb ->
-        let loc = File_binding.Expanded.src_loc fb in
-        let* entry = make_entry ~kind:Source_tree fb in
-        let+ () =
-          Source_tree.find_dir (Path.Build.drop_build_context_exn entry.src)
-          >>| function
-          | Some _ -> ()
-          | None ->
-            User_error.raise ~loc [ Pp.text "This source directory does not exist" ]
-        in
-        Install.Entry.Sourced.Unexpanded.create ~loc entry)
+      >>= Memo.List.map ~f:(make_entry ~kind:Source_tree)
     in
     List.rev_concat [ files; files_from_dirs; source_trees ]
   ;;

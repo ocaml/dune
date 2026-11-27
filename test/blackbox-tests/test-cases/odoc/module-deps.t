@@ -1,6 +1,6 @@
 Building a single .odoc file should also build the .odoc dependencies added
-by preprocessing. This test also checks that a library that depends on a
-virtual library implementation can be documented.
+by preprocessing. This test also records the current failure to document a
+library that depends on a virtual library implementation.
 
   $ make_dune_project_with_package 3.0 my_pkg
 
@@ -80,8 +80,9 @@ The virtual library itself can be documented:
 
   $ dune build @doc
 
-When another library depends on the implementation, the inherited module U
-is documented with the virtual library:
+When another library depends on the implementation, Dune looks for the
+inherited module U's odoc file in the implementation's odoc directory.
+This currently fails:
 
   $ mkdir user
   $ cat > user/dune <<EOF
@@ -98,3 +99,6 @@ is documented with the virtual library:
   > EOF
 
   $ dune build @doc
+  File "_doc/_odoc/my_pkg/my_pkg.impl/_unknown_", line 1, characters 0-0:
+  Error: No rule found for _doc/_odoc/my_pkg/my_pkg.impl/vlib__U.odoc
+  [1]

@@ -310,7 +310,7 @@ let run_odoc sctx ~dir command ~quiet ~flags_for args =
         [ A command; Dyn base_flags; S args ]
 ;;
 
-let module_deps (m : Module.t) ~odoc_dir ~modules ~(dep_graphs : Dep_graph.Ml_kind.t) =
+let module_deps (m : Module.t) ~odoc_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
   Action_builder.dyn_paths_unit
     (let open Action_builder.O in
      let+ deps =
@@ -319,10 +319,7 @@ let module_deps (m : Module.t) ~odoc_dir ~modules ~(dep_graphs : Dep_graph.Ml_ki
        in
        Dep_graph.deps_of graphs m
      in
-     List.filter_map deps ~f:(fun m ->
-       Option.some_if
-         (Module_name.Unique.Map.mem (Modules.obj_map modules) (Module.obj_name m))
-         (Path.build (module_odoc_file ~odoc_dir m))))
+     List.map deps ~f:(fun m -> Path.build (module_odoc_file ~odoc_dir m)))
 ;;
 
 let compile_module
@@ -331,7 +328,6 @@ let compile_module
       ~obj_dir
       (m : Module.t)
       ~includes:(file_deps, iflags)
-      ~modules
       ~dep_graphs
       ~pkg_or_lnu
       ~for_
@@ -367,7 +363,7 @@ let compile_module
       in
       let open Action_builder.With_targets.O in
       Action_builder.with_no_targets file_deps
-      >>> Action_builder.with_no_targets (module_deps m ~odoc_dir ~modules ~dep_graphs)
+      >>> Action_builder.with_no_targets (module_deps m ~odoc_dir ~dep_graphs)
       >>> run_odoc
     in
     add_rule sctx action_with_targets
@@ -464,25 +460,21 @@ let setup_library_odoc_rules sctx (local_lib : Lib.Local.t) =
     in
     Dep.deps ctx package requires, odoc_include_flags
   in
-  let modules = Compilation_context.modules cctx |> Modules.With_vlib.drop_vlib in
-  modules
+  Compilation_context.modules cctx
+  |> Modules.With_vlib.drop_vlib
   |> Modules.fold ~init:[] ~f:(fun m acc ->
-    match Module.kind m with
-    | Impl_vmodule -> acc
-    | _ ->
-      let compiled =
-        compile_module
-          sctx
-          ~odoc_dir
-          ~obj_dir
-          ~includes
-          ~modules
-          ~dep_graphs:(Compilation_context.dep_graphs cctx)
-          ~pkg_or_lnu
-          ~for_
-          m
-      in
-      compiled :: acc)
+    let compiled =
+      compile_module
+        sctx
+        ~odoc_dir
+        ~obj_dir
+        ~includes
+        ~dep_graphs:(Compilation_context.dep_graphs cctx)
+        ~pkg_or_lnu
+        ~for_
+        m
+    in
+    compiled :: acc)
   |> Memo.all_concurrently
   >>| Path.Set.of_list_map ~f:(fun (_, p) -> Path.build p)
   >>= Dep.setup_deps ctx (Lib local_lib)
@@ -845,10 +837,8 @@ let odoc_artefacts sctx target =
       Mld.create ~path ~name |> Mld.odoc_file ~doc_dir:dir |> Artifact.make ~target)
   | Lib lib ->
     let+ modules = entry_modules_by_lib sctx lib in
-    List.filter_map modules ~f:(fun m ->
-      match Module.kind m with
-      | Impl_vmodule -> None
-      | _ -> Some (module_odoc_file ~odoc_dir:dir m |> Artifact.make ~target))
+    List.map modules ~f:(fun m ->
+      module_odoc_file ~odoc_dir:dir m |> Artifact.make ~target)
 ;;
 
 let setup_lib_odocl_rules_def =

@@ -215,11 +215,10 @@ better if we stop at the end of the whole action.
   1
   [1]
 
-With builtin actions
---------------------
+With builtin echo
+-----------------
 
-We currently never swallow the output of builtin actions such as
-`echo`, which is odd:
+`swallow` suppresses output from `echo`:
 
   $ cat > dune <<EOF
   > (rule
@@ -228,10 +227,8 @@ We currently never swallow the output of builtin actions such as
   > EOF
 
   $ dune build --action-stdout-on-success=swallow
-  Hello, world!
 
-The validation policy also fails to reject standard output from builtin
-commands. This matters independently of whether the output is printed.
+`must-be-empty` rejects nonempty output from `echo`:
 
   $ cat > dune <<'EOF'
   > (rule
@@ -239,12 +236,19 @@ commands. This matters independently of whether the output is printed.
   >  (action (progn (echo "unexpected output\n") (write-file result done))))
   > EOF
 
-CR: The build succeeds and produces its target despite the unexpected output.
-
-  $ dune build --action-stdout-on-success=must-be-empty result
+  $ dune build --action-stdout-on-success=must-be-empty result > log 2>&1
+  [1]
+  $ grep -A 1 '^Error:' log
+  Error: Action produced unexpected output on stdout.
   unexpected output
-  $ cat _build/default/result; echo
-  done
+  $ test ! -e _build/default/result
+
+Explicitly redirected output is not subject to the terminal's stdout policy.
+
+  $ echo '(rule (with-outputs-to result (echo "redirected\n")))' > dune
+  $ dune build --action-stdout-on-success=must-be-empty result
+  $ cat _build/default/result
+  redirected
 
 With builtin cat
 ----------------
@@ -252,12 +256,13 @@ With builtin cat
   $ printf 'from cat\n' > input
   $ echo '(rule (alias default) (action (cat input)))' > dune
 
-CR: `cat` still prints its output under both policies.
+`swallow` suppresses output from `cat`; `must-be-empty` rejects it.
 
   $ dune build --action-stdout-on-success=swallow
-  from cat
   $ dune build --action-stdout-on-success=must-be-empty > log 2>&1
-  $ cat log
+  [1]
+  $ grep -A 1 '^Error:' log
+  Error: Action produced unexpected output on stdout.
   from cat
 
 Explicit redirection still writes the output to its target.

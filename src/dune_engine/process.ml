@@ -324,6 +324,50 @@ module Io = struct
     | Terminal { output_limit; _ } -> output_limit
     | _ -> Action_output_limit.default
   ;;
+
+  let captured_stdout_policy t =
+    if !Clflags.capture_outputs then output_on_success t else Print
+  ;;
+
+  let check_stdout ~loc contents =
+    if not (String.is_empty contents)
+    then
+      User_error.raise
+        ~loc
+        [ Pp.text "Action produced unexpected output on stdout."; Pp.verbatim contents ]
+  ;;
+
+  let write_stdout t ~loc contents =
+    match captured_stdout_policy t with
+    | Print -> output_string (out_channel t) contents
+    | Swallow -> ()
+    | Must_be_empty ->
+      check_stdout ~loc (truncate_output (`String contents) ~n:(output_limit t))
+  ;;
+
+  let cat t ~loc paths =
+    let copy_files out =
+      List.iter paths ~f:(fun path ->
+        Stdune.Io.with_file_in path ~f:(fun input -> Stdune.Io.copy_channels input out))
+    in
+    match captured_stdout_policy t with
+    | Print -> copy_files (out_channel t)
+    | (Swallow | Must_be_empty) as policy ->
+      let path = Temp.create File ~prefix:"dune" ~suffix:"stdout" in
+      Exn.protect
+        ~finally:(fun () -> Temp.destroy File path)
+        ~f:(fun () ->
+          match Stdune.Io.with_file_out path ~f:copy_files with
+          | () ->
+            (match policy with
+             | Print | Swallow -> ()
+             | Must_be_empty -> check_stdout ~loc (read_output path ~n:(output_limit t)))
+          | exception exn ->
+            let exn = Exn_with_backtrace.capture exn in
+            output_string (out_channel t) (read_output path ~n:(output_limit t));
+            flush t;
+            Exn_with_backtrace.reraise exn)
+  ;;
 end
 
 module Build = struct

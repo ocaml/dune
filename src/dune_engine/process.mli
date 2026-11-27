@@ -64,6 +64,12 @@ module Io : sig
   (** Return a buffered channel for this output. The channel is created lazily. *)
   val out_channel : output t -> out_channel
 
+  (** Write in-memory output, respecting the stdout policy. *)
+  val write_stdout : output t -> loc:Loc.t -> string -> unit
+
+  (** Copy files to stdout in order, respecting the stdout policy. *)
+  val cat : output t -> loc:Loc.t -> Path.t list -> unit
+
   (** Create a [t] representing redirecting the input or to a file or reading
       input from the file. The returned channel can only be used by a single
       call to {!run}. If you want to use it multiple times, you need to use

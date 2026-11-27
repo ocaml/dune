@@ -66,8 +66,8 @@ let decode (for_ : for_) =
   in
   let+ loc = loc
   and+ instrumentation = Preprocess.Instrumentation.instrumentation
-  and+ preprocess, preprocessor_deps = Preprocess.preprocess_fields
-  and+ melange_preprocess, melange_deps = Preprocess.melange_preprocess_fields
+  and+ preprocess, preprocessor_deps = Preprocess.preprocess_fields ~for_:Ocaml
+  and+ melange_preprocess, melange_deps = Preprocess.preprocess_fields ~for_:Melange
   and+ lint = decode_lint
   and+ foreign_stubs =
     multi_field
@@ -144,7 +144,10 @@ let decode (for_ : for_) =
       ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
   in
   let preprocess =
-    Preprocess.preprocess_config ~preprocess ~instrumentation ~preprocessor_deps
+    Preprocess.preprocess_config
+      ~preprocess:(Option.value_exn preprocess)
+      ~instrumentation
+      ~preprocessor_deps
   in
   let melange_preprocess =
     match melange_preprocess with

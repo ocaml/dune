@@ -51,9 +51,12 @@ let to_library t =
 ;;
 
 let decode_preprocess =
-  let+ preprocess, preprocessor_deps = Preprocess.preprocess_fields
+  let+ preprocess, preprocessor_deps = Preprocess.preprocess_fields ~for_:Ocaml
   and+ instrumentation = Preprocess.Instrumentation.instrumentation in
-  Preprocess.preprocess_config ~preprocess ~instrumentation ~preprocessor_deps
+  Preprocess.preprocess_config
+    ~preprocess:(Option.value_exn preprocess)
+    ~instrumentation
+    ~preprocessor_deps
 ;;
 
 let decode =

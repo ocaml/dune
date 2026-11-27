@@ -127,7 +127,7 @@ module Emit = struct
            "runtime_deps"
            (located (repeat Dep_conf.decode_no_files))
            ~default:(loc, [])
-       and+ preprocess, preprocessor_deps = Preprocess.preprocess_fields
+       and+ preprocess, preprocessor_deps = Preprocess.preprocess_fields ~for_:Ocaml
        and+ lint = field "lint" Lint.decode ~default:Lint.default
        and+ promote = field_o "promote" Rule_mode_decoder.Promote.decode
        and+ instrumentation = Preprocess.Instrumentation.instrumentation
@@ -141,7 +141,10 @@ module Emit = struct
          decode ~allowed_vars ~since:None ()
        in
        let preprocess =
-         Preprocess.preprocess_config ~preprocess ~instrumentation ~preprocessor_deps
+         Preprocess.preprocess_config
+           ~preprocess:(Option.value_exn preprocess)
+           ~instrumentation
+           ~preprocessor_deps
        in
        { loc
        ; target

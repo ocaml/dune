@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795749935769,
+  "lastUpdate": 1795750024677,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -499871,6 +499871,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.53079669362,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d0151616983bd1e8e80272b65affc8804cc17516",
+          "message": "refactor(engine): restrict chdir to build paths (#17282)\n\nStore a `Path.Build.t` in `Action.Chdir` so the executor can create the\nworking directory without a runtime path-kind check. User-supplied paths\nare still validated during action expansion. Sandboxing, action digests,\nand printed rules retain their existing behavior.\n\nFollow-up to #17269.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T11:05:51+08:00",
+          "tree_id": "ff598eeaf6c11c5950384f0c78e4341022196460",
+          "url": "https://github.com/ocaml/dune/commit/d0151616983bd1e8e80272b65affc8804cc17516"
+        },
+        "date": 1795750021183,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 51.97996897744,
             "unit": "seconds"
           }
         ]

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795721260159,
+  "lastUpdate": 1795746186119,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -697217,6 +697217,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.846865664813334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "03ec952334adcc918a7a941d4f961469ee0db63e",
+          "message": "fix(engine): create working directories when chdir runs (#17269)\n\nDune creates all working directories before running an action. This can\nmake an earlier command in a sequence fail when it expects to create the\ndirectory itself. Create the directory when the `chdir` action runs\ninstead.\n\nThe regression test from #17254 now checks that the sequence completes\nand produces its output.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T10:09:01+08:00",
+          "tree_id": "41df386d653b9d9f15ba094d122bbfa3c8a32d19",
+          "url": "https://github.com/ocaml/dune/commit/03ec952334adcc918a7a941d4f961469ee0db63e"
+        },
+        "date": 1795745758799,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.7395855136333336,
             "unit": "seconds"
           }
         ]

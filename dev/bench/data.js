@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795766007439,
+  "lastUpdate": 1795766160751,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -500451,6 +500451,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.5070378007,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "48eeb86e051d50741c1e406582d2a3e7150a4512",
+          "message": "refactor(install): share sourced install entry construction (#17226)\n\nUse the same helper to construct sourced install entries from files,\ndirectories, and source trees. Keep the existing source-location\ndiagnostics and validate source directory existence only for source-tree\nentries.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T15:36:35+08:00",
+          "tree_id": "5586af95d22928379c355897266f967871284bbc",
+          "url": "https://github.com/ocaml/dune/commit/48eeb86e051d50741c1e406582d2a3e7150a4512"
+        },
+        "date": 1795766158668,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 62.29204571472,
             "unit": "seconds"
           }
         ]

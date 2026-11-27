@@ -1270,7 +1270,9 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
   Fiber.finalize
     ~finally:(fun () -> complete_build build)
     (fun () ->
-       Fiber.Mutex.with_lock State.build_mutex ~f:(fun () -> Process.Build.with_ build f))
+       Fiber.Mutex.with_lock State.build_mutex ~f:(fun () ->
+         Scheduler.cancel_on_shutdown (Process.Build.cancellation build) (fun () ->
+           Process.Build.with_ build f)))
 ;;
 
 module Request = struct

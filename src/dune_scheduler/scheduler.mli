@@ -95,16 +95,24 @@ val running_jobs_count : t -> int
     which triggers another wave of progress happens.
 
     When [shutdown] is called, the current wave of progress will continue its
-    course until no more fiber can progress on its own. Then the scheduler will
-    do a bit cleanup, such as killing with [SIGKILL] all running external
-    processes and will then raise [Run.Shutdown_requested].
+    course until no more fiber can progress on its own. What happens next
+    depends on whether a [cancel_on_shutdown] scope is active.
 
-    Fibers that are suspended on a call such as [wait_for_process] by the time
-    [shutdown] is called will effectively never restart. If a fiber calls
-    [wait_for_process] or any other function from this module that needs an
-    external event to make progress, it will get suspended and will never
-    restart. *)
+    With no active scope, the scheduler does a bit of cleanup, such as killing
+    all running external processes, and then raises [Shutdown.E]. Fibers that
+    are suspended on a call such as [wait_for_process] by then will never
+    restart.
+
+    With an active scope, the scheduler fires the cancellation of the scope and
+    keeps running so that the scope can wind down and its finalizers run. It
+    stops as above once every scope has returned, once a grace period has
+    elapsed, or as soon as another shutdown is requested. *)
 val shutdown : [ `Ok | `Failure ] -> unit
+
+(** [cancel_on_shutdown cancellation f] runs [f ()] and fires [cancellation] if
+    a shutdown is requested before [f] returns. The scheduler then keeps running
+    until [f] returns. See [shutdown]. *)
+val cancel_on_shutdown : Fiber.Cancel.t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
 
 (** Terminate child processes that Dune adopted as a Linux subreaper. No-op on
     other platforms. Failures are reported as warnings and do not fail the

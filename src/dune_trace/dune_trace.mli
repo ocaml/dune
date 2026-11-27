@@ -99,6 +99,11 @@ module Event : sig
 
   val unknown_process : Proc.Process_info.t -> t
 
+  type cancellation =
+    { pid : Pid.t
+    ; group_leader : bool
+    }
+
   type timeout =
     { pid : Pid.t
     ; group_leader : bool
@@ -106,7 +111,11 @@ module Event : sig
     }
 
   val signal_received : Signal.t -> t
-  val signal_sent : Signal.t -> [ `Ui | `Timeout of timeout ] -> t
+
+  val signal_sent
+    :  Signal.t
+    -> [ `Ui | `Cancel of cancellation | `Timeout of timeout ]
+    -> t
 
   val persistent
     :  file:Path.t

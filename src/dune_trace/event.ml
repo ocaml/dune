@@ -671,6 +671,11 @@ let signal_received signal =
     Process
 ;;
 
+type cancellation =
+  { pid : Pid.t
+  ; group_leader : bool
+  }
+
 type timeout =
   { pid : Pid.t
   ; group_leader : bool
@@ -681,6 +686,11 @@ let signal_sent signal source =
   let args =
     match source with
     | `Ui -> [ "source", Arg.string "ui" ]
+    | `Cancel ({ pid; group_leader } : cancellation) ->
+      [ "source", Arg.string "cancel"
+      ; "pid", Arg.int (Pid.to_int pid)
+      ; "group_leader", Arg.bool group_leader
+      ]
     | `Timeout { pid; group_leader; timeout } ->
       [ "pid", Arg.int (Pid.to_int pid)
       ; "group_leader", Arg.bool group_leader

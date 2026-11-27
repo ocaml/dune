@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795750570087,
+  "lastUpdate": 1795750576601,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -500190,6 +500190,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 52.06172099399333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c708ef5a40fbf8bbcaa1d22fe77b22417c014f08",
+          "message": "test(ocamldep): reproduce a stale scan after enabling a staged PPX (#17283)\n\nEnabling a staged PPX can introduce new module dependencies without\nchanging the source file. A running watch server keeps the old\ndependency scan and fails to compile the executable because it did not\nbuild the newly referenced module. A fresh build of the same project\nsucceeds.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T11:20:02+08:00",
+          "tree_id": "2d80f9534cfd08de9697df3e08452b4daf6b9f8b",
+          "url": "https://github.com/ocaml/dune/commit/c708ef5a40fbf8bbcaa1d22fe77b22417c014f08"
+        },
+        "date": 1795750575846,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.45651506228,
             "unit": "seconds"
           }
         ]

@@ -29,5 +29,5 @@ The lock stanza selects macOS, but the build context still selects Linux.
 
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock >/dev/null 2>&1
   $ dune build
-  $ cat $pkg_root/foo/target/share/kernel
+  $ cat "$(get_build_pkg_dir foo)/_install/share/kernel"
   Linux

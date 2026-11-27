@@ -10,7 +10,7 @@ type opam_file =
 (* we need the original opam file when passing it [$ dune pkg lock] we want to
    to allow the opam library interpret the opam file directly. *)
 type original_opam_file =
-  { file : Path.Source.t
+  { file : Path.t
   ; contents : string
   }
 
@@ -41,7 +41,7 @@ end
 
 type t =
   { id : Id.t
-  ; opam_file : Path.Source.t
+  ; opam_file : Path.Local.t
   ; loc : Loc.t
   ; synopsis : string option
   ; description : string option
@@ -57,7 +57,7 @@ type t =
   ; sites : Section.t Site.Map.t
   ; allow_empty : bool
   ; original_opam_file : original_opam_file option
-  ; exclusive_dir : (Loc.t * Path.Source.t) option
+  ; exclusive_dir : (Loc.t * Path.Local.t) option
   ; duplicate_dep_warnings : User_message.t list
   }
 
@@ -131,7 +131,7 @@ let encode
         ; field_o
             "dir"
             (fun (_, dir) ->
-               Path.Source.basename dir
+               Path.Local.basename dir
                |> Filename.to_string
                |> Dune_sexp.atom_or_quoted_string)
             exclusive_dir
@@ -202,7 +202,13 @@ let decode =
          field_o
            "dir"
            (let+ loc, s = Syntax.since Stanza.syntax (3, 21) >>> located string in
-            loc, Path.Source.relative ~error_loc:loc dir s)
+            let path = Path.Local.relative ~error_loc:loc dir s in
+            if not (Path.Local.is_descendant path ~of_:dir)
+            then
+              User_error.raise
+                ~loc
+                [ Pp.text "The directory of a package must be inside its project." ];
+            loc, path)
        and+ deprecated_package_names =
          name_map
            (Syntax.since Stanza.syntax (2, 0))
@@ -352,7 +358,7 @@ let create
   ; original_opam_file
   ; exclusive_dir =
       Option.map contents_basename ~f:(fun (loc, s) ->
-        loc, Path.Source.relative_fname dir s)
+        loc, Path.Local.relative_fname dir s)
   ; duplicate_dep_warnings = []
   ; enabled_if
   }

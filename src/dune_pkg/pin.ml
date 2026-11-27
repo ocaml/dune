@@ -15,7 +15,7 @@ let local_package_of_pin (t : Pin_stanza.Package.t) ~url ~origin =
 module DB = struct
   type context =
     | Workspace
-    | Project of { dir : Path.Source.t }
+    | Project of { dir : Path.Local.t }
 
   type nonrec t =
     { all : Pin_stanza.t list (* we keep this for [encode] *)
@@ -62,14 +62,14 @@ module DB = struct
     | Workspace, _ -> Ok x
     | _, Workspace -> Ok x'
     | Project { dir }, Project { dir = dir' } ->
-      if Path.Source.equal dir dir'
+      if Path.Local.equal dir dir'
       then
         Code_error.raise
           "two projects in the same directory in the workspace"
-          [ "dir", Path.Source.to_dyn dir ]
-      else if Path.Source.is_descendant dir ~of_:dir'
+          [ "dir", Path.Local.to_dyn dir ]
+      else if Path.Local.is_descendant dir ~of_:dir'
       then Ok x'
-      else if Path.Source.is_descendant dir' ~of_:dir
+      else if Path.Local.is_descendant dir' ~of_:dir
       then Ok x
       else Error ()
   ;;
@@ -143,7 +143,7 @@ end
 
 module Scan_project = struct
   type t =
-    read:(Path.Source.t -> string Fiber.t)
+    read:(Path.Local.t -> string Fiber.t)
     -> files:Filename.Array.Set.t
     -> (DB.t * Dune_lang.Package.t Package_name.Map.t) option Fiber.t
 
@@ -167,7 +167,6 @@ module Scan_project = struct
         >>| Filename.Array.Set.of_sorted_list
       in
       let read path =
-        let path = Path.Source.to_local path in
         Mount.read mount path
         >>| function
         | Some s -> s
@@ -366,7 +365,8 @@ module Project = struct
       Dune_project.gen_load
         ~read
         ~files
-        ~dir:Path.Source.root
+        ~dir:Path.Local.root
+        ~display_dir:Path.root
         ~infer_from_opam_files:false
         ~load_opam_file_with_contents:Opam_file.load_opam_file_with_contents
       >>| Option.map ~f:(fun project ->

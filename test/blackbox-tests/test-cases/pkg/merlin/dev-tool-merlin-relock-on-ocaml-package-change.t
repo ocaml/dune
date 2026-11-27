@@ -44,7 +44,7 @@ Now give Merlin an explicit compiler dependency and solve its lock again. The
 installed project compiler reports v2, but Merlin builds with its own v1.
 
   $ build_pkg ocaml-base-compiler
-  $ "$(get_build_pkg_dir ocaml-base-compiler)/target/bin/compiler-id"
+  $ "$(get_build_pkg_dir ocaml-base-compiler)/_install/bin/compiler-id"
   compiler-v2
   $ merlin_opam="$mock_packages/merlin/merlin.0.0.1/opam"
   $ echo 'depends: [ "ocaml-base-compiler" ]' >>"$merlin_opam"

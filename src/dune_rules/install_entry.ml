@@ -78,11 +78,13 @@ module File = struct
       file_binding_decode <|> glob_files_decode
     ;;
 
-    let to_file_bindings_unexpanded t ~expand ~dir ~dune_syntax =
+    let to_file_bindings_unexpanded t ~expand ~dir ~source_tree_root ~dune_syntax =
       match t with
       | File_binding file_binding -> Memo.return [ file_binding ]
       | Glob_files { glob_files; prefix } ->
-        let* glob_expanded = Glob_files_expand.memo glob_files ~f:expand ~base_dir:dir in
+        let* glob_expanded =
+          Glob_files_expand.memo glob_files ~f:expand ~base_dir:dir ~source_tree_root
+        in
         let glob_loc = String_with_vars.loc glob_files.glob in
         let glob_prefix = Glob_files_expand.Expanded.prefix glob_expanded in
         let+ prefix_loc_opt =
@@ -114,11 +116,11 @@ module File = struct
             ~src
             ~dst
             ~dune_syntax
-            ~dir:(Some (Path.Build.drop_build_context_exn dir)))
+            ~dir:(Some (Dune_project.dir_in_context dir)))
     ;;
 
-    let to_file_bindings_expanded t ~expand ~dir ~dune_syntax =
-      to_file_bindings_unexpanded t ~expand ~dir ~dune_syntax
+    let to_file_bindings_expanded t ~expand ~dir ~source_tree_root ~dune_syntax =
+      to_file_bindings_unexpanded t ~expand ~dir ~source_tree_root ~dune_syntax
       |> Memo.bind
            ~f:
              (Memo.List.map
@@ -162,21 +164,31 @@ module File = struct
       List.map entries ~f:(fun entry -> entry, dune_syntax))
   ;;
 
-  let to_file_bindings_unexpanded ts ~expand ~dir =
+  let to_file_bindings_unexpanded ts ~expand ~dir ~source_tree_root =
     expand_includes ts ~expand ~dir
     |> Memo.bind
          ~f:
            (Memo.List.concat_map ~f:(fun (entry, dune_syntax) ->
-              Without_include.to_file_bindings_unexpanded ~expand ~dir ~dune_syntax entry))
+              Without_include.to_file_bindings_unexpanded
+                ~expand
+                ~dir
+                ~source_tree_root
+                ~dune_syntax
+                entry))
   ;;
 
-  let to_file_bindings_expanded ts ~expand ~dir =
+  let to_file_bindings_expanded ts ~expand ~dir ~source_tree_root =
     let* file_bindings_expanded =
       expand_includes ts ~expand ~dir
       |> Memo.bind
            ~f:
              (Memo.List.concat_map ~f:(fun (entry, dune_syntax) ->
-                Without_include.to_file_bindings_expanded ~expand ~dir ~dune_syntax entry))
+                Without_include.to_file_bindings_expanded
+                  ~expand
+                  ~dir
+                  ~source_tree_root
+                  ~dune_syntax
+                  entry))
     in
     validate_file_bindings
       file_bindings_expanded

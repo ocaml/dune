@@ -1,14 +1,18 @@
 open Import
 
 val set_entry_resolver
-  :  (Context_name.t -> Package.Name.t -> Install.Entry.Sourced.Unexpanded.t list Memo.t)
+  :  (Context_name.t -> Package.Name.t -> Path.t Install.Entry.Expanded.t list Memo.t)
   -> unit
 
-(** Env extension for an action depending on a package set. Returns an env
-    with PATH, OCAMLPATH, etc. prepended for the layout root, and registers
-    the action's dependency on every install entry the layout produces for
-    the set. *)
-val env : Context_name.t -> Package.Name.Set.t -> Env.t Action_builder.t
+(** Root of the materialized install layout for the package set. *)
+val root : Context_name.t -> Package.Name.Set.t -> Path.Build.t
+
+(** Depend on every install entry and return its layout path, grouped by
+    owning package and section. Packages without entries are absent. *)
+val deps
+  :  Context_name.t
+  -> Package.Name.Set.t
+  -> Path.t list Section.Map.t Package.Name.Map.t Action_builder.t
 
 (** Engine dispatch for [_build/_private/<context>/.packages/<rest>]. Called
     from [Gen_rules]; the layout dir is owned by this module. Resolves to:

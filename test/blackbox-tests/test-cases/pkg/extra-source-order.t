@@ -23,18 +23,20 @@ Use ordinary files and a no-op action to isolate declaration-order changes.
   > EOF
   > }
   $ write_pkg a b
-  $ target=$(get_build_pkg_dir foo)/target
+  $ target=$(get_build_pkg_dir foo)/_install
   $ dune build "$target"
   $ dune build "$target"
   $ misses
   []
 
-Changing only the declaration order still rebuilds the same target.
+Extra sources are copied in declaration order when the source is prepared.
+Changing only that order prepares the same files, so the package is not
+rebuilt.
 
   $ write_pkg b a
   $ dune build "$target"
   $ misses
-  ["rule or dependencies changed"]
+  []
 
 Changing an input's contents must still invalidate the build.
 

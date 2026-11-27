@@ -2,10 +2,10 @@ open Import
 
 type t = private
   { name : Package_name.t
-  ; dir : Path.Source.t
+  ; dir : Path.Local.t
   }
 
-val create : name:Package_name.t -> dir:Path.Source.t -> t
+val create : name:Package_name.t -> dir:Path.Local.t -> t
 val name : t -> Package_name.t
 val hash : t -> int
 val to_dyn : t -> Dyn.t

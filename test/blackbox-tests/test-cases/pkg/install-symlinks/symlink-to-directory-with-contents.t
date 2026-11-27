@@ -35,10 +35,10 @@ code is exercised:
 
 The symlink is resolved by dune's symlink resolution code:
 
-  $ dune_cmd stat kind $(get_build_pkg_dir foo)/target/lib/foo/link.txt
+  $ dune_cmd stat kind $(get_build_pkg_dir foo)/_install/lib/foo/link.txt
   regular file
 
-  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/target/lib/foo/real.txt
+  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/_install/lib/foo/real.txt
   3
 
 Caching works:

@@ -15,12 +15,14 @@ open Import
     [cctx.uideps] index covering the whole compilation context. *)
 val cctx_rules : Compilation_context.t -> unit Memo.t
 
-(** [context_indexes] lists all the available cctx.ocaml-index files in the
-    given context for the given compilation mode, together with a digest of the
-    ordered path list. *)
+(** [context_indexes] lists the available cctx.ocaml-index files of one
+    partition of the given context, the workspace's or those of the mounted
+    package named by [owner], for the given compilation mode, together with a
+    digest of the ordered path list. *)
 val context_indexes
   :  Context.t
   -> for_:Compilation_mode.t
+  -> owner:Package.Name.t option
   -> (Path.t list * Digest.t) Action_builder.t
 
 (** [project_rule] adds a rule that will aggregate all the generated indexes

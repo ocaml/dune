@@ -21,8 +21,8 @@ CR-someday Alizter: Maybe in this case it actually makes sense to resolve the di
 
   $ build_pkg foo
   Error: Error trying to read targets after a rule was run:
-  - default/.pkg/foo/target/lib/foo/subdir_link: Unexpected file kind "S_DIR" (directory)
-  -> required by _build/_private/default/.pkg/foo/target
+  - .pkg/foo/_install/lib/foo/subdir_link: Unexpected file kind "S_DIR" (directory)
+  -> required by _build/default/.pkg/foo/_install
   [1]
 
 --------------------------------------------------------------------------------
@@ -44,8 +44,8 @@ error correctly. Engine bug? Let's try to repro later.
 
   $ build_pkg foo 2>&1 | censor
   Error:
-  link(_build/.sandbox/$DIGEST/_private/default/.pkg/foo/target/lib/foo/subdir_link): Operation not permitted
-  -> required by _build/_private/default/.pkg/foo/target
+  link(_build/.sandbox/$DIGEST/default/.pkg/foo/_install/lib/foo/subdir_link): Operation not permitted
+  -> required by _build/default/.pkg/foo/_install
   [1]
 
 --------------------------------------------------------------------------------
@@ -68,14 +68,14 @@ Case 3: .install file excludes the directory symlink.
 The directory symlink is not in the installed targets, so the engine does not
 reject it. Only the real directory contents are installed:
 
-  $ ls $(get_build_pkg_dir foo)/target/lib/foo
+  $ ls $(get_build_pkg_dir foo)/_install/lib/foo
   file.txt
   link.txt
 
 The file symlink is converted to a hardlink:
 
-  $ dune_cmd stat kind $(get_build_pkg_dir foo)/target/lib/foo/link.txt
+  $ dune_cmd stat kind $(get_build_pkg_dir foo)/_install/lib/foo/link.txt
   regular file
 
-  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/target/lib/foo/link.txt
+  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/_install/lib/foo/link.txt
   2

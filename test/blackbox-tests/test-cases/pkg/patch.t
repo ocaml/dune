@@ -46,16 +46,16 @@ Ed-format patches are not supported and should give a clear error:
   > EOF
 
   $ build_pkg ed-test
+  File "dune.lock/ed-test.pkg", line 5, characters 9-18:
+  5 |   (patch foo.patch)
+               ^^^^^^^^^
   Error: Could not parse the patch file. Only unified diff format is supported.
   Context diffs and ed commands are not supported.
-  -> required by _build/_private/default/.pkg/ed-test/target
   [1]
 
 Demonstrate that the original source shouldn't be modified:
 
-  $ cat _build/_private/default/.pkg/test/source/foo.ml
-  cat: _build/_private/default/.pkg/test/source/foo.ml: No such file or directory
-  [1]
+  $ test ! -e test-source/foo.ml
 
 Patch action without a source stanza should give an informative error:
 
@@ -82,8 +82,10 @@ what has failed but not why and how to fix it (stop patching an opam file
 without sources).
 
   $ build_pkg no-source
+  File "dune.lock/no-source.pkg", line 4, characters 9-18:
+  4 |   (patch foo.patch)
+               ^^^^^^^^^
   Error: Cannot edit file "foo.ml": file does not exist
-  -> required by _build/_private/default/.pkg/no-source/target
   [1]
 
 Empty patches are treated as a no-op, matching Opam behavior:
@@ -110,6 +112,8 @@ Empty patches are treated as a no-op, matching Opam behavior:
 A package can edit its own sources in place without copying the installed
 outputs of its dependencies. In hardlink mode the dependency stays linked,
 while even a nested source file gets a private, writable copy.
+The dependency's file has three links: the installed file, its link in the
+sandbox and the sandbox's link for the install layout that exposes it.
 
   $ make_lockpkg dep <<'EOF'
   > (version 0.0.1)
@@ -137,13 +141,13 @@ while even a nested source file gets a private, writable copy.
   > EOF
   $ pkg_dir=$(get_build_pkg_dir edit-test)
   $ dune build --cache=disabled --config-file hardlink-config \
-  >   "$pkg_dir/target"
+  >   "$pkg_dir/_install"
   regular file
-  2
+  3
   regular file
   1
   edited
-  $ cat "$pkg_dir/source/nested/input"
+  $ cat "$pkg_dir/nested/input"
   original
 
 In symlink mode the dependency is a symbolic link, but the package's source
@@ -164,9 +168,9 @@ Skip this case on Windows, where Dune does not support symlink sandboxing.
   > EOF
   $ os_type=$(ocamlc -config-var os_type)
   $ if [ "$os_type" != Win32 ]; then
-  >   rm -r "$pkg_dir/target" &&
+  >   rm -r "$pkg_dir/_install" &&
   >   dune build --cache=disabled --config-file symlink-config \
-  >     "$pkg_dir/target" > symlink.out 2>&1 &&
-  >   cat "$pkg_dir/source/nested/input" >> symlink.out &&
+  >     "$pkg_dir/_install" > symlink.out 2>&1 &&
+  >   cat "$pkg_dir/nested/input" >> symlink.out &&
   >   diff symlink.expected symlink.out
   > fi

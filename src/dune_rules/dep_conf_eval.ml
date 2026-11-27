@@ -62,8 +62,8 @@ let include_action_env = function
 ;;
 
 let dep_on_alias_rec alias ~loc =
-  let src_dir = Path.Build.drop_build_context_exn (Alias.dir alias) in
-  Action_builder.of_memo (Source_tree.find_dir src_dir)
+  let src_dir = Pkg_rules.source_location (Alias.dir alias) in
+  Action_builder.of_memo (Partitions.source_tree_dir ~dir:(Alias.dir alias))
   >>= function
   | None ->
     Action_builder.fail
@@ -73,7 +73,7 @@ let dep_on_alias_rec alias ~loc =
               ~loc
               [ Pp.textf
                   "Don't know about directory %s!"
-                  (Path.Source.to_string_maybe_quoted src_dir)
+                  (Path.to_string_maybe_quoted src_dir)
               ])
       }
   | Some _ ->
@@ -90,7 +90,7 @@ let dep_on_alias_rec alias ~loc =
            ; Pp.textf
                "Alias %S is not defined in %s or any of its descendants."
                (Alias.Name.to_string name)
-               (Path.Source.to_string_maybe_quoted src_dir)
+               (Path.to_string_maybe_quoted src_dir)
            ])
 ;;
 
@@ -296,6 +296,22 @@ let expand_package_set context package_names =
       >>| Package.Name.Set.of_list)
 ;;
 
+(* Locked packages are materialised with the packages they depend on. *)
+let expand_package_set context package_names =
+  let open Memo.O in
+  let* expanded = expand_package_set context package_names in
+  let* managed = Pkg_rules.dependencies context >>| Package.Name.Set.of_keys in
+  Memo.map_reduce_seq
+    (Package.Name.Set.to_seq (Package.Name.Set.inter expanded managed))
+    ~empty:expanded
+    ~combine:Package.Name.Set.union
+    ~f:(fun name ->
+      let+ package = Pkg_rules.find_package context name in
+      match package with
+      | None -> Package.Name.Set.empty
+      | Some (dependencies, _build) -> dependencies)
+;;
+
 let rec dep expander : Dep_conf.t -> _ = function
   | Include s ->
     (* TODO this is wrong. we shouldn't allow bindings here if we are in an
@@ -349,10 +365,13 @@ let rec dep expander : Dep_conf.t -> _ = function
   | Glob_files glob_files ->
     let dir = Expander.dir expander in
     Other
-      (Glob_files_expand.action_builder
+      (Action_builder.of_memo (Expander.source_tree_root expander)
+       >>= fun source_tree_root ->
+       Glob_files_expand.action_builder
          glob_files
          ~f:(Expander.expand ~mode:Single expander)
          ~base_dir:dir
+         ~source_tree_root
        >>| Glob_files_expand.Expanded.matches
        >>| List.map ~f:(fun path ->
          if Filename.is_relative path
@@ -442,7 +461,9 @@ and combined_package_deps_builder expander pkgs =
     let* local_env =
       if Package.Name.Set.is_empty local_package_names
       then Action_builder.return Env.empty
-      else Install_layout.env context.name local_package_names
+      else
+        let* layout = Package_layout.materialize context.name local_package_names in
+        Pkg_rules.layout_env layout
     in
     if Package.Name.Set.is_empty lockdir_package_names
     then Action_builder.return local_env
@@ -591,7 +612,27 @@ and named_paths_builder ~expander l =
   builder, bindings, action_env
 ;;
 
+let add_package_deps expander deps =
+  let rec names deps =
+    Action_builder.List.concat_map deps ~f:(function
+      | Dep_conf.Package package ->
+        expand_package_name expander package >>| List.singleton
+      | Include file ->
+        let* deps = expand_include ~expander file in
+        names (Bindings.to_list deps)
+      | _ -> Action_builder.return [])
+  in
+  let packages =
+    let* names = names deps in
+    let* context = Action_builder.of_memo (Expander.host_context expander) in
+    Action_builder.of_memo
+      (expand_package_set (Context.name context) (Package.Name.Set.of_list names))
+  in
+  Expander.add_package_deps expander packages
+;;
+
 let named sandbox ~expander l =
+  let expander = add_package_deps expander (Bindings.to_list l) in
   let builder, bindings, action_env = named_paths_builder ~expander l in
   let builder =
     Action_builder.memoize

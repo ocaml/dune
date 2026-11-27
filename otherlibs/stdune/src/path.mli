@@ -60,6 +60,7 @@ module Local : sig
   val root : t
   val repr : t Repr.t
   val append : t -> t -> t
+  val relative_result : t -> string -> (t, [ `Outside_the_workspace ]) Result.t
 
   include Path_intf.With_loc with type t := t
 

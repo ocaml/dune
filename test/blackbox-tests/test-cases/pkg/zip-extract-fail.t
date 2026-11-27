@@ -73,12 +73,12 @@ but does have a .zip suffix:
   > make_lockpkg $1 <<EOF
   > (source
   >  (fetch
-  >   (url "file://$(pwd)/test.txt.zip")))
+  >   (url "file://$(pwd)/$2")))
   > (version dev)
   > EOF
   > }
 
-  $ makepkg foo
+  $ makepkg foo test.txt.zip
 
 Build the package in an environment without unzip, or tar, or bsdtar.
 
@@ -139,9 +139,11 @@ Currently the code prefers unzip over bsdtar:
   $ show_path
   basename cp dune sh tar unzip
 
-Use a fresh package to ensure extraction actually runs (not cached from earlier):
+Use a fresh package and archive to ensure extraction actually runs. Sources
+are fetched once per URL, so the same archive would not be extracted again:
 
-  $ makepkg bar
+  $ cp test.txt.zip other.txt.zip
+  $ makepkg bar other.txt.zip
   $ (PATH=.fakebin build_pkg bar)
 
 Check which tool was used for extraction:

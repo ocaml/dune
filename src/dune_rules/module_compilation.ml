@@ -387,7 +387,10 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t) =
                | Ocaml _ -> Ocaml_runtime_env.toolchain sctx ~dir:rule_dir Env.empty)
             ~forbid_action_runner:true
             compiler
-            [ flags
+            [ (match mode with
+               | Ocaml _ -> Command.Args.hidden_deps_dyn (Context.compiler_dep ctx)
+               | Melange -> Command.Args.empty)
+            ; flags
             ; pp_flags
             ; cmt_args
             ; cms_args
@@ -544,7 +547,8 @@ let build_inference_alias cctx ~name ~aliases =
       ~dir:(Path.build (Context.build_dir (Super_context.context sctx)))
       ~sandbox:Sandbox_config.needs_sandboxing
       ~forbid_action_runner:true
-      [ Command.Args.As [ "-no-alias-deps"; "-c" ]
+      [ Command.Args.hidden_deps_dyn (Context.compiler_dep (Super_context.context sctx))
+      ; As [ "-no-alias-deps"; "-c" ]
       ; (if Ocaml.Version.supports_opaque_for_mli ocaml.version then A "-opaque" else S [])
       ; parameters cctx
       ; A "-I"
@@ -626,6 +630,7 @@ let ocamlc_i_action ~impl_deps ~alias cctx (m : Module.t) =
         ; Dep src
         ; Hidden_deps (Dep.Set.of_files (Option.to_list original))
         ; Hidden_deps (Dep.Set.of_files [ ocaml.lib_config.stdlib_dir ])
+        ; Command.Args.hidden_deps_dyn (Context.compiler_dep ctx)
         ]
 ;;
 

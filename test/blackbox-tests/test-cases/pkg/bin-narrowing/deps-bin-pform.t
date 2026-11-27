@@ -59,67 +59,69 @@ artifacts like any other pform, so it is narrowed and the rule fails before
 A declared lockdir binary and an undeclared sibling of the same name
 ---------------------------------------------------------------------
 
-  $ rm -rf producer consumer dune.lock
-  $ dune clean
+Use the same provider and workspace consumers through both backends, in fresh
+roots. The workspace sibling is not declared by the consumer, so neither
+lookup may select its competing binary.
 
-  $ make_lockdir
-  $ make_lockpkg provider <<'EOF'
-  > (version 0.0.1)
-  > (build
-  >  (progn
-  >   (system "echo '#!/bin/sh' > dup")
-  >   (system "echo 'echo from lockdir' >> dup")
-  >   (system "chmod +x dup")
-  >   (system "echo 'bin: [ \"dup\" ]' > provider.install")))
-  > EOF
-
-  $ mkdir -p sibling consumer
-  $ cat >sibling/dup.sh <<'EOF'
-  > #!/bin/sh
-  > echo from workspace
-  > EOF
-  $ chmod +x sibling/dup.sh
-  $ cat >sibling/dune <<'EOF'
+  $ mkdir -p _provider _selection/sibling _selection/consumer native opaque
+  $ (cd _provider && make_dune_project_with_package 3.25 provider)
+  $ echo '(install (section bin) (files (dup.sh as dup)))' > _provider/dune
+  $ printf '#!/bin/sh\necho from lockdir\n' > _provider/dup.sh
+  $ printf '#!/bin/sh\necho from workspace\n' > _selection/sibling/dup.sh
+  $ chmod +x _provider/dup.sh _selection/sibling/dup.sh
+  $ cat > _selection/sibling/dune <<'EOF'
   > (install (package sibling) (section bin) (files (dup.sh as dup)))
   > EOF
-  $ cat >consumer/dune <<'EOF'
+  $ cat > _selection/consumer/dune <<'EOF'
   > (rule
   >  (action (with-stdout-to via-pform (run %{bin:dup}))))
   > (rule
   >  (deps %{bin:dup})
   >  (action (with-stdout-to via-path (system dup))))
   > EOF
-
-[consumer] declares the lockdir package [provider], but not the workspace
-sibling [sibling]:
-
-  $ make_dune_project 3.25
-  $ cat >> dune-project << 'EOF'
+  $ cat > _selection/dune-project <<'EOF'
+  > (lang dune 3.25)
   > (package (name sibling) (allow_empty) (dir sibling))
   > (package (name consumer) (allow_empty) (dir consumer) (depends provider))
   > EOF
+  $ cp -R _selection/. native/
+  $ cp -R _selection/. opaque/
+  $ make_backend_lockdirs provider "$PWD/_provider"
 
-  $ dune build consumer/via-pform consumer/via-path
+The native provider is selected without running its failing recipe. Pform
+execution and the independent dependency-pform/PATH action both select it.
 
-[sibling] is not listed in [consumer]'s dependencies, so its [dup] is narrowed
-out of [local_bins] and the lookup falls through to the declared lockdir copy.
-That copy is staged, so [(system dup)] finds it on $PATH.
+  $ (cd native && dune build consumer/via-pform consumer/via-path)
+  $ cat native/_build/default/consumer/via-pform \
+  >   native/_build/default/consumer/via-path
+  from lockdir
+  from lockdir
+  $ test ! -e native/_build/default/.pkg/provider/_install/cookie
+
+The opaque provider gives the same selection result. It is not a workspace
+binary to stage in [.binaries]; [(system dup)] finds the installed copy on
+[provider]'s PATH. The marker and cookie prove that its recipe really ran.
+
+  $ (cd opaque && dune build consumer/via-pform consumer/via-path)
+  $ cat opaque/_build/default/consumer/via-pform \
+  >   opaque/_build/default/consumer/via-path
+  from lockdir
+  from lockdir
+  $ cat opaque/_build/default/.pkg/provider/_install/opaque-recipe
+  opaque
+  $ test -f opaque/_build/default/.pkg/provider/_install/cookie
 
 In [workspace-shadows-lockdir.t] the workspace binary does shadow the lockdir
 one: there it belongs to the directory's own owning package, whose binaries are
 always visible to it.
 
-  $ cat _build/default/consumer/via-pform
-  from lockdir
-  $ cat _build/default/consumer/via-path
-  from lockdir
-
 A name installed by two workspace packages
 -------------------------------------------
 
-  $ rm -rf sibling consumer dune.lock
-  $ dune clean
+This workspace-only case is independent of the competing locked providers.
 
+  $ mkdir workspace
+  $ cd workspace
   $ make_lockdir
   $ mkdir -p a b c
   $ cat >a/dup.sh <<'EOF'

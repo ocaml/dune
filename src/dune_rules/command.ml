@@ -31,6 +31,7 @@ module Args0 = struct
   ;;
 
   let empty = S []
+  let hidden_deps_dyn deps = Dyn (Action_builder.map deps ~f:(fun () -> S []))
 
   let as_any : without_targets t -> any t = function
     | A _ as x -> (x :> any t)

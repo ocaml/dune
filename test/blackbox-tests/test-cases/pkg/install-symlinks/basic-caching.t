@@ -35,22 +35,22 @@ Verify the build ran by checking the trace for our marker command:
 
 Check that the files exist:
 
-  $ ls $(get_build_pkg_dir foo)/target/lib/foo | sort
+  $ ls $(get_build_pkg_dir foo)/_install/lib/foo | sort
   META
   link.txt
   real.txt
 
 The symlink has been resolved to a regular file (hardlink to the target):
 
-  $ dune_cmd stat kind $(get_build_pkg_dir foo)/target/lib/foo/link.txt
+  $ dune_cmd stat kind $(get_build_pkg_dir foo)/_install/lib/foo/link.txt
   regular file
 
 Check hardlink count. Files should have hardlinks > 1 indicating they are cached.
 real.txt has 3 hardlinks: original, link.txt (resolved), and cache entry.
 
-  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/target/lib/foo/real.txt
+  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/_install/lib/foo/real.txt
   3
-  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/target/lib/foo/META
+  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/_install/lib/foo/META
   2
 
 Clean and rebuild to verify cache restore:

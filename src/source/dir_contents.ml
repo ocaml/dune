@@ -50,6 +50,10 @@ let equal x y =
 
 let empty = { files = Filename.Array.Set.empty; dirs = Filename.Array.Map.empty }
 
+let of_names ~files ~dirs =
+  { files; dirs = Filename.Array.Map.of_set dirs ~f:(fun _ -> File.dummy) }
+;;
+
 let to_dyn { files; dirs } =
   let open Dyn in
   record

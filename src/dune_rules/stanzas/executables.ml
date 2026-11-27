@@ -19,7 +19,7 @@ module Names : sig
     :  t
     -> ext:Filename.Extension.t
     -> enabled_if:Blang.t
-    -> dir:Path.Source.t
+    -> dir:Path.Local.t
     -> Install_conf.t option
 end = struct
   type public =

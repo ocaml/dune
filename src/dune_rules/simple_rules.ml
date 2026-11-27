@@ -6,7 +6,7 @@ module Alias_rules = struct
     match Alias.Name.compare (Alias.name alias) Alias0.empty with
     | Lt | Gt -> Memo.return ()
     | Eq ->
-      let* project = Dune_load.find_project ~dir in
+      let* project = Partitions.find_project ~dir in
       if Dune_project.dune_version project >= (3, 20)
       then
         User_error.raise
@@ -238,12 +238,38 @@ let user_rule sctx ~dir ~expander (rule : Rule_conf.t) =
        None)
 ;;
 
-let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
+(* A workspace directory resolves a relative glob as a workspace path, which
+   may leave the workspace. A mounted package has no workspace path: its glob
+   is resolved inside the package and cannot leave it. *)
+let copy_files_relative_glob ~dir ~loc src_glob =
+  let local = Dune_project.dir_in_context dir in
+  match Pkg_rules.package_of_dir_in_context local with
+  | None ->
+    Path.relative (Path.source (Path.Source.of_local local)) src_glob ~error_loc:loc
+  | Some package ->
+    (match
+       Path.Local.relative_result local src_glob
+       |> Result.map ~f:Pkg_rules.package_of_dir_in_context
+     with
+     | Ok (Some owner) when Package.Name.equal owner package ->
+       Path.build (Path.Build.relative dir src_glob)
+     | Ok _ | Error _ ->
+       User_error.raise
+         ~loc
+         [ Pp.textf
+             "%s is outside the package %s. A locked package can only copy its own files."
+             (String.maybe_quoted src_glob)
+             (Package.Name.to_string package)
+         ])
+;;
+
+let copy_files sctx ~dir ~expander (def : Copy_files.t) =
   let loc = String_with_vars.loc def.files in
+  let src_dir_path = Pkg_rules.source_location dir in
   let* glob_in_src =
     let+ src_glob = Expander.No_deps.expand_str expander def.files in
     if Filename.is_relative src_glob
-    then Path.relative (Path.source src_dir) src_glob ~error_loc:loc
+    then copy_files_relative_glob ~dir ~loc src_glob
     else (
       let since = 2, 7 in
       if def.syntax_version < since
@@ -256,9 +282,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       Path.external_ (Path.External.of_string src_glob))
   in
   let since = 1, 3 in
-  if
-    def.syntax_version < since
-    && not (Path.is_descendant glob_in_src ~of_:(Path.source src_dir))
+  if def.syntax_version < since && not (Path.is_descendant glob_in_src ~of_:src_dir_path)
   then
     Dune_lang.Syntax.Error.since
       loc
@@ -268,7 +292,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
         (sprintf
            "%s is not a sub-directory of %s. This"
            (Path.to_string_maybe_quoted glob_in_src)
-           (Path.Source.to_string_maybe_quoted src_dir));
+           (Path.to_string_maybe_quoted src_dir_path));
   let src_in_src = Path.parent_exn glob_in_src in
   let glob = Path.basename glob_in_src |> Filename.to_string |> Glob.of_string_exn loc in
   let context = Super_context.context sctx in
@@ -278,13 +302,16 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
     | Some src_in_src ->
       Path.Build.append_source (Context.build_dir context) src_in_src |> Path.build
   in
+  let* source_dir =
+    match Path.as_in_build_dir src_in_build with
+    | None -> Memo.return None
+    | Some dir -> Partitions.source_tree_dir ~dir
+  in
   let* exists_or_generated =
     match src_in_src with
-    | In_build_dir _ -> assert false
     | External ext -> Fs_memo.dir_exists (External ext)
-    | In_source_tree src_in_src ->
-      Source_tree.find_dir src_in_src
-      >>= (function
+    | In_source_tree _ | In_build_dir _ ->
+      (match source_dir with
        | Some _ -> Memo.return true
        | None -> Load_rules.is_under_directory_target src_in_build)
   in
@@ -293,7 +320,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
     User_error.raise
       ~loc
       [ Pp.textf "Cannot find directory: %s" (Path.to_string src_in_src) ];
-  if Path.equal src_in_src (Path.source src_dir)
+  if Path.equal src_in_src src_dir_path
   then
     User_error.raise
       ~loc
@@ -309,7 +336,16 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       | true -> src_in_src
       | false -> src_in_build
     in
-    Build_system.eval_pred (File_selector.of_glob ~dir glob)
+    match only_sources, dir with
+    | true, In_build_dir _ ->
+      (match source_dir with
+       | Some source_dir -> Source_tree.Dir.filenames source_dir
+       | None -> Filename.Array.Set.empty)
+      |> Filename_set.create ~dir ~filter:(fun ~basename ->
+        Glob.test glob (Filename.to_string basename))
+      |> Memo.return
+    | true, (In_source_tree _ | External _) | false, _ ->
+      Build_system.eval_pred (File_selector.of_glob ~dir glob)
   in
   if def.syntax_version >= (3, 17) && Filename_set.is_empty files
   then User_error.raise ~loc [ Pp.textf "Does not match any files" ];
@@ -349,10 +385,10 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   targets
 ;;
 
-let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
+let copy_files sctx ~dir ~expander (def : Copy_files.t) =
   Expander.eval_blang expander def.enabled_if
   >>= function
-  | true -> copy_files sctx ~dir ~expander ~src_dir def
+  | true -> copy_files sctx ~dir ~expander def
   | false -> Memo.return Path.Set.empty
 ;;
 

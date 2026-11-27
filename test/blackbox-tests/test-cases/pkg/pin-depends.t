@@ -188,7 +188,8 @@ Pin to an HTTP archive work
   $ grep "sha256=$SHA256_CHECKSUM" output 2>&1 > /dev/null && echo "Checksum matches"
   Checksum matches
 
-Pin to an HTTP archive detects wrong hash
+Pin to an HTTP archive detects wrong hash. The archive is only fetched when the
+package is demanded, so ask for the locked packages explicitly.
 
   $ cat << EOF > dune
   > (library
@@ -197,7 +198,7 @@ Pin to an HTTP archive detects wrong hash
   > EOF
   $ dune_cmd subst "$SHA256_CHECKSUM" '92449184682b45b5f07e811fdd61d35f92449184682b45b5f07e811fdd61d35f' ${default_lock_dir}/bar.1.0.0.pkg
   $ rm -rf already-served
-  $ dune build 2>&1 | grep -v "sha256"
+  $ dune build @pkg-install 2>&1 | grep -v "sha256"
   File "dune.lock/bar.1.0.0.pkg", line 7, characters 3-74:
          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Invalid checksum, got

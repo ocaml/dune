@@ -58,7 +58,7 @@ context, and that it is staged in the host context's [.binaries] directory:
 
   $ dune rules --format=json _build/target/pform-output | jq_dune '.[] | ruleDepFilePaths' | censor
   "_build/_private/host/.binaries/$DIGEST/tool"
-  "_build/_private/host/.pkg/provider/target/bin/tool"
+  "_build/host/.pkg/provider/_install/bin/tool"
 
 Bare-name lookup succeeds too:
 

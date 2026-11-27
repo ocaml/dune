@@ -32,7 +32,7 @@ Verify the build ran:
 
 Check that the files exist:
 
-  $ ls $(get_build_pkg_dir foo)/target/lib/foo | sort
+  $ ls $(get_build_pkg_dir foo)/_install/lib/foo | sort
   META
   link1.txt
   link2.txt
@@ -40,23 +40,23 @@ Check that the files exist:
 
 All symlinks should be resolved to regular files (hardlinks):
 
-  $ dune_cmd stat kind $(get_build_pkg_dir foo)/target/lib/foo/real.txt
+  $ dune_cmd stat kind $(get_build_pkg_dir foo)/_install/lib/foo/real.txt
   regular file
-  $ dune_cmd stat kind $(get_build_pkg_dir foo)/target/lib/foo/link1.txt
+  $ dune_cmd stat kind $(get_build_pkg_dir foo)/_install/lib/foo/link1.txt
   regular file
-  $ dune_cmd stat kind $(get_build_pkg_dir foo)/target/lib/foo/link2.txt
+  $ dune_cmd stat kind $(get_build_pkg_dir foo)/_install/lib/foo/link2.txt
   regular file
 
 All should have the same content:
 
-  $ cat $(get_build_pkg_dir foo)/target/lib/foo/link1.txt
+  $ cat $(get_build_pkg_dir foo)/_install/lib/foo/link1.txt
   real content
-  $ cat $(get_build_pkg_dir foo)/target/lib/foo/link2.txt
+  $ cat $(get_build_pkg_dir foo)/_install/lib/foo/link2.txt
   real content
 
 Check hardlink counts - all three should be hardlinked to the same inode:
 
-  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/target/lib/foo/real.txt
+  $ dune_cmd stat hardlinks $(get_build_pkg_dir foo)/_install/lib/foo/real.txt
   4
 
 Clean and rebuild to verify cache restore:

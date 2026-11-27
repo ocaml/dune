@@ -24,7 +24,7 @@ let cclibs =
 let expand_c_library_flags sctx expander ~dir ~has_cxx flags =
   let standard =
     let open Action_builder.O in
-    let* project = Action_builder.of_memo (Dune_load.find_project ~dir) in
+    let* project = Action_builder.of_memo (Partitions.find_project ~dir) in
     match Dune_project.use_standard_c_and_cxx_flags project with
     | Some true when has_cxx () ->
       let ctx = Super_context.context sctx in
@@ -59,6 +59,7 @@ let build_lib
   Ocaml_toolchain.compiler ocaml mode
   |> Memo.Result.iter ~f:(fun compiler ->
     [ Command.Args.dyn (Ocaml_flags.get flags (Ocaml mode))
+    ; Command.Args.hidden_deps_dyn (Context.compiler_dep ctx)
     ; Hidden_deps (Cm_files.unsorted_objects_and_cms cm_files ~mode |> Dep.Set.of_files)
     ; A "-a"
     ; A "-o"
@@ -179,7 +180,8 @@ let ocamlmklib
     in
     fun ~custom ~sandbox targets ->
       let ctx = Super_context.context sctx in
-      [ Command.Args.A "-g"
+      [ Command.Args.hidden_deps_dyn (Context.compiler_dep ctx)
+      ; A "-g"
       ; (if custom then A "-custom" else Command.Args.empty)
       ; A "-o"
       ; Path (Path.build (Foreign.Archive.Name.path ~dir archive_name ~mode:stubs_mode))
@@ -371,6 +373,7 @@ let build_shared (lib : Library.t) ~native_archives ~sctx ~dir ~flags =
   let* ocaml = Context.ocaml ctx in
   Memo.Result.iter ocaml.ocamlopt ~f:(fun ocamlopt ->
     [ Command.Args.dyn (Ocaml_flags.get flags (Ocaml Native))
+    ; Command.Args.hidden_deps_dyn (Context.compiler_dep ctx)
     ; Hidden_deps
         (let ext_lib = ocaml.lib_config.ext_lib in
          List.rev_concat
@@ -564,6 +567,7 @@ let library_rules
       ~source_modules
       ~dir_contents
       ~compile_info
+      ~expander
       ~ctx_dir
       ~for_merlin
   =
@@ -581,7 +585,6 @@ let library_rules
       (Compilation_context.dep_graphs cctx).impl
       impl_only
   in
-  let* expander = Super_context.expander sctx ~dir in
   let for_ = Compilation_context.for_ cctx in
   let* () = Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir implements in
   let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
@@ -650,6 +653,8 @@ let library_rules
       | Melange -> lib.buildable.melange_preprocess
     in
     Merlin.make
+      ~scope
+      ~expander
       ~requires_compile
       ~requires_hidden
       ~stdlib_dir:lib_config.stdlib_dir
@@ -669,7 +674,7 @@ let library_rules
 
 let resolve_compile_info (lib : Library.t) ~dir ~scope =
   let lib_id =
-    let src_dir = Path.Build.drop_build_context_exn dir in
+    let src_dir = Dune_project.dir_in_context dir in
     Library.to_lib_id ~src_dir lib
   in
   let+ local_lib, compile_info =
@@ -704,7 +709,10 @@ let compile_context_data lib ~sctx ~dir_contents ~expander ~scope ~for_ =
   local_lib, compile_info, source_modules, cctx
 ;;
 
-let compile_context lib ~sctx ~dir_contents ~expander ~scope ~for_ =
+let compile_context (lib : Library.t) ~sctx ~dir_contents ~expander ~scope ~for_ =
+  let package = Library.package lib in
+  let* scope = Scope.DB.for_package scope package in
+  let expander = Expander.for_package expander package in
   let+ _, _, _, cctx =
     compile_context_data lib ~sctx ~dir_contents ~expander ~scope ~for_
   in
@@ -712,6 +720,9 @@ let compile_context lib ~sctx ~dir_contents ~expander ~scope ~for_ =
 ;;
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
+  let package = Library.package lib in
+  let* scope = Scope.DB.for_package scope package in
+  let expander = Expander.for_package expander package in
   let dir = Dir_contents.dir dir_contents in
   let buildable = lib.buildable in
   let f ~for_ ~for_merlin =
@@ -747,6 +758,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         ~source_modules
         ~dir_contents
         ~compile_info
+        ~expander
         ~ctx_dir:dir
         ~for_merlin
     in

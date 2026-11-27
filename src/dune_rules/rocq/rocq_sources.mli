@@ -49,8 +49,4 @@ val expected_file
   -> Rocq_module.t
   -> Path.Build.t option
 
-val mlg_files
-  :  sctx:Super_context.t
-  -> dir:Path.Build.t
-  -> modules:Ordered_set_lang.t
-  -> Path.Build.t list Memo.t
+val mlg_files : dir:Path.Build.t -> modules:Ordered_set_lang.t -> Path.Build.t list Memo.t

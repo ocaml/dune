@@ -217,6 +217,7 @@ let which t fname =
 ;;
 
 let name t = t.builder.name
+let compiler_dep t = Pkg_rules.compiler_dep (name t)
 let path t = t.builder.path
 let base_env t = t.builder.env
 let installed_env t = Memo.Lazy.force t.installed_env

@@ -50,8 +50,7 @@ let from_mld_files mlds (doc : Documentation.t) dir =
           [ Pp.textf
               "%s doesn't exist in %s"
               s
-              (Path.to_string_maybe_quoted
-                 (Path.drop_optional_build_context (Path.build dir)))
+              (Path.to_string_maybe_quoted (Pkg_rules.source_location dir))
           ])
   |> String.Map.map ~f:(fun in_doc ->
     let path = Path.Build.relative dir in_doc in
@@ -74,7 +73,12 @@ let build_mlds_map stanzas ~dir ~files expander =
     let from_mld_files = from_mld_files (Lazy.force mlds) doc dir in
     let+ from_files =
       let expand = Expander.No_deps.expand expander ~mode:Single in
-      Install_entry.File.to_file_bindings_expanded doc.files ~expand ~dir
+      let* source_tree_root = Expander.source_tree_root expander in
+      Install_entry.File.to_file_bindings_expanded
+        doc.files
+        ~expand
+        ~dir
+        ~source_tree_root
       >>| of_file_bindings
     in
     let mlds = from_mld_files @ from_files in

@@ -6,7 +6,12 @@ open Import
 module Context_type : sig
   type t =
     | Empty
-    | With_sources
+    | With_sources of
+        { build_only_sub_dirs : Filename.Set.t
+          (** Reserved root subtrees with no workspace sources. Their rule
+              generators can be called without loading the workspace root's
+              rule declarations, which may need targets from these subtrees. *)
+        }
 end
 
 module Gen_rules : sig
@@ -27,6 +32,14 @@ module Gen_rules : sig
         (** Sub-directories that don't exist in the source tree but exists in
         the build directory. This is for internal directories such as
         [.dune] or [.ppx]. *)
+      ; sources : (Rule.t Filename.Map.t * Filename.Array.Set.t) option
+        (** The authored files of the directory with their copy rules, and its
+            authored source sub-directories, when they are not in the
+            workspace. Only the rules of files retained by source selection
+            are used. The sub-directories can be loaded without evaluating
+            [rules]. They participate in source selection, conflict checks and
+            artifact retention, not internal-directory reservation. A
+            directory that redirects to its parent keeps its own. *)
       ; directory_targets : Loc.t Path.Build.Map.t
         (** Directories that are target of a rule. For each directory target,
         give the location of the rule that generates it. The keys in this
@@ -41,6 +54,7 @@ module Gen_rules : sig
     val create
       :  ?build_dir_only_sub_dirs:Build_only_sub_dirs.t
       -> ?directory_targets:Loc.t Path.Build.Map.t
+      -> sources:(Rule.t Filename.Map.t * Filename.Array.Set.t) option
       -> rules Memo.t
       -> t
 

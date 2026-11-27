@@ -493,11 +493,11 @@ let setup_rocqproject_for_theory_rule
   in
   let contents : string With_targets.t =
     let open With_targets.O in
+    let src_dir = Pkg_rules.source_location dir in
     let dir = Path.build dir in
     let+ args_bld = Command.expand ~dir (Command.Args.S args) >>| Appendable_list.to_list
     and+ args_src =
-      let dir = Path.source (Path.drop_build_context_exn dir) in
-      Command.expand ~dir (Command.Args.S args) >>| Appendable_list.to_list
+      Command.expand ~dir:src_dir (Command.Args.S args) >>| Appendable_list.to_list
     in
     let contents = Buffer.create 73 in
     let rec add_args args_bld args_src =
@@ -1253,7 +1253,7 @@ let install_rules ~sctx ~dir s =
 
 let setup_rocqpp_rules ~sctx ~dir ({ loc; modules } : Rocq_stanza.Rocqpp.t) =
   let* rocq = rocq ~loc ~sctx ~dir
-  and* mlg_files = Rocq_sources.mlg_files ~sctx ~dir ~modules in
+  and* mlg_files = Rocq_sources.mlg_files ~dir ~modules in
   let mlg_rule m =
     let source = Path.build m in
     let target = Path.Build.set_extension m ~ext:Filename.Extension.ml in

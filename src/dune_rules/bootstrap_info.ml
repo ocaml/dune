@@ -148,7 +148,7 @@ let make_main sctx ~root_module compile_info dir_contents =
   local_library
     ~root_module
     ~special_builtin_support:None
-    ~dir:(Dir_contents.source_dir dir_contents |> Option.value_exn |> Source_tree.Dir.path)
+    ~dir:(Dir_contents.dir dir_contents |> Path.Build.drop_build_context_exn)
     ~include_subdirs
     ~main_module_name:None
 ;;

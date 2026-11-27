@@ -1,0 +1,7 @@
+(cram
+ (applies_to install-dirs.t artifacts.t)
+ (setup_scripts ../pkg/helpers.sh))
+
+(cram
+ (applies_to artifacts.t)
+ (deps %{bin:cmp}))

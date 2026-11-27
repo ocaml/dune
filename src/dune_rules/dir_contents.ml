@@ -9,11 +9,10 @@ let loc_of_dune_file st_dir =
      let open Option.O in
      let* dune_file = Source_tree.Dir.dune_file st_dir in
      (* TODO not really correct. we need to know the [(subdir ..)] that introduced this *)
-     Source.Dune_file.path dune_file
+     Source.Dune_file.file dune_file |> Option.map ~f:Source_tree_file.File.path
    with
    | Some s -> s
-   | None -> Path.Source.relative (Source_tree.Dir.path st_dir) "_unknown_")
-  |> Path.source
+   | None -> Path.relative (Source_tree.Dir.logical_path st_dir) "_unknown_")
   |> Loc.in_file
 ;;
 
@@ -152,7 +151,7 @@ end = struct
   ;;
 
   (* As a side-effect, setup user rules and copy_files rules. *)
-  let load_text_files sctx st_dir stanzas ~dir ~src_dir =
+  let load_text_files sctx st_dir stanzas ~dir =
     let from_source = Source_tree.Dir.filenames st_dir in
     match stanzas with
     | [] -> Memo.return from_source
@@ -164,7 +163,7 @@ end = struct
         Memo.parallel_map stanzas ~f:(fun stanza ->
           match Stanza.repr stanza with
           | Rocq_stanza.Rocqpp.T { modules; _ } ->
-            Rocq_sources.mlg_files ~sctx ~dir ~modules
+            Rocq_sources.mlg_files ~dir ~modules
             >>| List.rev_map ~f:(fun mlg_file ->
               Path.Build.set_extension mlg_file ~ext:Filename.Extension.ml
               |> Path.Build.basename)
@@ -180,7 +179,7 @@ end = struct
                (* CR-someday amokhov: Do not ignore directory targets. *)
                Filename.Set.to_list targets.files)
           | Copy_files.T def ->
-            Simple_rules.copy_files sctx def ~src_dir ~dir ~expander
+            Simple_rules.copy_files sctx def ~dir ~expander
             >>| Path.Set.to_list_map ~f:Path.basename
           | Generate_sites_module_stanza.T def ->
             Generate_sites_module_rules.setup_rules sctx ~dir def
@@ -278,9 +277,7 @@ end = struct
           let stanzas = Dune_file.stanzas d in
           let project = Dune_file.project d in
           let+ files, rules =
-            Rules.collect (fun () ->
-              let src_dir = Dune_file.dir d in
-              stanzas >>= load_text_files sctx st_dir ~src_dir ~dir)
+            Rules.collect (fun () -> stanzas >>= load_text_files sctx st_dir ~dir)
           in
           let dirs =
             Memo.lazy_ ~name:"standalone-source-file-dirs" (fun () ->
@@ -482,13 +479,7 @@ end = struct
            let+ (files, subdirs), rules =
              Rules.collect (fun () ->
                Memo.fork_and_join
-                 (fun () ->
-                    stanzas
-                    >>= load_text_files
-                          sctx
-                          source_dir
-                          ~src_dir:(Dune_file.dir dune_file)
-                          ~dir)
+                 (fun () -> stanzas >>= load_text_files sctx source_dir ~dir)
                  (fun () ->
                     let* components = components in
                     Memo.parallel_map
@@ -497,14 +488,7 @@ end = struct
                         let path_to_root =
                           Dir_renames.translate dir_renames path_to_group_root
                         in
-                        let+ files =
-                          load_text_files
-                            sctx
-                            source_dir
-                            stanzas
-                            ~src_dir:(Source_tree.Dir.path source_dir)
-                            ~dir
-                        in
+                        let+ files = load_text_files sctx source_dir stanzas ~dir in
                         { Source_file_dir.dir
                         ; path_to_root
                         ; files

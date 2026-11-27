@@ -5,6 +5,7 @@ open Import
 type t
 
 val dir : t -> Path.Build.t
+val source_tree_root : t -> Source_tree.Dir.t Memo.t
 val context : t -> Context_name.t
 val project : t -> Dune_project.t
 
@@ -24,8 +25,6 @@ val make_root
   -> scope_host:Scope.t Memo.t
   -> context:Context.t
   -> env:Env.t Memo.t
-  -> public_libs:Lib.DB.t Memo.t
-  -> public_libs_host:Lib.DB.t Memo.t
   -> artifacts_host:Artifacts.t Memo.t
   -> t
 
@@ -45,7 +44,9 @@ val set_scope
   -> scope_host:Scope.t Memo.t
   -> t
 
+val for_package : t -> Package.t option -> t
 val set_artifacts : t -> artifacts_host:Artifacts.t Memo.t -> t
+val add_package_deps : t -> Package.Name.Set.t Action_builder.t -> t
 
 module Expanding_what : sig
   type t =

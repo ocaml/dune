@@ -39,13 +39,13 @@ installation path can cause a rebuild without an environment dependency.
   OPAM_PACKAGE_NAME=usetest
   OPAM_PACKAGE_VERSION=1.2.3
   OPAMSWITCH=dune
-  $ cat "$(get_build_pkg_dir usetest)/target/environment"
+  $ cat "$(get_build_pkg_dir usetest)/_install/environment"
   bar/1.2.3
 
 Only test's explicit exports (FOO and BAR) are package metadata. The recipe
 also receives standard install paths and the shell environment.
 
-  $ dune rules --format=json "$(get_build_pkg_dir usetest)/target" \
+  $ dune rules --format=json "$(get_build_pkg_dir usetest)/_install" \
   >   | jq -c '[.[].deps[] | .Env? // empty] | sort'
   []
 
@@ -61,7 +61,7 @@ an environment dependency, only a fresh build sees the new value.
   >  (:= BAR zzz))
   > EOF
   $ build_pkg usetest > /dev/null 2>&1
-  $ target=$(get_build_pkg_dir usetest)/target
+  $ target=$(get_build_pkg_dir usetest)/_install
   $ cat "$target/environment"
   bar/1.2.3
   $ fresh=_fresh/${target#_build/}
@@ -77,7 +77,7 @@ Changing the package version also invalidates the build.
   $ dune_cmd subst '1[.]2[.]3' '1.2.4' < dune.lock/usetest.pkg > updated.pkg
   $ mv updated.pkg dune.lock/usetest.pkg
   $ build_pkg usetest > /dev/null 2>&1
-  $ cat "$(get_build_pkg_dir usetest)/target/environment"
+  $ cat "$(get_build_pkg_dir usetest)/_install/environment"
   baz/1.2.4
 
 Workspace rules receive exports both through explicit package dependencies

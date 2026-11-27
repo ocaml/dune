@@ -6,7 +6,7 @@ type ('src, 'dst) t =
     (* The [dune_syntax] field is used for validation which has different
          behaviour depending on the version of dune syntax in use. *)
   ; dune_syntax : Syntax.Version.t
-  ; dir : Path.Source.t option
+  ; dir : Path.Local.t option
   }
 
 let to_dyn f g { src; dst; dune_syntax; dir } =
@@ -15,7 +15,7 @@ let to_dyn f g { src; dst; dune_syntax; dir } =
     [ "src", f src
     ; "dst", option g dst
     ; "dune_syntax", Syntax.Version.to_dyn dune_syntax
-    ; "dir", option Path.Source.to_dyn dir
+    ; "dir", option Path.Local.to_dyn dir
     ]
 ;;
 
@@ -23,7 +23,7 @@ let equal f g { src; dst; dune_syntax; dir } t =
   f src t.src
   && Option.equal g dst t.dst
   && Syntax.Version.equal dune_syntax t.dune_syntax
-  && Option.equal Path.Source.equal dir t.dir
+  && Option.equal Path.Local.equal dir t.dir
 ;;
 
 module Expanded = struct

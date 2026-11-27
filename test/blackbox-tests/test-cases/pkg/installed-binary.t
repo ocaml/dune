@@ -41,20 +41,20 @@ Test that installed binaries are visible in dependent packages
   /share/lib_rootxxx
   $ show_pkg_cookie test
   { files =
-      [ (LIB,
-         [ In_build_dir "_private/default/.pkg/test/target/lib/test/libxxx" ])
+      [ (LIB, [ In_build_dir "default/.pkg/test/_install/lib/test/libxxx" ])
       ; (LIB_ROOT,
-         [ In_build_dir "_private/default/.pkg/test/target/lib/lib_rootxxx" ])
-      ; (BIN, [ In_build_dir "_private/default/.pkg/test/target/bin/foo" ])
+         [ In_build_dir "default/.pkg/test/_install/lib/lib_rootxxx" ])
+      ; (BIN, [ In_build_dir "default/.pkg/test/_install/bin/foo" ])
       ; (SHARE_ROOT,
-         [ In_build_dir "_private/default/.pkg/test/target/share/lib_rootxxx" ])
+         [ In_build_dir "default/.pkg/test/_install/share/lib_rootxxx" ])
       ]
   ; variables = []
   }
 
-It should also be visible in the workspace:
+It should also be visible in a workspace package that declares the dependency:
 
-  $ make_dune_project 3.9
+  $ make_dune_project 3.24
+  $ echo '(package (name consumer) (allow_empty) (dir .) (depends test))' >> dune-project
 
   $ cat >dune <<EOF
   > (rule
@@ -64,9 +64,8 @@ It should also be visible in the workspace:
   $ dune build ./testout && cat _build/default/testout
   from test package
 
-Two packages install the same command. A recipe using the shell should select
-the same provider if an intermediate lock entry merely lists its dependencies
-in the opposite order. Which independent provider wins is not part of the test.
+Two packages install the same command. A package that depends on both cannot
+be built: choosing a provider would make the order of its dependencies matter.
 
   $ export DUNE_CACHE=disabled
   $ make_lockpkg other <<'EOF'
@@ -89,43 +88,20 @@ in the opposite order. Which independent provider wins is not part of the test.
   > (install (system "echo selecting; foo > %{prefix}/selected"))
   > EOF
   $ middle test other
-  $ target=$(get_build_pkg_dir usetest)/target
+  $ target=$(get_build_pkg_dir usetest)/_install
   $ dune build "$target"
-  selecting
-  $ first=$(cat "$target/selected")
-  $ echo "$first" | grep -Eq '^from (other|test) package$'
+  Error: "other" and "test" both install "foo" to section bin.
+  The lib_root, share_root, and libexec_root sections install directly to the
+  section root with no per-package subdirectory, so file names must be unique
+  across the set of packages a rule depends on.
+  -> required by _build/default/.pkg/middle/_install/cookie
+  -> required by _build/default/.pkg/usetest/_install
+  Hint: Rename one of the install entries.
+  [1]
 
-Both installations are inputs. An unused directory on the inherited PATH is not.
-
-  $ a=$(get_build_pkg_dir test)/target
-  $ b=$(get_build_pkg_dir other)/target
-  $ dune rules --format=json "$target" | jq_dune -c --arg a "$a" --arg b "$b" '
-  >   .[] | {providers: (ruleHasDepFile($a) and ruleHasDepFile($b)),
-  >          path: (.deps | index({Env: "PATH"}) != null)}'
-  {"providers":true,"path":false}
-  $ mkdir ambient-bin
-  $ PATH="$PWD/ambient-bin:$PATH" dune build "$target"
-
-Swap the two providers without changing their files or the consuming recipe.
-Known regression: a fresh build changes provider, but the incremental build
-keeps the original one.
+The order of the dependencies does not change the error.
 
   $ middle other test
-  $ target=$(get_build_pkg_dir usetest)/target
-  $ dune build "$target" > log 2>&1
-  $ fresh=_fresh/${target#_build/}
-  $ dune build --build-dir _fresh "$fresh" > log 2>&1
-  $ selected=$(cat "$target/selected")
-  $ test "$selected" = "$(cat "$fresh/selected")"
+  $ dune build "$target" 2>&1 | head -1
+  Error: "other" and "test" both install "foo" to section bin.
   [1]
-  $ test "$selected" = "$first"
-
-Adding a dependency edge between the same two providers really changes the
-graph. Even if neither helper changes, incremental and fresh builds must agree.
-
-  $ echo '(depends test)' >> dune.lock/other.pkg
-  $ target=$(get_build_pkg_dir usetest)/target
-  $ dune build "$target" > log 2>&1
-  $ fresh=_fresh_edge/${target#_build/}
-  $ dune build --build-dir _fresh_edge "$fresh" > log 2>&1
-  $ test "$(cat "$target/selected")" = "$(cat "$fresh/selected")"

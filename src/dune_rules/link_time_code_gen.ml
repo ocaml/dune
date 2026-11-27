@@ -122,18 +122,24 @@ let build_info_code cctx ~libs ~api_version =
          let placeholders = Path.Source.Map.set placeholders p var in
          var, placeholders)
   in
+  (* The sources of a mounted package are not under version control. *)
+  let placeholder_for_dir placeholders dir =
+    match Pkg_rules.package_of_dir_in_context dir with
+    | Some _ -> Memo.return ("None", placeholders)
+    | None -> placeholder placeholders (Path.Source.of_local dir)
+  in
   let version_of_package placeholders (p : Package.t) =
     match Package.version p with
     | Some v -> Memo.return (sprintf "Some %S" (Package_version.to_string v), placeholders)
-    | None -> placeholder placeholders (Package.dir p)
+    | None -> placeholder_for_dir placeholders (Package.dir p)
   in
   let* version, placeholders =
     let placeholders = Path.Source.Map.empty in
     match Compilation_context.package cctx with
     | Some p -> version_of_package placeholders p
     | None ->
-      let p = Path.Build.drop_build_context_exn (Compilation_context.dir cctx) in
-      placeholder placeholders p
+      Dune_project.dir_in_context (Compilation_context.dir cctx)
+      |> placeholder_for_dir placeholders
   in
   let+ libs, placeholders =
     Memo.List.fold_left ~init:([], placeholders) libs ~f:(fun (libs, placeholders) lib ->
@@ -149,8 +155,9 @@ let build_info_code cctx ~libs ~api_version =
              Lib.info lib
              |> Lib_info.obj_dir
              |> Obj_dir.dir
-             |> Path.drop_build_context_exn
-             |> placeholder placeholders)
+             |> Path.as_in_build_dir_exn
+             |> Dune_project.dir_in_context
+             |> placeholder_for_dir placeholders)
       in
       (Lib.name lib, v) :: libs, placeholders)
   in

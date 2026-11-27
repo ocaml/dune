@@ -19,9 +19,9 @@ Create a simple library with a C stub:
   > external stub : unit -> int = "foo_stub"
   > EOF
 
-Build compile_commands.json directly:
+Generate compile_commands.json through its alias:
 
-  $ dune build compile_commands.json
+  $ dune build @compile_commands
 
 The file is promoted to the workspace root:
 
@@ -64,7 +64,7 @@ building them just to generate the database. Cover sources in subdirectories.
   $ cat > stubs/stub.c <<'EOF'
   > int stub(void) { return 42; }
   > EOF
-  $ dune build compile_commands.json
+  $ dune build @compile_commands
   $ test ! -f _build/default/stubs/generated.c
 
 Both the working directory and file identity should be absolute.

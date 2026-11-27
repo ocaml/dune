@@ -23,11 +23,19 @@ let validate_dst_for_install_stanza
   match relative_path_starts_with_parent dst with
   | false -> Memo.return ()
   | true ->
+    (* A mounted package cannot be asked to fix a deprecation, so its
+       installed files are never allowed to leave its install directories. *)
+    let relative_dst_path_starts_with_parent_error_when =
+      match Option.bind dir ~f:Pkg_rules.package_of_dir_in_context with
+      | Some _ -> `Always_error
+      | None -> relative_dst_path_starts_with_parent_error_when
+    in
     (match relative_dst_path_starts_with_parent_error_when with
      | `Deprecation_warning_from_3_11 ->
        Warning_emit.emit
          escaping_paths_in_install_stanza
-         (Warning_emit.Context.source_dir_or_enable dir)
+         (Option.map dir ~f:Path.Source.of_local
+          |> Warning_emit.Context.source_dir_or_enable)
          (fun () ->
             User_message.make
               ~loc
@@ -102,5 +110,5 @@ let expand t ~dir ~f =
       let+ loc, p = f dst in
       Some (loc, p)
   in
-  File_binding.Unexpanded.expand t ~dir:(Path.Build.drop_build_context_exn dir) ~src ~dst
+  File_binding.Unexpanded.expand t ~dir:(Dune_project.dir_in_context dir) ~src ~dst
 ;;

@@ -95,7 +95,7 @@ module Workspace = struct
     | None -> Error ()
     | Some p ->
       let name = Package.name p in
-      let dir = Package.dir p in
+      let dir = Package.dir p |> Path.Source.of_local in
       Ok
         (Path.Source.relative_fname
            dir
@@ -251,7 +251,7 @@ module File_ops_real (W : sig
       let* packages =
         match Package.Name.Map.find workspace.packages package with
         | None -> Fiber.return None
-        | Some package -> Memo.run (get_vcs (Package.dir package))
+        | Some package -> Memo.run (get_vcs (Package.dir package |> Path.Source.of_local))
       in
       match packages with
       | None -> Fiber.return None
@@ -445,7 +445,7 @@ let file_operations ~verbosity ~dry_run ~workspace : (module File_operations) =
 ;;
 
 let package_is_vendored (pkg : Package.t) =
-  let dir = Package.dir pkg in
+  let dir = Package.dir pkg |> Path.Source.of_local in
   Memo.run (Source_tree.is_vendored dir)
 ;;
 

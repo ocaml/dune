@@ -17,7 +17,7 @@ Test that compile_commands.json is regenerated when flags change.
   > external stub : unit -> int = "foo_stub"
   > EOF
 
-  $ dune build compile_commands.json
+  $ dune build @compile_commands
 
 The initial flags should contain -DFOO=1:
 
@@ -34,7 +34,7 @@ Now change the flags:
   >  (foreign_stubs (language c) (names stub) (flags :standard -DFOO=2)))
   > EOF
 
-  $ dune build compile_commands.json
+  $ dune build @compile_commands
 
 The flags should now contain -DFOO=2:
 
@@ -52,7 +52,7 @@ A stanza without foreign stubs leaves the compilation database unchanged:
   >  (name bar)
   >  (modules))
   > EOF
-  $ dune build compile_commands.json
+  $ dune build @compile_commands
   $ cmp original.json compile_commands.json
   $ cp dune dune-without-bar-stubs
 
@@ -72,7 +72,7 @@ Adding foreign stubs to that stanza includes its entries:
   >  (modules)
   >  (foreign_stubs (language c) (names bar_stub)))
   > EOF
-  $ dune build compile_commands.json
+  $ dune build @compile_commands
   $ jq '[.[].file]' compile_commands.json
   [
     "bar_stub.c",
@@ -82,5 +82,5 @@ Adding foreign stubs to that stanza includes its entries:
 Removing those stubs restores the original compilation database:
 
   $ cp dune-without-bar-stubs dune
-  $ dune build compile_commands.json
+  $ dune build @compile_commands
   $ cmp original.json compile_commands.json

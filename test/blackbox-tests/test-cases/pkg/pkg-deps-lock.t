@@ -26,7 +26,7 @@ Install_cookie.load_exn runs eagerly during dep evaluation.
 
   $ dune build _build/default/output 2>&1
 
-  $ prefix="$(get_build_pkg_dir lockpkg)/target/"
+  $ prefix="$(get_build_pkg_dir lockpkg)/_install/"
   $ dune rules --format=json _build/default/output |
   >   jq_dune -r --arg prefix "$prefix" '.[] | ruleDepFilePaths | ltrimstr($prefix)'
   cookie

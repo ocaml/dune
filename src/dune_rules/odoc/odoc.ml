@@ -1052,7 +1052,7 @@ let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.
   let name = Package.name pkg in
   let alias =
     let pkg_dir = Package.dir pkg in
-    let dir = Path.Build.append_source (Context.build_dir ctx) pkg_dir in
+    let dir = Path.Build.append_local (Context.build_dir ctx) pkg_dir in
     Output_format.alias output ~dir
   in
   match (output : Output_format.t) with
@@ -1175,7 +1175,7 @@ let setup_private_library_doc_alias sctx ~scope ~dir (l : Library.t) =
   | Private _ ->
     let ctx = Super_context.context sctx in
     let* lib =
-      let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
+      let src_dir = Dune_project.dir_in_context dir in
       Lib.DB.find_lib_id_even_when_hidden
         (Scope.libs scope)
         (Local (Library.to_lib_id ~src_dir l))
@@ -1198,10 +1198,11 @@ let has_rules ?(directory_targets = Path.Build.Map.empty) m =
   Gen_rules.make ~directory_targets (Memo.return rules)
 ;;
 
-let with_package pkg ~f =
+let with_package sctx pkg ~f =
   let pkg = Package.Name.of_string pkg in
-  let* packages = Dune_load.packages () in
-  match Package.Name.Map.find packages pkg with
+  let context = Super_context.context sctx |> Context.name in
+  Partitions.find_package context pkg
+  >>= function
   | Some pkg -> has_rules (f pkg)
   | None -> Memo.return Gen_rules.no_rules
 ;;
@@ -1242,12 +1243,12 @@ let gen_rules sctx ~dir rest =
     (* package directories are directory targets *)
     Memo.return Gen_rules.no_rules
   | [ "_mlds"; pkg ] ->
-    with_package pkg ~f:(fun pkg ->
+    with_package sctx pkg ~f:(fun pkg ->
       let pkg = Package.name pkg in
       let* _mlds, rules = package_mlds sctx ~pkg in
       Rules.produce rules)
   | [ "_odoc"; "pkg"; pkg ] ->
-    with_package pkg ~f:(fun pkg ->
+    with_package sctx pkg ~f:(fun pkg ->
       let pkg = Package.name pkg in
       setup_package_odoc_rules sctx ~pkg)
   | [ (("_odocls" | "_html") as what); lib_unique_name_or_pkg ] ->
@@ -1300,10 +1301,10 @@ let gen_rules sctx ~dir rest =
            | Public (_, pkg) | Private (_, Some pkg) ->
              setup_pkg_rules sctx ~pkg:(Package.name pkg) ~for_)
        and+ () =
-         let* packages = Dune_load.packages () in
+         let ctx = Super_context.context sctx in
          Package.Name.of_string lib_unique_name_or_pkg
-         |> Package.Name.Map.find packages
-         |> Memo.Option.iter ~f:(fun pkg ->
+         |> Partitions.find_package (Context.name ctx)
+         >>= Memo.Option.iter ~f:(fun pkg ->
            let pkg = Package.name pkg in
            setup_pkg_rules sctx ~pkg ~for_)
        in

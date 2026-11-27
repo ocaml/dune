@@ -87,6 +87,10 @@ val resolve_program
   -> string
   -> Action.Prog.t Action_builder.t
 
+(** Resolve a program named on the command line. Unlike [resolve_program],
+    this also looks in the opaque locked packages, building them. *)
+val resolve_command_line_program : t -> dir:Path.Build.t -> string -> Action.Prog.t Memo.t
+
 (** try not to use this as it breaks rule loading laziness *)
 val resolve_program_memo
   :  t

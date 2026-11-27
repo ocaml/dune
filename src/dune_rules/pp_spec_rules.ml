@@ -29,11 +29,14 @@ let pp_input_path m ~ml_kind =
 let loc_filename_arg_for_pp ~input_path ~loc_filename =
   if Path.equal input_path loc_filename
   then Command.Args.empty
-  else
-    S
-      [ A "-loc-filename"
-      ; A (Path.drop_optional_build_context_maybe_sandboxed loc_filename |> Path.to_string)
-      ]
+  else (
+    let loc_filename =
+      match Path.as_in_build_dir loc_filename with
+      | Some file when Option.is_some (Pkg_rules.package_of_artifact_path file) ->
+        loc_filename
+      | _ -> Path.drop_optional_build_context_maybe_sandboxed loc_filename
+    in
+    S [ A "-loc-filename"; A (Path.to_string loc_filename) ])
 ;;
 
 let pp_corrected_path m ~ml_kind ~suffix =
@@ -44,21 +47,43 @@ let pp_corrected_path m ~ml_kind ~suffix =
 
 let get_rules sctx key =
   let ctx = Super_context.context sctx in
-  let build_context = Context.build_context ctx in
-  let exe = Ppx_exe.ppx_exe_path build_context ~key in
-  let* pp_names, scope =
+  let* pp_names, opaque_packages, scope, root =
     match Digest.from_hex key with
     | None ->
+      let exe = Ppx_exe.ppx_exe_path (Context.build_dir ctx) ~key in
       User_error.raise
         [ Pp.textf "invalid ppx key for %s" (Path.Build.to_string_maybe_quoted exe) ]
     | Some key ->
-      let { Ppx_exe.Key.Decoded.pps; project_root } = Ppx_exe.Key.decode key in
-      let+ scope = Scope.DB.find_by_project_root ctx project_root in
-      pps, scope
+      let { Ppx_exe.Key.Decoded.pps; scope_dir; opaque_packages } =
+        Ppx_exe.Key.decode key
+      in
+      let dir = Path.Build.append_source (Context.build_dir ctx) scope_dir in
+      let+ scope = Scope.DB.find_by_dir dir
+      and+ loaded_project = Partitions.find_loaded_project ~dir in
+      pps, opaque_packages, scope, Loaded_project.partition_root loaded_project
   in
+  let exe = Ppx_exe.ppx_exe_path root ~key in
   let* pps =
-    let lib_db = Scope.libs scope in
-    List.map pp_names ~f:(fun x -> Loc.none, x) |> Lib.DB.resolve_pps lib_db
+    Resolve.Memo.List.concat_map pp_names ~f:(fun name ->
+      let open Resolve.Memo.O in
+      let* libs =
+        Resolve.Memo.lift_memo
+          (match Lib_name.Map.find opaque_packages name with
+           | None -> Memo.return (Scope.libs scope)
+           | Some package_name ->
+             let open Memo.O in
+             let* libs = Scope.DB.libs_for_package (Context.name ctx) package_name in
+             (match libs with
+              | Some libs -> Memo.return libs
+              | None ->
+                User_error.raise
+                  [ Pp.textf
+                      "Package %S providing PPX library %S is no longer available."
+                      (Package.Name.to_string package_name)
+                      (Lib_name.to_string name)
+                  ]))
+      in
+      Lib.DB.resolve_pps libs [ Loc.none, name ])
   in
   Ppx_driver.build_ppx_driver sctx ~scope ~pps ~pp_names ~target:exe
 ;;

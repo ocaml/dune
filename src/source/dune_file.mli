@@ -19,9 +19,11 @@ val get_static_sexp : t -> Dune_lang.Ast.t list
 
 val kind : t -> kind
 
-(** The path to the dune file. If [kind = Ocaml_script], then this always
-    returns [Some p] where [p] is path to the script *)
+(** The workspace path to the dune file, if any. *)
 val path : t -> Path.Source.t option
+
+(** Where the dune file is seen: the workspace, or a mount in a build context. *)
+val file : t -> Source_tree_file.File.t option
 
 val sub_dir_status : t -> Source_dir_status.Spec.t
 
@@ -41,7 +43,7 @@ val files : t -> Files.t
 val sub_dirnames : t -> Filename.Array.Set.t
 
 val load
-  :  dir:Path.Source.t
+  :  dir:Source_tree_file.Dir.t
   -> Source_dir_status.t
   -> Dune_project.t
   -> files:Filename.Array.Set.t

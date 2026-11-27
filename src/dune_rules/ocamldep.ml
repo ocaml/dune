@@ -77,6 +77,7 @@ let ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit =
       ; Command.Args.dyn flags
       ; Command.Ml_kind.flag ml_kind
       ; Dep (Module.File.path source)
+      ; Command.Args.hidden_deps_dyn (Context.compiler_dep context)
       ]
   in
   Rule.Anonymous_action.make ~loc:Loc.none ~dir action

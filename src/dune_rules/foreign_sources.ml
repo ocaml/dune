@@ -51,9 +51,7 @@ let multiple_sources_error ~name ~(mode : Mode.Select.t) ~loc ~paths =
     ~loc
     [ Pp.textf "Multiple sources map to the same object name %S%s:" name for_mode
     ; Pp.enumerate (List.sort ~compare:Path.Build.compare paths) ~f:(fun path ->
-        Pp.text
-          (Path.to_string_maybe_quoted
-             (Path.drop_optional_build_context (Path.build path))))
+        Pp.text (Path.to_string_maybe_quoted (Pkg_rules.source_location path)))
     ; Pp.textf
         "This is not allowed; please rename them or remove %S from object names."
         name

@@ -101,9 +101,7 @@ module Per_stanza = struct
         ~init:(Lib_id.Local.Map.empty, Path.Build.Map.empty)
         ~f:(fun (by_id, by_obj_dir) part ->
           let lib_id =
-            let src_dir =
-              Path.drop_optional_build_context_src_exn (Path.build part.dir)
-            in
+            let src_dir = Dune_project.dir_in_context part.dir in
             Library.to_lib_id ~src_dir part.stanza
           in
           let by_id =
@@ -229,13 +227,13 @@ let source_in_dir ~dir fn ~for_ =
 ;;
 
 let raise_duplicate_module ?loc ~dir name f1 f2 =
-  let src_dir = Path.Build.drop_build_context_exn dir in
+  let src_dir = Pkg_rules.source_location dir in
   User_error.raise
     ?loc
     [ Pp.textf
         "Too many files for module %s in %s:"
         (Module_name.to_string (Module_name.Unchecked.allow_invalid name))
-        (Path.Source.to_string_maybe_quoted src_dir)
+        (Path.to_string_maybe_quoted src_dir)
     ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f1))
     ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f2))
     ]
@@ -408,7 +406,7 @@ let find_origin (t : t) ~libs path =
       match origin with
       | Executables _ | Tests _ | Melange _ -> Memo.return (Some origin)
       | Library lib ->
-        let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
+        let src_dir = Dune_project.dir_in_context dir in
         Lib.DB.available_by_lib_id libs (Local (Library.to_lib_id ~src_dir lib))
         >>| (function
          | false -> None
@@ -801,7 +799,7 @@ let make_lib_modules
       let open Memo.O in
       let* libs = libs in
       let* resolved =
-        let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
+        let src_dir = Dune_project.dir_in_context dir in
         Lib.DB.find_lib_id_even_when_hidden libs (Local (Library.to_lib_id ~src_dir lib))
         (* can't happen because this library is defined using the current
            stanza *)
@@ -893,7 +891,7 @@ let module_path ~loc ~include_subdirs ~dir path_to_root =
     let loc =
       match loc with
       | Some loc -> loc
-      | None -> Path.build dir |> Path.drop_optional_build_context |> Loc.in_dir
+      | None -> Pkg_rules.source_location dir |> Loc.in_dir
     in
     List.map path_to_root ~f:(fun m -> Module_name.of_string_allow_invalid (loc, m))
 ;;
@@ -961,14 +959,14 @@ module Generated_modules = struct
       match Module_name.Unchecked.Path.Map.of_list files with
       | Ok x -> x
       | Error (module_path, (loc, f1), (_, f2)) ->
-        let src_dir = Path.Build.drop_build_context_exn dir in
+        let src_dir = Pkg_rules.source_location dir in
         User_error.raise
           ~loc
           [ Pp.textf
               "Too many files for module %s in %s:"
               (Module_name.to_string
                  (Nonempty_list.last module_path |> Module_name.Unchecked.allow_invalid))
-              (Path.Source.to_string_maybe_quoted src_dir)
+              (Path.to_string_maybe_quoted src_dir)
           ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f1))
           ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f2))
           ]
@@ -1453,8 +1451,7 @@ let make
             List.compare a b ~compare:Module_name.Unchecked.compare)
         in
         let source_dir dir =
-          (dir |> Path.Build.drop_build_context_exn |> Path.Source.to_string_maybe_quoted)
-          ^ "/"
+          (Pkg_rules.source_location dir |> Path.to_string_maybe_quoted) ^ "/"
         in
         let rec find_module_prefix (modules : _ Module_trie.Unchecked.t) = function
           | [] -> None
@@ -1507,10 +1504,10 @@ let make
                 let module_ =
                   match module_ with
                   | Leaf m ->
-                    Module.Source.files m
-                    |> List.hd
-                    |> Module.File.path
-                    |> Path.drop_optional_build_context
+                    let path = Module.Source.files m |> List.hd |> Module.File.path in
+                    (match Path.as_in_build_dir path with
+                     | Some path -> Pkg_rules.source_location path
+                     | None -> path)
                     |> Path.to_string_maybe_quoted
                   | Map _ ->
                     Code_error.raise

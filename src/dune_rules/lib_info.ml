@@ -691,10 +691,12 @@ let for_dune_package
         (match t.orig_src_dir with
          | Some src_dir -> src_dir
          | None ->
-           (match Path.drop_build_context t.src_dir with
+           (match Path.as_in_build_dir t.src_dir with
             | None -> t.src_dir
             | Some src_dir ->
-              Path.source src_dir |> Path.to_absolute_filename |> Path.of_string))
+              Pkg_rules.source_location src_dir
+              |> Path.to_absolute_filename
+              |> Path.of_string))
   in
   let native_archives = Files (eval_native_archives_exn t ~modules:modules.ocaml) in
   let modules = Source.External modules in

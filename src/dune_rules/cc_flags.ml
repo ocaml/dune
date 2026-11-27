@@ -133,7 +133,17 @@ let resolve_c_compiler context ~dir program =
   | Relative_to_current_dir -> Memo.return (Ok (Path.relative (Path.build dir) program))
   | In_path ->
     let program = Filename.of_string_exn program in
-    Context.which context program
+    (* The rule is shared by every directory of the context, so no package
+       scopes it. It looks at the compiler's packages only: a locked package
+       built by dune needs this rule, and a package that depends on it cannot
+       be built to answer the lookup. *)
+    Context.which_narrowed_to_packages
+      context
+      ~packages:(Only Package.Name.Set.empty)
+      program
+    >>= (function
+     | Some path -> Memo.return (Some path)
+     | None -> Context.which_in_path context program)
     >>| (function
      | Some path -> Ok path
      | None ->

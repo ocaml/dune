@@ -54,6 +54,7 @@ let build_instance
   Ocaml_toolchain.compiler ocaml mode
   |> Memo.Result.iter ~f:(fun compiler ->
     [ Command.Args.Dyn include_flags
+    ; Command.Args.hidden_deps_dyn (Context.compiler_dep ctx)
     ; S
         (List.concat_map
            ~f:(fun dir -> [ Command.Args.A "-H"; Path (Path.build dir) ])
@@ -128,7 +129,8 @@ let build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules =
   let* ocaml = Context.ocaml (Super_context.context sctx) in
   Ocaml_toolchain.compiler ocaml mode
   |> Memo.Result.iter ~f:(fun compiler ->
-    [ Command.Args.S
+    [ Command.Args.hidden_deps_dyn (Context.compiler_dep (Super_context.context sctx))
+    ; S
         (List.concat_map
            ~f:(fun dir -> [ Command.Args.A "-H"; Path (Path.build dir) ])
            (Obj_dir.all_obj_dirs ~mode:(Lib_mode.Ocaml mode) obj_dir))
@@ -377,7 +379,7 @@ let instantiate_jsoo ~sctx lib s_config =
   let build_dir = Context.build_dir ctx in
   let lib = Lib.Parameterised.for_instance ~build_dir ~ext_lib:None lib in
   let obj_dir = Lib_info.obj_dir (Lib.info lib) |> Obj_dir.as_local_exn in
-  Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
+  Memo.parallel_iter (Jsoo_rules.Config.modes config) ~f:(fun mode ->
     build_jsoo ~sctx ~obj_dir ~dir:build_dir ~lib ~mode ~config:(Some config))
 ;;
 
@@ -431,8 +433,8 @@ let has_rules fn =
 ;;
 
 let find_scope ~sctx encoded_scope =
-  let project_root = Parameterised_name.Scope.decode encoded_scope in
   let context = Super_context.context sctx in
+  let project_root = Parameterised_name.Scope.decode encoded_scope in
   Scope.DB.find_by_project_root context project_root
 ;;
 

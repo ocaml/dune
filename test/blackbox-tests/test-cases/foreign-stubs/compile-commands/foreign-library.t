@@ -64,7 +64,7 @@ Create multiple foreign_library stanzas with include_dirs:
 
 Build compile_commands.json:
 
-  $ dune build compile_commands.json
+  $ dune build @compile_commands
 
 Check that we have entries for both C files:
 

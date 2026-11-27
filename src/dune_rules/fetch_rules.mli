@@ -1,7 +1,7 @@
 open Import
 
-(** Fetch remote sources from the revision store or http.
-    Note: this module does not handle source on local disk *)
+(** Fetch or extract sources that need a built backing. Local directories
+    are read directly by package source rules. *)
 
 val context : Build_context.t
 
@@ -10,6 +10,9 @@ module Kind : sig
     | File
     | Dir
 end
+
+(** Where a source is fetched to. *)
+val make_target : kind:Kind.t -> Dune_pkg.Source.t -> Path.Build.t
 
 val fetch
   :  target:Path.Build.t

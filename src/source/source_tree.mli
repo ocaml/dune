@@ -34,9 +34,23 @@ module Dir : sig
   val project : t -> Dune_project.t
 
   val to_dyn : t -> Dyn.t
+  val source_path : t -> Path.Local.t
+
+  (** The logical directory used by source semantics. *)
+  val logical_path : t -> Path.t
+
+  val file : t -> Filename.t -> Source_tree_file.File.t
+  val find_dir : t -> Path.Local.t -> t option Memo.t
 end
 
 val root : unit -> Dir.t Memo.t
+
+(** Load the tree at [logical_root] from its external or built backing. *)
+val load_mounted
+  :  loc:Loc.t
+  -> logical_root:Path.Build.t
+  -> backing_root:Source_tree_file.Backing.t
+  -> Dir.t Memo.t
 
 module Make_map_reduce_with_progress (M : Memo.S) (Outcome : Monoid) : sig
   (** Traverse starting from the root and report progress in the status line *)
@@ -56,8 +70,6 @@ val find_excluded_ancestor : Path.Source.t -> (Path.Source.t * Loc.t) option Mem
 (** [nearest_dir t fn] returns the directory with the longest path that is an
     ancestor of [fn]. *)
 val nearest_dir : Path.Source.t -> Dir.t Memo.t
-
-val files_of : Path.Source.t -> Path.Source.Set.t Memo.t
 
 (** [true] iff the path is a vendored directory *)
 val is_vendored : Path.Source.t -> bool Memo.t

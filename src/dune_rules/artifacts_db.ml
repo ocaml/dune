@@ -4,6 +4,7 @@ open Memo.O
 let available_exes ~dir (exes : Executables.t) =
   let* compile_info =
     let* scope = Scope.DB.find_by_dir dir in
+    let* scope = Scope.DB.for_package scope exes.package in
     (* If preprocessors fail to resolve, this fails when loading artifacts
        instead of making the binary unavailable. *)
     Scope.resolve_executable_deps scope ~db:(Scope.libs scope) exes
@@ -13,10 +14,10 @@ let available_exes ~dir (exes : Executables.t) =
   Resolve.is_ok available
 ;;
 
-let get_installed_binaries ~(context : Context.t) stanzas =
+let get_installed_binaries stanzas =
   let merge _ x y = Some (Appendable_list.( @ ) x y) in
   Memo.List.map stanzas ~f:(fun d ->
-    let dir = Path.Build.append_source (Context.build_dir context) (Dune_file.dir d) in
+    let dir = Dune_file.output_dir d in
     let* expander = Expander0.get ~dir in
     let expand_value sw =
       Expander0.expand expander ~mode:Single sw
@@ -36,7 +37,12 @@ let get_installed_binaries ~(context : Context.t) stanzas =
     let eval_blang = Expander0.eval_blang expander in
     let binaries_from_install ~enabled_if ~package files =
       let* unexpanded_file_bindings =
-        Install_entry.File.to_file_bindings_unexpanded files ~expand:expand_value ~dir
+        let* source_tree_root = Partitions.source_tree_root ~dir >>| Option.value_exn in
+        Install_entry.File.to_file_bindings_unexpanded
+          files
+          ~expand:expand_value
+          ~dir
+          ~source_tree_root
       in
       Memo.List.map unexpanded_file_bindings ~f:(fun fb ->
         let+ p =
@@ -86,6 +92,44 @@ let get_installed_binaries ~(context : Context.t) stanzas =
   >>| Filename.Map.union_all ~f:merge
 ;;
 
+(* The binaries a natively built locked package installs, under the names a
+   lookup uses. *)
+let package_binaries =
+  let memo =
+    Memo.create
+      "package-binaries"
+      ~input:(module Pkg_rules.Context_and_package)
+      (fun (context, package) ->
+         let+ binaries =
+           Partitions.dune_files_of_package context package >>= get_installed_binaries
+         in
+         Filename.Map.to_list_map binaries ~f:(fun name sources ->
+           Filename.of_string_exn (Bin.strip_exe (Filename.to_string name)), sources)
+         |> Filename.Map.of_list_reduce ~f:Appendable_list.( @ ))
+  in
+  fun context package -> Memo.exec memo (context, package)
+;;
+
+(* A lookup only loads the packages it may see and the compiler's, never
+   building an opaque one to see what it installs. *)
+let native_bins context ~packages name =
+  let* active = Lock_dir.lock_dir_active context in
+  if not active
+  then Memo.return []
+  else
+    let* declared = Pkg_rules.declared_packages context packages in
+    Package.Name.Set.to_list declared
+    |> Memo.List.concat_map ~f:(fun package ->
+      let* locked = Pkg_rules.find_locked context package in
+      match locked with
+      | None | Some (_, `Opam) -> Memo.return []
+      | Some (_, `Dune _) ->
+        let+ binaries = package_binaries context package in
+        Filename.Map.find binaries name
+        |> Option.map ~f:Appendable_list.to_list
+        |> Option.value ~default:[])
+;;
+
 let all =
   Memo.lazy_ ~name:"Artifacts_db.all"
   @@ fun () ->
@@ -94,9 +138,13 @@ let all =
     let artifacts =
       let local_bins =
         Memo.lazy_ ~name:"get_installed_binaries" (fun () ->
-          Context.name context |> Dune_load.dune_files >>= get_installed_binaries ~context)
+          Context.name context |> Partitions.dune_files >>= get_installed_binaries)
       in
-      Artifacts.create context ~local_bins |> Memo.return
+      Artifacts.create
+        context
+        ~local_bins
+        ~native_bins:(native_bins (Context.name context))
+      |> Memo.return
     in
     Context.name context, artifacts)
 ;;

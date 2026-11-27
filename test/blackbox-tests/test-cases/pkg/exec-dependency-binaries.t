@@ -18,6 +18,15 @@ Binaries installed by lock-dir dependencies can be run with `dune exec`.
   $ command -v mybin || echo "mybin not on PATH"
   mybin not on PATH
 
+Without a package scope, dune exec looks for its argument in the opaque
+packages, building them:
+
+  $ dune exec mybin
+  from foo
+
+Declaring the dependency in a directory scope keeps it available:
+
+  $ echo '(package (name consumer) (allow_empty) (dir .) (depends foo))' >> dune-project
   $ dune exec mybin
   from foo
 

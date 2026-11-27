@@ -5,7 +5,7 @@ val print
   :  sandbox:Process.Sandbox.t option
   -> skip_trailing_cr:bool
   -> patch_back:Path.t option
-  -> User_message.Diff_annot.t
+  -> User_message.Diff_annot.t option
   -> Path.t
   -> Path.t
   -> _ Fiber.t

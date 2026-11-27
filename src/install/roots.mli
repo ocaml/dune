@@ -32,7 +32,7 @@ val to_env_without_path : 'a t -> relative:('a -> string -> 'a) -> (Env.Var.t * 
     etc. The generic "make an opam-style install prefix discoverable via the
     standard path env vars" primitive. Used both by [dune exec]'s staging cons
     (see [bin/exec.ml]) and by the per-package-set scoped layout (see
-    [Install_layout.env]). *)
+    [Pkg_rules.layout_env]). *)
 val add_to_env : Path.Build.t t -> Env.t -> Env.t
 
 (** Returns the path separator for a given env var, if it's a known

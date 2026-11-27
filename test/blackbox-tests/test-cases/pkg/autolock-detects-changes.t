@@ -39,8 +39,8 @@ Create a project that depends on foo:
   > EOF
 
 Build with auto-locking:
-  $ dune exec --display short bar 2>&1 | grep "Building"
-      Building foo.0.0.1
+  $ dune exec --display short bar 2>&1 | grep "ocamlopt .pkg/foo/foo\." || echo "no rebuilds"
+      ocamlopt .pkg/foo/foo.{a,cmxa}
 
   $ dune exec bar
   Hello from foo version 0.0.1!
@@ -51,7 +51,7 @@ Add an unrelated package to the repository:
   > EOF
 
 Build again - adding unrelated package should NOT trigger rebuild:
-  $ dune exec --display short bar 2>&1 | grep "Building" || echo "no rebuilds"
+  $ dune exec --display short bar 2>&1 | grep "ocamlopt .pkg/foo/foo\." || echo "no rebuilds"
   no rebuilds
 
   $ dune exec bar
@@ -86,8 +86,8 @@ Build again - auto-locking should detect the new version and rebuild:
 
 CR-someday Sudha247: update this to use process events in the trace and remove
 --display short
-  $ dune exec --display short bar 2>&1 | grep "Building"
-      Building foo.0.0.2
+  $ dune exec --display short bar 2>&1 | grep "ocamlopt .pkg/foo/foo\." || echo "no rebuilds"
+      ocamlopt .pkg/foo/foo.{a,cmxa}
 
   $ dune exec bar
   Hello from foo 0.0.2!

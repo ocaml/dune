@@ -25,12 +25,16 @@ val user_rule
   -> Rule_conf.t
   -> Targets.Validated.t option Memo.t
 
+(** Where the relative glob of a [(copy_files ...)] stanza in [dir] points: a
+    workspace or external path for a workspace directory, a build path inside
+    the package for a mounted one. *)
+val copy_files_relative_glob : dir:Path.Build.t -> loc:Loc.t -> string -> Path.t
+
 (** Interpret a [(copy_files ...)] stanza and return the targets it produces. *)
 val copy_files
   :  Super_context.t
   -> dir:Path.Build.t
   -> expander:Expander.t
-  -> src_dir:Path.Source.t
   -> Copy_files.t
   -> Path.Set.t Memo.t
 

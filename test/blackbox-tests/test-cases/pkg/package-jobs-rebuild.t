@@ -19,7 +19,7 @@ arguments from its process-start trace, without producing execution logs.
   >     ]
   >   '
   > }
-  $ target=$(get_build_pkg_dir foo)/target
+  $ target=$(get_build_pkg_dir foo)/_install
   $ dune build -j 1 "$target"
   $ arguments
   [["1","-j1","n1","2"]]
@@ -61,7 +61,7 @@ Using jobs to select different arguments must also invalidate the action.
   > (source (copy $PWD/src))
   > (build (run sh -c : (if (= %{jobs} 1) one many)))
   > EOF
-  $ target=$(get_build_pkg_dir foo)/target
+  $ target=$(get_build_pkg_dir foo)/_install
   $ dune build -j 1 "$target"
   $ arguments
   [["one"]]

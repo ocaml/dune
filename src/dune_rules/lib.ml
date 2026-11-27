@@ -470,6 +470,7 @@ end
 
 type db =
   { parent : db option
+  ; package_scopes : (Path.t * db) Package.Name.Map.t Lazy.t
   ; resolve : Lib_name.t -> resolve_result list Memo.t
   ; resolve_lib_id : Lib_id.t -> resolve_result Memo.t
   ; instantiate :
@@ -501,20 +502,7 @@ let ppx_runtime_deps t ~for_ =
 ;;
 
 let pps t ~for_ = Memo.return (Compilation_mode.Per_mode.get ~for_ t.pps)
-
-let is_local t =
-  match Lib_info.obj_dir t.info |> Obj_dir.byte_dir with
-  | External _ -> false
-  | In_source_tree _ -> true
-  | In_build_dir dir ->
-    (match Path.Build.extract_build_context dir with
-     | None -> true
-     | Some (name, _) ->
-       not
-         (Context_name.equal
-            (Context_name.of_string (Filename.to_string name))
-            Private_context.t.name))
-;;
+let is_local t = Lib_info.obj_dir t.info |> Obj_dir.to_local |> Option.is_some
 
 let resolve_main_module_name t =
   let open Resolve.O in
@@ -1375,6 +1363,18 @@ end = struct
             (match Lib_info.status lib.info with
              | Private (_, Some _) -> Resolve.Memo.return ()
              | _ ->
+               let db =
+                 match Lib_info.package lib.info with
+                 | None -> db
+                 | Some package ->
+                   (match
+                      Package.Name.Map.find (Lazy.force db.package_scopes) package
+                    with
+                    | Some (root, scope)
+                      when Path.is_descendant (Lib_info.src_dir lib.info) ~of_:root ->
+                      scope
+                    | None | Some _ -> db)
+               in
                let open Memo.O in
                find_internal db lib.name
                >>= (function
@@ -1765,7 +1765,10 @@ end = struct
            | Status.Found a, Status.Found b ->
              let a_id = Lib_info.lib_id a.info in
              let b_id = Lib_info.lib_id b.info in
-             (match Lib_id.equal a_id b_id with
+             (match
+                Lib_id.equal a_id b_id
+                && Path.equal (Lib_info.src_dir a.info) (Lib_info.src_dir b.info)
+              with
               | true -> acc
               | false ->
                 let name =
@@ -2354,6 +2357,7 @@ module DB = struct
     let rec t =
       lazy
         { parent
+        ; package_scopes = lazy Package.Name.Map.empty
         ; resolve
         ; resolve_lib_id
         ; all = Memo.lazy_ ~name:"library-db-all" all
@@ -2366,7 +2370,7 @@ module DB = struct
 
   let create_from_findlib =
     let bigarray = Lib_name.of_string "bigarray" in
-    fun findlib ~has_bigarray_library ->
+    fun findlib ~has_bigarray_library ~parent ->
       let resolve name =
         let open Memo.O in
         Findlib.find findlib name
@@ -2394,7 +2398,7 @@ module DB = struct
       in
       create
         ()
-        ~parent:None
+        ~parent
         ~resolve
         ~resolve_lib_id:(fun lib_id ->
           let open Memo.O in
@@ -2405,6 +2409,7 @@ module DB = struct
   ;;
 
   let with_parent t ~parent = { t with parent }
+  let with_package_scopes t ~package_scopes = { t with package_scopes }
 
   let from_findlib context findlib =
     let open Memo.O in
@@ -2413,6 +2418,7 @@ module DB = struct
     create_from_findlib
       findlib
       ~has_bigarray_library:(Ocaml.Version.has_bigarray_library ocaml.version)
+      ~parent:None
       ~instrument_with:(Context.instrument_with context)
   ;;
 

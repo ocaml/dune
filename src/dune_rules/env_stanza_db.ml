@@ -21,7 +21,7 @@ module Node = struct
   ;;
 
   let in_dir ~dir =
-    Dune_load.stanzas_in_dir dir
+    Partitions.stanzas_in_dir dir
     >>= function
     | None -> Memo.return None
     | Some stanzas ->
@@ -33,11 +33,8 @@ module Node = struct
 
   let rec by_dir dir =
     let parent =
-      let* project = Dune_load.find_project ~dir in
-      if
-        Path.Source.equal
-          (Path.Build.drop_build_context_exn dir)
-          (Dune_project.root project)
+      let* project = Partitions.find_loaded_project ~dir in
+      if Path.Build.equal dir (Loaded_project.output_root project)
       then by_context dir
       else (
         match Path.Build.parent dir with
@@ -140,13 +137,12 @@ module Inherit = struct
     let root =
       Memo.create
         (sprintf "%s-root" name)
-        ~input:(module Path.Source)
+        ~input:(module Path.Build)
         (fun dir ->
-           let* projects_by_root = Dune_load.projects_by_root ()
+           let* loaded_project = Partitions.find_loaded_project ~dir
            and* envs = Memo.Lazy.force for_context in
-           let project = Path.Source.Map.find_exn projects_by_root dir in
+           let project = Loaded_project.project loaded_project in
            let root = root context project in
-           let dir = Path.Build.append_source (Context_name.build_dir context) dir in
            List.fold_left envs ~init:root ~f:(fun acc env -> f ~parent:acc ~dir env))
       |> Memo.exec
     in
@@ -168,14 +164,13 @@ module Inherit = struct
               match Path.Build.parent path with
               | None -> Code_error.raise "invalid path" []
               | Some parent ->
-                let+ project = Dune_load.find_project ~dir:path in
-                let without_context = Path.Build.drop_build_context_exn path in
-                if Path.Source.equal (Dune_project.root project) without_context
-                then `Root without_context
+                let+ project = Partitions.find_loaded_project ~dir:path in
+                if Path.Build.equal (Loaded_project.output_root project) path
+                then `Root path
                 else `Parent parent
             in
             match parent_path with
-            | `Root without_context -> root without_context
+            | `Root output_root -> root output_root
             | `Parent p -> Rec.memo p
           in
           match env with

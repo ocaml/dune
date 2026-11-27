@@ -30,11 +30,11 @@ Test that we can set variables
   >   (run mkdir -p %{prefix})))
   > EOF
 
-  $ build_pkg usetest
+  $ build_pkg usetest 2>&1 | censor
   abool: true
   astring: foobar
   somestrings: foo bar
-  share path: ../../test/target/share/test
+  share path: ../../../_private/default/.packages/$DIGEST/share/test
   version: 1.2.3
 
   $ show_pkg_cookie test
@@ -65,5 +65,5 @@ Now we demonstrate we get a proper error from invalid .config files:
            ^^
   Error parsing test.config
   Reason: Parse error
-  -> required by _build/_private/default/.pkg/test/target
+  -> required by _build/default/.pkg/test/_install
   [1]

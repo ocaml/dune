@@ -29,6 +29,15 @@ Test that shows what happens when dune.lock is ignored.
   > (lang dune 3.16)
   > EOF
 
+Forcing a sandbox mode also applies it to the rule that stages dune.lock.
+That rule currently depends directly on files in the source tree.
+
+  $ dune build --sandbox=copy "$(get_build_pkg_dir test)/target" > build.log 2>&1
+  [1]
+  $ grep -F "we don't depend on paths from the source" build.log
+    ("we don't depend on paths from the source", {})
+  $ grep -Fq '_private/default/.lock/dune.lock' build.log
+
 Building test works when the dune.lock is visible to dune.
 
   $ build_pkg test

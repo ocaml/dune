@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795750169173,
+  "lastUpdate": 1795750208374,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -697768,6 +697768,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.081282809293333,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "37a10b2514eae10889dd21ca922adaa21fc180ca",
+          "message": "test(foreign-stubs): reproduce stale builds after nested external header edits (#17284)\n\nAbsolute `include_dirs` paths are tracked only at the top level. Editing\na nested header leaves the incremental executable unchanged, while a\nfresh build uses the new header. This test records both results.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T11:18:47+08:00",
+          "tree_id": "e4053da1b71f7616ecd6e97800887575fc1b0303",
+          "url": "https://github.com/ocaml/dune/commit/37a10b2514eae10889dd21ca922adaa21fc180ca"
+        },
+        "date": 1795749868666,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.9429001415400005,
             "unit": "seconds"
           }
         ]

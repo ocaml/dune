@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795794352358,
+  "lastUpdate": 1795794359813,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -500654,6 +500654,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 52.787016521000005,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "da4d76b238f6cc0f4fb9cb0a262041cd42b0993a",
+          "message": "fix(engine): enforce stdout policy for builtin echo and cat (#17260)\n\nApply `--action-stdout-on-success` to built-in `echo` and `cat`. `echo`\nchecks its string in memory without creating a temporary file. `cat`\nstreams into a temporary file when the policy requires capture, so large\ninputs stay out of memory and partial output can still be shown if a\nlater input fails. Explicit redirection is unchanged.\n\nThe fixes use the truncation helper introduced in #17293. The regression\ntests landed in #17251 and #17281.\n\n---------\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T23:29:15+08:00",
+          "tree_id": "87ae3e91c1c6cb59f84c584197c7f1dd97d73de8",
+          "url": "https://github.com/ocaml/dune/commit/da4d76b238f6cc0f4fb9cb0a262041cd42b0993a"
+        },
+        "date": 1795794358889,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.48578249656666667,
             "unit": "seconds"
           }
         ]

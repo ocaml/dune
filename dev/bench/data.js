@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795765460119,
+  "lastUpdate": 1795765466818,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -500364,6 +500364,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (cold, Linux)",
             "value": 36.932009137693335,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8be3a7a6ec55c02f6800fb5e90c0a111144888b3",
+          "message": "refactor(pkg): share conversion of compound dependency conditions (#17289)\n\nConvert both operands and handle empty sides the same way for\nconjunctions and disjunctions. Keep the original operator when both\noperands remain. This does not change dependency resolution behavior.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T15:29:53+08:00",
+          "tree_id": "2c307a8ba9af3e92deec9aae3e6a4acb102a589e",
+          "url": "https://github.com/ocaml/dune/commit/8be3a7a6ec55c02f6800fb5e90c0a111144888b3"
+        },
+        "date": 1795765465950,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (warm, Linux)",
+            "value": 0.35144058406666673,
             "unit": "seconds"
           }
         ]

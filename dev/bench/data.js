@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795750031061,
+  "lastUpdate": 1795750091921,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -499929,6 +499929,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.43843835269333337,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "87918a877e718e8056e764e378fcaf49ae37ad47",
+          "message": "test(pkg): reproduce package writes to installed dependency artifacts (#17280)\n\nAdd a Linux-only regression test showing that both the build and install\ncommands of a locked package can currently overwrite an installed\nartifact of one of its dependencies outside the sandbox. The test\nrecords existing behavior; enabling Landlock is a separate change.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-27T11:06:53+08:00",
+          "tree_id": "600b0e03bb6f1c740f40d69122f322aaf8f653d6",
+          "url": "https://github.com/ocaml/dune/commit/87918a877e718e8056e764e378fcaf49ae37ad47"
+        },
+        "date": 1795750090191,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 38.68216922707334,
             "unit": "seconds"
           }
         ]

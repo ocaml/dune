@@ -437,7 +437,7 @@ include Sub_system.Register_end_point (struct
            let promotion_targets =
              List.concat_map source_modules ~f:Module.sources_without_pp
            in
-           let+ actions =
+           let* actions =
              let action_for_partition partition =
                flags ~info ~expander ~backends ~lib_name ~partition |> test_action mode
              in
@@ -447,22 +447,26 @@ include Sub_system.Register_end_point (struct
                list_partitions mode partitions_flags
                >>= Action_builder.List.map ~f:(fun partition ->
                  action_for_partition (Some partition))
-           and+ () =
+           and* () =
              List.concat_map source_modules ~f:(fun module_ ->
                Module.ml_source module_ |> Module.sources)
              |> Action_builder.paths
-           and+ () = Action_builder.paths promotion_targets
-           and+ env in
+           and* () = Action_builder.paths promotion_targets
+           and* env in
            match actions with
-           | [] -> Action.Full.empty
+           | [] -> Action_builder.return Action.Full.empty
            | _ :: _ ->
-             let diffs =
+             let+ diffs =
                List.map promotion_targets ~f:(fun source ->
                  let target =
                    Path.as_in_build_dir_exn source
                    |> Path.Build.extend_basename ~suffix:Filename.corrected
                  in
-                 Action.diff ~optional:true source target |> Action.Full.make)
+                 let diff = Action.diff ~optional:true source target in
+                 if dune_version < (3, 26)
+                 then Action_builder.return (Action.Full.make diff)
+                 else Format_generated.format_diff sctx ~dir ~source ~target ~diff)
+               |> Action_builder.all
              in
              let run_tests =
                Action.concurrent actions

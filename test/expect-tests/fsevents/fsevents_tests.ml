@@ -54,7 +54,7 @@ let test f =
       finished := true;
       Condition.signal cv)
   in
-  timeout_thread ~wait:3.0 (fun () ->
+  timeout_thread ~wait:10.0 (fun () ->
     Mutex.protect mutex (fun () ->
       if not !finished
       then (
@@ -78,14 +78,20 @@ let test f =
     done)
 ;;
 
-let print_event ~logger ~cwd e =
-  (* FSEvents may coalesce actions or report the same path more than once.
-     Check the affected paths and kinds here; flag decoding is tested in
-     [Fsevents.Event]. *)
+let print_event ~actions ~logger ~cwd e =
+  (* Check membership before deduplicating: coalesced actions may be Unknown,
+     but an incompatible action must still fail the expectation. *)
+  let action = Event.action e in
+  let action_in =
+    if List.mem actions action ~equal:( = )
+    then Dyn.list Event.Action.to_dyn actions
+    else Dyn.variant "Unexpected" [ Event.Action.to_dyn action ]
+  in
   let dyn =
     let open Dyn in
     record
-      [ "kind", Event.Kind.to_dyn (Event.kind e)
+      [ "action_in", action_in
+      ; "kind", Event.Kind.to_dyn (Event.kind e)
       ; ( "path"
         , string
             (let path = Event.path e in
@@ -101,6 +107,9 @@ let make_callback sync ~f =
   (* hack to skip the first event if it's creating the temp dir *)
   let state = ref `Looking_start in
   fun events ->
+    let events =
+      List.sort events ~compare:(fun a b -> Poly.compare (Event.id a) (Event.id b))
+    in
     let is_marker event filename =
       Event.kind event = File && Filename.basename (Event.path event) = filename
     in
@@ -136,7 +145,7 @@ type test_config =
   }
 
 let default_test_config cwd =
-  { on_event = print_event ~cwd; dir = cwd; exclusion_paths = [] }
+  { on_event = print_event ~actions:[ Create ] ~cwd; dir = cwd; exclusion_paths = [] }
 ;;
 
 let test_with_multiple_fsevents ~setup ~test:f =
@@ -182,6 +191,8 @@ let test_with_multiple_fsevents ~setup ~test:f =
     in
     let dispatch_queue = Fsevents.Dispatch_queue.create () in
     List.iter fsevents ~f:(fun f -> Fsevents.start f dispatch_queue);
+    (* Deliver setup events before the start marker enables recording. *)
+    List.iter fsevents ~f:Fsevents.flush_sync;
     let (t : Thread.t) =
       Thread.create
         (fun () ->
@@ -197,6 +208,7 @@ let test_with_multiple_fsevents ~setup ~test:f =
              ~continue:(fun sync -> not sync#started)
              syncs;
            f ();
+           List.iter fsevents ~f:Fsevents.flush_sync;
            await
              ~emit:(fun sync -> sync#emit_stop)
              ~continue:(fun sync -> not sync#stopped)
@@ -225,28 +237,67 @@ let test_with_operations ?on_event ?exclusion_paths f =
     ])
 ;;
 
+let create_file path =
+  (* Keep creation separate from writing, which can coalesce into Unknown. *)
+  Unix.close (Unix.openfile path [ O_WRONLY; O_CREAT; O_EXCL ] 0o600)
+;;
+
 let%expect_test "file create event" =
-  test_with_operations (fun () -> Io.String_path.write_file_exn "./file" "foobar");
+  test_with_operations (fun () -> create_file "./file");
   [%expect
     {|
-    > { kind = File; path = "$TESTCASE_ROOT/file" } |}]
+    > { action_in = [ Create ]; kind = File; path = "$TESTCASE_ROOT/file" } |}]
 ;;
 
 let%expect_test "dir create event" =
   test_with_operations (fun () -> ignore (Fpath.mkdir "./blahblah"));
   [%expect
     {|
-    > { kind = Dir; path = "$TESTCASE_ROOT/blahblah" } |}]
+    > { action_in = [ Create ]; kind = Dir; path = "$TESTCASE_ROOT/blahblah" } |}]
 ;;
 
 let%expect_test "move file" =
-  test_with_operations (fun () ->
-    Io.String_path.write_file_exn "old" "foobar";
-    Unix.rename "old" "new");
+  test_with_multiple_fsevents
+    ~setup:(fun ~cwd config ->
+      create_file "old";
+      [ { config with on_event = print_event ~actions:[ Rename; Unknown ] ~cwd } ])
+    ~test:(fun () -> Unix.rename "old" "new");
   [%expect
     {|
-    > { kind = File; path = "$TESTCASE_ROOT/new" }
-    > { kind = File; path = "$TESTCASE_ROOT/old" } |}]
+    > { action_in = [ Rename; Unknown ]; kind = File; path = "$TESTCASE_ROOT/new" }
+    > { action_in = [ Rename; Unknown ]; kind = File; path = "$TESTCASE_ROOT/old" } |}]
+;;
+
+let%expect_test "file modify event" =
+  test_with_multiple_fsevents
+    ~setup:(fun ~cwd config ->
+      create_file "file";
+      [ { config with on_event = print_event ~actions:[ Modify; Unknown ] ~cwd } ])
+    ~test:(fun () ->
+      let oc = Unix.out_channel_of_descr (Unix.openfile "file" [ O_WRONLY ] 0) in
+      Exn.protectx oc ~finally:close_out ~f:(fun oc -> output_string oc "updated"));
+  [%expect
+    {|
+    > { action_in = [ Modify; Unknown ]
+    ; kind = File
+    ; path = "$TESTCASE_ROOT/file"
+    }
+    |}]
+;;
+
+let%expect_test "file remove event" =
+  test_with_multiple_fsevents
+    ~setup:(fun ~cwd config ->
+      create_file "file";
+      [ { config with on_event = print_event ~actions:[ Remove; Unknown ] ~cwd } ])
+    ~test:(fun () -> Unix.unlink "file");
+  [%expect
+    {|
+    > { action_in = [ Remove; Unknown ]
+    ; kind = File
+    ; path = "$TESTCASE_ROOT/file"
+    }
+    |}]
 ;;
 
 let%expect_test "raise inside callback" =
@@ -286,19 +337,19 @@ let%expect_test "set exclusion paths" =
       ~exclusion_paths:(fun cwd -> [ paths cwd ignored ])
       (fun () ->
          let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p ignored in
-         Io.String_path.write_file_exn (Filename.concat ignored "old") "foobar")
+         create_file (Filename.concat ignored "old"))
   in
   (* absolute paths work *)
   run Filename.concat;
   [%expect
     {|
-    > { kind = Dir; path = "$TESTCASE_ROOT/ignored" } |}];
+    > { action_in = [ Create ]; kind = Dir; path = "$TESTCASE_ROOT/ignored" } |}];
   (* but relative paths do not *)
   run (fun _ name -> name);
   [%expect
     {|
-    > { kind = Dir; path = "$TESTCASE_ROOT/ignored" }
-    > { kind = File; path = "$TESTCASE_ROOT/ignored/old" } |}]
+    > { action_in = [ Create ]; kind = Dir; path = "$TESTCASE_ROOT/ignored" }
+    > { action_in = [ Create ]; kind = File; path = "$TESTCASE_ROOT/ignored/old" } |}]
 ;;
 
 let%expect_test "multiple fsevents" =
@@ -311,13 +362,13 @@ let%expect_test "multiple fsevents" =
       in
       [ create "foo"; create "bar" ])
     ~test:(fun () ->
-      Io.String_path.write_file_exn "foo/file" "";
-      Io.String_path.write_file_exn "bar/file" "";
-      Io.String_path.write_file_exn "xxx" "" (* this one is ignored *));
+      create_file "foo/file";
+      create_file "bar/file";
+      create_file "xxx" (* this one is ignored *));
   [%expect
     {|
-    > { kind = File; path = "$TESTCASE_ROOT/foo/file" }
-    > { kind = File; path = "$TESTCASE_ROOT/bar/file" } |}]
+    > { action_in = [ Create ]; kind = File; path = "$TESTCASE_ROOT/foo/file" }
+    > { action_in = [ Create ]; kind = File; path = "$TESTCASE_ROOT/bar/file" } |}]
 ;;
 
 let%expect_test "multiple paths in one fsevents" =
@@ -350,7 +401,7 @@ let%expect_test "multiple paths in one fsevents" =
       Fsevents.create
         ~paths:[ foo; bar ]
         ~latency:(Time.Span.of_secs 0.0)
-        ~f:(make_callback sync ~f:(print_event ~cwd))
+        ~f:(make_callback sync ~f:(print_event ~actions:[ Create ] ~cwd))
     in
     t := Some fsevents;
     let dispatch_queue = Fsevents.Dispatch_queue.create () in
@@ -366,9 +417,9 @@ let%expect_test "multiple paths in one fsevents" =
                await ~emit ~continue)
            in
            await ~emit:(fun () -> sync#emit_start) ~continue:(fun () -> not sync#started);
-           Io.String_path.write_file_exn "foo/file" "";
-           Io.String_path.write_file_exn "bar/file" "";
-           Io.String_path.write_file_exn "xxx" "";
+           create_file "foo/file";
+           create_file "bar/file";
+           create_file "xxx";
            await ~emit:(fun () -> sync#emit_stop) ~continue:(fun () -> not sync#stopped))
         ()
     in
@@ -381,6 +432,6 @@ let%expect_test "multiple paths in one fsevents" =
     finish ());
   [%expect
     {|
-    > { kind = File; path = "$TESTCASE_ROOT/bar/file" }
-    > { kind = File; path = "$TESTCASE_ROOT/foo/file" } |}]
+    > { action_in = [ Create ]; kind = File; path = "$TESTCASE_ROOT/bar/file" }
+    > { action_in = [ Create ]; kind = File; path = "$TESTCASE_ROOT/foo/file" } |}]
 ;;

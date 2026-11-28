@@ -72,9 +72,15 @@ As usual with promotion, it's possible to combine these two steps by running
 Formatting Generated Corrections
 --------------------------------
 
-Starting with Dune language 3.26, Dune uses OCamlFormat on corrections from
-inline tests and PPX preprocessing or linting before showing a diff or
-promoting the correction, when formatting is enabled for the source.
+To format generated corrections before comparing or promoting them, use
+``(lang dune 3.26)`` or later and add this to ``dune-project``:
+
+.. code:: dune
+
+   (format_generated_corrections true)
+
+Corrections are unformatted by default. After opting in, Dune still respects
+which languages are enabled for formatting. See :ref:`format-generated-corrections`.
 
 Setting Up Your CI
 ------------------

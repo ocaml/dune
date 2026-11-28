@@ -5,6 +5,7 @@ Generated diff corrections use the locked OCamlFormat dev tool.
   $ make_ocamlformat_opam_pkg "0.26.2"
   $ make_project_with_dev_tool_lockdir
   $ dune_cmd subst '3.13' '3.26' dune-project
+  $ echo '(format_generated_corrections true)' >> dune-project
   $ cat >> dune <<'EOF'
   > (rule
   >  (alias generate)

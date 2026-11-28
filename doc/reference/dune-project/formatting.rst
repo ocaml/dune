@@ -25,3 +25,18 @@ formatting
      files) or a :term:`dialect` name.
 
    .. seealso:: :doc:`/howto/formatting`
+
+.. _format-generated-corrections:
+
+.. describe:: (format_generated_corrections <bool>)
+
+   .. versionadded:: 3.26
+
+   Set this field to ``true`` in ``dune-project`` to format generated
+   corrections before comparison or promotion. The default is ``false``.
+
+   This applies to Cinaps, optional text diffs (``diff?``), inline tests, and
+   PPX preprocessing and linting. Dune uses OCamlFormat for OCaml corrections
+   and its built-in formatter for ``dune`` and ``dune-project`` corrections.
+   Only languages enabled by the source's ``formatting`` configuration are
+   formatted. This setting does not affect the ``@fmt`` alias.

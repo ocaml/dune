@@ -30,14 +30,34 @@ type t =
 
 let for_ = Compilation_mode.Ocaml
 
+let obj_dir_flags ~mode obj_dir =
+  let open Command.Args in
+  let dirs = Obj_dir.all_obj_dirs ~mode:(Lib_mode.Ocaml mode) obj_dir in
+  S (List.concat_map dirs ~f:(fun dir -> [ A "-H"; Path (Path.build dir) ]))
+;;
+
+let add_ocaml_rule ~sctx ~obj_dir ~mode ~ocaml args =
+  let kind = Lib_mode.Cm_kind.Ocaml (Mode.cm_kind mode) in
+  let dir = Obj_dir.cm_dir obj_dir kind Public in
+  Ocaml_toolchain.compiler ocaml mode
+  |> Memo.Result.iter ~f:(fun compiler ->
+    Command.run
+      ~sandbox:Sandbox_config.needs_sandboxing
+      ~forbid_action_runner:true
+      (Ok compiler)
+      ~dir:(Path.build dir)
+      ~env:(Ocaml_runtime_env.toolchain sctx ~dir Env.empty)
+      args
+    |> Super_context.add_rule ~dir sctx)
+;;
+
 let build_instance
       ~sctx
       ~obj_dir
       ~mode
+      ~ocaml:({ Ocaml_toolchain.lib_config; _ } as ocaml)
       { module_; args; requires; target; o_target = _; hidden_targets; hidden_deps }
   =
-  let ctx = Super_context.context sctx in
-  let* ocaml = Context.ocaml ctx in
   let include_flags =
     let open Action_builder.O in
     let+ requires = Resolve.read requires in
@@ -45,19 +65,16 @@ let build_instance
       ~direct_libs:requires
       ~hidden_libs:[]
       (Ocaml mode)
-      ocaml.lib_config
+      lib_config
   in
-  let dir =
-    let cm_kind = Lib_mode.Cm_kind.Ocaml (Mode.cm_kind mode) in
-    Obj_dir.cm_dir obj_dir cm_kind Public
-  in
-  Ocaml_toolchain.compiler ocaml mode
-  |> Memo.Result.iter ~f:(fun compiler ->
-    [ Command.Args.Dyn include_flags
-    ; S
-        (List.concat_map
-           ~f:(fun dir -> [ Command.Args.A "-H"; Path (Path.build dir) ])
-           (Obj_dir.all_obj_dirs ~mode:(Lib_mode.Ocaml mode) obj_dir))
+  let open Command.Args in
+  add_ocaml_rule
+    ~sctx
+    ~obj_dir
+    ~mode
+    ~ocaml
+    [ Dyn include_flags
+    ; obj_dir_flags ~mode obj_dir
     ; A "-w"
     ; A "-55"
       (* CR-someday art-w: ignore [inlining-impossible] warning,
@@ -76,13 +93,6 @@ let build_instance
     ; Target target
     ; Hidden_targets hidden_targets
     ]
-    |> Command.run
-         ~sandbox:Sandbox_config.needs_sandboxing
-         ~forbid_action_runner:true
-         (Ok compiler)
-         ~dir:(Path.build dir)
-         ~env:(Ocaml_runtime_env.toolchain sctx ~dir Env.empty)
-    |> Super_context.add_rule ~dir sctx)
 ;;
 
 let lib_archive ~mode lib_info =
@@ -121,17 +131,13 @@ let build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules =
         "expected native archive files"
         [ "info", Lib_info.to_dyn Path.Build.to_dyn lib_info ]
   in
-  let dir =
-    let cm_kind = Lib_mode.Cm_kind.Ocaml (mode |> Mode.cm_kind) in
-    Obj_dir.cm_dir obj_dir cm_kind Public
-  in
   let* ocaml = Context.ocaml (Super_context.context sctx) in
-  Ocaml_toolchain.compiler ocaml mode
-  |> Memo.Result.iter ~f:(fun compiler ->
-    [ Command.Args.S
-        (List.concat_map
-           ~f:(fun dir -> [ Command.Args.A "-H"; Path (Path.build dir) ])
-           (Obj_dir.all_obj_dirs ~mode:(Lib_mode.Ocaml mode) obj_dir))
+  add_ocaml_rule
+    ~sctx
+    ~obj_dir
+    ~mode
+    ~ocaml
+    [ obj_dir_flags ~mode obj_dir
     ; A "-a"
     ; Dyn
         (let open Action_builder.O in
@@ -161,13 +167,6 @@ let build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules =
     ; Target target
     ; Hidden_targets hidden_targets
     ]
-    |> Command.run
-         ~sandbox:Sandbox_config.needs_sandboxing
-         ~forbid_action_runner:true
-         (Ok compiler)
-         ~dir:(Path.build dir)
-         ~env:(Ocaml_runtime_env.toolchain sctx ~dir Env.empty)
-    |> Super_context.add_rule ~dir sctx)
 ;;
 
 let lib_hidden_deps ~sctx ~kind lib requires =
@@ -223,10 +222,8 @@ let build_modules ~sctx ~obj_dir ~modules_obj_dir ~dep_graph ~mode ~requires ~li
   let kind = Lib_mode.Cm_kind.Ocaml (Mode.cm_kind mode) in
   let ext = Lib_mode.Cm_kind.ext kind in
   let cm_args = Lib.Parameterised.arguments lib |> Resolve.List.map ~f:(get_cm ~kind) in
-  let* { Lib_config.ext_obj; _ } =
-    let+ ocaml = Super_context.context sctx |> Context.ocaml in
-    ocaml.lib_config
-  in
+  let* ocaml = Context.ocaml (Super_context.context sctx) in
+  let { Lib_config.ext_obj; _ } = ocaml.lib_config in
   let lib_hidden_deps =
     Action_builder.memoize "lib-hidden-deps" (lib_hidden_deps ~sctx ~kind lib requires)
   in
@@ -277,7 +274,7 @@ let build_modules ~sctx ~obj_dir ~modules_obj_dir ~dep_graph ~mode ~requires ~li
       ; hidden_deps
       }
     in
-    let+ () = build_instance ~sctx ~obj_dir ~mode instance in
+    let+ () = build_instance ~sctx ~obj_dir ~mode ~ocaml instance in
     Module_name.Map.add_exn acc (Module.name module_) instance)
 ;;
 

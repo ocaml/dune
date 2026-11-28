@@ -41,9 +41,13 @@ let execution_parameters ~sandbox_actions =
     let ep =
       if sandbox_actions then Execution_parameters.set_sandbox_actions true ep else ep
     in
-    if
-      Context_name.equal context Private_context.t.name
-      || Context_name.equal context Fetch_rules.context.name
+    if Context_name.equal context Private_context.t.name
+    then (
+      match Path.Build.explode path |> Filename.L.to_string with
+      | _ :: _ :: (".pkg" | ".dev-tool") :: _ ->
+        Memo.return (Execution_parameters.set_use_sandbox_policy true ep)
+      | _ -> Memo.return ep)
+    else if Context_name.equal context Fetch_rules.context.name
     then Memo.return ep
     else (
       match source_backed_dir path with

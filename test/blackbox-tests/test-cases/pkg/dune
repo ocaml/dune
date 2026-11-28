@@ -50,7 +50,8 @@
 (cram
  (applies_to landlock.t)
  (enabled_if
-  (= %{system} linux)))
+  (= %{system} linux))
+ (deps %{bin:cmp}))
 
 (cram
  (applies_to relocatable-compiler-sandbox.t)

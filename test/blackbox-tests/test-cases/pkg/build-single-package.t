@@ -48,18 +48,6 @@ missing sources, or build dependencies needed by their exported environment.
   $ build_pkg bar
   $ test ! -e "$(get_build_pkg_dir not-needed)/target"
 
-Package build commands are not restricted by the shared-cache Landlock policy.
-
-  $ export DUNE_CACHE_ROOT=$PWD/cache-root
-  $ mkdir -p "$DUNE_CACHE_ROOT/db"
-  $ make_lockpkg cache-writer <<EOF
-  > (build (run touch $DUNE_CACHE_ROOT/db/package-marker))
-  > (version dev)
-  > EOF
-  $ build_pkg cache-writer
-  $ test -e "$DUNE_CACHE_ROOT/db/package-marker" && echo wrote
-  wrote
-
 Editing a lock input must rebuild the affected package.
 
   $ make_lockpkg foo <<EOF

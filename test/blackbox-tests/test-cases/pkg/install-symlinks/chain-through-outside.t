@@ -3,7 +3,10 @@ e.g., link.txt -> $PWD/intermediate.txt -> real.txt (where intermediate is outsi
 
 The chain goes through an outside path, but the final target is inside target_dir.
 This case is pathological, but we want to exercise our symlink resolution code.
+Disable Landlock so the build can create the intermediate symlink outside its
+sandbox.
 
+  $ export DUNE_CONFIG__LANDLOCK=disabled
   $ export DUNE_CACHE=enabled
   $ export DUNE_CACHE_ROOT=$PWD/_cache
 

@@ -807,7 +807,13 @@ let%expect_test "fsevents standard event handling" =
     | Some (Sync _ | Watcher_terminated) ->
       Code_error.raise "unexpected fsevents standard event" []
   in
+  print Create File;
+  print Remove File;
   print Modify File;
+  print Rename File;
+  print Unknown File;
+  print Create Dir;
+  print Modify Dir;
   print Rename Dir;
   print Remove Dir;
   print Unknown Dir;
@@ -816,7 +822,13 @@ let%expect_test "fsevents standard event handling" =
   print Create File ~should_exclude:(Fun.const true);
   [%expect
     {|
+    { path = In_source_tree "x"; kind = Created }
+    { path = In_source_tree "x"; kind = Deleted }
     { path = In_source_tree "x"; kind = File_changed }
+    { path = In_source_tree "x"; kind = Unknown }
+    { path = In_source_tree "x"; kind = Unknown }
+    { path = In_source_tree "x"; kind = Created }
+    { path = In_source_tree "x"; kind = Unknown }
     Queue_overflow
     Queue_overflow
     Queue_overflow

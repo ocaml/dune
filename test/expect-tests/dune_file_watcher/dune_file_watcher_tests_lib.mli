@@ -13,3 +13,8 @@ val print_events
   :  try_to_get_events:(unit -> Dune_scheduler.Event.Fs_memo_event.t list option)
   -> expected:int
   -> unit
+
+val print_unique_events
+  :  try_to_get_events:(unit -> Dune_scheduler.Event.Fs_memo_event.t list option)
+  -> expected:int
+  -> unit

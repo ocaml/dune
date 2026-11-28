@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795840919730,
+  "lastUpdate": 1795841143526,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -500741,6 +500741,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4450211438666667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d41f635d5b4b1506133b67564e01bd62478fa598",
+          "message": "test(engine): cover more action redirection failure cases (#17296)\n\nExtend the Linux strace test in\n`test/blackbox-tests/test-cases/engine/mkdir-on-rule-cache-hit.t` to\ncover additional action redirection failure paths ahead of the cleanup\nfix:\n\n- `with-stdin-from` on a failing command, recording that Dune currently\nleaks the stdin descriptor.\n- A buffered `out_channel` redirection (`echo` followed by a failing\nstep), recording that Dune currently leaks the channel descriptor.\n- Unopened output redirections on failure, checking that Dune neither\nopens nor creates the file.\n- Unopened input and output redirections to nonexistent paths on\nfailure, checking that Dune does not attempt to open them or emit\nsecondary errors.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-28T12:32:31+08:00",
+          "tree_id": "5f87c0f4c54aea05dcfe920efd2ca9f37239ebf8",
+          "url": "https://github.com/ocaml/dune/commit/d41f635d5b4b1506133b67564e01bd62478fa598"
+        },
+        "date": 1795841141800,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 42.68762984978667,
             "unit": "seconds"
           }
         ]

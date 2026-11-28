@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795841149455,
+  "lastUpdate": 1795841395287,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -698870,6 +698870,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.732024639986667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6924c149a2b304ac6cc4c58cc7e8dd312a64f28d",
+          "message": "feat(formatting): format internal source corrections (#17120)\n\nInline tests and PPX preprocessing and linting construct their own\ncorrection diffs, so they bypass the formatting added for user-written\n`diff?` in #17110. Use the same formatter for these corrections before\ncomparison or promotion, starting with Dune language 3.26. Earlier\nprojects keep the unformatted corrections.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-28T12:40:03+08:00",
+          "tree_id": "d5345659302093ec5eea92656af75ef178c90b21",
+          "url": "https://github.com/ocaml/dune/commit/6924c149a2b304ac6cc4c58cc7e8dd312a64f28d"
+        },
+        "date": 1795841135179,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 2.7796768260599998,
             "unit": "seconds"
           }
         ]

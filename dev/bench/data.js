@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795846639221,
+  "lastUpdate": 1795846893488,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -500915,6 +500915,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic build time (warm, Linux)",
             "value": 0.4282604049466667,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1ecafcc1011d7136ae60d24017f448da55c4768c",
+          "message": "test: use cc in linker working-directory regression (#17300)\n\nUse the configured C toolchain in the linker working-directory\nregression test, including Nix shells that provide cc without gcc.\n\nSplit from anmonteiro/dune#278.\n\n01a20619-183b-76f3-b8a7-18c1b28eb1c0\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-27T22:01:13-08:00",
+          "tree_id": "fa5e86cb1969a02bce87eb279daae6acfc6be8c1",
+          "url": "https://github.com/ocaml/dune/commit/1ecafcc1011d7136ae60d24017f448da55c4768c"
+        },
+        "date": 1795846890881,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic build time (cold, Linux)",
+            "value": 65.60535105438667,
             "unit": "seconds"
           }
         ]

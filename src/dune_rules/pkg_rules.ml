@@ -266,7 +266,7 @@ module Value_list_env = struct
   let global : t Lazy.t =
     let parse_strings s = Bin.parse s |> List.map ~f:(fun s -> Value.String s) in
     let of_env env : t = Env.to_map env |> Env.Map.map ~f:parse_strings in
-    lazy (of_env (Global.env ()))
+    lazy (of_env (Global.rule_env ()))
   ;;
 
   (* Concatenate a list of values in the style of lists found in
@@ -625,7 +625,7 @@ module Action_expander = struct
         Memo.return (Ok [ Value.String (Context_name.to_string context) ])
       | Var Make ->
         let+ make =
-          let path = Env_path.path (Global.env ()) in
+          let path = Env_path.path (Global.rule_env ()) in
           Make_prog.which loc context ~path
         in
         Ok [ Value.Path make ]
@@ -704,7 +704,7 @@ module Action_expander = struct
                 (match Filename.Map.find artifacts program with
                  | Some s -> Memo.return @@ Ok s
                  | None ->
-                   (let path = Global.env () |> Env_path.path in
+                   (let path = Global.rule_env () |> Env_path.path in
                     Which.which ~path program)
                    >>= (function
                     | Some p -> Memo.return (Ok p)
@@ -2321,7 +2321,7 @@ let ocaml_toolchain context =
       let transitive_deps = pkg :: Pkg.deps_closure pkg in
       let* env, binaries =
         Action_builder.List.fold_left
-          ~init:(Global.env (), Path.Set.empty)
+          ~init:(Global.rule_env (), Path.Set.empty)
           ~f:(fun (env, binaries) pkg ->
             let env = Env.extend_env env (Pkg.exported_env pkg) in
             let+ cookie = Install_cookie.read pkg.paths in
@@ -2334,7 +2334,7 @@ let ocaml_toolchain context =
             env, binaries)
           transitive_deps
       in
-      let path = Env_path.path (Global.env ()) in
+      let path = Env_path.path (Global.rule_env ()) in
       Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries
     in
     Some (Action_builder.memoize "ocaml_toolchain" toolchain)

@@ -2,6 +2,34 @@ open Import
 
 let env = Fdecl.create Env.to_dyn
 
+let remove_build_dir_from_path =
+  let build_dir =
+    lazy
+      (Path.to_absolute_filename Path.build_dir
+       |> Path.External.of_string
+       |> Path.External.normalize)
+  and sanitized_paths = String.Table.create 1 in
+  fun path ->
+    String.Table.find_or_add sanitized_paths path ~f:(fun path ->
+      let build_dir = Lazy.force build_dir in
+      Bin.parse path
+      |> List.filter ~f:(function
+        | "" -> true
+        | dir ->
+          let dir =
+            Path.External.of_filename_relative_to_initial_cwd dir
+            |> Path.External.normalize
+          in
+          not
+            (Path.External.equal dir build_dir
+             || Path.External.is_descendant dir ~of_:build_dir))
+      |> Bin.encode_strings)
+;;
+
+let remove_build_dir_from_env env =
+  Env.update env ~var:Env_path.var ~f:(Option.map ~f:remove_build_dir_from_path)
+;;
+
 let init ~capture_outputs =
   Fdecl.set
     env
@@ -23,3 +51,8 @@ let init ~capture_outputs =
 ;;
 
 let env () = Fdecl.get env
+
+let rule_env =
+  let env = lazy (remove_build_dir_from_env (env ())) in
+  fun () -> Lazy.force env
+;;

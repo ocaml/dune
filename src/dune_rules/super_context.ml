@@ -166,8 +166,15 @@ let extend_action_env t ~dir action =
       (let open Memo.O in
        let* node = t.get_node dir in
        let+ env = Env_node.base_env node
-       and+ local_bin_dirs = Env_node.local_bin_dirs node in
-       env, local_bin_dirs)
+       and+ local_bin_dirs = Env_node.local_bin_dirs node
+       and+ compiler_bin_paths =
+         Context.host t.context >>| Context.name >>= Pkg_rules.compiler_bin_paths
+       in
+       (* The lock directory compiler, which [Context] adds to [PATH], is
+          the one exception to the removal of build directory entries. *)
+       ( Global.remove_build_dir_from_env env
+         |> Env_path.cons_multi ~dirs:compiler_bin_paths
+       , local_bin_dirs ))
   in
   (* Cons path-like vars from the action's environment (bin-layout PATH,
      package-layout OCAMLPATH/etc.) onto the directory env so that both layout

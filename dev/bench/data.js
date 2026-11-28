@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795866855405,
+  "lastUpdate": 1795867249246,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -699218,6 +699218,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.0476882102733334,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7069d3ab5969d11f5f2b19f7ab01d2e1f41c938a",
+          "message": "feat(formatting): make generated correction formatting opt-in (#17297)\n\nGenerated corrections stay unformatted by default, so upgrading to Dune\n3.26 does not unexpectedly require OCamlFormat. Projects using Dune\nlanguage 3.26 or later can opt in with `(format_generated_corrections\ntrue)` in `dune-project`.\n\nThe setting applies to Cinaps, optional text diffs (`diff?`), inline\ntests, and PPX preprocessing and linting. It replaces the proposed\nCinaps 1.4 gate and still respects per-language formatting settings. It\ndoes not change `@fmt` or add support for dialect formatter actions on\ncorrections.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-28T19:47:59+08:00",
+          "tree_id": "b63bcfa262508e5de089b4405e01c33148237901",
+          "url": "https://github.com/ocaml/dune/commit/7069d3ab5969d11f5f2b19f7ab01d2e1f41c938a"
+        },
+        "date": 1795866908459,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.28696180476,
             "unit": "seconds"
           }
         ]

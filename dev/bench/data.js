@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795841643400,
+  "lastUpdate": 1795846369137,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -698957,6 +698957,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 2.7796768260599998,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anmonteiro@gmail.com",
+            "name": "Antonio Nuno Monteiro",
+            "username": "anmonteiro"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6c82bef42874a2ecc0948def1287adba76118666",
+          "message": "build(nix): include Darwin tools in development shells (#17299)\n\nProvide sw_vers in Darwin development shells so OS detection works in a\npure Nix environment.\n\nSplit from anmonteiro/dune#278.\n\n01a20619-183b-76f3-b8a7-18c1b28eb1c0\n\nSigned-off-by: Antonio Nuno Monteiro <anmonteiro@gmail.com>",
+          "timestamp": "2026-11-27T22:01:31-08:00",
+          "tree_id": "2a12cf1f6b082be031c24313c3ba92a69248397a",
+          "url": "https://github.com/ocaml/dune/commit/6c82bef42874a2ecc0948def1287adba76118666"
+        },
+        "date": 1795846032149,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.0540899183133328,
             "unit": "seconds"
           }
         ]

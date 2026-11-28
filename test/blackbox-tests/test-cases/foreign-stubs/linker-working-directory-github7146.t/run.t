@@ -3,7 +3,7 @@ The linker is not invoked from the directory containing the dune file with the
 difficult to link against existing static libraries located in that directory.
 
 Build a static c library
-  $ gcc -c native.c
+  $ cc -c native.c
   $ ar rcs libnative.a native.o
 
 The problem is demonstrated in the "problem" directory. The static library

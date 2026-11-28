@@ -4,6 +4,8 @@
 ;; by running [$ dune build @opam --auto-promote].
 (name dune)
 
+(format_generated_corrections true)
+
 (generate_opam_files true)
 (opam_file_location inside_opam_directory)
 

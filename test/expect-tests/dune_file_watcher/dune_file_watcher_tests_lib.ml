@@ -97,22 +97,38 @@ let get_events ~try_to_get_events ~expected =
     !collected, if List.length !collected > expected then `Too_many else `Ok
 ;;
 
+let print_status ~expected ~actual = function
+  | `Ok -> ()
+  | `Not_enough ->
+    printf "Timed out waiting for more events: expected %d, saw %d\n" expected actual
+  | `Too_many ->
+    printf "Got more events than expected: expected %d, saw %d\n" expected actual
+;;
+
 let print_events ~try_to_get_events ~expected =
   let events, status = get_events ~try_to_get_events ~expected in
   List.iter events ~f:(fun event ->
     Dune_scheduler.Event.Fs_memo_event.to_dyn event
     |> Dyn.to_string
     |> Stdio.print_endline);
-  match status with
-  | `Ok -> ()
-  | `Not_enough ->
-    printf
-      "Timed out waiting for more events: expected %d, saw %d\n"
-      expected
-      (List.length events)
-  | `Too_many ->
-    printf
-      "Got more events than expected: expected %d, saw %d\n"
-      expected
-      (List.length events)
+  print_status ~expected ~actual:(List.length events) status
+;;
+
+let print_changed_paths ~try_to_get_events ~expected =
+  let seen = ref Path.Set.empty in
+  let try_to_get_events () =
+    Option.map (try_to_get_events ()) ~f:(fun events ->
+      List.filter events ~f:(fun { Dune_scheduler.Event.Fs_memo_event.path; _ } ->
+        (* The root is created before the watcher starts. Its creation event
+           may or may not arrive after the watcher starts. *)
+        if Path.equal path Path.root || Path.Set.mem !seen path
+        then false
+        else (
+          seen := Path.Set.add !seen path;
+          true)))
+  in
+  let events, status = get_events ~try_to_get_events ~expected in
+  Path.Set.iter !seen ~f:(fun path ->
+    Path.to_dyn path |> Dyn.to_string |> Stdio.print_endline);
+  print_status ~expected ~actual:(List.length events) status
 ;;

@@ -9,20 +9,17 @@ module Logger : sig
   val printfn : t -> ('a, unit, string, unit) format4 -> 'a
   val flush : t -> unit
 end = struct
-  type t = { messages : string Queue.t }
+  type t = { mutable messages : String.Set.t }
 
-  let create () = { messages = Queue.create () }
-  let printfn t fmt = Printf.ksprintf (fun s -> Queue.push t.messages s) fmt
+  let create () = { messages = String.Set.empty }
+
+  let printfn t fmt =
+    Printf.ksprintf (fun s -> t.messages <- String.Set.add t.messages s) fmt
+  ;;
 
   let flush t =
-    let rec loop () =
-      match Queue.pop t.messages with
-      | None -> ()
-      | Some s ->
-        print_endline s;
-        loop ()
-    in
-    loop ()
+    String.Set.iter t.messages ~f:print_endline;
+    t.messages <- String.Set.empty
   ;;
 end
 
@@ -82,11 +79,13 @@ let test f =
 ;;
 
 let print_event ~logger ~cwd e =
+  (* FSEvents may coalesce actions or report the same path more than once.
+     Check the affected paths and kinds here; flag decoding is tested in
+     [Fsevents.Event]. *)
   let dyn =
     let open Dyn in
     record
-      [ "action", Event.Action.to_dyn (Event.action e)
-      ; "kind", Event.Kind.to_dyn (Event.kind e)
+      [ "kind", Event.Kind.to_dyn (Event.kind e)
       ; ( "path"
         , string
             (let path = Event.path e in
@@ -103,9 +102,7 @@ let make_callback sync ~f =
   let state = ref `Looking_start in
   fun events ->
     let is_marker event filename =
-      Event.kind event = File
-      && Filename.basename (Event.path event) = filename
-      && Event.action event = Create
+      Event.kind event = File && Filename.basename (Event.path event) = filename
     in
     let events =
       List.fold_left events ~init:[] ~f:(fun acc event ->
@@ -123,6 +120,8 @@ let make_callback sync ~f =
             state := `Finish;
             sync#stop;
             acc)
+          else if is_marker event start_filename
+          then acc
           else event :: acc)
     in
     match events with
@@ -230,14 +229,14 @@ let%expect_test "file create event" =
   test_with_operations (fun () -> Io.String_path.write_file_exn "./file" "foobar");
   [%expect
     {|
-    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/file" } |}]
+    > { kind = File; path = "$TESTCASE_ROOT/file" } |}]
 ;;
 
 let%expect_test "dir create event" =
   test_with_operations (fun () -> ignore (Fpath.mkdir "./blahblah"));
   [%expect
     {|
-    > { action = "Create"; kind = "Dir"; path = "$TESTCASE_ROOT/blahblah" } |}]
+    > { kind = Dir; path = "$TESTCASE_ROOT/blahblah" } |}]
 ;;
 
 let%expect_test "move file" =
@@ -246,25 +245,20 @@ let%expect_test "move file" =
     Unix.rename "old" "new");
   [%expect
     {|
-    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/old" }
-    > { action = "Rename"; kind = "File"; path = "$TESTCASE_ROOT/new" } |}]
+    > { kind = File; path = "$TESTCASE_ROOT/new" }
+    > { kind = File; path = "$TESTCASE_ROOT/old" } |}]
 ;;
 
 let%expect_test "raise inside callback" =
   test_with_operations
-    ~on_event:(fun ~logger _ ->
-      Logger.printfn logger "exiting.";
-      raise Exit)
+    ~on_event:(fun ~logger:_ _ -> raise Exit)
     (fun () ->
        Io.String_path.write_file_exn "old" "foobar";
        Io.String_path.write_file_exn "old" "foobar";
        (* Delay to allow the event handler callback to catch the exception
          before stopping the watcher. *)
        Unix.sleepf 1.0);
-  [%expect
-    {|
-    [EXIT]
-    exiting. |}]
+  [%expect {| [EXIT] |}]
 ;;
 
 let%expect_test "stop before wait_until_stopped" =
@@ -298,13 +292,13 @@ let%expect_test "set exclusion paths" =
   run Filename.concat;
   [%expect
     {|
-    > { action = "Create"; kind = "Dir"; path = "$TESTCASE_ROOT/ignored" } |}];
+    > { kind = Dir; path = "$TESTCASE_ROOT/ignored" } |}];
   (* but relative paths do not *)
   run (fun _ name -> name);
   [%expect
     {|
-    > { action = "Create"; kind = "Dir"; path = "$TESTCASE_ROOT/ignored" }
-    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/ignored/old" } |}]
+    > { kind = Dir; path = "$TESTCASE_ROOT/ignored" }
+    > { kind = File; path = "$TESTCASE_ROOT/ignored/old" } |}]
 ;;
 
 let%expect_test "multiple fsevents" =
@@ -322,8 +316,8 @@ let%expect_test "multiple fsevents" =
       Io.String_path.write_file_exn "xxx" "" (* this one is ignored *));
   [%expect
     {|
-    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/foo/file" }
-    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/bar/file" } |}]
+    > { kind = File; path = "$TESTCASE_ROOT/foo/file" }
+    > { kind = File; path = "$TESTCASE_ROOT/bar/file" } |}]
 ;;
 
 let%expect_test "multiple paths in one fsevents" =
@@ -387,6 +381,6 @@ let%expect_test "multiple paths in one fsevents" =
     finish ());
   [%expect
     {|
-    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/foo/file" }
-    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/bar/file" } |}]
+    > { kind = File; path = "$TESTCASE_ROOT/bar/file" }
+    > { kind = File; path = "$TESTCASE_ROOT/foo/file" } |}]
 ;;

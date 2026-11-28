@@ -1311,12 +1311,17 @@ let spawn
   }
 ;;
 
-let runner_stdio (io : _ Io.t) : Process_runner.stdio option =
-  match io.kind with
-  | Null -> Some Null
-  | Terminal _ -> Some Terminal
-  | File { path; perm } -> Some (File { path; perm })
-  | External -> None
+let runner_stdio fds (io : _ Io.t) : Process_runner.stdio option =
+  match io.kind, io.status with
+  | Null, _ -> Some Null
+  | Terminal _, _ -> Some Terminal
+  | File _, Closed | External, _ -> None
+  | File { path; perm }, Close_after_exec when not (Lazy.is_val io.fd) ->
+    Some (File { path; perm })
+  | File _, (Close_after_exec | Keep_open) ->
+    let index = List.length !fds in
+    fds := lazy (Io.fd io) :: !fds;
+    Some (Fd index)
 ;;
 
 let runner_request
@@ -1335,38 +1340,38 @@ let runner_request
   if not metadata.Process_metadata.can_run_in_action_runner
   then None
   else (
-    let same_output = Stdlib.( == ) stdout_to stderr_to in
-    match runner_stdio stdin_from, runner_stdio stdout_to with
-    | Some stdin_from, Some stdout_to ->
-      let stderr_to =
-        if same_output
-        then Some Process_runner.Stderr.Same_as_stdout
-        else (
-          match runner_stdio stderr_to with
-          | None -> None
-          | Some stderr_to -> Some (Process_runner.Stderr.Output stderr_to))
+    let fds = ref [] in
+    let stdout = runner_stdio fds stdout_to in
+    let stderr =
+      if Stdlib.( == ) stdout_to stderr_to
+      then Some Process_runner.Stderr.Same_as_stdout
+      else
+        Option.map (runner_stdio fds stderr_to) ~f:(fun stdio ->
+          Process_runner.Stderr.Output stdio)
+    in
+    match stdout, stderr, runner_stdio fds stdin_from with
+    | Some stdout_to, Some stderr_to, Some stdin_from ->
+      let request =
+        { Process_runner.dir
+        ; env
+        ; metadata
+        ; prog
+        ; args
+        ; stdin_from
+        ; stdout_to
+        ; stderr_to
+        ; create_process_group = Option.is_some setpgid
+        ; timeout
+        ; queued
+        }
       in
-      (match stderr_to with
-       | None -> None
-       | Some stderr_to ->
-         Some
-           { Process_runner.dir
-           ; env
-           ; metadata
-           ; prog
-           ; args
-           ; stdin_from
-           ; stdout_to
-           ; stderr_to
-           ; create_process_group = Option.is_some setpgid
-           ; timeout
-           ; queued
-           })
-    | None, _ | _, None -> None)
+      Some (request, List.map (List.rev !fds) ~f:Lazy.force)
+    | _ -> None)
 ;;
 
 let exec_locally
       ~build
+      ~fds
       ({ Process_runner.dir
        ; env
        ; metadata
@@ -1381,17 +1386,27 @@ let exec_locally
        } :
         Process_runner.request)
   =
+  let received_fd mode index =
+    let fd = fds.(index) in
+    { Io.kind = External
+    ; fd = lazy fd
+    ; channel = lazy (Io.channel_of_descr fd mode)
+    ; status = Close_after_exec
+    }
+  in
   let stdin =
     match stdin_from with
     | Null -> Io.null Io.In
     | Terminal -> Io.stdin
     | File { path; _ } -> Io.file path Io.In
+    | Fd index -> received_fd Io.In index
   in
   let output (stdio : Process_runner.stdio) terminal =
     match stdio with
     | Null -> Io.null Io.Out
     | Terminal -> terminal
     | File { path; perm } -> Io.file path Io.Out ~perm
+    | Fd index -> received_fd Io.Out index
   in
   let stdout = output stdout_to Io.stdout in
   let stderr =
@@ -1586,9 +1601,22 @@ let run_internal
                 ~queued
             with
             | None -> local ()
-            | Some request ->
-              Io.release prepared_outputs.stdout;
-              Io.release prepared_outputs.stderr;
+            | Some (request, fds) ->
+              let release_or_defer io (stdio : Process_runner.stdio) pending =
+                match stdio with
+                | Fd _ -> io :: pending
+                | File _ | Null | Terminal ->
+                  Io.release io;
+                  pending
+              in
+              let pending =
+                release_or_defer prepared_outputs.stdout request.stdout_to []
+              in
+              let pending =
+                match request.stderr_to with
+                | Same_as_stdout -> pending
+                | Output stdio -> release_or_defer prepared_outputs.stderr stdio pending
+              in
               let+ { Process_runner.started_at
                    ; process_info
                    ; termination_reason
@@ -1596,11 +1624,15 @@ let run_internal
                    ; trace_args
                    }
                 =
-                Action_runner.exec_process
-                  action_runner
-                  ~run_id:(Build.run_id build)
-                  ~cancellation:(Build.cancellation build)
-                  request
+                Fiber.finalize_now
+                  ~finally:(fun () -> List.iter pending ~f:Io.release)
+                  (fun () ->
+                     Action_runner.exec_process
+                       action_runner
+                       ~run_id:(Build.run_id build)
+                       ~cancellation:(Build.cancellation build)
+                       ~fds
+                       request)
               in
               let dummy_process =
                 { started_at

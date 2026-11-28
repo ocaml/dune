@@ -115,6 +115,21 @@ module Session = struct
   module Session_id = Id.Make ()
   module Id = Session_id
 
+  module Fds = struct
+    type t =
+      | Empty
+      | Range of
+          { first : int
+          ; count : int
+          }
+  end
+
+  type fd_passing =
+    { received : (int, Fd.t) Table.t
+    ; mutable next_received : int
+    ; mutable next_sent : int
+    }
+
   module State = struct
     type t =
       | Closed
@@ -125,6 +140,7 @@ module Session = struct
           ; mutable read_eof : bool
           ; write_mutex : Fiber.Mutex.t
           ; read_mutex : Fiber.Mutex.t
+          ; fd_passing : fd_passing option
           }
   end
 
@@ -135,7 +151,7 @@ module Session = struct
     ; mutable state : State.t
     }
 
-  let create fd =
+  let create fd ~fd_passing =
     let id = Id.gen () in
     Dune_trace.emit Rpc (fun () -> Dune_trace.Event.Rpc.session ~id:(Id.to_int id) `Start);
     let state =
@@ -147,6 +163,7 @@ module Session = struct
         ; read_eof = false
         ; write_mutex = Fiber.Mutex.create ()
         ; read_mutex = Fiber.Mutex.create ()
+        ; fd_passing
         }
     in
     { id; state }
@@ -156,7 +173,10 @@ module Session = struct
     Socket.prepare_fd fd
     |> Result.map ~f:(fun () ->
       Fd.set_close_on_exec fd;
-      create fd)
+      let fd_passing =
+        Some { received = Table.create (module Int) 16; next_received = 0; next_sent = 0 }
+      in
+      create fd ~fd_passing)
     |> Result.ok_exn
   ;;
 
@@ -164,9 +184,73 @@ module Session = struct
     let* () = Fiber.return () in
     match t.state with
     | Closed -> Fiber.return ()
-    | Open { fd; _ } ->
+    | Open { fd; fd_passing; _ } ->
       t.state <- Closed;
+      Option.iter fd_passing ~f:(fun { received; _ } ->
+        Table.iter received ~f:Fd.close;
+        Table.clear received);
       Async_io.close fd
+  ;;
+
+  external send_fds_syscall
+    :  Unix.file_descr
+    -> Unix.file_descr array
+    -> unit
+    = "dune_rpc_send_fds"
+
+  external recv_fds_syscall
+    :  Unix.file_descr
+    -> Bytes.t
+    -> int
+    -> int
+    -> int * Unix.file_descr list
+    = "dune_rpc_recv_fds"
+
+  (* A NUL between packets carries SCM_RIGHTS. Both ends number the descriptors
+     in stream order; requests refer to those numbers so calls can overlap. *)
+  let send_fds t fds =
+    match fds, t.state with
+    | [], _ -> Fiber.return (Ok Fds.Empty)
+    | _ :: _, Closed -> Fiber.return (Error `Closed)
+    | _ :: _, Open { fd_passing = None; _ } ->
+      Code_error.raise "file descriptor passing not enabled" []
+    | _ :: _, Open { fd; fd_passing = Some passing; write_mutex; _ } ->
+      let fds = Array.of_list (List.map fds ~f:Fd.unsafe_to_unix_file_descr) in
+      let rec send () =
+        match t.state with
+        | Closed -> Fiber.return (Error `Closed)
+        | Open _ ->
+          let task =
+            Async_io.ready fd `Write ~f:(fun () ->
+              match send_fds_syscall (Fd.unsafe_to_unix_file_descr fd) fds with
+              | () -> `Sent
+              | exception Unix.Unix_error ((EAGAIN | EINTR | EWOULDBLOCK), _, _) -> `Retry
+              | exception Unix.Unix_error ((EPIPE | ECONNRESET), _, _) -> `Closed)
+          in
+          Async_io.Task.await task
+          >>= (function
+           | Ok `Retry -> send ()
+           | Ok `Sent ->
+             let first = passing.next_sent in
+             let count = Array.length fds in
+             passing.next_sent <- first + count;
+             Fiber.return (Ok (Fds.Range { first; count }))
+           | Ok `Closed | Error `Cancelled -> Fiber.return (Error `Closed)
+           | Error (`Exn exn) -> raise exn)
+      in
+      Fiber.Mutex.with_lock write_mutex ~f:send
+  ;;
+
+  let take_fds t (fds : Fds.t) =
+    match fds, t.state with
+    | Empty, _ -> [||]
+    | Range { first; count }, Open { fd_passing = Some { received; _ }; _ } ->
+      let fds = Array.init count ~f:(fun i -> Table.find_exn received (first + i)) in
+      for i = first to first + count - 1 do
+        Table.remove received i
+      done;
+      fds
+    | Range _, _ -> Code_error.raise "no RPC file descriptors available" []
   ;;
 
   module Lexer = Csexp.Parser.Lexer
@@ -199,57 +283,82 @@ module Session = struct
         else if open_.read_eof
         then Fiber.return (Ok `Eof)
         else (
-          let task =
-            Async_io.ready fd `Read ~f:(fun () ->
-              let () = Io_buffer.maybe_resize_to_fit in_buf min_read in
-              let pos = Io_buffer.write_pos in_buf in
-              let len = Io_buffer.max_write_len in_buf in
-              match
-                Unix.read
-                  (Fd.unsafe_to_unix_file_descr fd)
-                  (Io_buffer.bytes in_buf)
-                  pos
-                  len
-              with
-              | exception Unix.Unix_error ((EAGAIN | EINTR | EWOULDBLOCK), _, _) ->
-                `Refill
-              | (exception Unix.Unix_error (ECONNRESET, _, _)) | 0 ->
-                open_.read_eof <- true;
-                `Eof
-              | len ->
-                Io_buffer.commit_write in_buf ~len;
-                `Continue)
+          let read_into_buffer read =
+            let () = Io_buffer.maybe_resize_to_fit in_buf min_read in
+            let pos = Io_buffer.write_pos in_buf in
+            let len = Io_buffer.max_write_len in_buf in
+            let bytes = Io_buffer.bytes in_buf in
+            match read (Fd.unsafe_to_unix_file_descr fd) bytes pos len with
+            | exception Unix.Unix_error ((EAGAIN | EINTR | EWOULDBLOCK), _, _) -> `Refill
+            | exception Unix.Unix_error (ECONNRESET, _, _) -> `Read 0
+            | len -> `Read len
           in
-          Async_io.Task.await task
-          >>= function
+          let* result =
+            match open_.fd_passing with
+            | None ->
+              let task =
+                Async_io.ready fd `Read ~f:(fun () -> read_into_buffer Unix.read)
+              in
+              Async_io.Task.await task
+            | Some passing ->
+              let task = Async_io.ready fd `Read ~f:ignore in
+              let+ ready = Async_io.Task.await task in
+              (match ready, t.state with
+               | (Error _ as error), _ -> error
+               | Ok (), Closed -> Error `Cancelled
+               | Ok (), Open _ ->
+                 (* Keep recvmsg and the CLOEXEC fallback on the scheduler
+                    thread, where the worker spawns its children. *)
+                 let recv fd bytes pos len =
+                   let len, fds = recv_fds_syscall fd bytes pos len in
+                   List.iter fds ~f:(fun fd ->
+                     Table.add_exn
+                       passing.received
+                       passing.next_received
+                       (Fd.unsafe_of_unix_file_descr fd);
+                     passing.next_received <- passing.next_received + 1);
+                   len
+                 in
+                 (match read_into_buffer recv with
+                  | result -> Ok result
+                  | exception exn -> Error (`Exn exn)))
+          in
+          match result with
           | Error (`Exn e) -> Fiber.return (Error e)
-          | Error `Cancelled | Ok `Eof -> Fiber.return @@ Ok `Eof
-          | Ok `Continue -> Fiber.return @@ Ok `Continue
-          | Ok `Refill -> refill ())
-      and read parser =
+          | Error `Cancelled -> Fiber.return (Ok `Eof)
+          | Ok `Refill -> refill ()
+          | Ok (`Read 0) ->
+            open_.read_eof <- true;
+            Fiber.return (Ok `Eof)
+          | Ok (`Read len) ->
+            Io_buffer.commit_write in_buf ~len;
+            Fiber.return (Ok `Continue))
+      and read parser ~at_start =
         let* res = refill () in
         match res with
         | Error _ as e -> Fiber.return e
         | Ok `Eof -> Fiber.return (eof parser)
         | Ok `Continue ->
           let char = Io_buffer.read_char_exn in_buf in
-          let token = Lexer.feed lexer char in
-          (match token with
-           | Atom n ->
-             Buffer.clear buf;
-             atom parser n
-           | (Lparen | Rparen | Await) as token ->
-             let parser = Stack.add_token token parser in
-             (match parser with
-              | Sexp (sexp, Empty) -> Fiber.return (Ok (Some sexp))
-              | parser -> read parser))
+          if at_start && Char.equal char '\000' && Option.is_some open_.fd_passing
+          then read parser ~at_start
+          else (
+            match Lexer.feed lexer char with
+            | Atom n ->
+              Buffer.clear buf;
+              atom parser n
+            | (Lparen | Rparen | Await) as token ->
+              let parser = Stack.add_token token parser in
+              (match parser with
+               | Sexp (sexp, Empty) -> Fiber.return (Ok (Some sexp))
+               | parser -> read parser ~at_start:false))
       and atom parser n =
         if n = 0
         then (
           let atom = Buffer.contents buf in
           match Stack.add_atom atom parser with
           | Sexp (sexp, Empty) -> Fiber.return (Ok (Some sexp))
-          | parser -> read parser)
+          | parser -> read parser ~at_start:false)
         else
           refill ()
           >>= function
@@ -262,7 +371,9 @@ module Session = struct
             atom parser (n - n')
       in
       let+ res =
-        let* res = Fiber.Mutex.with_lock read_mutex ~f:(fun () -> read Stack.Empty) in
+        let* res =
+          Fiber.Mutex.with_lock read_mutex ~f:(fun () -> read Stack.Empty ~at_start:true)
+        in
         match res with
         | Error exn ->
           let error = Printexc.to_string exn in
@@ -510,7 +621,7 @@ module Server = struct
         Dune_trace.Event.Rpc.accept ~id:(Id.to_int t.id) `Stop (Some res));
       match accept with
       | Error _ | Ok None -> None
-      | Ok (Some fd) -> Some (Session.create fd)
+      | Ok (Some fd) -> Some (Session.create fd ~fd_passing:None)
     in
     Fiber.return (Fiber.Stream.In.create loop)
   ;;
@@ -583,7 +694,7 @@ module Client = struct
       >>| (function
        | Ok () ->
          t.transport <- None;
-         Ok (Session.create fd)
+         Ok (Session.create fd ~fd_passing:None)
        | Error `Cancelled ->
          Transport.close transport;
          t.transport <- None;

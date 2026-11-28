@@ -108,11 +108,19 @@ let complete_build t ~run_id ~cancellation =
   else finish_build t ~run_id
 ;;
 
-let exec_process_uncancelled t ~run_id process =
+let exec_process_uncancelled t ~run_id ~fds process =
   let* () = ensure_ready t in
+  let* fds =
+    Root.Rpc.Csexp_rpc.Session.send_fds t.connection fds
+    >>= function
+    | Ok fds -> Fiber.return fds
+    | Error `Closed ->
+      let* () = disconnect t in
+      disconnected t
+  in
   Dune_trace.emit Action (fun () ->
     Dune_trace.Event.Action.Runner.runner_event ~name:t.name Request_sent);
-  (let payload = { Request.Exec.run_id; process } in
+  (let payload = { Request.Exec.run_id; process; fds } in
    send_request ~request:Decl.exec ~payload t)
   >>| function
   | Cancelled -> raise (Memo.Non_reproducible Scheduler.Run.Build_cancelled)
@@ -126,11 +134,11 @@ let exec_process_uncancelled t ~run_id process =
     { response with trace_args }
 ;;
 
-let exec_process t ~run_id ~cancellation process =
+let exec_process t ~run_id ~cancellation ~fds process =
   let on_cancel () = cancel_build t ~run_id in
   let* result, outcome =
     Fiber.Cancel.with_handler ~on_cancel cancellation (fun () ->
-      Fiber.collect_errors (fun () -> exec_process_uncancelled t ~run_id process))
+      Fiber.collect_errors (fun () -> exec_process_uncancelled t ~run_id ~fds process))
   in
   match outcome, result with
   | Cancelled (), _ ->

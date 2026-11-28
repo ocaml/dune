@@ -7,6 +7,7 @@ type stdio =
       { path : Path.t
       ; perm : Permissions.Mode.t
       }
+  | Fd of int
 
 module Stderr = struct
   type t =

@@ -64,16 +64,20 @@ let finish_exec t run_id =
     Fiber.Ivar.fill active.drained ()
 ;;
 
-let exec_process t ({ Request.Exec.run_id; process } : Request.Exec.t) =
-  if is_cancelled t run_id
-  then Fiber.return Request.Exec.Cancelled
-  else (
-    let build = start_build t run_id in
-    Fiber.finalize
-      ~finally:(fun () -> finish_exec t run_id)
-      (fun () ->
-         let+ response = Process.exec_locally ~build process in
-         Request.Exec.Completed response))
+let exec_process t connection ({ Request.Exec.run_id; process; fds } : Request.Exec.t) =
+  let fds = Root.Rpc.Csexp_rpc.Session.take_fds connection fds in
+  Fiber.finalize_now
+    ~finally:(fun () -> Array.iter fds ~f:Fd.close)
+    (fun () ->
+       if is_cancelled t run_id
+       then Fiber.return Request.Exec.Cancelled
+       else (
+         let build = start_build t run_id in
+         Fiber.finalize
+           ~finally:(fun () -> finish_exec t run_id)
+           (fun () ->
+              let+ response = Process.exec_locally ~build ~fds process in
+              Request.Exec.Completed response)))
 ;;
 
 let cancel_build t ~name ({ Request.Cancel_build.run_id } : Request.Cancel_build.t) =
@@ -113,7 +117,7 @@ let start ~name ~rpc_fd =
     Dune_trace.Event.Action.Runner.runner_event ~name Connection_established);
   let private_menu : Client.proc list =
     [ Client.Request Decl.ready
-    ; Handle_request (Decl.exec, exec_process t)
+    ; Handle_request (Decl.exec, exec_process t connection)
     ; Handle_request (Decl.cancel_build, cancel_build t ~name)
     ; Handle_request (Decl.finish_build, finish_build t)
     ]

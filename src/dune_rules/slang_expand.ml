@@ -131,7 +131,7 @@ and eval_blang_rec (t : Slang.blang) ~dir ~f =
       match t with
       | And _ -> true, false
       | Or _ -> false, true
-      | Const _ | Expr _ | Not _ | Compare _ -> assert false
+      | Const _ | Expr _ | Not _ | Compare _ | Compare_versions _ -> assert false
     in
     let rec loop = function
       | [] -> Memo.return (Ok continue)
@@ -154,6 +154,18 @@ and eval_blang_rec (t : Slang.blang) ~dir ~f =
         (* Force the concatenation so that we can compare the results. *)
         let concat = List.map ~f:(Value.Deferred_concat.force ~dir) in
         Relop.eval op (Value.L.compare_vals ~dir (concat x) (concat y))))
+  | Compare_versions (op, x, y) ->
+    let+ x_vals = eval_rec x ~dir ~f
+    and+ y_vals = eval_rec y ~dir ~f in
+    Result.bind x_vals ~f:(fun x_vals ->
+      Result.map y_vals ~f:(fun y_vals ->
+        let concat = List.map ~f:(Value.Deferred_concat.force ~dir) in
+        Relop.eval
+          op
+          (Value.L.compare_versions
+             ~dir
+             (Slang.loc x, concat x_vals)
+             (Slang.loc y, concat y_vals))))
 ;;
 
 let raise_undefined_pkg_var = function

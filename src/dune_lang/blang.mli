@@ -10,6 +10,7 @@ type 'string ast =
   | And of 'string ast list
   | Or of 'string ast list
   | Compare of Relop.t * 'string * 'string
+  | Compare_versions of Relop.t * 'string * 'string
 
 type t = String_with_vars.t ast
 

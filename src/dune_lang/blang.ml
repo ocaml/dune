@@ -7,6 +7,7 @@ type 'string ast =
   | And of 'string ast list
   | Or of 'string ast list
   | Compare of Relop.t * 'string * 'string
+  | Compare_versions of Relop.t * 'string * 'string
 
 module Ast = struct
   type 'string t = 'string ast
@@ -20,9 +21,11 @@ module Ast = struct
     | Not t1, Not t2 -> equal f t1 t2
     | Expr x1, Expr x2 -> f x1 x2
     | And tl1, And tl2 | Or tl1, Or tl2 -> List.equal (equal f) tl1 tl2
-    | Compare (op1, x1, y1), Compare (op2, x2, y2) ->
+    | Compare (op1, x1, y1), Compare (op2, x2, y2)
+    | Compare_versions (op1, x1, y1), Compare_versions (op2, x2, y2) ->
       Relop.equal op1 op2 && f x1 x2 && f y1 y2
-    | (Const _ | Not _ | Expr _ | And _ | Or _ | Compare _), _ -> false
+    | (Const _ | Not _ | Expr _ | And _ | Or _ | Compare _ | Compare_versions _), _ ->
+      false
   ;;
 
   let rec to_dyn string_to_dyn =
@@ -35,6 +38,8 @@ module Ast = struct
     | Or t -> variant "Or" (List.map ~f:(to_dyn string_to_dyn) t)
     | Compare (o, s1, s2) ->
       variant "Compare" [ Relop.to_dyn o; string_to_dyn s1; string_to_dyn s2 ]
+    | Compare_versions (o, s1, s2) ->
+      variant "Compare_versions" [ Relop.to_dyn o; string_to_dyn s1; string_to_dyn s2 ]
   ;;
 
   let rec map_string ~f = function
@@ -44,6 +49,7 @@ module Ast = struct
     | And ts -> And (List.map ts ~f:(map_string ~f))
     | Or ts -> Or (List.map ts ~f:(map_string ~f))
     | Compare (o, s1, s2) -> Compare (o, f s1, f s2)
+    | Compare_versions (o, s1, s2) -> Compare_versions (o, f s1, f s2)
   ;;
 
   let decode ~override_decode_bare_literal decode_string =
@@ -60,15 +66,24 @@ module Ast = struct
           and+ y = decode_string in
           Compare (op, x, y) ))
     in
+    let version_ops =
+      List.map Relop.map ~f:(fun (name, op) ->
+        ( "ver" ^ name
+        , let+ () = Syntax.since Stanza.syntax (3, 26)
+          and+ x = decode_string
+          and+ y = decode_string in
+          Compare_versions (op, x, y) ))
+    in
     let decode =
       fix (fun t ->
         let decode_term =
           sum
             ~force_parens:true
-            (("or", repeat t >>| fun x -> Or x)
-             :: ("and", repeat t >>| fun x -> And x)
-             :: ("not", Syntax.since Stanza.syntax (3, 2) >>> t >>| fun x -> Not x)
-             :: ops)
+            ((("or", repeat t >>| fun x -> Or x)
+              :: ("and", repeat t >>| fun x -> And x)
+              :: ("not", Syntax.since Stanza.syntax (3, 2) >>> t >>| fun x -> Not x)
+              :: ops)
+             @ version_ops)
         in
         decode_term
         <|> let+ v = decode_bare_literal in
@@ -88,6 +103,8 @@ module Ast = struct
     | And ts -> List (string "and" :: List.map ts ~f:(encode encode_string))
     | Or ts -> List (string "or" :: List.map ts ~f:(encode encode_string))
     | Compare (o, s1, s2) -> List [ Relop.encode o; encode_string s1; encode_string s2 ]
+    | Compare_versions (o, s1, s2) ->
+      List [ string ("ver" ^ Relop.to_string o); encode_string s1; encode_string s2 ]
   ;;
 end
 

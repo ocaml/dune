@@ -32,6 +32,11 @@ module L : sig
       ]} *)
   val compare_vals : dir:Path.t -> t list -> t list -> Ordering.t
 
+  (** Compare each expanded value using opam's version ordering. Raises a user
+      error at the operand's location for a value that isn't a valid opam
+      version. *)
+  val compare_versions : dir:Path.t -> Loc.t * t list -> Loc.t * t list -> Ordering.t
+
   val to_dyn : t list -> Dyn.t
   val paths : Path.t list -> t list
   val deps_only : t list -> Path.t list

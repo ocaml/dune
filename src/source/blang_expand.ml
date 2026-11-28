@@ -23,4 +23,13 @@ let rec eval (t : Blang.t) ~dir ~f =
     let+ x = String_expander.Memo.expand x ~mode:Many ~dir ~f
     and+ y = String_expander.Memo.expand y ~mode:Many ~dir ~f in
     Relop.eval op (Value.L.compare_vals ~dir x y)
+  | Compare_versions (op, x, y) ->
+    let+ x_vals = String_expander.Memo.expand x ~mode:Many ~dir ~f
+    and+ y_vals = String_expander.Memo.expand y ~mode:Many ~dir ~f in
+    Relop.eval
+      op
+      (Value.L.compare_versions
+         ~dir
+         (String_with_vars.loc x, x_vals)
+         (String_with_vars.loc y, y_vals))
 ;;

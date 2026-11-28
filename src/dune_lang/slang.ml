@@ -408,6 +408,10 @@ and simplify_blang = function
         | Relop.Neq, Some l, Some r -> Const (not (String.equal l r))
         | _ -> Compare (op, lhs, rhs))
      | _ -> Compare (op, lhs, rhs))
+  | Compare_versions (op, lhs, rhs) ->
+    (match simplify lhs, simplify rhs with
+     | Undefined, _ | _, Undefined -> Const false
+     | lhs, rhs -> Compare_versions (op, lhs, rhs))
   | Not blang ->
     (match simplify_blang blang with
      | Const b -> Const (not b)

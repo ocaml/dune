@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795846901834,
+  "lastUpdate": 1795866589496,
   "repoUrl": "https://github.com/ocaml/dune",
   "entries": {
     "Melange Benchmark": [
@@ -699131,6 +699131,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "synthetic watch build time (warm, Linux)",
             "value": 3.76457207198,
+            "unit": "seconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@rgrinberg.com",
+            "name": "Rudi Grinberg",
+            "username": "rgrinberg"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "17aa2cbaa8d35da0fb4fb9071262793c1093d85f",
+          "message": "refactor(rules): share expanded action finalization (#17143)\n\nApply the working directory, sandbox, and environment in one place for\nboth action expansion paths. Select generated diff formatting when\nchoosing the expansion function, without changing target handling.\n\nSigned-off-by: Rudi Grinberg <me@rgrinberg.com>",
+          "timestamp": "2026-11-28T19:38:33+08:00",
+          "tree_id": "c57ed7da4e88cb64c0e79944e1a2ea9966c1dc47",
+          "url": "https://github.com/ocaml/dune/commit/17aa2cbaa8d35da0fb4fb9071262793c1093d85f"
+        },
+        "date": 1795866252010,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "synthetic watch build time (warm, Linux)",
+            "value": 3.0476882102733334,
             "unit": "seconds"
           }
         ]

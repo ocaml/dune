@@ -1,10 +1,7 @@
 open Import
 open Memo.O
 
-module Scope_key : sig
-  val of_string : Context_name.t -> string -> (Lib_name.t * Lib.DB.t) Memo.t
-  val to_string : Lib_name.t -> Dune_project.t -> string
-end = struct
+module Scope_key = struct
   let file_key project =
     let name = Dune_project.name project in
     let root = Dune_project.root project in
@@ -37,8 +34,18 @@ end = struct
       String.Map.find_exn map key
   ;;
 
+  let parse_priv_lib_name s = String.rsplit2 s ~on:'@'
+
+  let find_private_lib context s =
+    match parse_priv_lib_name s with
+    | None -> Memo.return None
+    | Some (lib, key) ->
+      let* scope = find_project_by_key key >>= Scope.DB.find_by_project context in
+      Lib.DB.find (Scope.libs scope) (Lib_name.parse_string_exn (Loc.none, lib))
+  ;;
+
   let of_string context s =
-    match String.rsplit2 s ~on:'@' with
+    match parse_priv_lib_name s with
     | None ->
       let+ public_libs = Scope.DB.public_libs context in
       Lib_name.parse_string_exn (Loc.none, s), public_libs
@@ -70,4 +77,27 @@ let pkg_or_lnu lib =
   match Lib_info.package (Lib.info lib) with
   | Some p -> Package.Name.to_string p
   | None -> lib_unique_name lib
+;;
+
+module Parent_id = struct
+  type t = string
+
+  let to_string = Fun.id
+end
+
+let pkg_parent_id pkg = Package.Name.to_string pkg
+
+let lib_parent_id lib =
+  let name = Lib.name lib in
+  let in_package pkg name =
+    sprintf "%s/%s" (pkg_parent_id pkg) (Lib_name.to_string name)
+  in
+  match Lib_info.status (Lib.info lib) with
+  | Installed_private pkg | Installed pkg ->
+    in_package (Option.value pkg ~default:(Lib_name.package_name name)) name
+  | Public (_, pkg) -> in_package (Package.name pkg) name
+  | Private (_, Some pkg) ->
+    let pkg = Package.name pkg in
+    in_package pkg (Lib_name.mangled pkg (Lib_name.to_local_exn name))
+  | Private (project, None) -> Scope_key.to_string name project
 ;;

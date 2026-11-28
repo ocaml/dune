@@ -31,11 +31,12 @@ A preprocessed library, where A refers to B only after preprocessing:
 
 Building the odoc file of A alone also builds the one of B:
 
-  $ dune build _build/default/pp/.pp.objs/byte/pp__A.odoc
-  $ find _build/default/pp -name '*.odoc' | LC_ALL=C sort
-  _build/default/pp/.pp.objs/byte/pp.odoc
-  _build/default/pp/.pp.objs/byte/pp__A.odoc
-  _build/default/pp/.pp.objs/byte/pp__B.odoc
+  $ dune build _build/default/_doc/_odoc/my_pkg/my_pkg.pp/pp__A.odoc
+  $ find _build/default/_doc/_odoc/my_pkg/my_pkg.pp -name '*.odoc' \
+  >   | LC_ALL=C sort
+  _build/default/_doc/_odoc/my_pkg/my_pkg.pp/pp.odoc
+  _build/default/_doc/_odoc/my_pkg/my_pkg.pp/pp__A.odoc
+  _build/default/_doc/_odoc/my_pkg/my_pkg.pp/pp__B.odoc
 
 A virtual library and an implementation whose own (private) module refers to a
 module of the virtual library:
@@ -80,7 +81,7 @@ The virtual library itself can be documented:
   $ dune build @doc
 
 When another library depends on the implementation, Dune looks for the
-inherited module U's odoc file in the implementation's object directory.
+inherited module U's odoc file in the implementation's odoc directory.
 This currently fails:
 
   $ mkdir user
@@ -98,6 +99,6 @@ This currently fails:
   > EOF
 
   $ dune build @doc
-  File "impl/.impl.objs/byte/_unknown_", line 1, characters 0-0:
-  Error: No rule found for impl/.impl.objs/byte/vlib__U.odoc
+  File "_doc/_odoc/my_pkg/my_pkg.impl/_unknown_", line 1, characters 0-0:
+  Error: No rule found for _doc/_odoc/my_pkg/my_pkg.impl/vlib__U.odoc
   [1]

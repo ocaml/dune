@@ -62,7 +62,7 @@ independently of the compiler version reported to Dune.
   >   build_dir="_build_$1"
   >   shift
   >   dune build --cache=disabled --build-dir "$build_dir" "$@" \
-  >     main.bc.js .probe.objs/byte/probe.odoc > "$TOOL_RUNTIME_LOG" 2>&1 ||
+  >     main.bc.js _doc/_odoc/probe/probe/probe.odoc > "$TOOL_RUNTIME_LOG" 2>&1 ||
   >     { cat "$TOOL_RUNTIME_LOG"; return 1; }
   >   grep ' OCAMLRUNPARAM=' "$TOOL_RUNTIME_LOG" | sort -u
   > }
